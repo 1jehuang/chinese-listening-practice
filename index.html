@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinyin Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .quiz-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .audio-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .play-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .play-button:hover {
+            background: #0056b3;
+            transform: scale(1.05);
+        }
+
+        .play-button:active {
+            transform: scale(0.95);
+        }
+
+        .play-button.playing {
+            background: #28a745;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .option-btn {
+            padding: 20px;
+            font-size: 24px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .feedback {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            min-height: 30px;
+        }
+
+        .feedback.correct {
+            color: #28a745;
+        }
+
+        .feedback.incorrect {
+            color: #dc3545;
+        }
+
+        .next-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .next-button:hover {
+            background: #5a6268;
+        }
+
+        .next-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stats-text {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .mode-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            margin: 0 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            background: #e9ecef;
+        }
+
+        .mode-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h1>拼音练习 Pinyin Practice</h1>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="listen">Listen & Type</button>
+            <button class="mode-btn" data-mode="choose">Multiple Choice</button>
+        </div>
+
+        <div class="audio-section">
+            <button class="play-button" id="playBtn">🔊 Play Audio</button>
+        </div>
+
+        <div id="listenMode">
+            <input type="text" id="answerInput" placeholder="Type pinyin + tone (e.g., ma1, zhang4)..."
+                style="width: 100%; padding: 15px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; margin: 20px 0;">
+            <button id="checkBtn" style="width: 100%; padding: 15px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                Check Answer
+            </button>
+        </div>
+
+        <div id="chooseMode" style="display: none;">
+            <div style="text-align: center; font-size: 16px; margin-bottom: 20px; color: #666;">Which pinyin do you hear?</div>
+            <div class="options" id="options"></div>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <button class="next-button" id="nextBtn">Next Question →</button>
+
+        <div class="stats">
+            <div class="stats-text">
+                Score: <strong id="score">0</strong> / <strong id="total">0</strong>
+                (<span id="percentage">0</span>%)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const commonSyllables = [
+            'ma', 'ba', 'pa', 'fa', 'da', 'ta', 'na', 'la', 'ga', 'ka', 'ha',
+            'ji', 'qi', 'xi', 'zhi', 'chi', 'shi', 'ri', 'zi', 'ci', 'si',
+            'bo', 'po', 'mo', 'fo', 'de', 'te', 'ne', 'le', 'ge', 'ke', 'he',
+            'me', 'bu', 'pu', 'mu', 'fu', 'du', 'tu', 'nu', 'lu', 'gu', 'ku', 'hu',
+            'ju', 'qu', 'xu', 'zhu', 'chu', 'shu', 'ru', 'zu', 'cu', 'su',
+            'bai', 'pai', 'mai', 'dai', 'tai', 'nai', 'lai', 'gai', 'kai', 'hai',
+            'bei', 'pei', 'mei', 'fei', 'dei', 'lei', 'gei', 'hei',
+            'bao', 'pao', 'mao', 'dao', 'tao', 'nao', 'lao', 'gao', 'kao', 'hao',
+            'dou', 'tou', 'nou', 'lou', 'gou', 'kou', 'hou',
+            'ban', 'pan', 'man', 'fan', 'dan', 'tan', 'nan', 'lan', 'gan', 'kan', 'han',
+            'ben', 'pen', 'men', 'fen', 'den', 'nen', 'gen', 'ken', 'hen',
+            'bang', 'pang', 'mang', 'fang', 'dang', 'tang', 'nang', 'lang', 'gang', 'kang', 'hang',
+            'deng', 'teng', 'neng', 'leng', 'geng', 'keng', 'heng',
+            'bing', 'ping', 'ming', 'ding', 'ting', 'ning', 'ling',
+            'dong', 'tong', 'nong', 'long', 'gong', 'kong', 'hong',
+            'jia', 'qia', 'xia', 'jie', 'qie', 'xie', 'jiao', 'qiao', 'xiao',
+            'jiu', 'qiu', 'xiu', 'jian', 'qian', 'xian', 'jin', 'qin', 'xin',
+            'jiang', 'qiang', 'xiang', 'jing', 'qing', 'xing', 'jiong', 'qiong', 'xiong',
+            'zha', 'cha', 'sha', 'zhe', 'che', 'she', 're', 'zhao', 'chao', 'shao', 'rao',
+            'zhou', 'chou', 'shou', 'rou', 'zhan', 'chan', 'shan', 'ran',
+            'zhen', 'chen', 'shen', 'ren', 'zhang', 'chang', 'shang', 'rang',
+            'zheng', 'cheng', 'sheng', 'reng', 'zhong', 'chong', 'rong',
+            'za', 'ca', 'sa', 'ze', 'ce', 'se', 'zao', 'cao', 'sao',
+            'zou', 'cou', 'sou', 'zan', 'can', 'san', 'zen', 'cen', 'sen',
+            'zang', 'cang', 'sang', 'zeng', 'ceng', 'seng', 'zong', 'cong', 'song',
+            'yi', 'ya', 'yao', 'you', 'yan', 'yin', 'yang', 'ying', 'yong',
+            'wu', 'wa', 'wo', 'wai', 'wei', 'wan', 'wen', 'wang', 'weng',
+            'yu', 'yue', 'yuan', 'yun'
+        ];
+
+        let currentPinyin = '';
+        let currentTone = 1;
+        let score = 0;
+        let total = 0;
+        let answered = false;
+        let mode = 'listen';
+
+        const playBtn = document.getElementById('playBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const feedback = document.getElementById('feedback');
+        const answerInput = document.getElementById('answerInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const listenMode = document.getElementById('listenMode');
+        const chooseMode = document.getElementById('chooseMode');
+
+        function generateQuestion() {
+            currentPinyin = commonSyllables[Math.floor(Math.random() * commonSyllables.length)];
+            currentTone = Math.floor(Math.random() * 4) + 1;
+            answered = false;
+            feedback.textContent = '';
+            feedback.className = 'feedback';
+            answerInput.value = '';
+
+            if (mode === 'choose') {
+                generateOptions();
+            } else {
+                // Focus input in listen mode
+                setTimeout(() => answerInput.focus(), 100);
+            }
+        }
+
+        function generateOptions() {
+            const options = document.getElementById('options');
+            options.innerHTML = '';
+
+            // Generate 3 random wrong syllables with random tones
+            const wrongOptions = [];
+            while (wrongOptions.length < 3) {
+                const randomPinyin = commonSyllables[Math.floor(Math.random() * commonSyllables.length)];
+                const randomTone = Math.floor(Math.random() * 4) + 1;
+                const option = `${randomPinyin}${randomTone}`;
+                if (option !== `${currentPinyin}${currentTone}` && !wrongOptions.includes(option)) {
+                    wrongOptions.push(option);
+                }
+            }
+
+            // Add correct answer
+            const correctOption = `${currentPinyin}${currentTone}`;
+            const allOptions = [...wrongOptions, correctOption];
+
+            // Shuffle
+            allOptions.sort(() => Math.random() - 0.5);
+
+            allOptions.forEach(option => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.onclick = () => checkAnswerChoice(option, btn);
+                options.appendChild(btn);
+            });
+        }
+
+        function playAudio() {
+            playBtn.classList.add('playing');
+            const audioUrl = `https://www.purpleculture.net/mp3/${currentPinyin}${currentTone}.mp3`;
+            const audio = new Audio(audioUrl);
+
+            audio.play().catch(err => {
+                console.error('Audio playback failed:', err);
+                playBtn.classList.remove('playing');
+            });
+
+            audio.onended = () => {
+                playBtn.classList.remove('playing');
+            };
+        }
+
+        function checkAnswer(answer, btnElement = null) {
+            if (!answer.trim()) return;
+
+            // Parse input like "ma1" or "zhang4"
+            const match = answer.toLowerCase().trim().match(/^([a-z]+)([1-4])$/);
+            const correct = match && match[1] === currentPinyin && parseInt(match[2]) === currentTone;
+
+            if (correct) {
+                if (!answered) {
+                    answered = true;
+                    total++;
+                    score++;
+                }
+                feedback.textContent = `✓ Correct! (${currentPinyin}${currentTone})`;
+                feedback.className = 'feedback correct';
+
+                // Auto-advance to next question after correct answer
+                setTimeout(() => {
+                    generateQuestion();
+                    playAudio();
+                }, 800);
+            } else {
+                if (!answered) {
+                    answered = true;
+                    total++;
+                }
+                feedback.textContent = `✗ Wrong. The answer is: ${currentPinyin}${currentTone}. Try again!`;
+                feedback.className = 'feedback incorrect';
+                // Clear immediately without delay
+                setTimeout(() => {
+                    answerInput.value = '';
+                    answerInput.focus();
+                }, 0);
+            }
+
+            updateStats();
+        }
+
+        function checkAnswerChoice(answer, btnElement) {
+            if (answered) return;
+
+            answered = true;
+            total++;
+
+            const correct = answer === `${currentPinyin}${currentTone}`;
+
+            if (correct) {
+                score++;
+                feedback.textContent = `✓ Correct! (${currentPinyin}${currentTone})`;
+                feedback.className = 'feedback correct';
+                btnElement.classList.add('correct');
+
+                // Auto-advance to next question
+                setTimeout(() => {
+                    generateQuestion();
+                    playAudio();
+                }, 800);
+            } else {
+                feedback.textContent = `✗ Wrong. The answer was: ${currentPinyin}${currentTone}`;
+                feedback.className = 'feedback incorrect';
+                btnElement.classList.add('incorrect');
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    if (btn.textContent === `${currentPinyin}${currentTone}`) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            updateStats();
+
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'not-allowed';
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('total').textContent = total;
+            const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+            document.getElementById('percentage').textContent = percentage;
+        }
+
+        playBtn.addEventListener('click', playAudio);
+        nextBtn.addEventListener('click', () => {
+            generateQuestion();
+            playAudio();
+        });
+
+        checkBtn.addEventListener('click', () => {
+            checkAnswer(answerInput.value);
+        });
+
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkAnswer(answerInput.value);
+            } else if (e.key === ' ' && answerInput.value === '') {
+                e.preventDefault();
+                playAudio();
+            }
+        });
+
+        // Global spacebar listener for multiple choice mode
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && mode === 'choose' && !answered) {
+                e.preventDefault();
+                playAudio();
+            }
+        });
+
+        // Mode selector
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                mode = btn.dataset.mode;
+
+                if (mode === 'listen') {
+                    listenMode.style.display = 'block';
+                    chooseMode.style.display = 'none';
+                } else {
+                    listenMode.style.display = 'none';
+                    chooseMode.style.display = 'block';
+                }
+
+                generateQuestion();
+            });
+        });
+
+        // Start first question
+        generateQuestion();
+        playAudio();
+    </script>
+</body>
+</html>

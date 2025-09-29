@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinyin Chart with Audio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 10px;
+            background: #f5f5f5;
+            overflow-x: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .container {
+            width: 100%;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .tone-selector {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .tone-selector button {
+            margin: 2px;
+            padding: 6px 12px;
+            font-size: 13px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tone-selector button:hover {
+            background: #e9ecef;
+        }
+
+        .tone-selector button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 4px 2px;
+            text-align: center;
+            min-width: 35px;
+            font-size: 13px;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th:first-child {
+            background: #e9ecef;
+            left: 0;
+            z-index: 11;
+        }
+
+        td:first-child {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
+        .syllable {
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 3px;
+            transition: all 0.2s;
+            user-select: none;
+            display: inline-block;
+            font-size: 12px;
+        }
+
+        .syllable:hover {
+            background: #e3f2fd;
+            transform: scale(1.05);
+        }
+
+        .syllable:active {
+            background: #bbdefb;
+        }
+
+        .syllable.playing {
+            background: #4caf50;
+            color: white;
+        }
+
+        .empty {
+            color: #ccc;
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>汉语拼音表 Pinyin Chart</h1>
+
+        <div class="tone-selector">
+            <button class="tone-btn active" data-tone="1">First Tone (ā)</button>
+            <button class="tone-btn" data-tone="2">Second Tone (á)</button>
+            <button class="tone-btn" data-tone="3">Third Tone (ǎ)</button>
+            <button class="tone-btn" data-tone="4">Fourth Tone (à)</button>
+            <button class="tone-btn" data-tone="5">Neutral Tone (a)</button>
+        </div>
+
+        <table id="pinyinTable">
+            <thead>
+                <tr>
+                    <th>Initial \ Final</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <div class="info">
+            Click any pinyin syllable to hear its pronunciation. Select different tones above.
+        </div>
+    </div>
+
+    <script>
+        const finals = [
+            'a', 'o', 'e', 'i', 'u', 'ü',
+            'ai', 'ei', 'ui', 'ao', 'ou', 'iu', 'ie', 'üe',
+            'er', 'an', 'en', 'in', 'un', 'ün',
+            'ang', 'eng', 'ing', 'ong'
+        ];
+
+        const initials = [
+            '', 'b', 'p', 'm', 'f',
+            'd', 't', 'n', 'l',
+            'g', 'k', 'h',
+            'j', 'q', 'x',
+            'zh', 'ch', 'sh', 'r',
+            'z', 'c', 's'
+        ];
+
+        const validCombinations = {
+            '': ['a', 'o', 'e', 'i', 'u', 'ü', 'ai', 'ei', 'ui', 'ao', 'ou', 'iu', 'ie', 'üe', 'er', 'an', 'en', 'in', 'un', 'ün', 'ang', 'eng', 'ing', 'ong'],
+            'b': ['a', 'o', 'e', 'i', 'u', 'ai', 'ei', 'ao', 'ou', 'an', 'en', 'in', 'ang', 'eng', 'ing'],
+            'p': ['a', 'o', 'e', 'i', 'u', 'ai', 'ei', 'ao', 'ou', 'an', 'en', 'in', 'ang', 'eng', 'ing'],
+            'm': ['a', 'o', 'e', 'i', 'u', 'ai', 'ei', 'ao', 'ou', 'an', 'en', 'in', 'ang', 'eng', 'ing'],
+            'f': ['a', 'o', 'u', 'ei', 'ou', 'an', 'en', 'ang', 'eng'],
+            'd': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'ie', 'an', 'en', 'un', 'ang', 'eng', 'ing', 'ong'],
+            't': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'ie', 'an', 'en', 'un', 'ang', 'eng', 'ing', 'ong'],
+            'n': ['a', 'e', 'i', 'u', 'ü', 'ai', 'ei', 'ui', 'ao', 'ou', 'ie', 'üe', 'an', 'en', 'in', 'un', 'ang', 'eng', 'ing', 'ong'],
+            'l': ['a', 'o', 'e', 'i', 'u', 'ü', 'ai', 'ei', 'ui', 'ao', 'ou', 'ie', 'üe', 'an', 'en', 'in', 'un', 'ang', 'eng', 'ing', 'ong'],
+            'g': ['a', 'e', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong'],
+            'k': ['a', 'e', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong'],
+            'h': ['a', 'e', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong'],
+            'j': ['i', 'u', 'ü', 'ie', 'üe', 'in', 'un', 'ün', 'ing'],
+            'q': ['i', 'u', 'ü', 'ie', 'üe', 'in', 'un', 'ün', 'ing'],
+            'x': ['i', 'u', 'ü', 'ie', 'üe', 'in', 'un', 'ün', 'ing'],
+            'zh': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ing', 'ong'],
+            'ch': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ing', 'ong'],
+            'sh': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng'],
+            'r': ['e', 'i', 'u', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong'],
+            'z': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong'],
+            'c': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong'],
+            's': ['a', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'an', 'en', 'un', 'ang', 'eng', 'ong']
+        };
+
+        let currentTone = 1;
+        let synth = window.speechSynthesis;
+        let currentUtterance = null;
+
+        function normalizePinyin(initial, final) {
+            let pinyin = initial + final;
+
+            // Handle special cases
+            if (initial === '' && final === 'i') pinyin = 'yi';
+            if (initial === '' && final === 'in') pinyin = 'yin';
+            if (initial === '' && final === 'ing') pinyin = 'ying';
+            if (initial === '' && final === 'u') pinyin = 'wu';
+            if (initial === '' && final === 'un') pinyin = 'wen';
+            if (initial === '' && final === 'ü') pinyin = 'yu';
+            if (initial === '' && final === 'ün') pinyin = 'yun';
+            if (initial === '' && final === 'üe') pinyin = 'yue';
+
+            // j, q, x + ü combinations
+            if ((initial === 'j' || initial === 'q' || initial === 'x') && final.startsWith('ü')) {
+                pinyin = initial + final.replace('ü', 'u');
+            }
+
+            return pinyin;
+        }
+
+        function playPinyin(initial, final, element) {
+            document.querySelectorAll('.syllable.playing').forEach(el => {
+                el.classList.remove('playing');
+            });
+
+            element.classList.add('playing');
+
+            const pinyin = normalizePinyin(initial, final);
+            const audioUrl = `https://www.purpleculture.net/mp3/${pinyin}${currentTone}.mp3`;
+
+            const audio = new Audio(audioUrl);
+            audio.play().catch(err => {
+                console.error('Audio playback failed:', err);
+                element.classList.remove('playing');
+            });
+
+            audio.onended = () => {
+                element.classList.remove('playing');
+            };
+        }
+
+        function getTonePitch(tone) {
+            const pitches = {
+                1: 1.2,  // High level
+                2: 1.1,  // Rising
+                3: 0.9,  // Low dipping
+                4: 1.0,  // Falling
+                5: 1.0   // Neutral
+            };
+            return pitches[tone] || 1.0;
+        }
+
+        function createTable() {
+            const table = document.getElementById('pinyinTable');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+
+            // Clear existing content
+            thead.innerHTML = '<th>Initial \\ Final</th>';
+            tbody.innerHTML = '';
+
+            // Add finals as column headers
+            finals.forEach(final => {
+                const th = document.createElement('th');
+                th.textContent = final;
+                thead.appendChild(th);
+            });
+
+            // Add rows for each initial
+            initials.forEach(initial => {
+                const tr = document.createElement('tr');
+                const th = document.createElement('td');
+                th.textContent = initial || '∅';
+                tr.appendChild(th);
+
+                finals.forEach(final => {
+                    const td = document.createElement('td');
+
+                    if (validCombinations[initial] && validCombinations[initial].includes(final)) {
+                        const pinyin = normalizePinyin(initial, final);
+                        const span = document.createElement('span');
+                        span.className = 'syllable';
+                        span.textContent = pinyin;
+                        span.onclick = () => playPinyin(initial, final, span);
+                        td.appendChild(span);
+                    } else {
+                        td.className = 'empty';
+                        td.textContent = '—';
+                    }
+
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Tone selector functionality
+        document.querySelectorAll('.tone-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTone = parseInt(btn.dataset.tone);
+            });
+        });
+
+        // Initialize table
+        createTable();
+    </script>
+</body>
+</html>
