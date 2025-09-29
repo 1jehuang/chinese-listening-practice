@@ -97,6 +97,12 @@
             border-color: #dc3545;
         }
 
+        .option-btn.selected {
+            border-color: #007bff;
+            border-width: 3px;
+            background: #e3f2fd;
+        }
+
         .feedback {
             text-align: center;
             margin: 20px 0;
@@ -286,6 +292,7 @@
         let total = 0;
         let answered = false;
         let mode = 'listen';
+        let selectedOptionIndex = 0;
 
         const playBtn = document.getElementById('playBtn');
         const nextBtn = document.getElementById('nextBtn');
@@ -331,14 +338,45 @@
             // Shuffle
             allOptions.sort(() => Math.random() - 0.5);
 
-            allOptions.forEach(option => {
+            allOptions.forEach((option, index) => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
                 btn.textContent = addToneMarks(option.pinyin, option.tone);
                 btn.dataset.tone = option.tone;
+                btn.dataset.index = index;
                 btn.onclick = () => checkAnswerChoice(option.tone, btn);
                 options.appendChild(btn);
             });
+
+            // Reset and select first option
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function updateSelectedOption() {
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn, idx) => {
+                if (idx === selectedOptionIndex) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectOption(index) {
+            const buttons = document.querySelectorAll('.option-btn');
+            if (index >= 0 && index < buttons.length) {
+                selectedOptionIndex = index;
+                updateSelectedOption();
+            }
+        }
+
+        function activateSelectedOption() {
+            const buttons = document.querySelectorAll('.option-btn');
+            if (selectedOptionIndex >= 0 && selectedOptionIndex < buttons.length) {
+                buttons[selectedOptionIndex].click();
+            }
         }
 
         function playAudio() {
@@ -460,11 +498,41 @@
             }
         });
 
-        // Global spacebar listener for multiple choice mode
+        // Global keyboard listeners for multiple choice mode
         document.addEventListener('keydown', (e) => {
-            if (e.key === ' ' && mode === 'choose' && !answered) {
-                e.preventDefault();
-                playAudio();
+            if (mode === 'choose' && !answered) {
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    playAudio();
+                } else if (e.key === 'h') {
+                    e.preventDefault();
+                    // Move left (in grid: 0,1 top row, 2,3 bottom row)
+                    if (selectedOptionIndex === 1) selectOption(0);
+                    else if (selectedOptionIndex === 3) selectOption(2);
+                } else if (e.key === 'l') {
+                    e.preventDefault();
+                    // Move right
+                    if (selectedOptionIndex === 0) selectOption(1);
+                    else if (selectedOptionIndex === 2) selectOption(3);
+                } else if (e.key === 'k') {
+                    e.preventDefault();
+                    // Move up
+                    if (selectedOptionIndex === 2) selectOption(0);
+                    else if (selectedOptionIndex === 3) selectOption(1);
+                } else if (e.key === 'j') {
+                    e.preventDefault();
+                    // Move down
+                    if (selectedOptionIndex === 0) selectOption(2);
+                    else if (selectedOptionIndex === 1) selectOption(3);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    activateSelectedOption();
+                } else if (e.key >= '1' && e.key <= '4') {
+                    e.preventDefault();
+                    const index = parseInt(e.key) - 1;
+                    selectOption(index);
+                    activateSelectedOption();
+                }
             }
         });
 
