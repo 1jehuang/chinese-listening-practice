@@ -213,6 +213,42 @@
     </div>
 
     <script>
+        // Convert pinyin with tone number to pinyin with tone marks
+        function addToneMarks(pinyin, tone) {
+            const toneMap = {
+                'a': ['ā', 'á', 'ǎ', 'à'],
+                'e': ['ē', 'é', 'ě', 'è'],
+                'i': ['ī', 'í', 'ǐ', 'ì'],
+                'o': ['ō', 'ó', 'ǒ', 'ò'],
+                'u': ['ū', 'ú', 'ǔ', 'ù'],
+                'ü': ['ǖ', 'ǘ', 'ǚ', 'ǜ']
+            };
+
+            if (tone < 1 || tone > 4) return pinyin;
+
+            // Find which vowel gets the tone mark
+            // Rules: a/e get it first, otherwise ou->o, otherwise last vowel
+            let idx = -1;
+            if (pinyin.includes('a')) idx = pinyin.indexOf('a');
+            else if (pinyin.includes('e')) idx = pinyin.indexOf('e');
+            else if (pinyin.includes('ou')) idx = pinyin.indexOf('o');
+            else {
+                // Find last vowel
+                for (let i = pinyin.length - 1; i >= 0; i--) {
+                    if ('aeiouü'.includes(pinyin[i])) {
+                        idx = i;
+                        break;
+                    }
+                }
+            }
+
+            if (idx === -1) return pinyin;
+
+            const vowel = pinyin[idx];
+            const toneVowel = toneMap[vowel][tone - 1];
+            return pinyin.substring(0, idx) + toneVowel + pinyin.substring(idx + 1);
+        }
+
         const commonSyllables = [
             'ma', 'ba', 'pa', 'fa', 'da', 'ta', 'na', 'la', 'ga', 'ka', 'ha',
             'ji', 'qi', 'xi', 'zhi', 'chi', 'shi', 'ri', 'zi', 'ci', 'si',
@@ -279,20 +315,18 @@
             const options = document.getElementById('options');
             options.innerHTML = '';
 
-            // Generate 3 random wrong syllables with random tones
-            const wrongOptions = [];
-            while (wrongOptions.length < 3) {
-                const randomPinyin = commonSyllables[Math.floor(Math.random() * commonSyllables.length)];
-                const randomTone = Math.floor(Math.random() * 4) + 1;
-                const option = `${randomPinyin}${randomTone}`;
-                if (option !== `${currentPinyin}${currentTone}` && !wrongOptions.includes(option)) {
-                    wrongOptions.push(option);
-                }
-            }
+            // Generate 3 wrong tones for the same pinyin
+            const tones = [1, 2, 3, 4];
+            const wrongTones = tones.filter(t => t !== currentTone);
 
-            // Add correct answer
-            const correctOption = `${currentPinyin}${currentTone}`;
-            const allOptions = [...wrongOptions, correctOption];
+            // Shuffle and pick 3 wrong tones
+            wrongTones.sort(() => Math.random() - 0.5);
+            const selectedWrongTones = wrongTones.slice(0, 3);
+
+            const allOptions = [
+                ...selectedWrongTones.map(t => ({ pinyin: currentPinyin, tone: t })),
+                { pinyin: currentPinyin, tone: currentTone }
+            ];
 
             // Shuffle
             allOptions.sort(() => Math.random() - 0.5);
@@ -300,8 +334,9 @@
             allOptions.forEach(option => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
-                btn.textContent = option;
-                btn.onclick = () => checkAnswerChoice(option, btn);
+                btn.textContent = addToneMarks(option.pinyin, option.tone);
+                btn.dataset.tone = option.tone;
+                btn.onclick = () => checkAnswerChoice(option.tone, btn);
                 options.appendChild(btn);
             });
         }
@@ -359,17 +394,18 @@
             updateStats();
         }
 
-        function checkAnswerChoice(answer, btnElement) {
+        function checkAnswerChoice(tone, btnElement) {
             if (answered) return;
 
             answered = true;
             total++;
 
-            const correct = answer === `${currentPinyin}${currentTone}`;
+            const correct = tone === currentTone;
+            const correctPinyinWithTone = addToneMarks(currentPinyin, currentTone);
 
             if (correct) {
                 score++;
-                feedback.textContent = `✓ Correct! (${currentPinyin}${currentTone})`;
+                feedback.textContent = `✓ Correct! (${correctPinyinWithTone})`;
                 feedback.className = 'feedback correct';
                 btnElement.classList.add('correct');
 
@@ -379,11 +415,11 @@
                     playAudio();
                 }, 800);
             } else {
-                feedback.textContent = `✗ Wrong. The answer was: ${currentPinyin}${currentTone}`;
+                feedback.textContent = `✗ Wrong. The answer was: ${correctPinyinWithTone}`;
                 feedback.className = 'feedback incorrect';
                 btnElement.classList.add('incorrect');
                 document.querySelectorAll('.option-btn').forEach(btn => {
-                    if (btn.textContent === `${currentPinyin}${currentTone}`) {
+                    if (parseInt(btn.dataset.tone) === currentTone) {
                         btn.classList.add('correct');
                     }
                 });
