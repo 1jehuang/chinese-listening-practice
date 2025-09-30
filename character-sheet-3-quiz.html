@@ -467,8 +467,10 @@
                         total++;
                         score++;
                     }
-                    feedback.textContent = `✓ Correct! (${currentQuestion.pinyin})`;
+                    feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
                     feedback.className = 'feedback correct';
+                    hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                    hint.style.color = '#28a745';
                     setTimeout(() => {
                         generateQuestion();
                     }, 800);
@@ -480,6 +482,7 @@
                     feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
                     feedback.className = 'feedback incorrect';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                    hint.style.color = '#dc3545';
                     setTimeout(() => {
                         answerInput.value = '';
                         answerInput.focus();
