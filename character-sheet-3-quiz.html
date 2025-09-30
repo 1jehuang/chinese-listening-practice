@@ -424,8 +424,10 @@
 
             if (mode === 'char-to-pinyin') {
                 const normalizedUser = normalizePinyin(userAnswer);
-                const normalizedCorrect = normalizePinyin(currentQuestion.pinyin);
-                const correct = normalizedUser === normalizedCorrect;
+
+                // Handle multiple pronunciations (e.g., "cháng/zhǎng")
+                const pinyinOptions = currentQuestion.pinyin.split('/').map(p => normalizePinyin(p.trim()));
+                const correct = pinyinOptions.includes(normalizedUser);
 
                 if (correct) {
                     if (!answered) {
