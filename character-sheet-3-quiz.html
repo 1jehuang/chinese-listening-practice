@@ -201,6 +201,7 @@
             <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
             <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
             <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+            <button class="mode-btn" data-mode="handwriting">Handwriting</button>
         </div>
 
         <div id="questionDisplay"></div>
@@ -214,6 +215,16 @@
 
         <div id="choiceMode" style="display: none;">
             <div class="options" id="options"></div>
+        </div>
+
+        <div id="handwritingMode" style="display: none;">
+            <div style="text-align: center; margin: 20px 0;">
+                <canvas id="drawCanvas" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; cursor: crosshair; background: white;"></canvas>
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="clearBtn" style="padding: 10px 20px; font-size: 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Clear</button>
+                <button id="submitDrawBtn" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit</button>
+            </div>
         </div>
 
         <div class="feedback" id="feedback"></div>
@@ -249,14 +260,124 @@
         let mode = 'char-to-pinyin';
         let selectedOptionIndex = 0;
 
+        // Canvas drawing variables
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
         const questionDisplay = document.getElementById('questionDisplay');
         const answerInput = document.getElementById('answerInput');
         const checkBtn = document.getElementById('checkBtn');
         const typeMode = document.getElementById('typeMode');
         const choiceMode = document.getElementById('choiceMode');
+        const handwritingMode = document.getElementById('handwritingMode');
         const feedback = document.getElementById('feedback');
         const hint = document.getElementById('hint');
         const nextBtn = document.getElementById('nextBtn');
+
+        // Initialize canvas
+        window.addEventListener('load', () => {
+            canvas = document.getElementById('drawCanvas');
+            ctx = canvas.getContext('2d');
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+
+            setupDrawing();
+        });
+
+        function setupDrawing() {
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastX = touch.clientX - rect.left;
+                lastY = touch.clientY - rect.top;
+                isDrawing = true;
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!isDrawing) return;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                lastX = x;
+                lastY = y;
+            });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                isDrawing = false;
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+            document.getElementById('submitDrawBtn').addEventListener('click', submitHandwriting);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            lastX = x;
+            lastY = y;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function submitHandwriting() {
+            // For now, just show the correct answer and move to next
+            // In the future, this could use Hanzi Writer or ML recognition
+            if (answered) return;
+
+            answered = true;
+            total++;
+            score++; // For now, count as correct since we don't have recognition
+
+            feedback.textContent = `The character is: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+            feedback.className = 'feedback correct';
+            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+            hint.style.color = '#007bff';
+
+            setTimeout(() => {
+                generateQuestion();
+                clearCanvas();
+            }, 2000);
+
+            updateStats();
+        }
 
         function generateQuestion() {
             currentQuestion = characters[Math.floor(Math.random() * characters.length)];
@@ -286,7 +407,15 @@
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
                 generateMeaningOptions();
                 typeMode.style.display = 'none';
+                choiceMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
                 choiceMode.style.display = 'block';
+            } else if (mode === 'handwriting') {
+                questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'none';
+                handwritingMode.style.display = 'block';
+                clearCanvas();
             } else if (mode === 'meaning-to-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
                 generateCharOptions();
