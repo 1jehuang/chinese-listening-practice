@@ -710,6 +710,13 @@
             document.getElementById('answerReveal').style.display = 'block';
             document.getElementById('revealBtn').style.display = 'none';
 
+            // Play audio for the character
+            const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+            const firstPinyin = pinyinOptions[0];
+            const audioUrl = `https://www.purpleculture.net/mp3/${firstPinyin}.mp3`;
+            const audio = new Audio(audioUrl);
+            audio.play().catch(e => console.log('Audio play failed:', e));
+
             // Create Hanzi Writer for answer animation
             const answerTarget = document.getElementById('answerWriter');
             answerTarget.innerHTML = '';
