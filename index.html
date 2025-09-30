@@ -359,29 +359,16 @@
             const options = document.getElementById('options');
             options.innerHTML = '';
 
-            // Generate 3 wrong tones for the same pinyin
+            // All 4 tones in order
             const tones = [1, 2, 3, 4];
-            const wrongTones = tones.filter(t => t !== currentTone);
 
-            // Shuffle and pick 3 wrong tones
-            wrongTones.sort(() => Math.random() - 0.5);
-            const selectedWrongTones = wrongTones.slice(0, 3);
-
-            const allOptions = [
-                ...selectedWrongTones.map(t => ({ pinyin: currentPinyin, tone: t })),
-                { pinyin: currentPinyin, tone: currentTone }
-            ];
-
-            // Shuffle
-            allOptions.sort(() => Math.random() - 0.5);
-
-            allOptions.forEach((option, index) => {
+            tones.forEach((tone, index) => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
-                btn.textContent = addToneMarks(option.pinyin, option.tone);
-                btn.dataset.tone = option.tone;
+                btn.textContent = addToneMarks(currentPinyin, tone);
+                btn.dataset.tone = tone;
                 btn.dataset.index = index;
-                btn.onclick = () => checkAnswerChoice(option.tone, btn);
+                btn.onclick = () => checkAnswerChoice(tone, btn);
                 options.appendChild(btn);
             });
 
