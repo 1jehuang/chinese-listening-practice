@@ -486,8 +486,8 @@
                     }
                 });
 
-                // Auto-advance for tone24 mode even on wrong answer
-                if (mode === 'tone24') {
+                // Auto-advance on wrong answer for multiple choice modes
+                if (mode === 'choose' || mode === 'tone24') {
                     setTimeout(() => {
                         generateQuestion();
                         playAudio();
