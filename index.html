@@ -187,6 +187,7 @@
         <div class="mode-selector">
             <button class="mode-btn active" data-mode="listen">Listen & Type</button>
             <button class="mode-btn" data-mode="choose">Multiple Choice</button>
+            <button class="mode-btn" data-mode="tone24">Tone 2 vs 4</button>
         </div>
 
         <div class="audio-section">
@@ -204,6 +205,11 @@
         <div id="chooseMode" style="display: none;">
             <div style="text-align: center; font-size: 16px; margin-bottom: 20px; color: #666;">Which pinyin do you hear?</div>
             <div class="options" id="options"></div>
+        </div>
+
+        <div id="tone24Mode" style="display: none;">
+            <div style="text-align: center; font-size: 16px; margin-bottom: 20px; color: #666;">Which tone?</div>
+            <div class="options" id="tone24Options"></div>
         </div>
 
         <div class="feedback" id="feedback"></div>
@@ -301,10 +307,18 @@
         const checkBtn = document.getElementById('checkBtn');
         const listenMode = document.getElementById('listenMode');
         const chooseMode = document.getElementById('chooseMode');
+        const tone24Mode = document.getElementById('tone24Mode');
 
         function generateQuestion() {
             currentPinyin = commonSyllables[Math.floor(Math.random() * commonSyllables.length)];
-            currentTone = Math.floor(Math.random() * 4) + 1;
+
+            if (mode === 'tone24') {
+                // Only generate tone 2 or 4
+                currentTone = Math.random() < 0.5 ? 2 : 4;
+            } else {
+                currentTone = Math.floor(Math.random() * 4) + 1;
+            }
+
             answered = false;
             feedback.textContent = '';
             feedback.className = 'feedback';
@@ -312,10 +326,33 @@
 
             if (mode === 'choose') {
                 generateOptions();
+            } else if (mode === 'tone24') {
+                generateTone24Options();
             } else {
                 // Focus input in listen mode
                 setTimeout(() => answerInput.focus(), 100);
             }
+        }
+
+        function generateTone24Options() {
+            const options = document.getElementById('tone24Options');
+            options.innerHTML = '';
+
+            const tones = [2, 4];
+
+            tones.forEach((tone, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = `Tone ${tone}`;
+                btn.dataset.tone = tone;
+                btn.dataset.index = index;
+                btn.onclick = () => checkAnswerChoice(tone, btn);
+                options.appendChild(btn);
+            });
+
+            // Reset and select first option
+            selectedOptionIndex = 0;
+            updateSelectedOption();
         }
 
         function generateOptions() {
@@ -498,40 +535,66 @@
             }
         });
 
-        // Global keyboard listeners for multiple choice mode
+        // Global keyboard listeners for multiple choice modes
         document.addEventListener('keydown', (e) => {
-            if (mode === 'choose' && !answered) {
+            if ((mode === 'choose' || mode === 'tone24') && !answered) {
                 if (e.key === ' ') {
                     e.preventDefault();
                     playAudio();
                 } else if (e.key === 'h') {
                     e.preventDefault();
-                    // Move left (in grid: 0,1 top row, 2,3 bottom row)
-                    if (selectedOptionIndex === 1) selectOption(0);
-                    else if (selectedOptionIndex === 3) selectOption(2);
+                    if (mode === 'tone24') {
+                        // For tone24: just 2 options side by side
+                        if (selectedOptionIndex === 1) selectOption(0);
+                    } else {
+                        // Move left (in grid: 0,1 top row, 2,3 bottom row)
+                        if (selectedOptionIndex === 1) selectOption(0);
+                        else if (selectedOptionIndex === 3) selectOption(2);
+                    }
                 } else if (e.key === 'l') {
                     e.preventDefault();
-                    // Move right
-                    if (selectedOptionIndex === 0) selectOption(1);
-                    else if (selectedOptionIndex === 2) selectOption(3);
+                    if (mode === 'tone24') {
+                        if (selectedOptionIndex === 0) selectOption(1);
+                    } else {
+                        // Move right
+                        if (selectedOptionIndex === 0) selectOption(1);
+                        else if (selectedOptionIndex === 2) selectOption(3);
+                    }
                 } else if (e.key === 'k') {
                     e.preventDefault();
-                    // Move up
-                    if (selectedOptionIndex === 2) selectOption(0);
-                    else if (selectedOptionIndex === 3) selectOption(1);
+                    if (mode === 'choose') {
+                        // Move up
+                        if (selectedOptionIndex === 2) selectOption(0);
+                        else if (selectedOptionIndex === 3) selectOption(1);
+                    }
                 } else if (e.key === 'j') {
                     e.preventDefault();
-                    // Move down
-                    if (selectedOptionIndex === 0) selectOption(2);
-                    else if (selectedOptionIndex === 1) selectOption(3);
+                    if (mode === 'choose') {
+                        // Move down
+                        if (selectedOptionIndex === 0) selectOption(2);
+                        else if (selectedOptionIndex === 1) selectOption(3);
+                    }
                 } else if (e.key === 'Enter') {
                     e.preventDefault();
                     activateSelectedOption();
                 } else if (e.key >= '1' && e.key <= '4') {
                     e.preventDefault();
                     const index = parseInt(e.key) - 1;
-                    selectOption(index);
-                    activateSelectedOption();
+                    const buttons = document.querySelectorAll('.option-btn');
+                    if (index < buttons.length) {
+                        selectOption(index);
+                        activateSelectedOption();
+                    }
+                } else if (mode === 'tone24' && (e.key === '2' || e.key === '4')) {
+                    e.preventDefault();
+                    // Direct tone selection for tone24 mode
+                    const buttons = document.querySelectorAll('.option-btn');
+                    buttons.forEach((btn, idx) => {
+                        if (btn.dataset.tone === e.key) {
+                            selectOption(idx);
+                            activateSelectedOption();
+                        }
+                    });
                 }
             }
         });
@@ -543,12 +606,18 @@
                 btn.classList.add('active');
                 mode = btn.dataset.mode;
 
+                // Hide all modes
+                listenMode.style.display = 'none';
+                chooseMode.style.display = 'none';
+                tone24Mode.style.display = 'none';
+
+                // Show selected mode
                 if (mode === 'listen') {
                     listenMode.style.display = 'block';
-                    chooseMode.style.display = 'none';
-                } else {
-                    listenMode.style.display = 'none';
+                } else if (mode === 'choose') {
                     chooseMode.style.display = 'block';
+                } else if (mode === 'tone24') {
+                    tone24Mode.style.display = 'block';
                 }
 
                 generateQuestion();
