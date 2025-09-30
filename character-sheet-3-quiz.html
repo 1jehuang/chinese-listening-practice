@@ -418,36 +418,42 @@
         }
 
         function checkAnswer() {
-            if (!answerInput.value.trim() || answered) return;
+            if (!answerInput.value.trim()) return;
 
-            answered = true;
-            total++;
-
-            let correct = false;
             const userAnswer = answerInput.value.trim();
 
             if (mode === 'char-to-pinyin') {
                 const normalizedUser = normalizePinyin(userAnswer);
                 const normalizedCorrect = normalizePinyin(currentQuestion.pinyin);
-                correct = normalizedUser === normalizedCorrect;
+                const correct = normalizedUser === normalizedCorrect;
 
                 if (correct) {
-                    score++;
+                    if (!answered) {
+                        answered = true;
+                        total++;
+                        score++;
+                    }
                     feedback.textContent = `✓ Correct! (${currentQuestion.pinyin})`;
                     feedback.className = 'feedback correct';
                     setTimeout(() => {
                         generateQuestion();
                     }, 800);
                 } else {
-                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
+                    if (!answered) {
+                        answered = true;
+                        total++;
+                    }
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
                     feedback.className = 'feedback incorrect';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                    answerInput.value = '';
-                    answerInput.focus();
+                    setTimeout(() => {
+                        answerInput.value = '';
+                        answerInput.focus();
+                    }, 0);
                 }
-            }
 
-            updateStats();
+                updateStats();
+            }
         }
 
         function checkMultipleChoice(answer) {
