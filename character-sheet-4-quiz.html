@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Sheet 3 Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .quiz-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 700px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .mode-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            background: #e9ecef;
+        }
+
+        .mode-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .character-display {
+            text-align: center;
+            font-size: 120px;
+            margin: 40px 0;
+            font-weight: normal;
+            color: #333;
+        }
+
+        .input-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .check-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .check-btn:hover {
+            background: #218838;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .option-btn {
+            padding: 20px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .option-btn.selected {
+            border-color: #007bff;
+            border-width: 3px;
+            background: #e3f2fd;
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .feedback {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            min-height: 30px;
+        }
+
+        .feedback.correct {
+            color: #28a745;
+        }
+
+        .feedback.incorrect {
+            color: #dc3545;
+        }
+
+        .next-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .next-button:hover {
+            background: #5a6268;
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stats-text {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .hint {
+            text-align: center;
+            color: #999;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h1>汉字练习-4 Quiz (Radicals)</h1>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="char-to-pinyin">Char → Pinyin (Type)</button>
+            <button class="mode-btn" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
+            <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
+            <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
+            <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+            <button class="mode-btn" data-mode="handwriting">Handwriting</button>
+        </div>
+
+        <div id="questionDisplay"></div>
+
+        <div class="hint" id="hint"></div>
+
+        <div id="typeMode">
+            <input type="text" id="answerInput" class="answer-input" placeholder="Type your answer...">
+            <button id="checkBtn" class="check-btn">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" style="display: none;">
+            <div class="options" id="options"></div>
+        </div>
+
+        <div id="handwritingMode" style="display: none;">
+            <div style="text-align: center; margin: 20px 0;">
+                <canvas id="drawCanvas" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; cursor: crosshair; background: white;"></canvas>
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="clearBtn" style="padding: 10px 20px; font-size: 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Clear</button>
+                <button id="submitDrawBtn" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit</button>
+            </div>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <button class="next-button" id="nextBtn">Next Question →</button>
+
+        <div class="stats">
+            <div class="stats-text">
+                Score: <strong id="score">0</strong> / <strong id="total">0</strong>
+                (<span id="percentage">0</span>%)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const characters = [
+            { char: '女', pinyin: 'nǚ', meaning: 'woman' },
+            { char: '人', pinyin: 'rén', meaning: 'people' },
+            { char: '刀', pinyin: 'dāo', meaning: 'knife' },
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' },
+            { char: '手', pinyin: 'shǒu', meaning: 'hand' },
+            { char: '心', pinyin: 'xīn', meaning: 'heart' },
+            { char: '水', pinyin: 'shuǐ', meaning: 'water' },
+            { char: '火', pinyin: 'huǒ', meaning: 'fire' },
+            { char: '木', pinyin: 'mù', meaning: 'tree' },
+            { char: '衣', pinyin: 'yī', meaning: 'cloth' },
+            { char: '金', pinyin: 'jīn', meaning: 'metal' },
+            { char: '言', pinyin: 'yán', meaning: 'speech' },
+            { char: '宝', pinyin: 'bǎo', meaning: 'roof' },
+            { char: '足', pinyin: 'zú', meaning: 'foot' },
+            { char: '竹', pinyin: 'zhú', meaning: 'bamboo' },
+            { char: '丝', pinyin: 'sī', meaning: 'silk' },
+            { char: '食', pinyin: 'shí', meaning: 'food' },
+            { char: '禾', pinyin: 'hé', meaning: 'crop' },
+            { char: '狗', pinyin: 'quǎn', meaning: 'animal' },
+            { char: '道', pinyin: 'zǒu', meaning: 'walking' }
+        ];
+
+        let currentQuestion = null;
+        let score = 0;
+        let total = 0;
+        let answered = false;
+        let mode = 'char-to-pinyin';
+        let selectedOptionIndex = 0;
+
+        // Canvas drawing variables
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        const questionDisplay = document.getElementById('questionDisplay');
+        const answerInput = document.getElementById('answerInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const typeMode = document.getElementById('typeMode');
+        const choiceMode = document.getElementById('choiceMode');
+        const handwritingMode = document.getElementById('handwritingMode');
+        const feedback = document.getElementById('feedback');
+        const hint = document.getElementById('hint');
+        const nextBtn = document.getElementById('nextBtn');
+
+        // Initialize canvas
+        window.addEventListener('load', () => {
+            canvas = document.getElementById('drawCanvas');
+            ctx = canvas.getContext('2d');
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+
+            setupDrawing();
+        });
+
+        function setupDrawing() {
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastX = touch.clientX - rect.left;
+                lastY = touch.clientY - rect.top;
+                isDrawing = true;
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!isDrawing) return;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                lastX = x;
+                lastY = y;
+            });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                isDrawing = false;
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+            document.getElementById('submitDrawBtn').addEventListener('click', submitHandwriting);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            lastX = x;
+            lastY = y;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function submitHandwriting() {
+            // For now, just show the correct answer and move to next
+            // In the future, this could use Hanzi Writer or ML recognition
+            if (answered) return;
+
+            answered = true;
+            total++;
+            score++; // For now, count as correct since we don't have recognition
+
+            feedback.textContent = `The character is: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+            feedback.className = 'feedback correct';
+            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+            hint.style.color = '#007bff';
+
+            setTimeout(() => {
+                generateQuestion();
+                clearCanvas();
+            }, 2000);
+
+            updateStats();
+        }
+
+        function generateQuestion() {
+            currentQuestion = characters[Math.floor(Math.random() * characters.length)];
+            answered = false;
+            feedback.textContent = '';
+            feedback.className = 'feedback';
+            hint.textContent = '';
+            answerInput.value = '';
+
+            if (mode === 'char-to-pinyin') {
+                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
+                answerInput.placeholder = 'e.g., mǎ or ma3';
+                typeMode.style.display = 'block';
+                choiceMode.style.display = 'none';
+                setTimeout(() => answerInput.focus(), 100);
+            } else if (mode === 'char-to-pinyin-mc') {
+                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
+                generatePinyinOptions();
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'block';
+            } else if (mode === 'pinyin-to-char') {
+                questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
+                generateCharOptions();
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'block';
+            } else if (mode === 'char-to-meaning') {
+                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
+                generateMeaningOptions();
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+                choiceMode.style.display = 'block';
+            } else if (mode === 'handwriting') {
+                questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'none';
+                handwritingMode.style.display = 'block';
+                clearCanvas();
+            } else if (mode === 'meaning-to-char') {
+                questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
+                generateCharOptions();
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'block';
+            }
+        }
+
+        function generatePinyinOptions() {
+            const options = document.getElementById('options');
+            options.innerHTML = '';
+
+            const wrongOptions = [];
+            while (wrongOptions.length < 3) {
+                const random = characters[Math.floor(Math.random() * characters.length)];
+                if (random.char !== currentQuestion.char && !wrongOptions.includes(random.pinyin)) {
+                    wrongOptions.push(random.pinyin);
+                }
+            }
+
+            const allOptions = [...wrongOptions, currentQuestion.pinyin];
+            allOptions.sort(() => Math.random() - 0.5);
+
+            allOptions.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.dataset.index = index;
+                btn.onclick = () => checkMultipleChoice(option);
+                options.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function generateMeaningOptions() {
+            const options = document.getElementById('options');
+            options.innerHTML = '';
+
+            const wrongOptions = [];
+            while (wrongOptions.length < 3) {
+                const random = characters[Math.floor(Math.random() * characters.length)];
+                if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
+                    wrongOptions.push(random.meaning);
+                }
+            }
+
+            const allOptions = [...wrongOptions, currentQuestion.meaning];
+            allOptions.sort(() => Math.random() - 0.5);
+
+            allOptions.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.dataset.index = index;
+                btn.onclick = () => checkMultipleChoice(option);
+                options.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function generateCharOptions() {
+            const options = document.getElementById('options');
+            options.innerHTML = '';
+
+            const wrongOptions = [];
+            while (wrongOptions.length < 3) {
+                const random = characters[Math.floor(Math.random() * characters.length)];
+                if (random.char !== currentQuestion.char && !wrongOptions.some(c => c.char === random.char)) {
+                    wrongOptions.push(random);
+                }
+            }
+
+            const allOptions = [...wrongOptions.map(c => c.char), currentQuestion.char];
+            allOptions.sort(() => Math.random() - 0.5);
+
+            allOptions.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.style.fontSize = '48px';
+                btn.dataset.index = index;
+                btn.onclick = () => checkMultipleChoice(option);
+                options.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function updateSelectedOption() {
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn, idx) => {
+                if (idx === selectedOptionIndex) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectOption(index) {
+            const buttons = document.querySelectorAll('.option-btn');
+            if (index >= 0 && index < buttons.length) {
+                selectedOptionIndex = index;
+                updateSelectedOption();
+            }
+        }
+
+        function activateSelectedOption() {
+            const buttons = document.querySelectorAll('.option-btn');
+            if (selectedOptionIndex >= 0 && selectedOptionIndex < buttons.length) {
+                buttons[selectedOptionIndex].click();
+            }
+        }
+
+        function normalizePinyinForDisplay(input) {
+            // Just lowercase for display purposes
+            return input.toLowerCase().trim();
+        }
+
+        function checkPinyinMatch(userInput, correctPinyin) {
+            // Accept tone marks or tone numbers
+            const user = userInput.toLowerCase().trim();
+            const correct = correctPinyin.toLowerCase().trim();
+
+            // Direct match with tone marks
+            if (user === correct) return true;
+
+            // Check if user typed with tone number (e.g., ma3)
+            const toneNumberPattern = /^([a-z]+)([1-4])$/;
+            const userMatch = user.match(toneNumberPattern);
+
+            if (userMatch) {
+                const [, userBase, userTone] = userMatch;
+
+                // Convert correct pinyin with tone marks to base + number
+                const toneMap = {
+                    'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+                    'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+                    'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+                    'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+                    'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+                    'ǖ': 'u1', 'ǘ': 'u2', 'ǚ': 'u3', 'ǜ': 'u4'
+                };
+
+                let correctBase = correct;
+                let correctTone = '';
+
+                for (const [marked, numbered] of Object.entries(toneMap)) {
+                    if (correct.includes(marked)) {
+                        correctBase = correct.replace(marked, numbered[0]);
+                        correctTone = numbered[1];
+                        break;
+                    }
+                }
+
+                return userBase === correctBase && userTone === correctTone;
+            }
+
+            return false;
+        }
+
+        function checkAnswer() {
+            if (!answerInput.value.trim()) return;
+
+            const userAnswer = answerInput.value.trim();
+
+            if (mode === 'char-to-pinyin') {
+                // Handle multiple pronunciations (e.g., "cháng/zhǎng")
+                const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+                const correct = pinyinOptions.some(option => checkPinyinMatch(userAnswer, option));
+
+                if (correct) {
+                    if (!answered) {
+                        answered = true;
+                        total++;
+                        score++;
+                    }
+                    feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
+                    feedback.className = 'feedback correct';
+                    hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                    hint.style.color = '#28a745';
+                    setTimeout(() => {
+                        generateQuestion();
+                    }, 800);
+                } else {
+                    if (!answered) {
+                        answered = true;
+                        total++;
+                    }
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
+                    feedback.className = 'feedback incorrect';
+                    hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                    hint.style.color = '#dc3545';
+                    setTimeout(() => {
+                        answerInput.value = '';
+                        answerInput.focus();
+                    }, 0);
+                }
+
+                updateStats();
+            }
+        }
+
+        function checkMultipleChoice(answer) {
+            if (answered) return;
+
+            answered = true;
+            total++;
+
+            let correct = false;
+
+            if (mode === 'char-to-pinyin-mc') {
+                correct = answer === currentQuestion.pinyin;
+            } else if (mode === 'char-to-meaning') {
+                correct = answer === currentQuestion.meaning;
+            } else if (mode === 'pinyin-to-char') {
+                correct = answer === currentQuestion.char;
+            } else if (mode === 'meaning-to-char') {
+                correct = answer === currentQuestion.char;
+            }
+
+            const buttons = document.querySelectorAll('.option-btn');
+
+            if (correct) {
+                score++;
+                feedback.textContent = `✓ Correct!`;
+                feedback.className = 'feedback correct';
+                buttons.forEach(btn => {
+                    if ((mode === 'char-to-pinyin-mc' && btn.textContent === currentQuestion.pinyin) ||
+                        (mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
+                        (mode === 'pinyin-to-char' && btn.textContent === currentQuestion.char) ||
+                        (mode === 'meaning-to-char' && btn.textContent === currentQuestion.char)) {
+                        btn.classList.add('correct');
+                    }
+                });
+
+                setTimeout(() => {
+                    generateQuestion();
+                }, 800);
+            } else {
+                if (mode === 'char-to-pinyin-mc') {
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
+                    hint.textContent = `${currentQuestion.char} - ${currentQuestion.meaning}`;
+                } else if (mode === 'char-to-meaning') {
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.meaning}`;
+                    hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
+                } else if (mode === 'pinyin-to-char') {
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.char}`;
+                    hint.textContent = `${currentQuestion.pinyin} - ${currentQuestion.meaning}`;
+                } else {
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.char}`;
+                    hint.textContent = `${currentQuestion.pinyin} - ${currentQuestion.meaning}`;
+                }
+                feedback.className = 'feedback incorrect';
+
+                buttons.forEach(btn => {
+                    if (btn.textContent === answer) {
+                        btn.classList.add('incorrect');
+                    }
+                    if ((mode === 'char-to-pinyin-mc' && btn.textContent === currentQuestion.pinyin) ||
+                        (mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
+                        (mode === 'pinyin-to-char' && btn.textContent === currentQuestion.char) ||
+                        (mode === 'meaning-to-char' && btn.textContent === currentQuestion.char)) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'not-allowed';
+            });
+
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('total').textContent = total;
+            const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+            document.getElementById('percentage').textContent = percentage;
+        }
+
+        checkBtn.addEventListener('click', checkAnswer);
+
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkAnswer();
+            }
+        });
+
+        nextBtn.addEventListener('click', generateQuestion);
+
+        // Keyboard navigation for multiple choice
+        document.addEventListener('keydown', (e) => {
+            if ((mode === 'char-to-pinyin-mc' || mode === 'char-to-meaning' || mode === 'pinyin-to-char' || mode === 'meaning-to-char') && !answered) {
+                if (e.key === 'h') {
+                    e.preventDefault();
+                    if (selectedOptionIndex === 1) selectOption(0);
+                    else if (selectedOptionIndex === 3) selectOption(2);
+                } else if (e.key === 'l') {
+                    e.preventDefault();
+                    if (selectedOptionIndex === 0) selectOption(1);
+                    else if (selectedOptionIndex === 2) selectOption(3);
+                } else if (e.key === 'k') {
+                    e.preventDefault();
+                    if (selectedOptionIndex === 2) selectOption(0);
+                    else if (selectedOptionIndex === 3) selectOption(1);
+                } else if (e.key === 'j') {
+                    e.preventDefault();
+                    if (selectedOptionIndex === 0) selectOption(2);
+                    else if (selectedOptionIndex === 1) selectOption(3);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    activateSelectedOption();
+                } else if (e.key >= '1' && e.key <= '4') {
+                    e.preventDefault();
+                    const index = parseInt(e.key) - 1;
+                    const buttons = document.querySelectorAll('.option-btn');
+                    if (index < buttons.length) {
+                        selectOption(index);
+                        activateSelectedOption();
+                    }
+                }
+            }
+        });
+
+        // Mode selector
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                mode = btn.dataset.mode;
+                score = 0;
+                total = 0;
+                updateStats();
+                generateQuestion();
+            });
+        });
+
+        // Start first question
+        generateQuestion();
+    </script>
+</body>
+</html>
