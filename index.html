@@ -343,7 +343,7 @@
             tones.forEach((tone, index) => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
-                btn.textContent = `Tone ${tone}`;
+                btn.textContent = addToneMarks(currentPinyin, tone);
                 btn.dataset.tone = tone;
                 btn.dataset.index = index;
                 btn.onclick = () => checkAnswerChoice(tone, btn);
