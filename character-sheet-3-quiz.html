@@ -265,8 +265,8 @@
             answerInput.value = '';
 
             if (mode === 'char-to-pinyin') {
-                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
-                answerInput.placeholder = 'Type the pinyin (with or without tones)...';
+                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
+                answerInput.placeholder = 'e.g., mǎ or ma3';
                 typeMode.style.display = 'block';
                 choiceMode.style.display = 'none';
                 setTimeout(() => answerInput.focus(), 100);
@@ -404,17 +404,51 @@
             }
         }
 
-        function normalizePinyin(input) {
-            // Remove tone marks and convert to basic form for comparison
-            return input.toLowerCase()
-                .replace(/[āáǎà]/g, 'a')
-                .replace(/[ēéěè]/g, 'e')
-                .replace(/[īíǐì]/g, 'i')
-                .replace(/[ōóǒò]/g, 'o')
-                .replace(/[ūúǔù]/g, 'u')
-                .replace(/[ǖǘǚǜü]/g, 'u')
-                .replace(/\s+/g, '')
-                .replace(/[^a-z]/g, '');
+        function normalizePinyinForDisplay(input) {
+            // Just lowercase for display purposes
+            return input.toLowerCase().trim();
+        }
+
+        function checkPinyinMatch(userInput, correctPinyin) {
+            // Accept tone marks or tone numbers
+            const user = userInput.toLowerCase().trim();
+            const correct = correctPinyin.toLowerCase().trim();
+
+            // Direct match with tone marks
+            if (user === correct) return true;
+
+            // Check if user typed with tone number (e.g., ma3)
+            const toneNumberPattern = /^([a-z]+)([1-4])$/;
+            const userMatch = user.match(toneNumberPattern);
+
+            if (userMatch) {
+                const [, userBase, userTone] = userMatch;
+
+                // Convert correct pinyin with tone marks to base + number
+                const toneMap = {
+                    'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+                    'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+                    'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+                    'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+                    'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+                    'ǖ': 'u1', 'ǘ': 'u2', 'ǚ': 'u3', 'ǜ': 'u4'
+                };
+
+                let correctBase = correct;
+                let correctTone = '';
+
+                for (const [marked, numbered] of Object.entries(toneMap)) {
+                    if (correct.includes(marked)) {
+                        correctBase = correct.replace(marked, numbered[0]);
+                        correctTone = numbered[1];
+                        break;
+                    }
+                }
+
+                return userBase === correctBase && userTone === correctTone;
+            }
+
+            return false;
         }
 
         function checkAnswer() {
@@ -423,11 +457,9 @@
             const userAnswer = answerInput.value.trim();
 
             if (mode === 'char-to-pinyin') {
-                const normalizedUser = normalizePinyin(userAnswer);
-
                 // Handle multiple pronunciations (e.g., "cháng/zhǎng")
-                const pinyinOptions = currentQuestion.pinyin.split('/').map(p => normalizePinyin(p.trim()));
-                const correct = pinyinOptions.includes(normalizedUser);
+                const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+                const correct = pinyinOptions.some(option => checkPinyinMatch(userAnswer, option));
 
                 if (correct) {
                     if (!answered) {
