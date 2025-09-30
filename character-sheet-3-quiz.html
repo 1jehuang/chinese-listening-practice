@@ -195,10 +195,11 @@
         <h1>汉字练习-3 Quiz</h1>
 
         <div class="mode-selector">
-            <button class="mode-btn active" data-mode="char-to-pinyin">Character → Pinyin</button>
+            <button class="mode-btn active" data-mode="char-to-pinyin">Char → Pinyin (Type)</button>
+            <button class="mode-btn" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
             <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
-            <button class="mode-btn" data-mode="char-to-meaning">Character → Meaning</button>
-            <button class="mode-btn" data-mode="meaning-to-char">Meaning → Character</button>
+            <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
+            <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
         </div>
 
         <div id="questionDisplay"></div>
@@ -265,16 +266,20 @@
 
             if (mode === 'char-to-pinyin') {
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
-                answerInput.placeholder = 'Type the pinyin...';
+                answerInput.placeholder = 'Type the pinyin (with or without tones)...';
                 typeMode.style.display = 'block';
                 choiceMode.style.display = 'none';
                 setTimeout(() => answerInput.focus(), 100);
+            } else if (mode === 'char-to-pinyin-mc') {
+                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
+                generatePinyinOptions();
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'block';
             } else if (mode === 'pinyin-to-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
-                answerInput.placeholder = 'Type the character...';
-                typeMode.style.display = 'block';
-                choiceMode.style.display = 'none';
-                setTimeout(() => answerInput.focus(), 100);
+                generateCharOptions();
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'block';
             } else if (mode === 'char-to-meaning') {
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
                 generateMeaningOptions();
@@ -286,6 +291,34 @@
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'block';
             }
+        }
+
+        function generatePinyinOptions() {
+            const options = document.getElementById('options');
+            options.innerHTML = '';
+
+            const wrongOptions = [];
+            while (wrongOptions.length < 3) {
+                const random = characters[Math.floor(Math.random() * characters.length)];
+                if (random.char !== currentQuestion.char && !wrongOptions.includes(random.pinyin)) {
+                    wrongOptions.push(random.pinyin);
+                }
+            }
+
+            const allOptions = [...wrongOptions, currentQuestion.pinyin];
+            allOptions.sort(() => Math.random() - 0.5);
+
+            allOptions.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.dataset.index = index;
+                btn.onclick = () => checkMultipleChoice(option);
+                options.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
         }
 
         function generateMeaningOptions() {
@@ -412,23 +445,6 @@
                     answerInput.value = '';
                     answerInput.focus();
                 }
-            } else if (mode === 'pinyin-to-char') {
-                correct = userAnswer === currentQuestion.char;
-
-                if (correct) {
-                    score++;
-                    feedback.textContent = `✓ Correct! (${currentQuestion.char})`;
-                    feedback.className = 'feedback correct';
-                    setTimeout(() => {
-                        generateQuestion();
-                    }, 800);
-                } else {
-                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.char}`;
-                    feedback.className = 'feedback incorrect';
-                    hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                    answerInput.value = '';
-                    answerInput.focus();
-                }
             }
 
             updateStats();
@@ -442,8 +458,12 @@
 
             let correct = false;
 
-            if (mode === 'char-to-meaning') {
+            if (mode === 'char-to-pinyin-mc') {
+                correct = answer === currentQuestion.pinyin;
+            } else if (mode === 'char-to-meaning') {
                 correct = answer === currentQuestion.meaning;
+            } else if (mode === 'pinyin-to-char') {
+                correct = answer === currentQuestion.char;
             } else if (mode === 'meaning-to-char') {
                 correct = answer === currentQuestion.char;
             }
@@ -455,7 +475,9 @@
                 feedback.textContent = `✓ Correct!`;
                 feedback.className = 'feedback correct';
                 buttons.forEach(btn => {
-                    if ((mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
+                    if ((mode === 'char-to-pinyin-mc' && btn.textContent === currentQuestion.pinyin) ||
+                        (mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
+                        (mode === 'pinyin-to-char' && btn.textContent === currentQuestion.char) ||
                         (mode === 'meaning-to-char' && btn.textContent === currentQuestion.char)) {
                         btn.classList.add('correct');
                     }
@@ -465,9 +487,15 @@
                     generateQuestion();
                 }, 800);
             } else {
-                if (mode === 'char-to-meaning') {
+                if (mode === 'char-to-pinyin-mc') {
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
+                    hint.textContent = `${currentQuestion.char} - ${currentQuestion.meaning}`;
+                } else if (mode === 'char-to-meaning') {
                     feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.meaning}`;
                     hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
+                } else if (mode === 'pinyin-to-char') {
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.char}`;
+                    hint.textContent = `${currentQuestion.pinyin} - ${currentQuestion.meaning}`;
                 } else {
                     feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.char}`;
                     hint.textContent = `${currentQuestion.pinyin} - ${currentQuestion.meaning}`;
@@ -478,7 +506,9 @@
                     if (btn.textContent === answer) {
                         btn.classList.add('incorrect');
                     }
-                    if ((mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
+                    if ((mode === 'char-to-pinyin-mc' && btn.textContent === currentQuestion.pinyin) ||
+                        (mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
+                        (mode === 'pinyin-to-char' && btn.textContent === currentQuestion.char) ||
                         (mode === 'meaning-to-char' && btn.textContent === currentQuestion.char)) {
                         btn.classList.add('correct');
                     }
@@ -513,7 +543,7 @@
 
         // Keyboard navigation for multiple choice
         document.addEventListener('keydown', (e) => {
-            if ((mode === 'char-to-meaning' || mode === 'meaning-to-char') && !answered) {
+            if ((mode === 'char-to-pinyin-mc' || mode === 'char-to-meaning' || mode === 'pinyin-to-char' || mode === 'meaning-to-char') && !answered) {
                 if (e.key === 'h') {
                     e.preventDefault();
                     if (selectedOptionIndex === 1) selectOption(0);
