@@ -239,7 +239,7 @@
                 <button id="revealBtn" style="padding: 15px 30px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">Show Answer</button>
             </div>
             <div id="answerReveal" style="text-align: center; margin: 30px 0; display: none;">
-                <div style="font-size: 120px; color: #333;" id="answerChar"></div>
+                <svg id="answerWriter" width="300" height="300" style="border: 2px solid #007bff; border-radius: 8px; background: white; margin: 0 auto;"></svg>
                 <div style="font-size: 24px; margin-top: 20px; color: #666;">
                     <strong id="answerPinyin"></strong> - <span id="answerMeaning"></span>
                 </div>
@@ -705,11 +705,26 @@
 
         // Reveal button for handwriting mode
         document.getElementById('revealBtn').addEventListener('click', () => {
-            document.getElementById('answerChar').textContent = currentQuestion.char;
             document.getElementById('answerPinyin').textContent = currentQuestion.pinyin;
             document.getElementById('answerMeaning').textContent = currentQuestion.meaning;
             document.getElementById('answerReveal').style.display = 'block';
             document.getElementById('revealBtn').style.display = 'none';
+
+            // Create Hanzi Writer for answer animation
+            const answerTarget = document.getElementById('answerWriter');
+            answerTarget.innerHTML = '';
+
+            const answerWriter = HanziWriter.create(answerTarget, currentQuestion.char, {
+                width: 300,
+                height: 300,
+                padding: 5,
+                showOutline: true,
+                strokeAnimationSpeed: 1,
+                delayBetweenStrokes: 100
+            });
+
+            // Automatically play animation
+            answerWriter.animateCharacter();
         });
 
         // Keyboard navigation for multiple choice
