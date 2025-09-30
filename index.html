@@ -485,6 +485,14 @@
                         btn.classList.add('correct');
                     }
                 });
+
+                // Auto-advance for tone24 mode even on wrong answer
+                if (mode === 'tone24') {
+                    setTimeout(() => {
+                        generateQuestion();
+                        playAudio();
+                    }, 1200);
+                }
             }
 
             updateStats();
