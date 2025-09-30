@@ -202,6 +202,7 @@
             <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
             <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
             <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+            <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
             <button class="mode-btn" data-mode="handwriting">Handwriting</button>
         </div>
 
@@ -218,7 +219,7 @@
             <div class="options" id="options"></div>
         </div>
 
-        <div id="handwritingMode" style="display: none;">
+        <div id="strokeOrderMode" style="display: none;">
             <div style="text-align: center; margin: 20px 0;">
                 <svg id="hanziWriter" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; background: white;"></svg>
             </div>
@@ -227,6 +228,21 @@
                 <button id="practiceBtn" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Start Quiz</button>
             </div>
             <div id="strokeFeedback" style="text-align: center; margin: 10px 0; font-size: 16px; font-weight: bold;"></div>
+        </div>
+
+        <div id="handwritingMode" style="display: none;">
+            <div style="text-align: center; font-size: 18px; margin: 20px 0; color: #666;">
+                Write the character on paper, then click to reveal the answer.
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+                <button id="revealBtn" style="padding: 15px 30px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">Show Answer</button>
+            </div>
+            <div id="answerReveal" style="text-align: center; margin: 30px 0; display: none;">
+                <div style="font-size: 120px; color: #333;" id="answerChar"></div>
+                <div style="font-size: 24px; margin-top: 20px; color: #666;">
+                    <strong id="answerPinyin"></strong> - <span id="answerMeaning"></span>
+                </div>
+            </div>
         </div>
 
         <div class="feedback" id="feedback"></div>
@@ -270,6 +286,7 @@
         const checkBtn = document.getElementById('checkBtn');
         const typeMode = document.getElementById('typeMode');
         const choiceMode = document.getElementById('choiceMode');
+        const strokeOrderMode = document.getElementById('strokeOrderMode');
         const handwritingMode = document.getElementById('handwritingMode');
         const feedback = document.getElementById('feedback');
         const hint = document.getElementById('hint');
@@ -367,16 +384,25 @@
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
                 generateMeaningOptions();
                 typeMode.style.display = 'none';
-                choiceMode.style.display = 'none';
-                handwritingMode.style.display = 'none';
                 choiceMode.style.display = 'block';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+            } else if (mode === 'stroke-order') {
+                questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'none';
+                strokeOrderMode.style.display = 'block';
+                handwritingMode.style.display = 'none';
+                document.getElementById('strokeFeedback').textContent = '';
+                initHanziWriter(currentQuestion.char);
             } else if (mode === 'handwriting') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'none';
+                strokeOrderMode.style.display = 'none';
                 handwritingMode.style.display = 'block';
-                document.getElementById('strokeFeedback').textContent = '';
-                initHanziWriter(currentQuestion.char);
+                document.getElementById('answerReveal').style.display = 'none';
+                document.getElementById('revealBtn').style.display = 'inline-block';
             } else if (mode === 'meaning-to-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
                 generateCharOptions();
@@ -676,8 +702,25 @@
 
         nextBtn.addEventListener('click', generateQuestion);
 
+        // Reveal button for handwriting mode
+        document.getElementById('revealBtn').addEventListener('click', () => {
+            document.getElementById('answerChar').textContent = currentQuestion.char;
+            document.getElementById('answerPinyin').textContent = currentQuestion.pinyin;
+            document.getElementById('answerMeaning').textContent = currentQuestion.meaning;
+            document.getElementById('answerReveal').style.display = 'block';
+            document.getElementById('revealBtn').style.display = 'none';
+        });
+
         // Keyboard navigation for multiple choice
         document.addEventListener('keydown', (e) => {
+            // Space key to reveal answer in handwriting mode
+            if (mode === 'handwriting' && e.key === ' ') {
+                e.preventDefault();
+                if (document.getElementById('revealBtn').style.display !== 'none') {
+                    document.getElementById('revealBtn').click();
+                }
+            }
+
             if ((mode === 'char-to-pinyin-mc' || mode === 'char-to-meaning' || mode === 'pinyin-to-char' || mode === 'meaning-to-char') && !answered) {
                 if (e.key === 'h') {
                     e.preventDefault();

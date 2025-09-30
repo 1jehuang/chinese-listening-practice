@@ -202,6 +202,7 @@
             <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
             <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
             <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+            <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
             <button class="mode-btn" data-mode="handwriting">Handwriting</button>
         </div>
 
@@ -218,13 +219,29 @@
             <div class="options" id="options"></div>
         </div>
 
-        <div id="handwritingMode" style="display: none;">
+        <div id="strokeOrderMode" style="display: none;">
             <div style="text-align: center; margin: 20px 0;">
-                <canvas id="drawCanvas" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; cursor: crosshair; background: white;"></canvas>
+                <svg id="hanziWriter" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; background: white;"></svg>
             </div>
             <div style="text-align: center; margin: 10px 0;">
-                <button id="clearBtn" style="padding: 10px 20px; font-size: 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Clear</button>
-                <button id="submitDrawBtn" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit</button>
+                <button id="animateBtn" style="padding: 10px 20px; font-size: 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Show Animation</button>
+                <button id="practiceBtn" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Start Quiz</button>
+            </div>
+            <div id="strokeFeedback" style="text-align: center; margin: 10px 0; font-size: 16px; font-weight: bold;"></div>
+        </div>
+
+        <div id="handwritingMode" style="display: none;">
+            <div style="text-align: center; font-size: 18px; margin: 20px 0; color: #666;">
+                Write the character on paper, then click to reveal the answer.
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+                <button id="revealBtn" style="padding: 15px 30px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">Show Answer</button>
+            </div>
+            <div id="answerReveal" style="text-align: center; margin: 30px 0; display: none;">
+                <div style="font-size: 120px; color: #333;" id="answerChar"></div>
+                <div style="font-size: 24px; margin-top: 20px; color: #666;">
+                    <strong id="answerPinyin"></strong> - <span id="answerMeaning"></span>
+                </div>
             </div>
         </div>
 
@@ -271,123 +288,82 @@
         let mode = 'char-to-pinyin';
         let selectedOptionIndex = 0;
 
-        // Canvas drawing variables
-        let canvas, ctx;
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+        // Hanzi Writer variable
+        let writer = null;
 
         const questionDisplay = document.getElementById('questionDisplay');
         const answerInput = document.getElementById('answerInput');
         const checkBtn = document.getElementById('checkBtn');
         const typeMode = document.getElementById('typeMode');
         const choiceMode = document.getElementById('choiceMode');
+        const strokeOrderMode = document.getElementById('strokeOrderMode');
         const handwritingMode = document.getElementById('handwritingMode');
         const feedback = document.getElementById('feedback');
         const hint = document.getElementById('hint');
         const nextBtn = document.getElementById('nextBtn');
 
-        // Initialize canvas
-        window.addEventListener('load', () => {
-            canvas = document.getElementById('drawCanvas');
-            ctx = canvas.getContext('2d');
-            ctx.lineWidth = 8;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000';
+        function initHanziWriter(char) {
+            if (writer) {
+                writer = null;
+            }
 
-            setupDrawing();
-        });
+            const target = document.getElementById('hanziWriter');
+            target.innerHTML = ''; // Clear previous
 
-        function setupDrawing() {
-            canvas.addEventListener('mousedown', startDrawing);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing);
-
-            // Touch support
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                const rect = canvas.getBoundingClientRect();
-                lastX = touch.clientX - rect.left;
-                lastY = touch.clientY - rect.top;
-                isDrawing = true;
+            writer = HanziWriter.create(target, char, {
+                width: 300,
+                height: 300,
+                padding: 5,
+                showOutline: true,
+                strokeAnimationSpeed: 2,
+                delayBetweenStrokes: 200
             });
 
-            canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                if (!isDrawing) return;
-                const touch = e.touches[0];
-                const rect = canvas.getBoundingClientRect();
-                const x = touch.clientX - rect.left;
-                const y = touch.clientY - rect.top;
-                ctx.beginPath();
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(x, y);
-                ctx.stroke();
-                lastX = x;
-                lastY = y;
+            document.getElementById('animateBtn').onclick = () => {
+                writer.animateCharacter();
+            };
+
+            document.getElementById('practiceBtn').onclick = () => {
+                startHandwritingQuiz();
+            };
+        }
+
+        function startHandwritingQuiz() {
+            if (!writer) return;
+
+            document.getElementById('strokeFeedback').textContent = 'Draw the character!';
+            document.getElementById('strokeFeedback').style.color = '#007bff';
+
+            writer.quiz({
+                onMistake: (strokeData) => {
+                    document.getElementById('strokeFeedback').textContent = '✗ Wrong stroke! Try again.';
+                    document.getElementById('strokeFeedback').style.color = '#dc3545';
+                },
+                onCorrectStroke: (strokeData) => {
+                    document.getElementById('strokeFeedback').textContent = `✓ Correct! ${strokeData.strokeNum + 1}/${strokeData.totalStrokes} strokes`;
+                    document.getElementById('strokeFeedback').style.color = '#28a745';
+                },
+                onComplete: (summaryData) => {
+                    if (!answered) {
+                        answered = true;
+                        total++;
+                        score++;
+
+                        feedback.textContent = `✓ Perfect! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+                        feedback.className = 'feedback correct';
+                        hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                        hint.style.color = '#28a745';
+                        document.getElementById('strokeFeedback').textContent = `Completed in ${(summaryData.totalTime / 1000).toFixed(1)}s!`;
+                        document.getElementById('strokeFeedback').style.color = '#28a745';
+
+                        updateStats();
+
+                        setTimeout(() => {
+                            generateQuestion();
+                        }, 2000);
+                    }
+                }
             });
-
-            canvas.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                isDrawing = false;
-            });
-
-            document.getElementById('clearBtn').addEventListener('click', clearCanvas);
-            document.getElementById('submitDrawBtn').addEventListener('click', submitHandwriting);
-        }
-
-        function startDrawing(e) {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            lastX = e.clientX - rect.left;
-            lastY = e.clientY - rect.top;
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-
-            lastX = x;
-            lastY = y;
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-        }
-
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function submitHandwriting() {
-            // For now, just show the correct answer and move to next
-            // In the future, this could use Hanzi Writer or ML recognition
-            if (answered) return;
-
-            answered = true;
-            total++;
-            score++; // For now, count as correct since we don't have recognition
-
-            feedback.textContent = `The character is: ${currentQuestion.char} (${currentQuestion.pinyin})`;
-            feedback.className = 'feedback correct';
-            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-            hint.style.color = '#007bff';
-
-            setTimeout(() => {
-                generateQuestion();
-                clearCanvas();
-            }, 2000);
-
-            updateStats();
         }
 
         function generateQuestion() {
@@ -418,15 +394,25 @@
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
                 generateMeaningOptions();
                 typeMode.style.display = 'none';
-                choiceMode.style.display = 'none';
-                handwritingMode.style.display = 'none';
                 choiceMode.style.display = 'block';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+            } else if (mode === 'stroke-order') {
+                questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
+                typeMode.style.display = 'none';
+                choiceMode.style.display = 'none';
+                strokeOrderMode.style.display = 'block';
+                handwritingMode.style.display = 'none';
+                document.getElementById('strokeFeedback').textContent = '';
+                initHanziWriter(currentQuestion.char);
             } else if (mode === 'handwriting') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'none';
+                strokeOrderMode.style.display = 'none';
                 handwritingMode.style.display = 'block';
-                clearCanvas();
+                document.getElementById('answerReveal').style.display = 'none';
+                document.getElementById('revealBtn').style.display = 'inline-block';
             } else if (mode === 'meaning-to-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
                 generateCharOptions();
@@ -726,8 +712,25 @@
 
         nextBtn.addEventListener('click', generateQuestion);
 
+        // Reveal button for handwriting mode
+        document.getElementById('revealBtn').addEventListener('click', () => {
+            document.getElementById('answerChar').textContent = currentQuestion.char;
+            document.getElementById('answerPinyin').textContent = currentQuestion.pinyin;
+            document.getElementById('answerMeaning').textContent = currentQuestion.meaning;
+            document.getElementById('answerReveal').style.display = 'block';
+            document.getElementById('revealBtn').style.display = 'none';
+        });
+
         // Keyboard navigation for multiple choice
         document.addEventListener('keydown', (e) => {
+            // Space key to reveal answer in handwriting mode
+            if (mode === 'handwriting' && e.key === ' ') {
+                e.preventDefault();
+                if (document.getElementById('revealBtn').style.display !== 'none') {
+                    document.getElementById('revealBtn').click();
+                }
+            }
+
             if ((mode === 'char-to-pinyin-mc' || mode === 'char-to-meaning' || mode === 'pinyin-to-char' || mode === 'meaning-to-char') && !answered) {
                 if (e.key === 'h') {
                     e.preventDefault();
