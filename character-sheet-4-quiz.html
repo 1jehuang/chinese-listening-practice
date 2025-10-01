@@ -191,9 +191,27 @@
             font-weight: bold;
             margin-top: 10px;
         }
+
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .home-btn:hover {
+            background: #0056b3;
+        }
     </style>
 </head>
 <body>
+    <a href="home.html" class="home-btn">🏠 Home</a>
     <div class="quiz-container">
         <h1>汉字练习-4 Quiz (Radicals)</h1>
 
@@ -225,8 +243,7 @@
                 <svg id="hanziWriter" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; background: white;"></svg>
             </div>
             <div style="text-align: center; margin: 10px 0;">
-                <button id="animateBtn" style="padding: 10px 20px; font-size: 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Show Animation</button>
-                <button id="practiceBtn" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Start Quiz</button>
+                <button id="replayBtn" style="padding: 10px 20px; font-size: 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">🔄 Replay Animation</button>
             </div>
             <div id="strokeFeedback" style="text-align: center; margin: 10px 0; font-size: 16px; font-weight: bold;"></div>
         </div>
@@ -316,17 +333,17 @@
                 height: 300,
                 padding: 5,
                 showOutline: true,
-                strokeAnimationSpeed: 2,
-                delayBetweenStrokes: 200
+                strokeAnimationSpeed: 1,
+                delayBetweenStrokes: 50
             });
 
-            document.getElementById('animateBtn').onclick = () => {
+            document.getElementById('replayBtn').style.display = 'none';
+            document.getElementById('replayBtn').onclick = () => {
                 writer.animateCharacter();
             };
 
-            document.getElementById('practiceBtn').onclick = () => {
-                startHandwritingQuiz();
-            };
+            // Start quiz immediately
+            startHandwritingQuiz();
         }
 
         function startHandwritingQuiz() {
@@ -357,11 +374,15 @@
                         document.getElementById('strokeFeedback').textContent = `Completed in ${(summaryData.totalTime / 1000).toFixed(1)}s!`;
                         document.getElementById('strokeFeedback').style.color = '#28a745';
 
+                        // Show replay button after completion
+                        document.getElementById('replayBtn').style.display = 'inline-block';
+
                         updateStats();
 
+                        // Auto-advance to next question
                         setTimeout(() => {
                             generateQuestion();
-                        }, 2000);
+                        }, 1500);
                     }
                 }
             });
