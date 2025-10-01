@@ -866,8 +866,22 @@
 
         // Canvas drawing functions with real-time OCR
         async function initCanvas() {
-            canvas = document.getElementById('drawCanvas');
-            ctx = canvas.getContext('2d');
+            if (!canvas) {
+                canvas = document.getElementById('drawCanvas');
+                ctx = canvas.getContext('2d');
+
+                // Mouse events
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+
+                // Touch events
+                canvas.addEventListener('touchstart', handleTouchStart);
+                canvas.addEventListener('touchmove', handleTouchMove);
+                canvas.addEventListener('touchend', stopDrawing);
+            }
+
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -877,17 +891,6 @@
             if (!ocrWorker) {
                 ocrWorker = await Tesseract.createWorker('chi_sim');
             }
-
-            // Mouse events
-            canvas.addEventListener('mousedown', startDrawing);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing);
-
-            // Touch events
-            canvas.addEventListener('touchstart', handleTouchStart);
-            canvas.addEventListener('touchmove', handleTouchMove);
-            canvas.addEventListener('touchend', stopDrawing);
         }
 
         function getCanvasCoords(e) {
