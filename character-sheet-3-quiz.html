@@ -648,6 +648,16 @@
                 score++;
                 feedback.textContent = `✓ Correct!`;
                 feedback.className = 'feedback correct';
+
+                // Show pinyin hint for meaning-to-char and char-to-meaning modes
+                if (mode === 'meaning-to-char') {
+                    hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
+                    hint.style.color = '#28a745';
+                } else if (mode === 'char-to-meaning') {
+                    hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
+                    hint.style.color = '#28a745';
+                }
+
                 buttons.forEach(btn => {
                     if ((mode === 'char-to-pinyin-mc' && btn.textContent === currentQuestion.pinyin) ||
                         (mode === 'char-to-meaning' && btn.textContent === currentQuestion.meaning) ||
