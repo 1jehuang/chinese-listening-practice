@@ -6,6 +6,7 @@
     <meta name="google" content="notranslate">
     <title>Character Sheet 3 Quiz</title>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <script src='https://unpkg.com/tesseract.js@v5.0.0/dist/tesseract.min.js'></script>
     <style>
         * {
             margin: 0;
@@ -266,6 +267,10 @@
             <div style="text-align: center; margin: 20px 0;">
                 <canvas id="drawCanvas" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; background: white; cursor: crosshair; touch-action: none;"></canvas>
             </div>
+            <div style="text-align: center; margin: 10px 0; color: #666; font-size: 14px;">
+                <div id="ocrResult" style="font-size: 48px; min-height: 60px; color: #007bff;"></div>
+                <div style="margin-top: 5px;">Draw and see real-time recognition above</div>
+            </div>
             <div style="text-align: center; margin: 10px 0;">
                 <button id="clearCanvas" style="padding: 10px 20px; font-size: 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Clear</button>
                 <button id="checkDrawing" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Check</button>
@@ -314,6 +319,8 @@
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
+        let ocrWorker = null;
+        let ocrTimeout = null;
 
         const questionDisplay = document.getElementById('questionDisplay');
         const answerInput = document.getElementById('answerInput');
@@ -454,6 +461,7 @@
                 handwritingMode.style.display = 'none';
                 drawCharMode.style.display = 'block';
                 document.getElementById('drawFeedback').textContent = '';
+                document.getElementById('ocrResult').textContent = '';
                 initCanvas();
                 clearCanvas();
             }
@@ -846,14 +854,19 @@
             });
         });
 
-        // Canvas drawing functions
-        function initCanvas() {
+        // Canvas drawing functions with real-time OCR
+        async function initCanvas() {
             canvas = document.getElementById('drawCanvas');
             ctx = canvas.getContext('2d');
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.strokeStyle = '#000';
+
+            // Initialize Tesseract worker for Chinese
+            if (!ocrWorker) {
+                ocrWorker = await Tesseract.createWorker('chi_sim');
+            }
 
             // Mouse events
             canvas.addEventListener('mousedown', startDrawing);
@@ -908,6 +921,10 @@
 
             lastX = coords.x;
             lastY = coords.y;
+
+            // Trigger OCR after drawing stops for a moment
+            if (ocrTimeout) clearTimeout(ocrTimeout);
+            ocrTimeout = setTimeout(runOCR, 800);
         }
 
         function handleTouchMove(e) {
@@ -923,14 +940,28 @@
         function clearCanvas() {
             if (!ctx) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('ocrResult').textContent = '';
+        }
+
+        async function runOCR() {
+            if (!ocrWorker || !ctx) return;
+
+            try {
+                const imageData = canvas.toDataURL('image/png');
+                const result = await ocrWorker.recognize(imageData);
+                const text = result.data.text.trim();
+
+                if (text) {
+                    document.getElementById('ocrResult').textContent = text;
+                }
+            } catch (error) {
+                console.error('OCR error:', error);
+            }
         }
 
         async function checkDrawing() {
             if (!ctx || answered) return;
 
-            const imageData = canvas.toDataURL('image/png');
-
-            // Simple check: if canvas is mostly blank, reject
             const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
             let hasDrawing = false;
             for (let i = 3; i < pixels.data.length; i += 4) {
@@ -946,31 +977,36 @@
                 return;
             }
 
-            // Use Google Cloud Vision API for OCR
-            // Note: This requires an API key - for now, we'll use a simple fallback
-            document.getElementById('drawFeedback').textContent = 'Checking...';
-            document.getElementById('drawFeedback').style.color = '#007bff';
+            const recognizedText = document.getElementById('ocrResult').textContent.trim();
 
-            // Simplified version: just accept the drawing and move to next
-            // In production, you would call an OCR API here
-            setTimeout(() => {
-                answered = true;
-                total++;
+            // Check if the recognized character matches the current question
+            const correct = recognizedText.includes(currentQuestion.char);
+
+            answered = true;
+            total++;
+
+            if (correct) {
                 score++;
-
-                feedback.textContent = `Drawing submitted! The character was: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+                feedback.textContent = `✓ Correct! You drew ${currentQuestion.char} (${currentQuestion.pinyin})`;
                 feedback.className = 'feedback correct';
                 hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                 hint.style.color = '#28a745';
-                document.getElementById('drawFeedback').textContent = '✓ Submitted!';
+                document.getElementById('drawFeedback').textContent = '✓ Correct!';
                 document.getElementById('drawFeedback').style.color = '#28a745';
+            } else {
+                feedback.textContent = `✗ Wrong. You drew: ${recognizedText || '(nothing recognized)'}. The answer was: ${currentQuestion.char}`;
+                feedback.className = 'feedback incorrect';
+                hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+                hint.style.color = '#dc3545';
+                document.getElementById('drawFeedback').textContent = '✗ Try again!';
+                document.getElementById('drawFeedback').style.color = '#dc3545';
+            }
 
-                updateStats();
+            updateStats();
 
-                setTimeout(() => {
-                    generateQuestion();
-                }, 2000);
-            }, 500);
+            setTimeout(() => {
+                generateQuestion();
+            }, 2000);
         }
 
         // Button event listeners for draw mode
