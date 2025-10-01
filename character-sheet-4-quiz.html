@@ -344,13 +344,17 @@
             document.getElementById('strokeFeedback').textContent = 'Draw the character!';
             document.getElementById('strokeFeedback').style.color = '#007bff';
 
+            let quizStartTime = Date.now();
+
             writer.quiz({
                 onMistake: (strokeData) => {
                     document.getElementById('strokeFeedback').textContent = '✗ Wrong stroke! Try again.';
                     document.getElementById('strokeFeedback').style.color = '#dc3545';
                 },
                 onCorrectStroke: (strokeData) => {
-                    document.getElementById('strokeFeedback').textContent = `✓ Correct! ${strokeData.strokeNum + 1}/${strokeData.totalStrokes} strokes`;
+                    const current = strokeData.strokeNum + 1;
+                    const total = strokeData.strokesRemaining + current;
+                    document.getElementById('strokeFeedback').textContent = `✓ Correct! ${current}/${total} strokes`;
                     document.getElementById('strokeFeedback').style.color = '#28a745';
                 },
                 onComplete: (summaryData) => {
@@ -363,7 +367,9 @@
                         feedback.className = 'feedback correct';
                         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                         hint.style.color = '#28a745';
-                        const timeInSeconds = summaryData.totalTime ? (summaryData.totalTime / 1000).toFixed(1) : '0.0';
+
+                        const timeElapsed = Date.now() - quizStartTime;
+                        const timeInSeconds = (timeElapsed / 1000).toFixed(1);
                         document.getElementById('strokeFeedback').textContent = `Completed in ${timeInSeconds}s!`;
                         document.getElementById('strokeFeedback').style.color = '#28a745';
 
