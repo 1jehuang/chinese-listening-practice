@@ -243,9 +243,6 @@
             <div style="text-align: center; margin: 20px 0;">
                 <svg id="hanziWriter" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; background: white;"></svg>
             </div>
-            <div style="text-align: center; margin: 10px 0;">
-                <button id="replayBtn" style="padding: 10px 20px; font-size: 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">🔄 Replay Animation</button>
-            </div>
             <div id="strokeFeedback" style="text-align: center; margin: 10px 0; font-size: 16px; font-weight: bold;"></div>
         </div>
 
@@ -328,11 +325,6 @@
                 delayBetweenStrokes: 50
             });
 
-            document.getElementById('replayBtn').style.display = 'none';
-            document.getElementById('replayBtn').onclick = () => {
-                writer.animateCharacter();
-            };
-
             // Start quiz immediately
             startHandwritingQuiz();
         }
@@ -362,11 +354,9 @@
                         feedback.className = 'feedback correct';
                         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                         hint.style.color = '#28a745';
-                        document.getElementById('strokeFeedback').textContent = `Completed in ${(summaryData.totalTime / 1000).toFixed(1)}s!`;
+                        const timeInSeconds = summaryData.totalTime ? (summaryData.totalTime / 1000).toFixed(1) : '0.0';
+                        document.getElementById('strokeFeedback').textContent = `Completed in ${timeInSeconds}s!`;
                         document.getElementById('strokeFeedback').style.color = '#28a745';
-
-                        // Show replay button after completion
-                        document.getElementById('replayBtn').style.display = 'inline-block';
 
                         updateStats();
 
