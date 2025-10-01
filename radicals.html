@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese Radicals Practice</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .quiz-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .mode-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            margin: 0 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            background: #e9ecef;
+        }
+
+        .mode-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .character-display {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .character {
+            font-size: 120px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .radical {
+            font-size: 80px;
+            font-weight: bold;
+            color: #007bff;
+            margin: 20px 0;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .option-btn {
+            padding: 20px;
+            font-size: 48px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .option-btn.selected {
+            border-color: #007bff;
+            border-width: 3px;
+            background: #e3f2fd;
+        }
+
+        .meaning {
+            font-size: 18px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .feedback {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            min-height: 30px;
+        }
+
+        .feedback.correct {
+            color: #28a745;
+        }
+
+        .feedback.incorrect {
+            color: #dc3545;
+        }
+
+        .next-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .next-button:hover {
+            background: #5a6268;
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stats-text {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .info-text {
+            text-align: center;
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h1>部首练习 Radical Practice</h1>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="char-to-radical">Character → Radical</button>
+            <button class="mode-btn" data-mode="radical-to-char">Radical → Character</button>
+            <button class="mode-btn" data-mode="radical-meaning">Radical Meaning</button>
+        </div>
+
+        <div id="charToRadicalMode">
+            <div class="info-text">What is the radical of this character?</div>
+            <div class="character-display">
+                <div class="character" id="character"></div>
+            </div>
+            <div class="options" id="radicalOptions"></div>
+        </div>
+
+        <div id="radicalToCharMode" style="display: none;">
+            <div class="info-text">Which character contains this radical?</div>
+            <div class="character-display">
+                <div class="radical" id="radical"></div>
+                <div class="meaning" id="radicalMeaning"></div>
+            </div>
+            <div class="options" id="charOptions"></div>
+        </div>
+
+        <div id="radicalMeaningMode" style="display: none;">
+            <div class="info-text">What does this radical mean?</div>
+            <div class="character-display">
+                <div class="radical" id="radicalForMeaning"></div>
+            </div>
+            <div class="options" id="meaningOptions"></div>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <button class="next-button" id="nextBtn">Next Question →</button>
+
+        <div class="stats">
+            <div class="stats-text">
+                Score: <strong id="score">0</strong> / <strong id="total">0</strong>
+                (<span id="percentage">0</span>%)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const radicalData = [
+            { radical: '亻', meaning: 'person', chars: ['你', '他', '们', '什', '住', '作', '休', '体'] },
+            { radical: '氵', meaning: 'water', chars: ['河', '海', '洋', '汉', '法', '洗', '汽', '没'] },
+            { radical: '扌', meaning: 'hand', chars: ['打', '找', '把', '拉', '推', '拿', '接', '换'] },
+            { radical: '口', meaning: 'mouth', chars: ['吃', '喝', '叫', '吗', '呢', '唱', '哪', '听'] },
+            { radical: '讠', meaning: 'speech', chars: ['说', '话', '语', '认', '识', '请', '谢', '让'] },
+            { radical: '女', meaning: 'woman', chars: ['好', '她', '妈', '姐', '妹', '姓', '如', '娘'] },
+            { radical: '木', meaning: 'wood/tree', chars: ['林', '校', '树', '桌', '椅', '机', '杯', '桥'] },
+            { radical: '日', meaning: 'sun/day', chars: ['明', '时', '晚', '早', '星', '晴', '春', '昨'] },
+            { radical: '月', meaning: 'moon/month', chars: ['期', '有', '朋', '服', '朝', '脸', '肚', '胖'] },
+            { radical: '心', meaning: 'heart', chars: ['想', '忙', '忘', '思', '意', '您', '念', '怎'] },
+            { radical: '火', meaning: 'fire', chars: ['热', '烧', '烤', '灯', '炒', '炮', '然', '烟'] },
+            { radical: '土', meaning: 'earth', chars: ['地', '场', '坐', '城', '在', '块', '坏', '墙'] },
+            { radical: '艹', meaning: 'grass', chars: ['茶', '花', '草', '菜', '药', '蓝', '葡', '萄'] },
+            { radical: '饣', meaning: 'food', chars: ['饭', '饿', '馆', '饱', '饮', '饺', '馍', '馋'] },
+            { radical: '钅', meaning: 'metal', chars: ['钱', '铁', '银', '错', '钟', '锅', '铜', '钢'] },
+            { radical: '纟', meaning: 'silk/thread', chars: ['红', '级', '纸', '经', '给', '绿', '线', '细'] },
+            { radical: '宀', meaning: 'roof', chars: ['家', '宿', '客', '室', '宝', '完', '安', '字'] },
+            { radical: '疒', meaning: 'sickness', chars: ['病', '疼', '痛', '瘦', '疯', '痒', '疲', '疾'] },
+            { radical: '衤', meaning: 'clothing', chars: ['衣', '裤', '被', '补', '袜', '裙', '袋', '裹'] },
+            { radical: '足', meaning: 'foot', chars: ['跑', '跳', '路', '踢', '跟', '距', '趴', '蹦'] },
+            { radical: '车', meaning: 'vehicle', chars: ['车', '轮', '软', '轻', '载', '辆', '转', '较'] },
+            { radical: '竹', meaning: 'bamboo', chars: ['笑', '笔', '等', '答', '算', '简', '箱', '篮'] },
+            { radical: '雨', meaning: 'rain', chars: ['雪', '雷', '零', '云', '雾', '霜', '霞', '需'] },
+            { radical: '鸟', meaning: 'bird', chars: ['鸡', '鸭', '鹅', '鸽', '鹤', '鹦', '鹉', '鸦'] },
+            { radical: '目', meaning: 'eye', chars: ['看', '眼', '睛', '睡', '眉', '盯', '瞧', '盲'] }
+        ];
+
+        let currentQuestion = null;
+        let score = 0;
+        let total = 0;
+        let answered = false;
+        let mode = 'char-to-radical';
+        let selectedOptionIndex = 0;
+
+        const nextBtn = document.getElementById('nextBtn');
+        const feedback = document.getElementById('feedback');
+
+        function generateCharToRadicalQuestion() {
+            const data = radicalData[Math.floor(Math.random() * radicalData.length)];
+            const char = data.chars[Math.floor(Math.random() * data.chars.length)];
+
+            currentQuestion = {
+                type: 'char-to-radical',
+                char: char,
+                correctRadical: data.radical,
+                meaning: data.meaning
+            };
+
+            document.getElementById('character').textContent = char;
+
+            // Generate options: correct radical + 3 random wrong radicals
+            const wrongRadicals = radicalData
+                .filter(r => r.radical !== data.radical)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 3)
+                .map(r => r.radical);
+
+            const allOptions = [data.radical, ...wrongRadicals].sort(() => Math.random() - 0.5);
+
+            const optionsContainer = document.getElementById('radicalOptions');
+            optionsContainer.innerHTML = '';
+
+            allOptions.forEach((radical, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = radical;
+                btn.dataset.radical = radical;
+                btn.dataset.index = index;
+                btn.onclick = () => checkAnswer(radical, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function generateRadicalToCharQuestion() {
+            const data = radicalData[Math.floor(Math.random() * radicalData.length)];
+            const correctChar = data.chars[Math.floor(Math.random() * data.chars.length)];
+
+            currentQuestion = {
+                type: 'radical-to-char',
+                radical: data.radical,
+                correctChar: correctChar,
+                meaning: data.meaning
+            };
+
+            document.getElementById('radical').textContent = data.radical;
+            document.getElementById('radicalMeaning').textContent = `(${data.meaning})`;
+
+            // Generate options: correct char + chars from other radicals
+            const wrongChars = [];
+            const otherRadicals = radicalData.filter(r => r.radical !== data.radical);
+
+            while (wrongChars.length < 3) {
+                const randomData = otherRadicals[Math.floor(Math.random() * otherRadicals.length)];
+                const randomChar = randomData.chars[Math.floor(Math.random() * randomData.chars.length)];
+                if (!wrongChars.includes(randomChar)) {
+                    wrongChars.push(randomChar);
+                }
+            }
+
+            const allOptions = [correctChar, ...wrongChars].sort(() => Math.random() - 0.5);
+
+            const optionsContainer = document.getElementById('charOptions');
+            optionsContainer.innerHTML = '';
+
+            allOptions.forEach((char, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = char;
+                btn.dataset.char = char;
+                btn.dataset.index = index;
+                btn.onclick = () => checkAnswer(char, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function generateRadicalMeaningQuestion() {
+            const data = radicalData[Math.floor(Math.random() * radicalData.length)];
+
+            currentQuestion = {
+                type: 'radical-meaning',
+                radical: data.radical,
+                correctMeaning: data.meaning
+            };
+
+            document.getElementById('radicalForMeaning').textContent = data.radical;
+
+            // Generate options: correct meaning + 3 random wrong meanings
+            const wrongMeanings = radicalData
+                .filter(r => r.meaning !== data.meaning)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 3)
+                .map(r => r.meaning);
+
+            const allOptions = [data.meaning, ...wrongMeanings].sort(() => Math.random() - 0.5);
+
+            const optionsContainer = document.getElementById('meaningOptions');
+            optionsContainer.innerHTML = '';
+
+            allOptions.forEach((meaning, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = meaning;
+                btn.style.fontSize = '24px';
+                btn.dataset.meaning = meaning;
+                btn.dataset.index = index;
+                btn.onclick = () => checkAnswer(meaning, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            selectedOptionIndex = 0;
+            updateSelectedOption();
+        }
+
+        function generateQuestion() {
+            answered = false;
+            feedback.textContent = '';
+            feedback.className = 'feedback';
+
+            if (mode === 'char-to-radical') {
+                generateCharToRadicalQuestion();
+            } else if (mode === 'radical-to-char') {
+                generateRadicalToCharQuestion();
+            } else if (mode === 'radical-meaning') {
+                generateRadicalMeaningQuestion();
+            }
+        }
+
+        function updateSelectedOption() {
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn, idx) => {
+                if (idx === selectedOptionIndex) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectOption(index) {
+            const buttons = document.querySelectorAll('.option-btn');
+            if (index >= 0 && index < buttons.length) {
+                selectedOptionIndex = index;
+                updateSelectedOption();
+            }
+        }
+
+        function activateSelectedOption() {
+            const buttons = document.querySelectorAll('.option-btn');
+            if (selectedOptionIndex >= 0 && selectedOptionIndex < buttons.length) {
+                buttons[selectedOptionIndex].click();
+            }
+        }
+
+        function checkAnswer(answer, btnElement) {
+            if (answered) return;
+
+            answered = true;
+            total++;
+
+            let correct = false;
+            let correctAnswer = '';
+
+            if (currentQuestion.type === 'char-to-radical') {
+                correct = answer === currentQuestion.correctRadical;
+                correctAnswer = currentQuestion.correctRadical;
+            } else if (currentQuestion.type === 'radical-to-char') {
+                correct = answer === currentQuestion.correctChar;
+                correctAnswer = currentQuestion.correctChar;
+            } else if (currentQuestion.type === 'radical-meaning') {
+                correct = answer === currentQuestion.correctMeaning;
+                correctAnswer = currentQuestion.correctMeaning;
+            }
+
+            if (correct) {
+                score++;
+                feedback.textContent = `✓ Correct!`;
+                feedback.className = 'feedback correct';
+                btnElement.classList.add('correct');
+            } else {
+                feedback.textContent = `✗ Wrong. The answer was: ${correctAnswer}`;
+                feedback.className = 'feedback incorrect';
+                btnElement.classList.add('incorrect');
+
+                // Highlight correct answer
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    const btnValue = btn.dataset.radical || btn.dataset.char || btn.dataset.meaning;
+                    if (btnValue === correctAnswer) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            updateStats();
+
+            // Disable all buttons
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'not-allowed';
+            });
+
+            // Auto-advance to next question
+            setTimeout(() => {
+                generateQuestion();
+            }, correct ? 800 : 1500);
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('total').textContent = total;
+            const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+            document.getElementById('percentage').textContent = percentage;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (!answered) {
+                if (e.key === 'h') {
+                    e.preventDefault();
+                    // Move left
+                    if (selectedOptionIndex === 1) selectOption(0);
+                    else if (selectedOptionIndex === 3) selectOption(2);
+                } else if (e.key === 'l') {
+                    e.preventDefault();
+                    // Move right
+                    if (selectedOptionIndex === 0) selectOption(1);
+                    else if (selectedOptionIndex === 2) selectOption(3);
+                } else if (e.key === 'k') {
+                    e.preventDefault();
+                    // Move up
+                    if (selectedOptionIndex === 2) selectOption(0);
+                    else if (selectedOptionIndex === 3) selectOption(1);
+                } else if (e.key === 'j') {
+                    e.preventDefault();
+                    // Move down
+                    if (selectedOptionIndex === 0) selectOption(2);
+                    else if (selectedOptionIndex === 1) selectOption(3);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    activateSelectedOption();
+                } else if (e.key >= '1' && e.key <= '4') {
+                    e.preventDefault();
+                    const index = parseInt(e.key) - 1;
+                    selectOption(index);
+                    activateSelectedOption();
+                }
+            }
+        });
+
+        nextBtn.addEventListener('click', generateQuestion);
+
+        // Mode selector
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                mode = btn.dataset.mode;
+
+                // Hide all modes
+                document.getElementById('charToRadicalMode').style.display = 'none';
+                document.getElementById('radicalToCharMode').style.display = 'none';
+                document.getElementById('radicalMeaningMode').style.display = 'none';
+
+                // Show selected mode
+                if (mode === 'char-to-radical') {
+                    document.getElementById('charToRadicalMode').style.display = 'block';
+                } else if (mode === 'radical-to-char') {
+                    document.getElementById('radicalToCharMode').style.display = 'block';
+                } else if (mode === 'radical-meaning') {
+                    document.getElementById('radicalMeaningMode').style.display = 'block';
+                }
+
+                generateQuestion();
+            });
+        });
+
+        // Start first question
+        generateQuestion();
+    </script>
+</body>
+</html>
