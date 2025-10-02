@@ -53,7 +53,20 @@ class ChineseQuiz {
 
         // Enter key
         this.answerInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.checkAnswer();
+            if (e.key === 'Enter') {
+                if (this.mode === 'char-to-meaning-type') {
+                    this.checkMeaningType();
+                } else {
+                    this.checkAnswer();
+                }
+            }
+        });
+
+        // Fuzzy matching for char-to-meaning-type
+        this.answerInput.addEventListener('input', () => {
+            if (this.mode === 'char-to-meaning-type') {
+                this.updateFuzzyMatch();
+            }
         });
 
         // Next button
@@ -149,6 +162,12 @@ class ChineseQuiz {
             this.questionDisplay.innerHTML = `<div class="character-display">${this.currentQuestion.char}</div>`;
             this.generateMeaningOptions();
             this.choiceMode.style.display = 'block';
+        } else if (this.mode === 'char-to-meaning-type') {
+            this.questionDisplay.innerHTML = `<div class="character-display">${this.currentQuestion.char}</div>`;
+            this.typeMode.style.display = 'block';
+            this.answerInput.placeholder = 'Start typing the meaning...';
+            this.generateMeaningTypeOptions();
+            setTimeout(() => this.answerInput.focus(), 100);
         } else if (this.mode === 'stroke-order') {
             this.questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${this.currentQuestion.pinyin} - ${this.currentQuestion.meaning}</div>`;
             this.strokeOrderMode.style.display = 'block';
@@ -253,6 +272,144 @@ class ChineseQuiz {
 
         this.selectedOptionIndex = 0;
         this.highlightOption();
+    }
+
+    generateMeaningTypeOptions() {
+        const wrongOptions = [];
+        while (wrongOptions.length < 3) {
+            const random = this.characters[Math.floor(Math.random() * this.characters.length)];
+            if (random.char !== this.currentQuestion.char && !wrongOptions.includes(random.meaning)) {
+                wrongOptions.push(random.meaning);
+            }
+        }
+
+        this.meaningOptions = [...wrongOptions, this.currentQuestion.meaning];
+        this.meaningOptions.sort(() => Math.random() - 0.5);
+
+        // Create hint display below input
+        const hintDiv = document.createElement('div');
+        hintDiv.id = 'meaningHints';
+        hintDiv.style.cssText = 'margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;';
+
+        this.meaningOptions.forEach((option, i) => {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'meaning-hint';
+            optionDiv.dataset.index = i;
+            optionDiv.textContent = option;
+            optionDiv.style.cssText = 'padding: 10px 20px; border: 2px solid #ddd; border-radius: 8px; background: white; transition: all 0.2s; cursor: pointer;';
+            optionDiv.onclick = () => {
+                this.answerInput.value = option;
+                this.updateFuzzyMatch();
+                this.checkMeaningType();
+            };
+            hintDiv.appendChild(optionDiv);
+        });
+
+        this.typeMode.appendChild(hintDiv);
+    }
+
+    updateFuzzyMatch() {
+        const input = this.answerInput.value.toLowerCase().trim();
+        const hints = document.querySelectorAll('.meaning-hint');
+
+        if (!input) {
+            hints.forEach(hint => {
+                hint.style.background = 'white';
+                hint.style.borderColor = '#ddd';
+                hint.style.transform = 'scale(1)';
+            });
+            return;
+        }
+
+        let bestMatch = null;
+        let bestScore = 0;
+
+        hints.forEach(hint => {
+            const text = hint.textContent.toLowerCase();
+            let score = 0;
+
+            // Exact match
+            if (text === input) {
+                score = 1000;
+            }
+            // Starts with
+            else if (text.startsWith(input)) {
+                score = 100 + input.length;
+            }
+            // Contains
+            else if (text.includes(input)) {
+                score = 50 + input.length;
+            }
+            // Fuzzy match (characters in order)
+            else {
+                let lastIndex = -1;
+                let matched = 0;
+                for (let char of input) {
+                    const index = text.indexOf(char, lastIndex + 1);
+                    if (index > lastIndex) {
+                        matched++;
+                        lastIndex = index;
+                    }
+                }
+                score = matched * 10;
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = hint;
+            }
+
+            // Visual feedback based on score
+            if (score > 0) {
+                hint.style.background = score > 50 ? '#e7f3ff' : '#f8f9fa';
+                hint.style.borderColor = score > 50 ? '#007bff' : '#adb5bd';
+            } else {
+                hint.style.background = 'white';
+                hint.style.borderColor = '#ddd';
+            }
+            hint.style.transform = 'scale(1)';
+        });
+
+        // Highlight best match
+        if (bestMatch && bestScore > 0) {
+            bestMatch.style.background = '#007bff';
+            bestMatch.style.color = 'white';
+            bestMatch.style.borderColor = '#007bff';
+            bestMatch.style.transform = 'scale(1.05)';
+        }
+    }
+
+    checkMeaningType() {
+        if (this.answered) return;
+
+        const userInput = this.answerInput.value.toLowerCase().trim();
+        if (!userInput) return;
+
+        const correctMeaning = this.currentQuestion.meaning.toLowerCase();
+        const correct = userInput === correctMeaning;
+
+        this.answered = true;
+        this.total++;
+
+        // Remove hint display
+        const hintDiv = document.getElementById('meaningHints');
+        if (hintDiv) hintDiv.remove();
+
+        if (correct) {
+            this.score++;
+            this.feedback.textContent = `✓ Correct! ${this.currentQuestion.char} means "${this.currentQuestion.meaning}"`;
+            this.feedback.className = 'feedback correct';
+            this.hint.textContent = `${this.currentQuestion.char} (${this.currentQuestion.pinyin})`;
+            this.hint.style.color = '#28a745';
+        } else {
+            this.feedback.textContent = `✗ Wrong. The answer is: ${this.currentQuestion.meaning}`;
+            this.feedback.className = 'feedback incorrect';
+            this.hint.textContent = `${this.currentQuestion.char} (${this.currentQuestion.pinyin})`;
+            this.hint.style.color = '#dc3545';
+        }
+
+        this.updateStats();
+        setTimeout(() => this.generateQuestion(), 1500);
     }
 
     highlightOption() {
