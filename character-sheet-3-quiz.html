@@ -414,17 +414,26 @@
                 answerInput.placeholder = 'e.g., mǎ or ma3';
                 typeMode.style.display = 'block';
                 choiceMode.style.display = 'none';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
                 setTimeout(() => answerInput.focus(), 100);
             } else if (mode === 'char-to-pinyin-mc') {
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
                 generatePinyinOptions();
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'block';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
             } else if (mode === 'pinyin-to-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
                 generateCharOptions();
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'block';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
             } else if (mode === 'char-to-meaning') {
                 questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
                 generateMeaningOptions();
@@ -432,6 +441,7 @@
                 choiceMode.style.display = 'block';
                 strokeOrderMode.style.display = 'none';
                 handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
             } else if (mode === 'stroke-order') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
                 typeMode.style.display = 'none';
@@ -455,6 +465,9 @@
                 generateCharOptions();
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'block';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
             } else if (mode === 'draw-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
                 typeMode.style.display = 'none';
