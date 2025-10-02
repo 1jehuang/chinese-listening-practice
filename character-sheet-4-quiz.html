@@ -979,8 +979,11 @@
                 const result = await ocrWorker.recognize(imageData);
                 const text = result.data.text.trim();
 
-                if (text) {
-                    document.getElementById('ocrResult').textContent = text;
+                // Filter to only Chinese characters (Unicode range for CJK)
+                const chineseOnly = text.replace(/[^\u4e00-\u9fff]/g, '');
+
+                if (chineseOnly) {
+                    document.getElementById('ocrResult').textContent = chineseOnly;
                 }
             } catch (error) {
                 console.error('OCR error:', error);
