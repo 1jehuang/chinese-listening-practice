@@ -55,7 +55,7 @@ class ChineseQuiz {
         this.answerInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 if (this.mode === 'char-to-meaning-type') {
-                    this.checkMeaningType();
+                    this.checkMeaningFuzzy();
                 } else {
                     this.checkAnswer();
                 }
@@ -165,8 +165,9 @@ class ChineseQuiz {
         } else if (this.mode === 'char-to-meaning-type') {
             this.questionDisplay.innerHTML = `<div class="character-display">${this.currentQuestion.char}</div>`;
             this.typeMode.style.display = 'block';
+            this.choiceMode.style.display = 'block';
             this.answerInput.placeholder = 'Start typing the meaning...';
-            this.generateMeaningTypeOptions();
+            this.generateMeaningFuzzyOptions();
             setTimeout(() => this.answerInput.focus(), 100);
         } else if (this.mode === 'stroke-order') {
             this.questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 20px 0;">${this.currentQuestion.pinyin} - ${this.currentQuestion.meaning}</div>`;
@@ -274,7 +275,10 @@ class ChineseQuiz {
         this.highlightOption();
     }
 
-    generateMeaningTypeOptions() {
+    generateMeaningFuzzyOptions() {
+        const options = document.getElementById('options');
+        options.innerHTML = '';
+
         const wrongOptions = [];
         while (wrongOptions.length < 3) {
             const random = this.characters[Math.floor(Math.random() * this.characters.length)];
@@ -286,37 +290,30 @@ class ChineseQuiz {
         this.meaningOptions = [...wrongOptions, this.currentQuestion.meaning];
         this.meaningOptions.sort(() => Math.random() - 0.5);
 
-        // Create hint display below input
-        const hintDiv = document.createElement('div');
-        hintDiv.id = 'meaningHints';
-        hintDiv.style.cssText = 'margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;';
-
-        this.meaningOptions.forEach((option, i) => {
-            const optionDiv = document.createElement('div');
-            optionDiv.className = 'meaning-hint';
-            optionDiv.dataset.index = i;
-            optionDiv.textContent = option;
-            optionDiv.style.cssText = 'padding: 10px 20px; border: 2px solid #ddd; border-radius: 8px; background: white; transition: all 0.2s; cursor: pointer;';
-            optionDiv.onclick = () => {
+        // Create option buttons
+        this.meaningOptions.forEach((option, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn fuzzy-option';
+            btn.textContent = option;
+            btn.dataset.index = index;
+            btn.onclick = () => {
                 this.answerInput.value = option;
-                this.updateFuzzyMatch();
-                this.checkMeaningType();
+                this.checkMeaningFuzzy();
             };
-            hintDiv.appendChild(optionDiv);
+            options.appendChild(btn);
         });
-
-        this.typeMode.appendChild(hintDiv);
     }
 
     updateFuzzyMatch() {
         const input = this.answerInput.value.toLowerCase().trim();
-        const hints = document.querySelectorAll('.meaning-hint');
+        const buttons = document.querySelectorAll('.fuzzy-option');
 
         if (!input) {
-            hints.forEach(hint => {
-                hint.style.background = 'white';
-                hint.style.borderColor = '#ddd';
-                hint.style.transform = 'scale(1)';
+            buttons.forEach(btn => {
+                btn.style.background = 'white';
+                btn.style.color = '#333';
+                btn.style.borderColor = '#ddd';
+                btn.style.transform = 'scale(1)';
             });
             return;
         }
@@ -324,8 +321,8 @@ class ChineseQuiz {
         let bestMatch = null;
         let bestScore = 0;
 
-        hints.forEach(hint => {
-            const text = hint.textContent.toLowerCase();
+        buttons.forEach(btn => {
+            const text = btn.textContent.toLowerCase();
             let score = 0;
 
             // Exact match
@@ -356,18 +353,20 @@ class ChineseQuiz {
 
             if (score > bestScore) {
                 bestScore = score;
-                bestMatch = hint;
+                bestMatch = btn;
             }
 
             // Visual feedback based on score
             if (score > 0) {
-                hint.style.background = score > 50 ? '#e7f3ff' : '#f8f9fa';
-                hint.style.borderColor = score > 50 ? '#007bff' : '#adb5bd';
+                btn.style.background = score > 50 ? '#e7f3ff' : '#f8f9fa';
+                btn.style.color = '#333';
+                btn.style.borderColor = score > 50 ? '#007bff' : '#adb5bd';
             } else {
-                hint.style.background = 'white';
-                hint.style.borderColor = '#ddd';
+                btn.style.background = 'white';
+                btn.style.color = '#333';
+                btn.style.borderColor = '#ddd';
             }
-            hint.style.transform = 'scale(1)';
+            btn.style.transform = 'scale(1)';
         });
 
         // Highlight best match
@@ -379,7 +378,7 @@ class ChineseQuiz {
         }
     }
 
-    checkMeaningType() {
+    checkMeaningFuzzy() {
         if (this.answered) return;
 
         const userInput = this.answerInput.value.toLowerCase().trim();
@@ -390,10 +389,6 @@ class ChineseQuiz {
 
         this.answered = true;
         this.total++;
-
-        // Remove hint display
-        const hintDiv = document.getElementById('meaningHints');
-        if (hintDiv) hintDiv.remove();
 
         if (correct) {
             this.score++;
