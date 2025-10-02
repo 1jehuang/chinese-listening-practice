@@ -448,6 +448,7 @@
                 choiceMode.style.display = 'none';
                 strokeOrderMode.style.display = 'block';
                 handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
                 document.getElementById('strokeFeedback').textContent = '';
                 initHanziWriter(currentQuestion.char);
             } else if (mode === 'handwriting') {
@@ -456,6 +457,7 @@
                 choiceMode.style.display = 'none';
                 strokeOrderMode.style.display = 'none';
                 handwritingMode.style.display = 'block';
+                drawCharMode.style.display = 'none';
                 document.getElementById('answerReveal').style.display = 'none';
                 document.getElementById('revealBtn').style.display = 'inline-block';
             } else if (mode === 'meaning-to-char') {
