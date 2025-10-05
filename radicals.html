@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese Radicals Practice</title>
     <style>
+        .selected {
+            outline: 3px solid #3b82f6 !important;
+            outline-offset: 2px;
+            background: #dbeafe !important;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -229,6 +235,7 @@
             <div class="character-display">
                 <div class="radical" id="radicalForMeaning"></div>
             </div>
+            <input type="text" id="meaningInput" placeholder="Type the meaning..." style="width: 100%; padding: 15px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box;">
             <div class="options" id="meaningOptions"></div>
         </div>
 
@@ -367,6 +374,17 @@
             updateSelectedOption();
         }
 
+        function fuzzyMatch(input, target) {
+            if (input === target) return 1000;
+            if (target.startsWith(input)) return 100 + input.length;
+            if (target.includes(input)) return 50 + input.length;
+            let score = 0;
+            for (let char of input) {
+                if (target.includes(char)) score += 1;
+            }
+            return score;
+        }
+
         function generateRadicalMeaningQuestion() {
             const data = radicalData[Math.floor(Math.random() * radicalData.length)];
 
@@ -401,8 +419,51 @@
                 optionsContainer.appendChild(btn);
             });
 
+            // Setup fuzzy input
+            const meaningInput = document.getElementById('meaningInput');
+            meaningInput.value = '';
+            meaningInput.oninput = () => {
+                const input = meaningInput.value.trim().toLowerCase();
+                if (!input) {
+                    document.querySelectorAll('#meaningOptions .option-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    return;
+                }
+
+                let bestMatch = null;
+                let bestScore = -1;
+
+                allOptions.forEach((option, index) => {
+                    const score = fuzzyMatch(input, option.toLowerCase());
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = index;
+                    }
+                });
+
+                document.querySelectorAll('#meaningOptions .option-btn').forEach((btn, idx) => {
+                    if (idx === bestMatch) {
+                        btn.classList.add('selected');
+                    } else {
+                        btn.classList.remove('selected');
+                    }
+                });
+            };
+
+            meaningInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selected = document.querySelector('#meaningOptions .option-btn.selected');
+                    if (selected) {
+                        selected.click();
+                    }
+                }
+            };
+
             selectedOptionIndex = 0;
             updateSelectedOption();
+            meaningInput.focus();
         }
 
         function generateQuestion() {
