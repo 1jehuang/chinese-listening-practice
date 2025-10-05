@@ -218,6 +218,7 @@
         <div class="mode-selector">
             <button class="mode-btn active" data-mode="char-to-pinyin">Char → Pinyin (Type)</button>
             <button class="mode-btn" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
+            <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin (Dictation)</button>
             <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
             <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
             <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning (Fuzzy)</button>
@@ -328,6 +329,16 @@
             { char: '禾', pinyin: 'hé', meaning: 'grain' },
             { char: '犬', pinyin: 'quǎn', meaning: 'dog (犭)' },
             { char: '走', pinyin: 'zǒu', meaning: 'walk (辶)' },
+            { char: '马', pinyin: 'mǎ', meaning: 'horse' },
+            { char: '隹', pinyin: 'zhuī', meaning: 'bird' },
+            { char: '中', pinyin: 'zhōng', meaning: 'middle' },
+            { char: '艮', pinyin: 'gěn', meaning: 'stopping' },
+            { char: '青', pinyin: 'qīng', meaning: 'green/blue' },
+            { char: '古', pinyin: 'gǔ', meaning: 'ancient' },
+            { char: '巴', pinyin: 'bā', meaning: 'cling to' },
+            { char: '正', pinyin: 'zhèng', meaning: 'correct' },
+            { char: '长', pinyin: 'cháng/zhǎng', meaning: 'long/grow' },
+            { char: '门', pinyin: 'mén', meaning: 'door' },
             { char: '妈', pinyin: 'mā', meaning: 'mother' },
             { char: '推', pinyin: 'tuī', meaning: 'push' },
             { char: '谁', pinyin: 'shuí', meaning: 'who' },
@@ -384,6 +395,43 @@
 
         // Hanzi Writer variable
         let writer = null;
+
+        // Sound effect functions
+        function playCorrectSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playWrongSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 200;
+            oscillator.type = 'sawtooth';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
 
         // Canvas drawing variables
         let canvas, ctx;
@@ -504,6 +552,40 @@
                 strokeOrderMode.style.display = 'none';
                 handwritingMode.style.display = 'none';
                 drawCharMode.style.display = 'none';
+            } else if (mode === 'audio-to-pinyin') {
+                questionDisplay.innerHTML = `<div style="text-align: center; margin: 40px 0;"><button class="check-btn" id="playAudioDictation" style="background:#17a2b8; font-size: 24px; padding: 20px 40px;">🔊 Play Audio</button></div><div style="text-align: center; color: #999; font-size: 14px; margin-top: 20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
+                answerInput.placeholder = 'e.g., mǎ or ma3';
+                typeMode.style.display = 'block';
+                choiceMode.style.display = 'none';
+                fuzzyMode.style.display = 'none';
+                strokeOrderMode.style.display = 'none';
+                handwritingMode.style.display = 'none';
+                drawCharMode.style.display = 'none';
+
+                // Store the audio function in a variable accessible to the input handler
+                setTimeout(() => {
+                    const playBtn = document.getElementById('playAudioDictation');
+
+                    // Define audio playback function
+                    window.currentAudioPlayFunc = () => {
+                        const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+                        const audioKey = pinyinToAudioKey(firstPinyin);
+                        if (audioKey) {
+                            const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+                            const audio = new Audio(audioUrl);
+                            audio.play().catch(e => console.log('Audio play failed:', e));
+                        }
+                    };
+
+                    if (playBtn) {
+                        playBtn.onclick = window.currentAudioPlayFunc;
+                    }
+
+                    // Play audio automatically once
+                    window.currentAudioPlayFunc();
+
+                    answerInput.focus();
+                }, 100);
             } else if (mode === 'pinyin-to-char') {
                 questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
                 generateCharOptions();
@@ -735,6 +817,7 @@
             }
 
             if (correct) {
+                playCorrectSound();
                 score++;
                 feedback.textContent = `✓ Correct!`;
                 feedback.className = 'feedback correct';
@@ -756,6 +839,7 @@
                     generateQuestion();
                 }, 800);
             } else {
+                playWrongSound();
                 feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.meaning}`;
                 feedback.className = 'feedback incorrect';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
@@ -888,39 +972,51 @@
 
             const userAnswer = answerInput.value.trim();
 
-            if (mode === 'char-to-pinyin') {
+            if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
                 // Handle multiple pronunciations (e.g., "cháng/zhǎng")
                 const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
                 const correct = pinyinOptions.some(option => checkPinyinMatch(userAnswer, option));
 
-                // Play audio
-                const firstPinyin = pinyinOptions[0];
-                const audioKey = pinyinToAudioKey(firstPinyin);
-                if (audioKey) {
-                    const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                    const audio = new Audio(audioUrl);
-                    audio.play().catch(e => console.log('Audio play failed:', e));
+                // Play audio (only for char-to-pinyin, not audio-to-pinyin)
+                if (mode === 'char-to-pinyin') {
+                    const firstPinyin = pinyinOptions[0];
+                    const audioKey = pinyinToAudioKey(firstPinyin);
+                    if (audioKey) {
+                        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+                        const audio = new Audio(audioUrl);
+                        audio.play().catch(e => console.log('Audio play failed:', e));
+                    }
                 }
 
                 if (correct) {
+                    playCorrectSound();
                     if (!answered) {
                         answered = true;
                         total++;
                         score++;
                     }
-                    feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
+                    if (mode === 'audio-to-pinyin') {
+                        feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
+                    } else {
+                        feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
+                    }
                     feedback.className = 'feedback correct';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.style.color = '#28a745';
                     setTimeout(() => {
                         generateQuestion();
-                    }, 800);
+                    }, 300);
                 } else {
+                    playWrongSound();
                     if (!answered) {
                         answered = true;
                         total++;
                     }
-                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
+                    if (mode === 'audio-to-pinyin') {
+                        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin} (${currentQuestion.char}). Try again!`;
+                    } else {
+                        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
+                    }
                     feedback.className = 'feedback incorrect';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.style.color = '#dc3545';
@@ -1027,7 +1123,12 @@
         checkBtn.addEventListener('click', checkAnswer);
 
         answerInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === ' ' && mode === 'audio-to-pinyin') {
+                e.preventDefault();
+                if (window.currentAudioPlayFunc) {
+                    window.currentAudioPlayFunc();
+                }
+            } else if (e.key === 'Enter') {
                 e.preventDefault();
                 checkAnswer();
             }
