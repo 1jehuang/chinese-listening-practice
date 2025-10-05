@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test 1 Review - CHIN 111</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #007bff;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .home-btn:hover {
+            background: #0056b3;
+        }
+
+        .test-format {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .character {
+            font-size: 24px;
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .pinyin-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .pinyin-pair {
+            background: #e3f2fd;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 16px;
+        }
+
+        .important {
+            background: #ffebee;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+            margin: 15px 0;
+        }
+
+        .important strong {
+            color: #dc3545;
+        }
+
+        .practice-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .practice-link:hover {
+            background: #218838;
+        }
+
+        .radical-section {
+            margin: 20px 0;
+        }
+
+        .radical-item {
+            display: inline-block;
+            margin: 5px 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <a href="home.html" class="home-btn">🏠 Home</a>
+
+    <div class="container">
+        <h1>CHIN 111 Test 1 Review</h1>
+        <div class="subtitle">First-year Chinese for Heritage Learners - Autumn 2025</div>
+
+        <div class="test-format">
+            <h2>📋 Test Format</h2>
+
+            <h3>Oral Test (30%)</h3>
+            <ul>
+                <li>Pinyin minimal pairs (without tones)</li>
+                <li>Pinyin with tones (Four tones and Neutral tone)</li>
+                <li>Chinese Characters</li>
+            </ul>
+            <div class="important">
+                <strong>Expectations:</strong>
+                <ul>
+                    <li>Read pinyin and characters correctly & <strong>without ambiguity</strong></li>
+                    <li>Complete within <strong>2.5 minutes</strong></li>
+                </ul>
+            </div>
+
+            <h3>Written Test (70%)</h3>
+            <ul>
+                <li><strong>Dictation for Pinyin</strong>
+                    <ul>
+                        <li>Circle the correct pinyin</li>
+                        <li>Fill in the blank with correct initial, final, tone mark</li>
+                        <li>Write down the pinyin you hear</li>
+                    </ul>
+                </li>
+                <li><strong>Chinese Characters</strong></li>
+            </ul>
+        </div>
+
+        <h2>🎵 Tones</h2>
+        <div class="section">
+            <h3>Tone Mark Placement</h3>
+            <p><strong>Rule:</strong> Follow the sequence: <span style="font-size: 20px;">a o e i u ü</span></p>
+            <p><strong>Special Rule:</strong> For -iu, tone mark is placed on <strong>u</strong></p>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">diū</span>
+                <span class="pinyin-pair">xiū</span>
+                <span class="pinyin-pair">qiú</span>
+                <span class="pinyin-pair">liù</span>
+            </div>
+
+            <h3>Neutral Tone (轻声)</h3>
+            <p>Example: 小心地滑 vs 小心的滑</p>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">xiǎo xīn dì huá</span>
+                <span class="pinyin-pair">xiǎo xīn de huá</span>
+            </div>
+        </div>
+
+        <h2>🔤 Initials - Minimal Pairs</h2>
+        <div class="section">
+            <h3>Common Minimal Pairs to Practice:</h3>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">da-ta</span>
+                <span class="pinyin-pair">ni-li</span>
+                <span class="pinyin-pair">shi-xi</span>
+                <span class="pinyin-pair">zi-qi</span>
+                <span class="pinyin-pair">ca-qia</span>
+                <span class="pinyin-pair">lai-lei</span>
+                <span class="pinyin-pair">tui-dui</span>
+                <span class="pinyin-pair">nong-long</span>
+                <span class="pinyin-pair">ke-he</span>
+                <span class="pinyin-pair">sun-xun</span>
+                <span class="pinyin-pair">chuan-quan</span>
+                <span class="pinyin-pair">xian-qian</span>
+                <span class="pinyin-pair">zhen-zeng</span>
+                <span class="pinyin-pair">shang-xiang</span>
+            </div>
+
+            <h3>z/c/s vs j/q/x</h3>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">zī - jī</span>
+                <span class="pinyin-pair">cī - qī</span>
+                <span class="pinyin-pair">sī - xī</span>
+                <span class="pinyin-pair">zá - jiá</span>
+                <span class="pinyin-pair">cá - qiá</span>
+                <span class="pinyin-pair">sá - xiá</span>
+                <span class="pinyin-pair">zūn - jūn</span>
+                <span class="pinyin-pair">cūn - qūn</span>
+                <span class="pinyin-pair">sūn - xūn</span>
+            </div>
+        </div>
+
+        <h2>📝 Finals</h2>
+        <div class="section">
+            <h3>Key Distinctions:</h3>
+
+            <h4>in vs ing</h4>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">yīn - yīng</span>
+                <span class="pinyin-pair">mín - bīng</span>
+                <span class="pinyin-pair">qīn - qíng</span>
+                <span class="pinyin-pair">pīn - mìng</span>
+            </div>
+
+            <h4>en vs eng, an vs ang</h4>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">zhēn - zhèng</span>
+                <span class="pinyin-pair">rèn - zhèng</span>
+                <span class="pinyin-pair">zēng - zōng</span>
+                <span class="pinyin-pair">dōng - zhòng</span>
+            </div>
+
+            <h4>un vs ün, uan vs üan</h4>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">zūn - jūn</span>
+                <span class="pinyin-pair">cūn - qūn</span>
+                <span class="pinyin-pair">sūn - xūn</span>
+                <span class="pinyin-pair">zuān - juān</span>
+                <span class="pinyin-pair">cuān - quān</span>
+                <span class="pinyin-pair">suān - xuān</span>
+            </div>
+
+            <h4>ou vs iu</h4>
+            <div class="pinyin-examples">
+                <span class="pinyin-pair">zhōu - xiū</span>
+                <span class="pinyin-pair">jiǔ - zhōu</span>
+                <span class="pinyin-pair">qiū - shōu</span>
+            </div>
+        </div>
+
+        <h2>汉字 Chinese Characters</h2>
+        <div class="section">
+            <h3>Basic Radicals (35 characters)</h3>
+
+            <h4>Character Sheet 1-3:</h4>
+            <div class="character-grid">
+                <div class="character">日</div>
+                <div class="character">月</div>
+                <div class="character">水</div>
+                <div class="character">火</div>
+                <div class="character">山</div>
+                <div class="character">人</div>
+                <div class="character">田</div>
+                <div class="character">刀</div>
+                <div class="character">木</div>
+                <div class="character">竹</div>
+                <div class="character">大</div>
+                <div class="character">小</div>
+                <div class="character">女</div>
+                <div class="character">子</div>
+                <div class="character">手</div>
+                <div class="character">目</div>
+                <div class="character">口</div>
+                <div class="character">心</div>
+                <div class="character">足</div>
+                <div class="character">贝</div>
+                <div class="character">马</div>
+                <div class="character">隹</div>
+                <div class="character">中</div>
+                <div class="character">艮</div>
+                <div class="character">青</div>
+                <div class="character">古</div>
+                <div class="character">巴</div>
+                <div class="character">正</div>
+                <div class="character">长</div>
+                <div class="character">门</div>
+            </div>
+
+            <h4>Character Sheet 4B - Radicals:</h4>
+            <div class="radical-section">
+                <div class="radical-item">金 (钅) jīn zì páng 金字旁</div>
+                <div class="radical-item">言 (讠) yán zì páng 言字旁</div>
+                <div class="radical-item">宝 (宀) bǎo gài tóu 宝盖头</div>
+                <div class="radical-item">足 (⻊) zú zì páng 足字旁</div>
+                <div class="radical-item">竹 (⺮) zhú zì tóu 竹字头</div>
+                <div class="radical-item">丝 (纟) jiǎo sī páng 绞丝旁</div>
+                <div class="radical-item">食 (饣) shí zì páng 食字旁</div>
+                <div class="radical-item">禾 hé zì páng 禾字旁</div>
+                <div class="radical-item">犬 (犭) fǎn quǎn páng 反犬旁</div>
+                <div class="radical-item">走 (辶) zǒu zhī páng 走之旁</div>
+            </div>
+
+            <h3>Phonetic Symbols</h3>
+            <p>Characters that share phonetic components (study these groups together):</p>
+            <div class="radical-section">
+                <div>妈 推 谁 淮 (马 tuī shuí huái)</div>
+                <div>钟 种 仲 肿 (zhōng zhǒng zhòng zhǒng)</div>
+                <div>跟 根 狠 恨 (gēn gēn hěn hèn)</div>
+                <div>请 清 情 晴 (qǐng qīng qíng qíng)</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="test1-practice.html" class="practice-link" style="margin-right: 10px;">Practice Test 1 Content →</a>
+            <a href="index.html" class="practice-link">Practice Pinyin Tones →</a>
+        </div>
+    </div>
+</body>
+</html>
