@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese Radicals Practice</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
     <style>
-        .selected {
-            outline: 3px solid #3b82f6 !important;
-            outline-offset: 2px;
-            background: #dbeafe !important;
-        }
 
         * {
             margin: 0;
@@ -290,42 +287,7 @@
         const nextBtn = document.getElementById('nextBtn');
         const feedback = document.getElementById('feedback');
 
-        // Sound effect functions
-        function playCorrectSound() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.3);
-        }
-
-        function playWrongSound() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.frequency.value = 200;
-            oscillator.type = 'sawtooth';
-
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
-        }
+        // Sound effect functions now loaded from utils.js
 
         function generateCharToRadicalQuestion() {
             const data = radicalData[Math.floor(Math.random() * radicalData.length)];
@@ -411,16 +373,7 @@
             updateSelectedOption();
         }
 
-        function fuzzyMatch(input, target) {
-            if (input === target) return 1000;
-            if (target.startsWith(input)) return 100 + input.length;
-            if (target.includes(input)) return 50 + input.length;
-            let score = 0;
-            for (let char of input) {
-                if (target.includes(char)) score += 1;
-            }
-            return score;
-        }
+        // fuzzyMatch now loaded from utils.js
 
         function generateRadicalMeaningQuestion() {
             const data = radicalData[Math.floor(Math.random() * radicalData.length)];

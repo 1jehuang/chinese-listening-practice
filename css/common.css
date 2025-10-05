@@ -1,0 +1,64 @@
+/* Common styles shared across all quiz pages */
+
+/* Home button */
+.home-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    padding: 8px 12px;
+    background: white;
+    color: #374151;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    z-index: 1000;
+}
+
+.home-btn:hover {
+    background: #f3f4f6;
+}
+
+/* Selected state for fuzzy matching */
+.selected {
+    outline: 3px solid #3b82f6 !important;
+    outline-offset: 2px;
+    background: #dbeafe !important;
+}
+
+/* Common feedback styles */
+.feedback {
+    text-align: center;
+    margin: 20px 0;
+    font-size: 18px;
+    font-weight: bold;
+    min-height: 30px;
+}
+
+.feedback.correct {
+    color: #28a745;
+}
+
+.feedback.incorrect {
+    color: #dc3545;
+}
+
+/* Common button correct/incorrect states */
+.option-btn.correct {
+    background: #28a745 !important;
+    color: white !important;
+    border-color: #28a745 !important;
+}
+
+.option-btn.incorrect {
+    background: #dc3545 !important;
+    color: white !important;
+    border-color: #dc3545 !important;
+}
+
+.option-btn.selected {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}

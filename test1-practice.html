@@ -7,13 +7,8 @@
     <title>Test 1 Practice - All Characters</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-    <style>
-        .selected {
-            outline: 3px solid #3b82f6 !important;
-            outline-offset: 2px;
-            background: #dbeafe !important;
-        }
-    </style>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
@@ -220,41 +215,7 @@
         let writer = null;
 
         // Sound effect functions
-        function playCorrectSound() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.3);
-        }
-
-        function playWrongSound() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.frequency.value = 200;
-            oscillator.type = 'sawtooth';
-
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
-        }
+        // Sound functions now loaded from utils.js
 
         // Canvas drawing variables
         let canvas, ctx;
@@ -348,28 +309,7 @@
             });
         });
 
-        function pinyinToAudioKey(pinyin) {
-            const toneMap = {
-                'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
-                'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
-                'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
-                'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
-                'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
-                'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
-                'ü': 'v'
-            };
-
-            let result = pinyin.toLowerCase();
-            for (const [marked, numbered] of Object.entries(toneMap)) {
-                result = result.replace(marked, numbered);
-            }
-
-            if (!/[1-4]/.test(result)) {
-                result += '5';
-            }
-
-            return result;
-        }
+        // pinyinToAudioKey now loaded from utils.js
 
         function generateQuestion() {
             answered = false;
@@ -599,16 +539,7 @@
             choiceMode.classList.remove('hidden');
         }
 
-        function fuzzyMatch(input, target) {
-            if (input === target) return 1000;
-            if (target.startsWith(input)) return 100 + input.length;
-            if (target.includes(input)) return 50 + input.length;
-            let score = 0;
-            for (let char of input) {
-                if (target.includes(char)) score += 1;
-            }
-            return score;
-        }
+        // fuzzyMatch now loaded from utils.js
 
         function generateFuzzyMeaningOptions() {
             const options = document.getElementById('fuzzyOptions');
