@@ -290,6 +290,43 @@
         const nextBtn = document.getElementById('nextBtn');
         const feedback = document.getElementById('feedback');
 
+        // Sound effect functions
+        function playCorrectSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playWrongSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 200;
+            oscillator.type = 'sawtooth';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
         function generateCharToRadicalQuestion() {
             const data = radicalData[Math.floor(Math.random() * radicalData.length)];
             const char = data.chars[Math.floor(Math.random() * data.chars.length)];
@@ -527,11 +564,13 @@
             }
 
             if (correct) {
+                playCorrectSound();
                 score++;
                 feedback.textContent = `✓ Correct!`;
                 feedback.className = 'feedback correct';
                 btnElement.classList.add('correct');
             } else {
+                playWrongSound();
                 feedback.textContent = `✗ Wrong. The answer was: ${correctAnswer}`;
                 feedback.className = 'feedback incorrect';
                 btnElement.classList.add('incorrect');
