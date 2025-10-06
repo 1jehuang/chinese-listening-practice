@@ -22,8 +22,7 @@
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="pinyin-to-char">Pinyin → Char</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning">Char → Meaning</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning (Fuzzy)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">Meaning → Char</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
@@ -60,26 +59,25 @@
 
         <!-- Stroke Order Mode -->
         <div id="strokeOrderMode" class="hidden">
-            <div id="strokeOrderWriter" class="mx-auto my-8"></div>
-            <div class="flex gap-3 justify-center">
-                <button id="animateBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">▶️ Animate</button>
-                <button id="quizBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✍️ Quiz</button>
-                <button id="showOutlineBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg transition">👁️ Show</button>
-                <button id="hideOutlineBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">🚫 Hide</button>
-            </div>
+            <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
         </div>
 
         <!-- Handwriting Mode -->
         <div id="handwritingMode" class="hidden">
             <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
-            <div id="handwritingWriter" class="mx-auto my-8"></div>
-            <div class="flex justify-center">
-                <button id="hwShowBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer & Next</button>
+            <div id="handwritingWriter" class="flex justify-center my-8"></div>
+            <div class="flex justify-center gap-3">
+                <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer / Replay</button>
+                <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
             </div>
         </div>
 
         <!-- Draw Character Mode -->
         <div id="drawCharMode" class="hidden">
+            <div class="text-center mb-4">
+                <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
+                <div class="text-sm text-gray-500">Real-time recognition</div>
+            </div>
             <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
             <div class="flex gap-3 justify-center mt-4">
                 <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
@@ -222,12 +220,16 @@
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
+        let strokes = [];
+        let currentStroke = [];
+        let ocrTimeout = null;
 
         function initCanvas() {
             canvas = document.getElementById('drawCanvas');
             ctx = canvas.getContext('2d');
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
             ctx.strokeStyle = '#000';
 
             canvas.addEventListener('mousedown', startDrawing);
@@ -239,58 +241,139 @@
             canvas.addEventListener('touchstart', handleTouchStart);
             canvas.addEventListener('touchmove', handleTouchMove);
             canvas.addEventListener('touchend', stopDrawing);
+
+            strokes = [];
+        }
+
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+
+            if (e.touches && e.touches[0]) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
         }
 
         function startDrawing(e) {
             isDrawing = true;
-            [lastX, lastY] = [e.offsetX, e.offsetY];
+            const coords = getCanvasCoords(e);
+            lastX = coords.x;
+            lastY = coords.y;
+            currentStroke = [[coords.x, coords.y]];
         }
 
         function draw(e) {
             if (!isDrawing) return;
+            e.preventDefault();
+
+            const coords = getCanvasCoords(e);
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
-            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.lineTo(coords.x, coords.y);
             ctx.stroke();
-            [lastX, lastY] = [e.offsetX, e.offsetY];
+
+            currentStroke.push([coords.x, coords.y]);
+            lastX = coords.x;
+            lastY = coords.y;
         }
 
         function stopDrawing() {
+            if (isDrawing && currentStroke.length > 0) {
+                strokes.push(currentStroke);
+                currentStroke = [];
+
+                // Trigger OCR after drawing stops
+                if (ocrTimeout) clearTimeout(ocrTimeout);
+                ocrTimeout = setTimeout(runOCR, 500);
+            }
             isDrawing = false;
         }
 
         function handleTouchStart(e) {
             e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            isDrawing = true;
-            lastX = touch.clientX - rect.left;
-            lastY = touch.clientY - rect.top;
+            startDrawing(e);
         }
 
         function handleTouchMove(e) {
             if (!isDrawing) return;
             e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            draw(e);
+        }
 
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            [lastX, lastY] = [x, y];
+        async function runOCR() {
+            if (strokes.length === 0) return;
+
+            try {
+                const data = {
+                    options: 'enable_pre_space',
+                    requests: [{
+                        writing_guide: {
+                            writing_area_width: canvas.width,
+                            writing_area_height: canvas.height
+                        },
+                        ink: strokes,
+                        language: 'zh_CN'
+                    }]
+                };
+
+                const response = await fetch('https://www.google.com.tw/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result && result[1] && result[1][0] && result[1][0][1]) {
+                    const topResult = result[1][0][1][0];
+                    document.getElementById('ocrResult').textContent = topResult;
+                }
+            } catch (error) {
+                console.error('OCR error:', error);
+            }
         }
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            strokes = [];
+            document.getElementById('ocrResult').textContent = '';
         }
 
         document.getElementById('clearCanvasBtn').addEventListener('click', clearCanvas);
         document.getElementById('submitDrawBtn').addEventListener('click', () => {
-            feedback.textContent = `Expected: ${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-            feedback.className = 'text-blue-600';
+            if (answered) return;
+
+            const recognizedText = document.getElementById('ocrResult').textContent.trim();
+            const correct = recognizedText.includes(currentQuestion.char);
+
+            answered = true;
+            total++;
+
+            if (correct) {
+                playCorrectSound();
+                score++;
+                feedback.textContent = `✓ Correct! You drew ${currentQuestion.char} (${currentQuestion.pinyin})`;
+                feedback.className = 'text-green-600';
+                hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                hint.className = 'text-green-600';
+            } else {
+                playWrongSound();
+                feedback.textContent = `✗ Wrong. You drew: ${recognizedText || '(nothing recognized)'}. The answer was: ${currentQuestion.char}`;
+                feedback.className = 'text-red-600';
+                hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+                hint.className = 'text-red-600';
+            }
+
+            updateStats();
+
             setTimeout(() => {
                 clearCanvas();
                 generateQuestion();
@@ -375,9 +458,6 @@
             } else if (mode === 'char-to-pinyin-mc') {
                 questionDisplay.innerHTML = `<div class="text-8xl my-10 text-center">${currentQuestion.char}</div>`;
                 generatePinyinOptions();
-            } else if (mode === 'char-to-meaning') {
-                questionDisplay.innerHTML = `<div class="text-8xl my-10 text-center">${currentQuestion.char}</div>`;
-                generateMeaningOptions();
             } else if (mode === 'char-to-meaning-type') {
                 questionDisplay.innerHTML = `<div class="text-8xl my-10 text-center">${currentQuestion.char}</div>`;
                 generateFuzzyMeaningOptions();
@@ -392,6 +472,17 @@
                 questionDisplay.innerHTML = `<div class="text-2xl my-4 text-center text-gray-600">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
                 handwritingMode.classList.remove('hidden');
                 initHandwriting();
+
+                // Play audio when question loads
+                setTimeout(() => {
+                    const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+                    const audioKey = pinyinToAudioKey(firstPinyin);
+                    if (audioKey) {
+                        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+                        const audio = new Audio(audioUrl);
+                        audio.play().catch(e => console.log('Audio play failed:', e));
+                    }
+                }, 100);
             } else if (mode === 'draw-char') {
                 questionDisplay.innerHTML = `<div class="text-3xl my-10 text-center">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
                 drawCharMode.classList.remove('hidden');
@@ -415,18 +506,14 @@
                 delayBetweenStrokes: 200
             });
 
-            document.getElementById('animateBtn').onclick = () => writer.animateCharacter();
-            document.getElementById('quizBtn').onclick = () => {
-                writer.quiz({
-                    onComplete: () => {
-                        feedback.textContent = '✓ Great job!';
-                        feedback.className = 'text-green-600';
-                        setTimeout(generateQuestion, 1500);
-                    }
-                });
-            };
-            document.getElementById('showOutlineBtn').onclick = () => writer.showOutline();
-            document.getElementById('hideOutlineBtn').onclick = () => writer.hideOutline();
+            // Automatically animate and advance to next question
+            writer.animateCharacter({
+                onComplete: () => {
+                    setTimeout(() => {
+                        generateQuestion();
+                    }, 1000);
+                }
+            });
         }
 
         function initHandwriting() {
@@ -438,19 +525,22 @@
                 height: 300,
                 padding: 5,
                 showOutline: false,
-                showCharacter: false
+                showCharacter: false,
+                strokeAnimationSpeed: 1,
+                delayBetweenStrokes: 50
             });
 
             document.getElementById('hwShowBtn').onclick = () => {
                 writer.showCharacter();
                 writer.showOutline();
+                writer.animateCharacter();
 
                 feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
                 feedback.className = 'text-blue-600';
+            };
 
-                setTimeout(() => {
-                    generateQuestion();
-                }, 2000);
+            document.getElementById('hwNextBtn').onclick = () => {
+                generateQuestion();
             };
         }
 
@@ -771,8 +861,6 @@
 
             if (mode === 'char-to-pinyin-mc') {
                 correct = answer === currentQuestion.pinyin;
-            } else if (mode === 'char-to-meaning') {
-                correct = answer === currentQuestion.meaning;
             } else if (mode === 'pinyin-to-char') {
                 correct = answer === currentQuestion.char;
             } else if (mode === 'meaning-to-char') {
@@ -809,7 +897,9 @@
                 document.querySelectorAll('#options button').forEach(btn => {
                     if (btn.textContent === answer) {
                         btn.classList.add('bg-red-500', 'text-white');
-                    } else if (btn.textContent === currentQuestion.char) {
+                    } else if ((mode === 'pinyin-to-char' || mode === 'meaning-to-char') && btn.textContent === currentQuestion.char) {
+                        btn.classList.add('bg-green-500', 'text-white');
+                    } else if (mode === 'char-to-pinyin-mc' && btn.textContent === currentQuestion.pinyin) {
                         btn.classList.add('bg-green-500', 'text-white');
                     }
                     btn.disabled = true;
