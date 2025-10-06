@@ -5,244 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
     <title>Character Sheet 4 Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/utils.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .quiz-container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 700px;
-            width: 100%;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-        }
-
-        .mode-selector {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .mode-btn {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 14px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mode-btn:hover {
-            background: #e9ecef;
-        }
-
-        .mode-btn.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-
-        .character-display {
-            text-align: center;
-            font-size: 120px;
-            margin: 40px 0;
-            font-weight: normal;
-            color: #333;
-        }
-
-        .input-section {
-            text-align: center;
-            margin: 30px 0;
-        }
-
-        .answer-input {
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .check-btn {
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .check-btn:hover {
-            background: #218838;
-        }
-
-        .options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 30px 0;
-        }
-
-        .option-btn {
-            padding: 20px;
-            font-size: 18px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .option-btn:hover {
-            background: #f8f9fa;
-            border-color: #007bff;
-        }
-
-        .option-btn.selected {
-            border-color: #007bff;
-            border-width: 3px;
-            background: #e3f2fd;
-        }
-
-        .option-btn.correct {
-            background: #d4edda;
-            border-color: #28a745;
-        }
-
-        .option-btn.incorrect {
-            background: #f8d7da;
-            border-color: #dc3545;
-        }
-
-        .feedback {
-            text-align: center;
-            margin: 20px 0;
-            font-size: 18px;
-            min-height: 30px;
-        }
-
-        .feedback.correct {
-            color: #28a745;
-        }
-
-        .feedback.incorrect {
-            color: #dc3545;
-        }
-
-        .next-button {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .next-button:hover {
-            background: #5a6268;
-        }
-
-        .stats {
-            text-align: center;
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-
-        .stats-text {
-            font-size: 16px;
-            color: #666;
-        }
-
-        .hint {
-            text-align: center;
-            color: #999;
-            font-size: 24px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        .home-btn {
-            position: fixed;
-            top: 16px;
-            left: 16px;
-            padding: 8px 12px;
-            background: white;
-            color: #374151;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
-        }
-
-        .home-btn:hover {
-            background: #f3f4f6;
-        }
     </style>
 </head>
-<body>
-    <a href="home.html" class="home-btn">← Home</a>
-    <div class="quiz-container">
-        <h1>汉字练习-4 Quiz (Radicals)</h1>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">汉字练习-4 Quiz (Radicals)</h1>
 
-        <div class="mode-selector">
-            <button class="mode-btn active" data-mode="char-to-pinyin">Char → Pinyin (Type)</button>
-            <button class="mode-btn" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
-            <button class="mode-btn" data-mode="audio-to-pinyin">🔊 Audio → Pinyin</button>
-            <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Character</button>
-            <button class="mode-btn" data-mode="char-to-meaning">Char → Meaning</button>
-            <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning (Fuzzy)</button>
-            <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
-            <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
-            <button class="mode-btn" data-mode="handwriting">Handwriting</button>
-            <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white transition" data-mode="char-to-pinyin">Char → Pinyin (Type)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">🔊 Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="pinyin-to-char">Pinyin → Character</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning">Char → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning (Fuzzy)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">Meaning → Char</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="draw-char">Draw Character</button>
         </div>
 
         <div id="questionDisplay"></div>
 
-        <div class="hint" id="hint"></div>
+        <div class="text-center text-sm my-4 min-h-[20px] text-gray-600" id="hint"></div>
 
         <div id="typeMode">
-            <input type="text" id="answerInput" class="answer-input" placeholder="Type your answer...">
-            <button id="checkBtn" class="check-btn">Check Answer</button>
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
         </div>
 
         <div id="choiceMode" style="display: none;">
-            <div class="options" id="options"></div>
+            <div class="grid grid-cols-2 gap-3" id="options"></div>
         </div>
 
         <div id="strokeOrderMode" style="display: none;">
@@ -278,15 +76,12 @@
             <div id="drawFeedback" style="text-align: center; margin: 10px 0; font-size: 16px; font-weight: bold;"></div>
         </div>
 
-        <div class="feedback" id="feedback"></div>
+        <div class="text-center font-semibold my-4 min-h-[24px]" id="feedback"></div>
 
-        <button class="next-button" id="nextBtn">Next Question →</button>
+        <button class="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition mt-4" id="nextBtn">Next Question →</button>
 
-        <div class="stats">
-            <div class="stats-text">
-                Score: <strong id="score">0</strong> / <strong id="total">0</strong>
-                (<span id="percentage">0</span>%)
-            </div>
+        <div class="flex justify-between text-sm text-gray-600 pt-4 mt-4 border-t border-gray-200">
+            <div>Score: <span class="font-semibold" id="score">0</span>/<span class="font-semibold" id="total">0</span> <span class="ml-2">(<span class="font-semibold" id="percentage">0</span>%)</span></div>
         </div>
     </div>
 
@@ -442,7 +237,7 @@
             answerInput.value = '';
 
             if (mode === 'char-to-pinyin') {
-                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
+                questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
                 answerInput.placeholder = 'e.g., mǎ or ma3';
                 typeMode.style.display = 'block';
                 choiceMode.style.display = 'none';
@@ -468,7 +263,7 @@
                     playAudio();
                 }, 200);
             } else if (mode === 'char-to-pinyin-mc') {
-                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
+                questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
                 generatePinyinOptions();
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'block';
@@ -484,7 +279,7 @@
                 handwritingMode.style.display = 'none';
                 drawCharMode.style.display = 'none';
             } else if (mode === 'char-to-meaning') {
-                questionDisplay.innerHTML = `<div class="character-display">${currentQuestion.char}</div>`;
+                questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
                 generateMeaningOptions();
                 typeMode.style.display = 'none';
                 choiceMode.style.display = 'block';

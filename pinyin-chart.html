@@ -4,185 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pinyin Chart with Audio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/utils.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            padding: 10px;
-            background: #f5f5f5;
-            overflow-x: auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 15px;
-            color: #333;
-            font-size: 1.5rem;
-        }
-
-        .container {
-            width: 100%;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-
-        .tone-selector {
-            text-align: center;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 6px;
-        }
-
-        .tone-selector button {
-            margin: 2px;
-            padding: 6px 12px;
-            font-size: 13px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .tone-selector button:hover {
-            background: #e9ecef;
-        }
-
-        .tone-selector button.active {
-            background: #007bff;
+        .tone-btn.active {
+            background-color: #3b82f6;
             color: white;
-            border-color: #007bff;
+            border-color: #3b82f6;
         }
-
-        .home-btn {
-            position: fixed;
-            top: 16px;
-            left: 16px;
-            padding: 8px 12px;
-            background: white;
-            color: #374151;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
-            z-index: 1000;
-        }
-
-        .home-btn:hover {
-            background: #f3f4f6;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 4px 2px;
-            text-align: center;
-            min-width: 35px;
-            font-size: 13px;
-        }
-
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        th:first-child {
-            background: #e9ecef;
-            left: 0;
-            z-index: 11;
-        }
-
-        td:first-child {
-            background: #f8f9fa;
-            font-weight: 600;
-            position: sticky;
-            left: 0;
-            z-index: 5;
-        }
-
-        .syllable {
-            cursor: pointer;
-            padding: 2px;
-            border-radius: 3px;
-            transition: all 0.2s;
-            user-select: none;
-            display: inline-block;
-            font-size: 12px;
-        }
-
-        .syllable:hover {
-            background: #e3f2fd;
-            transform: scale(1.05);
-        }
-
-        .syllable:active {
-            background: #bbdefb;
-        }
-
         .syllable.playing {
-            background: #4caf50;
-            color: white;
-        }
-
-        .empty {
-            color: #ccc;
-        }
-
-        .info {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 14px;
+            background-color: #fef08a !important;
+            font-weight: bold;
         }
     </style>
 </head>
-<body>
-    <a href="home.html" class="home-btn">← Home</a>
-    <div class="container">
-        <h1>汉语拼音表 Pinyin Chart</h1>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">汉语拼音表 Pinyin Chart</h1>
 
-        <div class="tone-selector">
-            <button class="tone-btn active" data-tone="1">First Tone (ā)</button>
-            <button class="tone-btn" data-tone="2">Second Tone (á)</button>
-            <button class="tone-btn" data-tone="3">Third Tone (ǎ)</button>
-            <button class="tone-btn" data-tone="4">Fourth Tone (à)</button>
-            <button class="tone-btn" data-tone="5">Neutral Tone (a)</button>
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="tone-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active" data-tone="1">First Tone (ā)</button>
+            <button class="tone-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-tone="2">Second Tone (á)</button>
+            <button class="tone-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-tone="3">Third Tone (ǎ)</button>
+            <button class="tone-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-tone="4">Fourth Tone (à)</button>
+            <button class="tone-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-tone="5">Neutral Tone (a)</button>
         </div>
 
-        <table id="pinyinTable">
-            <thead>
-                <tr>
-                    <th>Initial \ Final</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
+        <div class="overflow-x-auto mb-4">
+            <table id="pinyinTable" class="w-full border-collapse text-sm">
+                <thead>
+                    <tr>
+                        <th class="border border-gray-300 bg-gray-50 px-2 py-2">Initial \ Final</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
 
-        <div class="info">
+        <div class="text-center text-gray-600 text-sm mt-4">
             Click any pinyin syllable to hear its pronunciation. Select different tones above.
         </div>
     </div>
@@ -292,12 +154,13 @@
             const tbody = table.querySelector('tbody');
 
             // Clear existing content
-            thead.innerHTML = '<th>Initial \\ Final</th>';
+            thead.innerHTML = '<th class="border border-gray-300 bg-gray-50 px-2 py-2">Initial \\ Final</th>';
             tbody.innerHTML = '';
 
             // Add finals as column headers
             finals.forEach(final => {
                 const th = document.createElement('th');
+                th.className = 'border border-gray-300 bg-gray-50 px-2 py-2';
                 th.textContent = final;
                 thead.appendChild(th);
             });
@@ -306,21 +169,23 @@
             initials.forEach(initial => {
                 const tr = document.createElement('tr');
                 const th = document.createElement('td');
+                th.className = 'border border-gray-300 bg-gray-50 px-2 py-2 font-semibold';
                 th.textContent = initial || '∅';
                 tr.appendChild(th);
 
                 finals.forEach(final => {
                     const td = document.createElement('td');
+                    td.className = 'border border-gray-300 px-2 py-2 text-center';
 
                     if (validCombinations[initial] && validCombinations[initial].includes(final)) {
                         const pinyin = normalizePinyin(initial, final);
                         const span = document.createElement('span');
-                        span.className = 'syllable';
+                        span.className = 'syllable cursor-pointer text-blue-600 hover:bg-blue-100 px-2 py-1 rounded inline-block transition';
                         span.textContent = pinyin;
                         span.onclick = () => playPinyin(initial, final, span);
                         td.appendChild(span);
                     } else {
-                        td.className = 'empty';
+                        td.classList.add('text-gray-300');
                         td.textContent = '—';
                     }
 
