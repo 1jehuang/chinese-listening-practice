@@ -267,18 +267,17 @@
         </div>
 
         <div id="drawCharMode" style="display: none;">
+            <div style="text-align: center; font-size: 18px; margin: 20px 0; color: #666;">
+                Draw the character:
+            </div>
             <div style="text-align: center; margin: 20px 0;">
                 <canvas id="drawCanvas" width="300" height="300" style="border: 3px solid #007bff; border-radius: 8px; background: white; cursor: crosshair; touch-action: none;"></canvas>
             </div>
-            <div style="text-align: center; margin: 10px 0; color: #666; font-size: 14px;">
-                <div id="ocrResult" style="font-size: 48px; min-height: 60px; color: #007bff;"></div>
-                <div style="margin-top: 5px;">Draw and see real-time recognition above</div>
+            <div style="text-align: center; margin: 15px 0;">
+                <button id="clearCanvas" style="padding: 12px 24px; font-size: 16px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; margin-right: 10px;">Clear</button>
+                <button id="showAnswer" style="padding: 12px 24px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">Show Answer & Next</button>
             </div>
-            <div style="text-align: center; margin: 10px 0;">
-                <button id="clearCanvas" style="padding: 10px 20px; font-size: 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Clear</button>
-                <button id="checkDrawing" style="padding: 10px 20px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Check</button>
-            </div>
-            <div id="drawFeedback" style="text-align: center; margin: 10px 0; font-size: 16px; font-weight: bold;"></div>
+            <div id="drawAnswer" style="text-align: center; margin: 20px 0; font-size: 18px; min-height: 30px;"></div>
         </div>
 
         <div class="feedback" id="feedback"></div>
@@ -955,10 +954,6 @@
             if (isDrawing && currentStroke.length > 0) {
                 strokes.push(currentStroke);
                 currentStroke = [];
-
-                // Trigger OCR after drawing stops
-                if (ocrTimeout) clearTimeout(ocrTimeout);
-                ocrTimeout = setTimeout(runOCR, 500);
             }
             isDrawing = false;
         }
@@ -967,98 +962,23 @@
             if (!ctx) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             strokes = [];
-            document.getElementById('ocrResult').textContent = '';
         }
 
-        async function runOCR() {
-            if (strokes.length === 0) return;
-
-            try {
-                // Convert strokes to format expected by handwriting.tf API
-                const data = {
-                    options: 'enable_pre_space',
-                    requests: [{
-                        writing_guide: {
-                            writing_area_width: canvas.width,
-                            writing_area_height: canvas.height
-                        },
-                        ink: strokes,
-                        language: 'zh_CN'
-                    }]
-                };
-
-                const response = await fetch('https://www.google.com.tw/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (result && result[1] && result[1][0] && result[1][0][1]) {
-                    const topResult = result[1][0][1][0];
-                    document.getElementById('ocrResult').textContent = topResult;
-                }
-            } catch (error) {
-                console.error('OCR error:', error);
-            }
-        }
-
-        async function checkDrawing() {
-            if (!ctx || answered) return;
-
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let hasDrawing = false;
-            for (let i = 3; i < pixels.data.length; i += 4) {
-                if (pixels.data[i] > 0) {
-                    hasDrawing = true;
-                    break;
-                }
-            }
-
-            if (!hasDrawing) {
-                document.getElementById('drawFeedback').textContent = 'Please draw something first!';
-                document.getElementById('drawFeedback').style.color = '#dc3545';
-                return;
-            }
-
-            const recognizedText = document.getElementById('ocrResult').textContent.trim();
-
-            // Check if the recognized character matches the current question
-            const correct = recognizedText.includes(currentQuestion.char);
-
-            answered = true;
-            total++;
-
-            if (correct) {
-                score++;
-                feedback.textContent = `✓ Correct! You drew ${currentQuestion.char} (${currentQuestion.pinyin})`;
-                feedback.className = 'feedback correct';
-                hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                hint.style.color = '#28a745';
-                document.getElementById('drawFeedback').textContent = '✓ Correct!';
-                document.getElementById('drawFeedback').style.color = '#28a745';
-            } else {
-                feedback.textContent = `✗ Wrong. You drew: ${recognizedText || '(nothing recognized)'}. The answer was: ${currentQuestion.char}`;
-                feedback.className = 'feedback incorrect';
-                hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-                hint.style.color = '#dc3545';
-                document.getElementById('drawFeedback').textContent = '✗ Try again!';
-                document.getElementById('drawFeedback').style.color = '#dc3545';
-            }
-
-            updateStats();
-
-            setTimeout(() => {
-                generateQuestion();
-            }, 2000);
-        }
+        // OCR functions removed - simplified to show answer mode
 
         // Button event listeners for draw mode
         document.getElementById('clearCanvas').addEventListener('click', clearCanvas);
-        document.getElementById('checkDrawing').addEventListener('click', checkDrawing);
+        document.getElementById('showAnswer').addEventListener('click', () => {
+            const drawAnswer = document.getElementById('drawAnswer');
+            drawAnswer.innerHTML = `<div style="font-size: 64px; margin: 10px 0;">${currentQuestion.char}</div>
+                <div style="font-size: 18px; color: #666;">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
+
+            setTimeout(() => {
+                clearCanvas();
+                generateQuestion();
+                drawAnswer.innerHTML = '';
+            }, 2000);
+        });
 
         // Start first question
         generateQuestion();
