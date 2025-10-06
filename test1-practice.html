@@ -808,7 +808,7 @@
                 }, 1000);
             } else {
                 playWrongSound();
-                feedback.textContent = `✗ Try again!`;
+                feedback.textContent = `✗ Wrong!`;
                 feedback.className = 'text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
                 hint.className = 'text-red-600';
@@ -816,10 +816,17 @@
                 document.querySelectorAll('#options button').forEach(btn => {
                     if (btn.textContent === answer) {
                         btn.classList.add('bg-red-500', 'text-white');
-                        btn.disabled = true;
-                        btn.classList.add('cursor-not-allowed');
+                    } else if (btn.textContent === currentQuestion.char) {
+                        btn.classList.add('bg-green-500', 'text-white');
                     }
+                    btn.disabled = true;
+                    btn.classList.add('cursor-not-allowed');
                 });
+
+                updateStats();
+                setTimeout(() => {
+                    generateQuestion();
+                }, 1500);
             }
         }
 
