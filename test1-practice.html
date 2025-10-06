@@ -71,10 +71,10 @@
 
         <!-- Handwriting Mode -->
         <div id="handwritingMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
             <div id="handwritingWriter" class="mx-auto my-8"></div>
-            <div class="flex gap-3 justify-center">
-                <button id="hwQuizBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✍️ Start Quiz</button>
-                <button id="hwShowBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg transition">👁️ Show Answer</button>
+            <div class="flex justify-center">
+                <button id="hwShowBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer & Next</button>
             </div>
         </div>
 
@@ -441,23 +441,16 @@
                 showCharacter: false
             });
 
-            document.getElementById('hwQuizBtn').onclick = () => {
-                writer.quiz({
-                    onComplete: () => {
-                        feedback.textContent = '✓ Perfect!';
-                        feedback.className = 'text-green-600';
-                        setTimeout(generateQuestion, 1500);
-                    },
-                    onMistake: (strokeData) => {
-                        feedback.textContent = '✗ Try again!';
-                        feedback.className = 'text-red-600';
-                    }
-                });
-            };
-
             document.getElementById('hwShowBtn').onclick = () => {
                 writer.showCharacter();
                 writer.showOutline();
+
+                feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+                feedback.className = 'text-blue-600';
+
+                setTimeout(() => {
+                    generateQuestion();
+                }, 2000);
             };
         }
 
