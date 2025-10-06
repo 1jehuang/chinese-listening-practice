@@ -3,260 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pinyin Quiz</title>
+    <title>Pinyin Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/utils.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .quiz-container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 600px;
-            width: 100%;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-        }
-
-        .audio-section {
-            text-align: center;
-            margin: 30px 0;
-        }
-
-        .play-button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 20px 40px;
-            font-size: 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .play-button:hover {
-            background: #0056b3;
-            transform: scale(1.05);
-        }
-
-        .play-button:active {
-            transform: scale(0.95);
-        }
-
-        .play-button.playing {
-            background: #28a745;
-        }
-
-        .options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 30px 0;
-        }
-
-        .option-btn {
-            padding: 20px;
-            font-size: 24px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .option-btn:hover {
-            background: #f8f9fa;
-            border-color: #007bff;
-        }
-
-        .option-btn.correct {
-            background: #d4edda;
-            border-color: #28a745;
-        }
-
-        .option-btn.incorrect {
-            background: #f8d7da;
-            border-color: #dc3545;
-        }
-
-        .option-btn.selected {
-            border-color: #007bff;
-            border-width: 3px;
-            background: #e3f2fd;
-        }
-
-        .feedback {
-            text-align: center;
-            margin: 20px 0;
-            font-size: 18px;
-            min-height: 30px;
-        }
-
-        .feedback.correct {
-            color: #28a745;
-        }
-
-        .feedback.incorrect {
-            color: #dc3545;
-        }
-
-        .next-button {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .next-button:hover {
-            background: #5a6268;
-        }
-
-        .next-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .stats {
-            text-align: center;
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-
-        .stats-text {
-            font-size: 16px;
-            color: #666;
-        }
-
-        .mode-selector {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .mode-btn {
-            margin: 0 5px;
-            padding: 10px 20px;
-            font-size: 14px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mode-btn:hover {
-            background: #e9ecef;
-        }
-
-        .mode-btn.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-
-        .home-btn {
-            position: fixed;
-            top: 16px;
-            left: 16px;
-            padding: 8px 12px;
-            background: white;
-            color: #374151;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
-        }
-
-        .home-btn:hover {
-            background: #f3f4f6;
-        }
-    </style>
 </head>
-<body>
-    <a href="home.html" class="home-btn">← Home</a>
-    <div class="quiz-container">
-        <h1>拼音练习 Pinyin Practice</h1>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
 
-        <div class="mode-selector">
-            <button class="mode-btn active" data-mode="listen">Listen & Type</button>
-            <button class="mode-btn" data-mode="choose">Multiple Choice</button>
-            <button class="mode-btn" data-mode="tone24">Tone 2 vs 4</button>
-            <button class="mode-btn" data-mode="speak">🎤 Speak</button>
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Pinyin Practice</h1>
+
+        <!-- Mode Selector -->
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="listen">Listen & Type</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="choose">Multiple Choice</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="tone24">Tone 2 vs 4</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="double">🔊🔊 Double</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="speak">🎤 Speak</button>
         </div>
 
-        <div class="audio-section">
-            <button class="play-button" id="playBtn">🔊 Play Audio</button>
+        <!-- Audio Section -->
+        <div class="text-center my-4">
+            <button id="playBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Audio</button>
         </div>
 
-        <div id="listenMode">
-            <input type="text" id="answerInput" placeholder="Type pinyin + tone (e.g., ma1, zhang4)..."
-                style="width: 100%; padding: 15px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; margin: 20px 0;">
-            <button id="checkBtn" style="width: 100%; padding: 15px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                Check Answer
+        <!-- Listen Mode -->
+        <div id="listenMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type pinyin + tone (e.g., ma1, zhang4)...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <!-- Multiple Choice Mode -->
+        <div id="chooseMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Which pinyin do you hear?</div>
+            <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Tone 2 vs 4 Mode -->
+        <div id="tone24Mode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Which tone?</div>
+            <div id="tone24Options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Speak Mode -->
+        <div id="speakMode" class="hidden text-center">
+            <div id="displayPinyin" class="text-6xl font-bold text-blue-600 my-8"></div>
+            <button id="micBtn" class="bg-red-500 hover:bg-red-600 text-white px-12 py-6 rounded-full font-semibold text-lg transition">
+                🎤 Hold to Speak
             </button>
+            <div class="text-gray-500 text-sm mt-4">Hold the button and say the pinyin syllable</div>
+            <div id="recognizedText" class="text-blue-600 font-medium mt-4 min-h-[25px]"></div>
         </div>
 
-        <div id="chooseMode" style="display: none;">
-            <div style="text-align: center; font-size: 16px; margin-bottom: 20px; color: #666;">Which pinyin do you hear?</div>
-            <div class="options" id="options"></div>
+        <!-- Double Mode -->
+        <div id="doubleMode" class="hidden space-y-4">
+            <div class="text-center text-gray-600 mb-4">Type both syllables with a space (e.g., ma1 zhang4)</div>
+            <input type="text" id="doubleAnswerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type both syllables (e.g., ma1 zhang4)...">
+            <button id="doubleCheckBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
         </div>
 
-        <div id="tone24Mode" style="display: none;">
-            <div style="text-align: center; font-size: 16px; margin-bottom: 20px; color: #666;">Which tone?</div>
-            <div class="options" id="tone24Options"></div>
-        </div>
+        <!-- Feedback -->
+        <div id="feedback" class="text-center font-semibold my-4 min-h-[24px]"></div>
 
-        <div id="speakMode" style="display: none;">
-            <div style="text-align: center; font-size: 18px; margin: 30px 0; color: #333;">
-                <div style="font-size: 48px; margin: 20px 0;" id="displayPinyin"></div>
-                <button id="micBtn" style="padding: 30px 50px; font-size: 20px; background: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; transition: all 0.2s;">
-                    🎤 Hold to Speak
-                </button>
-                <div style="margin-top: 20px; color: #666; font-size: 14px;">
-                    Hold the button and say the pinyin syllable
-                </div>
-                <div id="recognizedText" style="margin-top: 15px; font-size: 16px; color: #007bff; min-height: 25px;"></div>
-            </div>
-        </div>
+        <!-- Next Button -->
+        <button id="nextBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition mt-4">
+            Next Question →
+        </button>
 
-        <div class="feedback" id="feedback"></div>
-
-        <button class="next-button" id="nextBtn">Next Question →</button>
-
-        <div class="stats">
-            <div class="stats-text">
-                Score: <strong id="score">0</strong> / <strong id="total">0</strong>
-                (<span id="percentage">0</span>%)
-            </div>
+        <!-- Stats -->
+        <div class="flex justify-between text-sm text-gray-600 pt-4 mt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="percentage" class="font-semibold">0%</span></span>
         </div>
     </div>
 
@@ -330,6 +148,8 @@
 
         let currentPinyin = '';
         let currentTone = 1;
+        let currentPinyin2 = '';
+        let currentTone2 = 1;
         let score = 0;
         let total = 0;
         let answered = false;
@@ -347,6 +167,9 @@
         const chooseMode = document.getElementById('chooseMode');
         const tone24Mode = document.getElementById('tone24Mode');
         const speakMode = document.getElementById('speakMode');
+        const doubleMode = document.getElementById('doubleMode');
+        const doubleAnswerInput = document.getElementById('doubleAnswerInput');
+        const doubleCheckBtn = document.getElementById('doubleCheckBtn');
         const micBtn = document.getElementById('micBtn');
         const displayPinyin = document.getElementById('displayPinyin');
         const recognizedText = document.getElementById('recognizedText');
@@ -361,10 +184,22 @@
                 currentTone = Math.floor(Math.random() * 4) + 1;
             }
 
+            // Generate second syllable for double mode
+            if (mode === 'double') {
+                currentPinyin2 = commonSyllables[Math.floor(Math.random() * commonSyllables.length)];
+                currentTone2 = Math.floor(Math.random() * 4) + 1;
+                // Make sure they're different
+                while (currentPinyin2 === currentPinyin && currentTone2 === currentTone) {
+                    currentPinyin2 = commonSyllables[Math.floor(Math.random() * commonSyllables.length)];
+                    currentTone2 = Math.floor(Math.random() * 4) + 1;
+                }
+            }
+
             answered = false;
             feedback.textContent = '';
             feedback.className = 'feedback';
             answerInput.value = '';
+            if (doubleAnswerInput) doubleAnswerInput.value = '';
 
             if (mode === 'choose') {
                 generateOptions();
@@ -373,6 +208,8 @@
             } else if (mode === 'speak') {
                 displayPinyin.textContent = addToneMarks(currentPinyin, currentTone);
                 recognizedText.textContent = '';
+            } else if (mode === 'double') {
+                setTimeout(() => doubleAnswerInput.focus(), 100);
             } else {
                 // Focus input in listen mode
                 setTimeout(() => answerInput.focus(), 100);
@@ -387,7 +224,7 @@
 
             tones.forEach((tone, index) => {
                 const btn = document.createElement('button');
-                btn.className = 'option-btn';
+                btn.className = 'option-btn px-4 py-3 text-3xl bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
                 btn.textContent = addToneMarks(currentPinyin, tone);
                 btn.dataset.tone = tone;
                 btn.dataset.index = index;
@@ -409,7 +246,7 @@
 
             tones.forEach((tone, index) => {
                 const btn = document.createElement('button');
-                btn.className = 'option-btn';
+                btn.className = 'option-btn px-4 py-3 text-3xl bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
                 btn.textContent = addToneMarks(currentPinyin, tone);
                 btn.dataset.tone = tone;
                 btn.dataset.index = index;
@@ -426,9 +263,11 @@
             const buttons = document.querySelectorAll('.option-btn');
             buttons.forEach((btn, idx) => {
                 if (idx === selectedOptionIndex) {
-                    btn.classList.add('selected');
+                    btn.classList.add('bg-blue-100', 'border-blue-500');
+                    btn.classList.remove('bg-gray-100');
                 } else {
-                    btn.classList.remove('selected');
+                    btn.classList.remove('bg-blue-100', 'border-blue-500');
+                    btn.classList.add('bg-gray-100');
                 }
             });
         }
@@ -450,17 +289,47 @@
 
         function playAudio() {
             playBtn.classList.add('playing');
-            const audioUrl = `https://www.purpleculture.net/mp3/${currentPinyin}${currentTone}.mp3`;
-            const audio = new Audio(audioUrl);
 
-            audio.play().catch(err => {
-                console.error('Audio playback failed:', err);
-                playBtn.classList.remove('playing');
-            });
+            if (mode === 'double') {
+                // Play two syllables in sequence
+                const audioUrl1 = `https://www.purpleculture.net/mp3/${currentPinyin}${currentTone}.mp3`;
+                const audioUrl2 = `https://www.purpleculture.net/mp3/${currentPinyin2}${currentTone2}.mp3`;
 
-            audio.onended = () => {
-                playBtn.classList.remove('playing');
-            };
+                const audio1 = new Audio(audioUrl1);
+
+                audio1.play().catch(err => {
+                    console.error('Audio playback failed:', err);
+                    playBtn.classList.remove('playing');
+                });
+
+                audio1.onended = () => {
+                    // Play second syllable after first ends
+                    setTimeout(() => {
+                        const audio2 = new Audio(audioUrl2);
+                        audio2.play().catch(err => {
+                            console.error('Audio playback failed:', err);
+                            playBtn.classList.remove('playing');
+                        });
+
+                        audio2.onended = () => {
+                            playBtn.classList.remove('playing');
+                        };
+                    }, 300); // 300ms pause between syllables
+                };
+            } else {
+                // Single syllable playback
+                const audioUrl = `https://www.purpleculture.net/mp3/${currentPinyin}${currentTone}.mp3`;
+                const audio = new Audio(audioUrl);
+
+                audio.play().catch(err => {
+                    console.error('Audio playback failed:', err);
+                    playBtn.classList.remove('playing');
+                });
+
+                audio.onended = () => {
+                    playBtn.classList.remove('playing');
+                };
+            }
         }
 
         function checkAnswer(answer, btnElement = null) {
@@ -477,7 +346,7 @@
                     score++;
                 }
                 feedback.textContent = `✓ Correct! (${currentPinyin}${currentTone})`;
-                feedback.className = 'feedback correct';
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
 
                 // Auto-advance to next question after correct answer
                 setTimeout(() => {
@@ -490,7 +359,7 @@
                     total++;
                 }
                 feedback.textContent = `✗ Wrong. The answer is: ${currentPinyin}${currentTone}. Try again!`;
-                feedback.className = 'feedback incorrect';
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
                 // Clear immediately without delay
                 setTimeout(() => {
                     answerInput.value = '';
@@ -513,8 +382,9 @@
             if (correct) {
                 score++;
                 feedback.textContent = `✓ Correct! (${correctPinyinWithTone})`;
-                feedback.className = 'feedback correct';
-                btnElement.classList.add('correct');
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
+                btnElement.classList.add('bg-green-500', 'text-white');
+                btnElement.classList.remove('bg-gray-100', 'hover:bg-gray-200');
 
                 // Auto-advance to next question
                 setTimeout(() => {
@@ -523,11 +393,13 @@
                 }, 800);
             } else {
                 feedback.textContent = `✗ Wrong. The answer was: ${correctPinyinWithTone}`;
-                feedback.className = 'feedback incorrect';
-                btnElement.classList.add('incorrect');
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
+                btnElement.classList.add('bg-red-500', 'text-white');
+                btnElement.classList.remove('bg-gray-100', 'hover:bg-gray-200');
                 document.querySelectorAll('.option-btn').forEach(btn => {
                     if (parseInt(btn.dataset.tone) === currentTone) {
-                        btn.classList.add('correct');
+                        btn.classList.add('bg-green-500', 'text-white');
+                        btn.classList.remove('bg-gray-100', 'hover:bg-gray-200');
                     }
                 });
 
@@ -544,7 +416,7 @@
 
             document.querySelectorAll('.option-btn').forEach(btn => {
                 btn.disabled = true;
-                btn.style.cursor = 'not-allowed';
+                btn.classList.add('cursor-not-allowed');
             });
         }
 
@@ -553,6 +425,67 @@
             document.getElementById('total').textContent = total;
             const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
             document.getElementById('percentage').textContent = percentage;
+        }
+
+        function checkDoubleAnswer(answer) {
+            if (!answer.trim()) return;
+
+            // Parse input like "ma1 zhang4" or "ma1,zhang4"
+            const parts = answer.toLowerCase().trim().split(/[\s,]+/);
+
+            if (parts.length !== 2) {
+                feedback.textContent = '⚠ Please type two syllables separated by a space';
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-yellow-600';
+                return;
+            }
+
+            const match1 = parts[0].match(/^([a-z]+)([1-4])$/);
+            const match2 = parts[1].match(/^([a-z]+)([1-4])$/);
+
+            const correct1 = match1 && match1[1] === currentPinyin && parseInt(match1[2]) === currentTone;
+            const correct2 = match2 && match2[1] === currentPinyin2 && parseInt(match2[2]) === currentTone2;
+            const correct = correct1 && correct2;
+
+            if (correct) {
+                if (!answered) {
+                    answered = true;
+                    total++;
+                    score++;
+                }
+                feedback.textContent = `✓ Correct! (${currentPinyin}${currentTone} ${currentPinyin2}${currentTone2})`;
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
+
+                // Auto-advance to next question after correct answer
+                setTimeout(() => {
+                    generateQuestion();
+                    playAudio();
+                }, 800);
+            } else {
+                if (!answered) {
+                    answered = true;
+                    total++;
+                }
+
+                let errorMsg = '✗ Wrong. ';
+                if (!correct1 && !correct2) {
+                    errorMsg += `Both wrong. `;
+                } else if (!correct1) {
+                    errorMsg += `First syllable wrong. `;
+                } else {
+                    errorMsg += `Second syllable wrong. `;
+                }
+                errorMsg += `Answer: ${currentPinyin}${currentTone} ${currentPinyin2}${currentTone2}`;
+
+                feedback.textContent = errorMsg;
+                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
+
+                setTimeout(() => {
+                    doubleAnswerInput.value = '';
+                    doubleAnswerInput.focus();
+                }, 0);
+            }
+
+            updateStats();
         }
 
         playBtn.addEventListener('click', playAudio);
@@ -570,6 +503,21 @@
                 e.preventDefault();
                 checkAnswer(answerInput.value);
             } else if (e.key === ' ') {
+                e.preventDefault();
+                playAudio();
+            }
+        });
+
+        doubleCheckBtn.addEventListener('click', () => {
+            checkDoubleAnswer(doubleAnswerInput.value);
+        });
+
+        doubleAnswerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkDoubleAnswer(doubleAnswerInput.value);
+            } else if (e.key === ' ' && mode === 'double' && doubleAnswerInput.value.trim() === '') {
+                // Only replay if input is empty (spacebar at start)
                 e.preventDefault();
                 playAudio();
             }
@@ -799,30 +747,45 @@
         // Mode selector
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                // Remove active state from all buttons
+                document.querySelectorAll('.mode-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                });
+
+                // Add active state to clicked button
+                btn.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+
                 mode = btn.dataset.mode;
 
                 // Hide all modes
-                listenMode.style.display = 'none';
-                chooseMode.style.display = 'none';
-                tone24Mode.style.display = 'none';
-                speakMode.style.display = 'none';
+                listenMode.classList.add('hidden');
+                chooseMode.classList.add('hidden');
+                tone24Mode.classList.add('hidden');
+                speakMode.classList.add('hidden');
+                doubleMode.classList.add('hidden');
 
                 // Show selected mode
                 if (mode === 'listen') {
-                    listenMode.style.display = 'block';
+                    listenMode.classList.remove('hidden');
                 } else if (mode === 'choose') {
-                    chooseMode.style.display = 'block';
+                    chooseMode.classList.remove('hidden');
                 } else if (mode === 'tone24') {
-                    tone24Mode.style.display = 'block';
+                    tone24Mode.classList.remove('hidden');
                 } else if (mode === 'speak') {
-                    speakMode.style.display = 'block';
+                    speakMode.classList.remove('hidden');
+                } else if (mode === 'double') {
+                    doubleMode.classList.remove('hidden');
                 }
 
                 generateQuestion();
             });
         });
+
+        // Initialize first mode button as active
+        const firstModeBtn = document.querySelector('.mode-btn[data-mode="listen"]');
+        if (firstModeBtn) {
+            firstModeBtn.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+        }
 
         // Start first question
         generateQuestion();

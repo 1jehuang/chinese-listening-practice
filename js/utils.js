@@ -52,21 +52,31 @@ function fuzzyMatch(input, target) {
 // Convert pinyin with tone marks to audio key format
 function pinyinToAudioKey(pinyin) {
     const toneMap = {
-        'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
-        'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
-        'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
-        'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
-        'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
-        'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
-        'ü': 'v'
+        'ā': ['a', '1'], 'á': ['a', '2'], 'ǎ': ['a', '3'], 'à': ['a', '4'],
+        'ē': ['e', '1'], 'é': ['e', '2'], 'ě': ['e', '3'], 'è': ['e', '4'],
+        'ī': ['i', '1'], 'í': ['i', '2'], 'ǐ': ['i', '3'], 'ì': ['i', '4'],
+        'ō': ['o', '1'], 'ó': ['o', '2'], 'ǒ': ['o', '3'], 'ò': ['o', '4'],
+        'ū': ['u', '1'], 'ú': ['u', '2'], 'ǔ': ['u', '3'], 'ù': ['u', '4'],
+        'ǖ': ['v', '1'], 'ǘ': ['v', '2'], 'ǚ': ['v', '3'], 'ǜ': ['v', '4'],
+        'ü': ['v', '']
     };
 
     let result = pinyin.toLowerCase();
-    for (const [marked, numbered] of Object.entries(toneMap)) {
-        result = result.replace(marked, numbered);
+    let toneNumber = '';
+
+    // Find and extract tone, replace marked vowel with base vowel
+    for (const [marked, [base, tone]] of Object.entries(toneMap)) {
+        if (result.includes(marked)) {
+            result = result.replace(marked, base);
+            toneNumber = tone;
+            break;
+        }
     }
 
-    if (!/[1-4]/.test(result)) {
+    // Add tone number at the end
+    if (toneNumber) {
+        result += toneNumber;
+    } else if (!/[1-4]/.test(result)) {
         result += '5';
     }
 
