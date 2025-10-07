@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
     <style>
     </style>
 </head>
@@ -503,7 +504,7 @@
                         answered = true;
                         total++;
                     }
-                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
+                    feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
                     feedback.className = 'feedback incorrect';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.style.color = '#dc3545';

@@ -983,8 +983,9 @@
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
                     setTimeout(() => {
-                        generateQuestion();
-                    }, 1500);
+                        answerInput.value = '';
+                        answerInput.focus();
+                    }, 0);
                     updateStats();
                 }
             }
