@@ -22,7 +22,8 @@
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="pinyin-to-char">Pinyin → Char</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning">Char → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning">Char → Meaning (MC)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning (Fuzzy)</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">Meaning → Char</button>
         </div>
 
@@ -46,6 +47,12 @@
         <!-- Choice Mode (for future expansion) -->
         <div id="choiceMode" class="hidden">
             <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Fuzzy Mode -->
+        <div id="fuzzyMode" class="hidden space-y-4">
+            <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
         </div>
 
         <!-- Stroke Order Mode (for future expansion) -->

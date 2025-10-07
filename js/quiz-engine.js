@@ -14,7 +14,7 @@ let config = {};
 
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint;
-let typeMode, choiceMode, strokeOrderMode, handwritingMode, drawCharMode;
+let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode;
 let audioSection;
 
 // =============================================================================
@@ -233,6 +233,7 @@ function generateQuestion() {
     // Hide all mode containers
     typeMode.style.display = 'none';
     if (choiceMode) choiceMode.style.display = 'none';
+    if (fuzzyMode) fuzzyMode.style.display = 'none';
     if (strokeOrderMode) strokeOrderMode.style.display = 'none';
     if (handwritingMode) handwritingMode.style.display = 'none';
     if (drawCharMode) drawCharMode.style.display = 'none';
@@ -261,6 +262,10 @@ function generateQuestion() {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generateMeaningOptions();
         choiceMode.style.display = 'block';
+    } else if (mode === 'char-to-meaning-type' && fuzzyMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        generateFuzzyMeaningOptions();
+        fuzzyMode.style.display = 'block';
     } else if (mode === 'meaning-to-char' && choiceMode) {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
         generateCharOptions();
@@ -501,6 +506,115 @@ function generateMeaningOptions() {
     });
 }
 
+function generateFuzzyMeaningOptions() {
+    const options = document.getElementById('fuzzyOptions');
+    if (!options || !fuzzyInput) return;
+
+    options.innerHTML = '';
+    fuzzyInput.value = '';
+
+    const wrongOptions = [];
+    while (wrongOptions.length < 3) {
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
+            wrongOptions.push(random.meaning);
+        }
+    }
+
+    const allOptions = [...wrongOptions, currentQuestion.meaning];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.meaning = option;
+        btn.onclick = () => checkFuzzyAnswer(option);
+        options.appendChild(btn);
+    });
+
+    // Fuzzy matching on input
+    fuzzyInput.oninput = () => {
+        const input = fuzzyInput.value.trim().toLowerCase();
+        if (!input) {
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+            return;
+        }
+
+        let bestMatch = null;
+        let bestScore = -1;
+
+        allOptions.forEach((option, index) => {
+            const score = fuzzyMatch(input, option.toLowerCase());
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = index;
+            }
+        });
+
+        document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
+            if (index === bestMatch) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-blue-200', 'border-blue-500');
+            } else {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            }
+        });
+    };
+
+    // Enter key to select highlighted option
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            if (selected) {
+                selected.click();
+            }
+        }
+    };
+
+    fuzzyInput.focus();
+}
+
+function checkFuzzyAnswer(answer) {
+    if (answered) return;
+    answered = true;
+    total++;
+
+    const correct = answer === currentQuestion.meaning;
+
+    // Play audio for the character
+    const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+    if (window.playPinyinAudio) {
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+    }
+
+    if (correct) {
+        playCorrectSound();
+        score++;
+        feedback.textContent = `✓ Correct!`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        updateStats();
+        setTimeout(() => generateQuestion(), 1500);
+    } else {
+        playWrongSound();
+        feedback.textContent = `✗ Wrong! Correct: ${currentQuestion.meaning}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        updateStats();
+        setTimeout(() => {
+            feedback.textContent = '';
+            answered = false;
+            fuzzyInput.value = '';
+            fuzzyInput.focus();
+        }, 1500);
+    }
+}
+
 function checkMultipleChoice(answer) {
     if (answered) return;
 
@@ -574,6 +688,8 @@ function initQuiz(charactersData, userConfig = {}) {
     hint = document.getElementById('hint');
     typeMode = document.getElementById('typeMode');
     choiceMode = document.getElementById('choiceMode');
+    fuzzyMode = document.getElementById('fuzzyMode');
+    fuzzyInput = document.getElementById('fuzzyInput');
     strokeOrderMode = document.getElementById('strokeOrderMode');
     handwritingMode = document.getElementById('handwritingMode');
     drawCharMode = document.getElementById('drawCharMode');
