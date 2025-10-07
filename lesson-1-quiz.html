@@ -374,12 +374,7 @@
                 audioSection.classList.remove('hidden');
                 document.getElementById('playAudioBtn').onclick = () => {
                     const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-                    const audioKey = pinyinToAudioKey(firstPinyin);
-                    if (audioKey) {
-                        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                        const audio = new Audio(audioUrl);
-                        audio.play().catch(e => console.log('Audio play failed:', e));
-                    }
+                    playPinyinAudio(firstPinyin);
                 };
                 answerInput.focus();
             } else if (mode === 'audio-to-pinyin') {
@@ -392,12 +387,7 @@
 
                     window.currentAudioPlayFunc = () => {
                         const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-                        const audioKey = pinyinToAudioKey(firstPinyin);
-                        if (audioKey) {
-                            const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                            const audio = new Audio(audioUrl);
-                            audio.play().catch(e => console.log('Audio play failed:', e));
-                        }
+                        playPinyinAudio(firstPinyin);
                     };
 
                     if (playBtn) {
@@ -431,12 +421,7 @@
                 // Play audio when question loads
                 setTimeout(() => {
                     const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-                    const audioKey = pinyinToAudioKey(firstPinyin);
-                    if (audioKey) {
-                        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                        const audio = new Audio(audioUrl);
-                        audio.play().catch(e => console.log('Audio play failed:', e));
-                    }
+                    playPinyinAudio(firstPinyin);
                 }, 100);
             } else if (mode === 'draw-char') {
                 questionDisplay.innerHTML = `<div class="text-3xl my-10 text-center">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
@@ -655,13 +640,7 @@
             const correct = answer === currentQuestion.meaning;
 
             const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-            const audioKey = pinyinToAudioKey(firstPinyin);
-            console.log(`Playing audio for: ${currentQuestion.char} (${firstPinyin}) -> ${audioKey}`);
-            if (audioKey) {
-                const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                const audio = new Audio(audioUrl);
-                audio.play().catch(e => console.log(`Audio play failed for ${audioKey}:`, e));
-            }
+            playPinyinAudio(firstPinyin);
 
             if (correct) {
                 playCorrectSound();
@@ -757,12 +736,7 @@
 
                 if (mode === 'char-to-pinyin') {
                     const firstPinyin = pinyinOptions[0];
-                    const audioKey = pinyinToAudioKey(firstPinyin);
-                    if (audioKey) {
-                        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                        const audio = new Audio(audioUrl);
-                        audio.play().catch(e => console.log('Audio play failed:', e));
-                    }
+                    playPinyinAudio(firstPinyin);
                 }
 
                 if (correct) {
@@ -825,13 +799,7 @@
 
             // Play pronunciation audio
             const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-            const audioKey = pinyinToAudioKey(firstPinyin);
-            console.log(`Playing audio for: ${currentQuestion.char} (${firstPinyin}) -> ${audioKey}`);
-            if (audioKey) {
-                const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-                const audio = new Audio(audioUrl);
-                audio.play().catch(e => console.log(`Audio play failed for ${audioKey}:`, e));
-            }
+            playPinyinAudio(firstPinyin);
 
             if (correct) {
                 playCorrectSound();

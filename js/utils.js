@@ -49,7 +49,19 @@ function fuzzyMatch(input, target) {
     return score;
 }
 
-// Convert pinyin with tone marks to audio key format
+// Split pinyin into individual syllables
+function splitPinyinSyllables(pinyin) {
+    // Remove dots first
+    pinyin = pinyin.replace(/\./g, '').replace(/\.\.\./g, '');
+
+    // Match syllable pattern: optional consonant(s) + vowel(s) with tone + optional n/ng/r
+    const syllablePattern = /[bpmfdtnlgkhjqxzcsrwy]?h?[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+n?g?r?/gi;
+    const syllables = pinyin.match(syllablePattern) || [pinyin];
+
+    return syllables;
+}
+
+// Convert single pinyin syllable with tone marks to audio key format
 function pinyinToAudioKey(pinyin) {
     const toneMarkToBase = {
         'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
@@ -70,8 +82,7 @@ function pinyinToAudioKey(pinyin) {
         'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
     };
 
-    // Remove dots (e.g., "shém.me" -> "shemme", "lì.shi" -> "lishi")
-    let result = pinyin.toLowerCase().replace(/\./g, '');
+    let result = pinyin.toLowerCase();
     let tone = '5'; // default neutral tone
 
     // Find tone mark and extract tone number
@@ -89,4 +100,22 @@ function pinyinToAudioKey(pinyin) {
 
     // Add tone number at the end
     return result + tone;
+}
+
+// Play audio for pinyin (handles multi-syllable words by playing syllables sequentially)
+function playPinyinAudio(pinyin) {
+    const syllables = splitPinyinSyllables(pinyin);
+    console.log(`Playing audio for: ${pinyin} -> syllables:`, syllables);
+
+    // Play syllables sequentially with slight delay
+    syllables.forEach((syllable, index) => {
+        setTimeout(() => {
+            const audioKey = pinyinToAudioKey(syllable);
+            const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+            console.log(`  Playing syllable ${index + 1}/${syllables.length}: ${syllable} -> ${audioKey}`);
+
+            const audio = new Audio(audioUrl);
+            audio.play().catch(e => console.log(`Audio play failed for ${audioKey}:`, e));
+        }, index * 400); // 400ms delay between syllables
+    });
 }
