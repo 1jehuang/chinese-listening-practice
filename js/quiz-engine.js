@@ -9,7 +9,7 @@ let answered = false;
 let score = 0;
 let total = 0;
 let enteredSyllables = [];
-let characters = [];
+let quizCharacters = [];
 let config = {};
 
 // DOM elements (initialized in initQuiz)
@@ -161,7 +161,7 @@ function generateQuestion() {
     hint.textContent = '';
     answerInput.value = '';
 
-    currentQuestion = characters[Math.floor(Math.random() * characters.length)];
+    currentQuestion = quizCharacters[Math.floor(Math.random() * characters.length)];
 
     // Hide all mode containers
     typeMode.style.display = 'none';
@@ -366,7 +366,7 @@ function generatePinyinOptions() {
     const wrongOptions = [];
 
     while (wrongOptions.length < 3) {
-        const random = characters[Math.floor(Math.random() * characters.length)];
+        const random = quizCharacters[Math.floor(Math.random() * characters.length)];
         const randomPinyin = random.pinyin.split('/')[0].trim();
         if (random.char !== currentQuestion.char && !wrongOptions.includes(randomPinyin)) {
             wrongOptions.push(randomPinyin);
@@ -392,7 +392,7 @@ function generateCharOptions() {
 
     const wrongOptions = [];
     while (wrongOptions.length < 3) {
-        const random = characters[Math.floor(Math.random() * characters.length)];
+        const random = quizCharacters[Math.floor(Math.random() * characters.length)];
         if (random.char !== currentQuestion.char && !wrongOptions.includes(random.char)) {
             wrongOptions.push(random.char);
         }
@@ -417,7 +417,7 @@ function generateMeaningOptions() {
 
     const wrongOptions = [];
     while (wrongOptions.length < 3) {
-        const random = characters[Math.floor(Math.random() * characters.length)];
+        const random = quizCharacters[Math.floor(Math.random() * characters.length)];
         if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
             wrongOptions.push(random.meaning);
         }
@@ -497,7 +497,7 @@ function updateStats() {
 // =============================================================================
 
 function initQuiz(charactersData, userConfig = {}) {
-    characters = charactersData;
+    quizCharacters = charactersData;
     config = userConfig;
 
     // Get DOM elements
