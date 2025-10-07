@@ -388,9 +388,8 @@ function handleCorrectSyllable(syllables, fullPinyin) {
         updateStats();
         setTimeout(() => generateQuestion(), 300);
     } else {
-        // More syllables needed
-        const remaining = syllables.slice(enteredSyllables.length).join(' ');
-        hint.textContent = `✓ ${enteredSyllables.join(' ')} | ${remaining}`;
+        // More syllables needed - show progress without revealing remaining syllables
+        hint.textContent = `✓ ${enteredSyllables.join(' ')} (${enteredSyllables.length}/${syllables.length})`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
     }
 }
