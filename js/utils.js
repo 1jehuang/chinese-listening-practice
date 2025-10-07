@@ -51,34 +51,28 @@ function fuzzyMatch(input, target) {
 
 // Convert pinyin with tone marks to audio key format
 function pinyinToAudioKey(pinyin) {
-    const toneMap = {
+    const toneMarkToNumber = {
         'ā': ['a', '1'], 'á': ['a', '2'], 'ǎ': ['a', '3'], 'à': ['a', '4'],
         'ē': ['e', '1'], 'é': ['e', '2'], 'ě': ['e', '3'], 'è': ['e', '4'],
         'ī': ['i', '1'], 'í': ['i', '2'], 'ǐ': ['i', '3'], 'ì': ['i', '4'],
         'ō': ['o', '1'], 'ó': ['o', '2'], 'ǒ': ['o', '3'], 'ò': ['o', '4'],
         'ū': ['u', '1'], 'ú': ['u', '2'], 'ǔ': ['u', '3'], 'ù': ['u', '4'],
         'ǖ': ['v', '1'], 'ǘ': ['v', '2'], 'ǚ': ['v', '3'], 'ǜ': ['v', '4'],
-        'ü': ['v', '']
+        'ü': ['v', '5']
     };
 
-    let result = pinyin.toLowerCase();
-    let toneNumber = '';
+    // Remove dots (e.g., "shém.me" -> "shémme", "lì.shi" -> "lìshi")
+    let result = pinyin.toLowerCase().replace(/\./g, '');
+    let tone = '5'; // default neutral tone
 
-    // Find and extract tone, replace marked vowel with base vowel
-    for (const [marked, [base, tone]] of Object.entries(toneMap)) {
+    // Find and extract tone mark
+    for (const [marked, [unmarked, toneNum]] of Object.entries(toneMarkToNumber)) {
         if (result.includes(marked)) {
-            result = result.replace(marked, base);
-            toneNumber = tone;
+            result = result.replace(marked, unmarked);
+            tone = toneNum;
             break;
         }
     }
 
-    // Add tone number at the end
-    if (toneNumber) {
-        result += toneNumber;
-    } else if (!/[1-4]/.test(result)) {
-        result += '5';
-    }
-
-    return result;
+    return result + tone;
 }
