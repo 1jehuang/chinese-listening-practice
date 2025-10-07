@@ -104,11 +104,12 @@ function pinyinToAudioKey(pinyin) {
 
 // Play audio for pinyin - uses TTS for multi-character words, audio files for single characters
 function playPinyinAudio(pinyin, chineseChar) {
-    const syllables = splitPinyinSyllables(pinyin);
-    console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${syllables.length} syllables`);
+    // Use character count to determine if multi-syllable (more reliable than pinyin parsing)
+    const isMultiChar = chineseChar && chineseChar.length > 1;
+    console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${isMultiChar ? 'multi-char' : 'single-char'}`);
 
     // If multi-character word, use Web Speech API (TTS)
-    if (syllables.length > 1 && chineseChar) {
+    if (isMultiChar) {
         console.log(`Using TTS for multi-character word: ${chineseChar}`);
 
         // Use Web Speech API
@@ -126,7 +127,7 @@ function playPinyinAudio(pinyin, chineseChar) {
         speechSynthesis.speak(utterance);
     } else {
         // Single character - use audio file
-        const audioKey = pinyinToAudioKey(syllables[0]);
+        const audioKey = pinyinToAudioKey(pinyin);
         const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
         console.log(`Using audio file: ${audioKey}.mp3`);
 
