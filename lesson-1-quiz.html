@@ -86,7 +86,7 @@
         </div>
 
         <!-- Feedback -->
-        <div id="feedback" class="text-center font-semibold my-4 min-h-[24px]"></div>
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
 
         <!-- Stats -->
         <div class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
@@ -316,13 +316,13 @@
                 playCorrectSound();
                 score++;
                 feedback.textContent = `✓ Correct! You drew ${currentQuestion.char} (${currentQuestion.pinyin})`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                 hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                 hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
             } else {
                 playWrongSound();
                 feedback.textContent = `✗ Wrong. You drew: ${recognizedText || '(nothing recognized)'}. The answer was: ${currentQuestion.char}`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
                 hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
             }
@@ -491,7 +491,7 @@
                 writer.animateCharacter();
 
                 feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-blue-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-blue-600';
             };
 
             document.getElementById('hwNextBtn').onclick = () => {
@@ -667,7 +667,7 @@
                 playCorrectSound();
                 score++;
                 feedback.textContent = `✓ Correct!`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
                 hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
 
@@ -686,7 +686,7 @@
             } else {
                 playWrongSound();
                 feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.meaning}`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
                 hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
 
@@ -777,7 +777,7 @@
                     } else {
                         feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
                     }
-                    feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
+                    feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
                     setTimeout(() => {
@@ -794,7 +794,7 @@
                     } else {
                         feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
                     }
-                    feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
+                    feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
                     setTimeout(() => {
@@ -837,7 +837,7 @@
                 playCorrectSound();
                 score++;
                 feedback.textContent = `✓ Correct!`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-green-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
                 hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
 
@@ -856,7 +856,7 @@
             } else {
                 playWrongSound();
                 feedback.textContent = `✗ Wrong!`;
-                feedback.className = 'text-center font-semibold my-4 min-h-[24px] text-red-600';
+                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
                 hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
 
