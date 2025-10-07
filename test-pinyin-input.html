@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinyin Input Unit Tests</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .test-suite {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #ccc;
+        }
+        .test-case.pass {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        .test-case.fail {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        .summary {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .summary.pass { background: #d4edda; color: #155724; }
+        .summary.fail { background: #f8d7da; color: #721c24; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Pinyin Input Unit Tests</h1>
+    <div id="results"></div>
+
+    <script>
+        // Copy of functions from quiz-engine.js for testing
+        function convertPinyinToToneNumbers(pinyin) {
+            const toneMarkToBase = {
+                'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+                'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+                'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+                'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+                'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+                'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
+                'ü': 'v'
+            };
+
+            const toneMarkToNumber = {
+                'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
+                'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
+                'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
+                'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
+                'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
+                'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
+            };
+
+            let text = pinyin.toLowerCase();
+            let result = '';
+            let i = 0;
+
+            const isVowel = (c) => 'aeiouv'.includes(c);
+            const isEndingConsonant = (c) => 'ngr'.includes(c); // Only n, g, r can end a syllable
+
+            while (i < text.length) {
+                const char = text[i];
+
+                if (toneMarkToNumber[char]) {
+                    const toneNum = toneMarkToNumber[char];
+                    const baseVowel = toneMarkToBase[char];
+                    result += baseVowel;
+
+                    // After tone-marked vowel, collect: more vowels OR ending consonants (n/g/r)
+                    let j = i + 1;
+                    while (j < text.length && text[j] !== ' ' && text[j] !== '.' && !toneMarkToNumber[text[j]]) {
+                        const nextChar = text[j];
+                        if (isVowel(nextChar) || isEndingConsonant(nextChar)) {
+                            result += nextChar;
+                            j++;
+                        } else {
+                            // Hit a non-ending consonant (starts new syllable)
+                            break;
+                        }
+                    }
+
+                    result += toneNum;
+                    i = j;
+                } else {
+                    result += char;
+                    i++;
+                }
+            }
+
+            return result;
+        }
+
+        function normalizePinyin(pinyin) {
+            let result = pinyin.toLowerCase().trim();
+            result = convertPinyinToToneNumbers(result);
+            result = result.replace(/[\s.]+/g, '');
+            return result;
+        }
+
+        function checkPinyinMatch(userAnswer, correct) {
+            const user = userAnswer.toLowerCase().trim();
+            const correctLower = correct.toLowerCase().trim();
+
+            if (correctLower.includes('/')) {
+                const options = correctLower.split('/').map(o => o.trim());
+                return options.some(option => checkPinyinMatch(user, option));
+            }
+
+            if (user === correctLower) return true;
+
+            const userNormalized = normalizePinyin(user);
+            const correctNormalized = normalizePinyin(correctLower);
+
+            console.log(`Test: "${user}" vs "${correctLower}"`);
+            console.log(`  Normalized: "${userNormalized}" vs "${correctNormalized}"`);
+
+            return userNormalized === correctNormalized;
+        }
+
+        // Test data
+        const testCharacters = [
+            { char: '中国', pinyin: 'Zhōng.guó', meaning: 'China' },
+            { char: '你好', pinyin: 'nǐ hǎo', meaning: 'hello' },
+            { char: '谢谢', pinyin: 'xièxiè', meaning: 'thank you' },
+            { char: '美国', pinyin: 'Měi.guó', meaning: 'USA' },
+            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why' },
+            { char: '一样', pinyin: 'yīyàng', meaning: 'same' },
+            { char: '长', pinyin: 'cháng/zhǎng', meaning: 'long/grow' }
+        ];
+
+        // Test suite
+        const tests = [];
+
+        // ===== Test Suite 1: Single Character Tone Marks =====
+        tests.push({
+            name: 'Single char with tone marks',
+            input: 'nǐ',
+            expected: 'nǐ',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 2: Single Character Tone Numbers =====
+        tests.push({
+            name: 'Single char with tone numbers',
+            input: 'ni3',
+            expected: 'nǐ',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 3: Two Characters with Space (Tone Marks) =====
+        tests.push({
+            name: 'Two chars space-separated (tone marks)',
+            input: 'nǐ hǎo',
+            expected: 'nǐ hǎo',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 4: Two Characters with Space (Tone Numbers) =====
+        tests.push({
+            name: 'Two chars space-separated (tone numbers)',
+            input: 'ni3 hao3',
+            expected: 'nǐ hǎo',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 5: Two Characters No Space (Tone Numbers) =====
+        tests.push({
+            name: 'Two chars no space (tone numbers)',
+            input: 'ni3hao3',
+            expected: 'nǐ hǎo',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 6: Dot Separator (Tone Marks) =====
+        tests.push({
+            name: 'Dot separator (tone marks)',
+            input: 'Zhōng.guó',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 7: Dot Separator (Tone Numbers) =====
+        tests.push({
+            name: 'Dot separator to tone marks',
+            input: 'zhong1.guo2',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 8: Dot Separator No Space (Tone Numbers) =====
+        tests.push({
+            name: 'Dot separator no spaces (tone numbers)',
+            input: 'zhong1guo2',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 9: No Separator (Compound Word) =====
+        tests.push({
+            name: 'Compound word no separator (tone marks)',
+            input: 'xièxiè',
+            expected: 'xièxiè',
+            shouldMatch: true
+        });
+
+        tests.push({
+            name: 'Compound word (tone numbers)',
+            input: 'xie4xie4',
+            expected: 'xièxiè',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 10: Capital Letters =====
+        tests.push({
+            name: 'Capital letters with tone marks',
+            input: 'Zhōng.guó',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        tests.push({
+            name: 'Capital letters with tone numbers',
+            input: 'Zhong1.guo2',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 11: Multiple Pronunciations =====
+        tests.push({
+            name: 'Multiple pronunciations (first option)',
+            input: 'cháng',
+            expected: 'cháng/zhǎng',
+            shouldMatch: true
+        });
+
+        tests.push({
+            name: 'Multiple pronunciations (second option)',
+            input: 'zhǎng',
+            expected: 'cháng/zhǎng',
+            shouldMatch: true
+        });
+
+        tests.push({
+            name: 'Multiple pronunciations with tone numbers',
+            input: 'chang2',
+            expected: 'cháng/zhǎng',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 12: Three Characters =====
+        tests.push({
+            name: 'Three chars with dots and mixed (tone marks)',
+            input: 'wèishén.me',
+            expected: 'wèishén.me',
+            shouldMatch: true
+        });
+
+        tests.push({
+            name: 'Three chars with tone numbers',
+            input: 'wei4shen2me',
+            expected: 'wèishén.me',
+            shouldMatch: true
+        });
+
+        // ===== Test Suite 13: Wrong Answers =====
+        tests.push({
+            name: 'Wrong tone number',
+            input: 'ni1',
+            expected: 'nǐ',
+            shouldMatch: false
+        });
+
+        tests.push({
+            name: 'Wrong syllable',
+            input: 'na3',
+            expected: 'nǐ',
+            shouldMatch: false
+        });
+
+        tests.push({
+            name: 'Incomplete multi-char',
+            input: 'ni3',
+            expected: 'nǐ hǎo',
+            shouldMatch: false
+        });
+
+        // ===== Test Suite 14: Case Insensitivity =====
+        tests.push({
+            name: 'All lowercase tone numbers',
+            input: 'zhong1guo2',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        tests.push({
+            name: 'All uppercase with tone numbers',
+            input: 'ZHONG1GUO2',
+            expected: 'Zhōng.guó',
+            shouldMatch: true
+        });
+
+        // Run tests
+        let passed = 0;
+        let failed = 0;
+        const resultsDiv = document.getElementById('results');
+
+        tests.forEach((test, index) => {
+            const result = checkPinyinMatch(test.input, test.expected);
+            const testPassed = result === test.shouldMatch;
+
+            if (testPassed) passed++;
+            else failed++;
+
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-case ${testPassed ? 'pass' : 'fail'}`;
+            testDiv.innerHTML = `
+                <strong>${testPassed ? '✓' : '✗'} Test ${index + 1}:</strong> ${test.name}<br>
+                Input: <code>${test.input}</code><br>
+                Expected: <code>${test.expected}</code><br>
+                Should match: <code>${test.shouldMatch}</code><br>
+                Result: <code>${result}</code>
+                ${!testPassed ? '<br><span style="color: #dc3545;">❌ FAILED</span>' : ''}
+            `;
+            resultsDiv.appendChild(testDiv);
+        });
+
+        // Summary
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = `summary ${failed === 0 ? 'pass' : 'fail'}`;
+        summaryDiv.innerHTML = `
+            <strong>Test Summary:</strong><br>
+            Total: ${tests.length} | Passed: ${passed} | Failed: ${failed}<br>
+            Success Rate: ${Math.round((passed/tests.length) * 100)}%
+        `;
+        resultsDiv.appendChild(summaryDiv);
+    </script>
+</body>
+</html>

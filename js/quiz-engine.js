@@ -22,20 +22,61 @@ let audioSection;
 // =============================================================================
 
 function convertPinyinToToneNumbers(pinyin) {
-    const toneMap = {
-        'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
-        'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
-        'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
-        'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
-        'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
-        'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
+    const toneMarkToBase = {
+        'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+        'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+        'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+        'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+        'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+        'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
         'ü': 'v'
     };
 
-    let result = pinyin.toLowerCase();
-    for (const [marked, numbered] of Object.entries(toneMap)) {
-        result = result.replace(new RegExp(marked, 'g'), numbered);
+    const toneMarkToNumber = {
+        'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
+        'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
+        'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
+        'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
+        'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
+        'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
+    };
+
+    let text = pinyin.toLowerCase();
+    let result = '';
+    let i = 0;
+
+    const isVowel = (c) => 'aeiouv'.includes(c);
+    const isEndingConsonant = (c) => 'ngr'.includes(c); // Only n, g, r can end a syllable
+
+    while (i < text.length) {
+        const char = text[i];
+
+        if (toneMarkToNumber[char]) {
+            const toneNum = toneMarkToNumber[char];
+            const baseVowel = toneMarkToBase[char];
+            result += baseVowel;
+
+            // After tone-marked vowel, collect: more vowels OR ending consonants (n/g/r)
+            let j = i + 1;
+            while (j < text.length && text[j] !== ' ' && text[j] !== '.' && !toneMarkToNumber[text[j]]) {
+                const nextChar = text[j];
+                if (isVowel(nextChar) || isEndingConsonant(nextChar)) {
+                    result += nextChar;
+                    j++;
+                } else {
+                    // Hit a non-ending consonant (starts new syllable)
+                    break;
+                }
+            }
+
+            result += toneNum;
+            i = j;
+        } else {
+            result += char;
+            i++;
+        }
     }
+
     return result;
 }
 
@@ -65,23 +106,49 @@ function checkPinyinMatch(userAnswer, correct) {
     const user = userAnswer.toLowerCase().trim();
     const correctLower = correct.toLowerCase().trim();
 
+    // Handle multiple pronunciations (e.g., "cháng/zhǎng")
+    if (correctLower.includes('/')) {
+        const options = correctLower.split('/').map(o => o.trim());
+        return options.some(option => checkPinyinMatch(user, option));
+    }
+
     // Direct match with tone marks
     if (user === correctLower) return true;
 
-    // Convert correct pinyin to tone numbers for comparison
-    const correctWithNumbers = convertPinyinToToneNumbers(correctLower);
+    // Convert both to normalized forms for comparison
+    const userNormalized = normalizePinyin(user);
+    const correctNormalized = normalizePinyin(correctLower);
 
-    // Check if user input matches when both are in tone number format
-    if (user === correctWithNumbers) return true;
+    // Debug logging (will be visible in browser console during tests)
+    if (typeof console !== 'undefined' && console.log) {
+        console.log(`checkPinyinMatch: "${user}" vs "${correctLower}"`);
+        console.log(`  userNormalized: "${userNormalized}"`);
+        console.log(`  correctNormalized: "${correctNormalized}"`);
+        console.log(`  match: ${userNormalized === correctNormalized}`);
+    }
 
-    // Also check without spaces
-    const userNoSpaces = user.replace(/\s+/g, '');
-    const correctNoSpaces = correctLower.replace(/\s+/g, '');
-    const correctWithNumbersNoSpaces = correctWithNumbers.replace(/\s+/g, '');
-
-    if (userNoSpaces === correctNoSpaces || userNoSpaces === correctWithNumbersNoSpaces) return true;
+    // Check if normalized forms match
+    if (userNormalized === correctNormalized) return true;
 
     return false;
+}
+
+function normalizePinyin(pinyin) {
+    // Normalize pinyin to a standard form for comparison
+    // 1. Convert to lowercase
+    // 2. Convert tone marks to tone numbers
+    // 3. Remove all separators (spaces, dots)
+    // 4. Result: "zhong1guo2" format
+
+    let result = pinyin.toLowerCase().trim();
+
+    // Convert tone marks to numbers
+    result = convertPinyinToToneNumbers(result);
+
+    // Remove all separators (spaces, dots, etc.)
+    result = result.replace(/[\s.]+/g, '');
+
+    return result;
 }
 
 function getPartialMatch(userAnswer, correct) {
@@ -161,7 +228,7 @@ function generateQuestion() {
     hint.textContent = '';
     answerInput.value = '';
 
-    currentQuestion = quizCharacters[Math.floor(Math.random() * characters.length)];
+    currentQuestion = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
 
     // Hide all mode containers
     typeMode.style.display = 'none';
@@ -366,7 +433,7 @@ function generatePinyinOptions() {
     const wrongOptions = [];
 
     while (wrongOptions.length < 3) {
-        const random = quizCharacters[Math.floor(Math.random() * characters.length)];
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
         const randomPinyin = random.pinyin.split('/')[0].trim();
         if (random.char !== currentQuestion.char && !wrongOptions.includes(randomPinyin)) {
             wrongOptions.push(randomPinyin);
@@ -392,7 +459,7 @@ function generateCharOptions() {
 
     const wrongOptions = [];
     while (wrongOptions.length < 3) {
-        const random = quizCharacters[Math.floor(Math.random() * characters.length)];
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
         if (random.char !== currentQuestion.char && !wrongOptions.includes(random.char)) {
             wrongOptions.push(random.char);
         }
@@ -417,7 +484,7 @@ function generateMeaningOptions() {
 
     const wrongOptions = [];
     while (wrongOptions.length < 3) {
-        const random = quizCharacters[Math.floor(Math.random() * characters.length)];
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
         if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
             wrongOptions.push(random.meaning);
         }
