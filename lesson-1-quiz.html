@@ -27,6 +27,7 @@
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="draw-char">Draw Character</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
         </div>
 
         <!-- Question Display -->
@@ -85,11 +86,17 @@
             </div>
         </div>
 
+        <!-- Study Mode -->
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
+            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        </div>
+
         <!-- Feedback -->
         <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
 
         <!-- Stats -->
-        <div class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
             <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
             <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
         </div>
@@ -163,6 +170,7 @@
         const strokeOrderMode = document.getElementById('strokeOrderMode');
         const handwritingMode = document.getElementById('handwritingMode');
         const drawCharMode = document.getElementById('drawCharMode');
+        const studyMode = document.getElementById('studyMode');
 
         // Hanzi Writer variable
         let writer = null;
@@ -366,6 +374,7 @@
             strokeOrderMode.classList.add('hidden');
             handwritingMode.classList.add('hidden');
             drawCharMode.classList.add('hidden');
+            studyMode.classList.add('hidden');
 
             if (mode === 'char-to-pinyin') {
                 questionDisplay.innerHTML = `<div class="text-8xl my-10 text-center">${currentQuestion.char}</div>`;
@@ -428,9 +437,43 @@
                 drawCharMode.classList.remove('hidden');
                 if (!canvas) initCanvas();
                 clearCanvas();
+            } else if (mode === 'study') {
+                questionDisplay.innerHTML = '';
+                studyMode.classList.remove('hidden');
+                document.getElementById('stats').classList.add('hidden');
+                document.getElementById('feedback').classList.add('hidden');
+                populateStudyList();
+                return; // Don't call updateStats in study mode
             }
 
+            // Show stats and feedback for quiz modes
+            document.getElementById('stats').classList.remove('hidden');
+            document.getElementById('feedback').classList.remove('hidden');
             updateStats();
+        }
+
+        function populateStudyList() {
+            const studyList = document.getElementById('studyList');
+            studyList.innerHTML = '';
+
+            characters.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition';
+
+                div.innerHTML = `
+                    <button class="flex-shrink-0 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition"
+                            onclick="playPinyinAudio('${item.pinyin.split('/')[0].trim()}', '${item.char}')">
+                        🔊
+                    </button>
+                    <div class="flex-grow grid grid-cols-3 gap-4 items-center">
+                        <div class="text-4xl font-bold">${item.char}</div>
+                        <div class="text-xl text-gray-700">${item.pinyin}</div>
+                        <div class="text-lg text-gray-600">${item.meaning}</div>
+                    </div>
+                `;
+
+                studyList.appendChild(div);
+            });
         }
 
         function initStrokeOrder() {
