@@ -49,42 +49,30 @@ function fuzzyMatch(input, target) {
     return score;
 }
 
-// Extract first syllable from multi-syllable pinyin
-function getFirstSyllable(pinyin) {
-    // Remove dots first
-    pinyin = pinyin.replace(/\./g, '');
-
-    // Common syllable patterns - consonant + vowel(s) + optional 'n'/'ng'/'r'
-    const syllablePattern = /^([bpmfdtnlgkhjqxzcsrwy]?h?[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+n?g?r?)/i;
-    const match = pinyin.match(syllablePattern);
-
-    return match ? match[1] : pinyin;
-}
-
 // Convert pinyin with tone marks to audio key format
 function pinyinToAudioKey(pinyin) {
     const toneMarkToNumber = {
-        'ā': ['a', '1'], 'á': ['a', '2'], 'ǎ': ['a', '3'], 'à': ['a', '4'],
-        'ē': ['e', '1'], 'é': ['e', '2'], 'ě': ['e', '3'], 'è': ['e', '4'],
-        'ī': ['i', '1'], 'í': ['i', '2'], 'ǐ': ['i', '3'], 'ì': ['i', '4'],
-        'ō': ['o', '1'], 'ó': ['o', '2'], 'ǒ': ['o', '3'], 'ò': ['o', '4'],
-        'ū': ['u', '1'], 'ú': ['u', '2'], 'ǔ': ['u', '3'], 'ù': ['u', '4'],
-        'ǖ': ['v', '1'], 'ǘ': ['v', '2'], 'ǚ': ['v', '3'], 'ǜ': ['v', '4'],
-        'ü': ['v', '5']
+        'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+        'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+        'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+        'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+        'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+        'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
+        'ü': 'v'
     };
 
-    // Extract only first syllable for multi-syllable words
-    let firstSyllable = getFirstSyllable(pinyin.toLowerCase());
-    let tone = '5'; // default neutral tone
+    // Remove dots (e.g., "shém.me" -> "shemme", "lì.shi" -> "lishi")
+    let result = pinyin.toLowerCase().replace(/\./g, '');
 
-    // Find and extract tone mark
-    for (const [marked, [unmarked, toneNum]] of Object.entries(toneMarkToNumber)) {
-        if (firstSyllable.includes(marked)) {
-            firstSyllable = firstSyllable.replace(marked, unmarked);
-            tone = toneNum;
-            break;
-        }
+    // Replace tone marks with tone numbers
+    for (const [marked, numbered] of Object.entries(toneMarkToNumber)) {
+        result = result.replace(new RegExp(marked, 'g'), numbered);
     }
 
-    return firstSyllable + tone;
+    // Add tone 5 for neutral tone if no tone number exists
+    if (!/\d/.test(result)) {
+        result += '5';
+    }
+
+    return result;
 }
