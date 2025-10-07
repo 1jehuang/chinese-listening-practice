@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Test Modular Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Test: Modular Quiz Engine</h1>
+
+        <!-- Mode Selector -->
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white transition" data-mode="char-to-pinyin">Char → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+        </div>
+
+        <!-- Question Display -->
+        <div id="questionDisplay" class="text-center"></div>
+
+        <!-- Hint -->
+        <div id="hint" class="text-center text-2xl font-semibold my-4 min-h-[20px]"></div>
+
+        <!-- Audio Section -->
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+        </div>
+
+        <!-- Type Mode -->
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <!-- Choice Mode (for future expansion) -->
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Stroke Order Mode (for future expansion) -->
+        <div id="strokeOrderMode" class="hidden"></div>
+
+        <!-- Handwriting Mode (for future expansion) -->
+        <div id="handwritingMode" class="hidden"></div>
+
+        <!-- Draw Character Mode (for future expansion) -->
+        <div id="drawCharMode" class="hidden"></div>
+
+        <!-- Feedback -->
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <!-- Stats -->
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        // ONLY THING NEEDED: Define characters and initialize!
+        const characters = [
+            { char: '你好', pinyin: 'nǐ hǎo', meaning: 'hello' },
+            { char: '谢谢', pinyin: 'xièxie', meaning: 'thank you' },
+            { char: '中国', pinyin: 'Zhōng.guo', meaning: 'China' },
+            { char: '美国', pinyin: 'Měi.guó', meaning: 'USA' },
+            { char: '学生', pinyin: 'xuésheng', meaning: 'student' },
+            { char: '老师', pinyin: 'lǎoshī', meaning: 'teacher' },
+            { char: '明天', pinyin: 'míngtiān', meaning: 'tomorrow' },
+            { char: '昨天', pinyin: 'zuótiān', meaning: 'yesterday' },
+            { char: '今天', pinyin: 'jīntiān', meaning: 'today' },
+            { char: '再见', pinyin: 'zàijiàn', meaning: 'goodbye' }
+        ];
+
+        // Initialize the quiz - that's it!
+        initQuiz(characters);
+    </script>
+</body>
+</html>

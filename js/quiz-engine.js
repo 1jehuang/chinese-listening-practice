@@ -39,17 +39,20 @@ function convertPinyinToToneNumbers(pinyin) {
     return result;
 }
 
-function splitPinyinSyllablesWithNumbers(pinyin) {
-    // Handle both "zhong1 guo2" and "zhong1guo2"
+function splitPinyinSyllables(pinyin) {
+    // Handle: "zhong1 guo2", "zhong1guo2", "zhong.guo", "Zhōng.guo", "Zhōngguó"
     let text = pinyin.trim();
 
-    // If already has spaces, split on spaces
-    if (text.includes(' ')) {
-        return text.split(/\s+/);
+    // If has spaces or dots, split on them
+    if (text.includes(' ') || text.includes('.')) {
+        return text.split(/[\s.]+/);
     }
 
-    // Otherwise split after tone numbers (1-4)
-    const matches = text.match(/[a-zü]+[1-4]/gi);
+    // Convert to tone numbers first if it has tone marks
+    const withNumbers = convertPinyinToToneNumbers(text);
+
+    // Split after tone numbers (1-4)
+    const matches = withNumbers.match(/[a-zv]+[1-4]/gi);
     if (matches) {
         return matches;
     }
@@ -87,9 +90,9 @@ function getPartialMatch(userAnswer, correct) {
     const correctWithNumbers = convertPinyinToToneNumbers(correctLower);
 
     // Split into syllables (handles both spaced and non-spaced)
-    const correctSyllables = correctLower.includes(' ') ? correctLower.split(/\s+/) : splitPinyinSyllablesWithNumbers(correctWithNumbers);
-    const correctNumberSyllables = splitPinyinSyllablesWithNumbers(correctWithNumbers);
-    const userSyllables = splitPinyinSyllablesWithNumbers(user);
+    const correctSyllables = splitPinyinSyllables(correctLower);
+    const correctNumberSyllables = splitPinyinSyllables(correctWithNumbers);
+    const userSyllables = splitPinyinSyllables(user);
 
     let matched = [];
     let allCorrect = true;
@@ -221,16 +224,20 @@ function checkAnswer() {
         // Check if single syllable matches next expected syllable
         let syllableMatched = false;
         for (const option of pinyinOptions) {
+            const syllables = splitPinyinSyllables(option);
             const optionWithNumbers = convertPinyinToToneNumbers(option);
-            const syllables = option.includes(' ') ? option.split(/\s+/) : splitPinyinSyllablesWithNumbers(optionWithNumbers);
-            const syllablesWithNumbers = splitPinyinSyllablesWithNumbers(optionWithNumbers);
+            const syllablesWithNumbers = splitPinyinSyllables(optionWithNumbers);
 
             if (enteredSyllables.length < syllables.length) {
                 const expectedSyllable = syllables[enteredSyllables.length];
-                const expectedSyllableNum = syllablesWithNumbers[enteredSyllables.length];
+                const expectedSyllableWithNumbers = syllablesWithNumbers[enteredSyllables.length];
 
-                if (userAnswer.toLowerCase() === expectedSyllable.toLowerCase() ||
-                    userAnswer.toLowerCase() === expectedSyllableNum.toLowerCase()) {
+                // Check if user's input matches expected syllable (with or without tone numbers)
+                const userLower = userAnswer.toLowerCase();
+                const expectedLower = expectedSyllable.toLowerCase();
+                const expectedNumLower = expectedSyllableWithNumbers.toLowerCase();
+
+                if (userLower === expectedLower || userLower === expectedNumLower) {
                     handleCorrectSyllable(syllables, option);
                     syllableMatched = true;
                     break;
