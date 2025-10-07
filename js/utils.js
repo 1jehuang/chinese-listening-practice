@@ -102,20 +102,35 @@ function pinyinToAudioKey(pinyin) {
     return result + tone;
 }
 
-// Play audio for pinyin (handles multi-syllable words by playing syllables sequentially)
-function playPinyinAudio(pinyin) {
+// Play audio for pinyin - uses TTS for multi-character words, audio files for single characters
+function playPinyinAudio(pinyin, chineseChar) {
     const syllables = splitPinyinSyllables(pinyin);
-    console.log(`Playing audio for: ${pinyin} -> syllables:`, syllables);
+    console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${syllables.length} syllables`);
 
-    // Play syllables sequentially with slight delay
-    syllables.forEach((syllable, index) => {
-        setTimeout(() => {
-            const audioKey = pinyinToAudioKey(syllable);
-            const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-            console.log(`  Playing syllable ${index + 1}/${syllables.length}: ${syllable} -> ${audioKey}`);
+    // If multi-character word, use Web Speech API (TTS)
+    if (syllables.length > 1 && chineseChar) {
+        console.log(`Using TTS for multi-character word: ${chineseChar}`);
 
-            const audio = new Audio(audioUrl);
-            audio.play().catch(e => console.log(`Audio play failed for ${audioKey}:`, e));
-        }, index * 400); // 400ms delay between syllables
-    });
+        // Use Web Speech API
+        const utterance = new SpeechSynthesisUtterance(chineseChar);
+        utterance.lang = 'zh-CN'; // Mandarin Chinese
+        utterance.rate = 0.8; // Slightly slower for learning
+
+        // Try to get a Chinese voice
+        const voices = speechSynthesis.getVoices();
+        const chineseVoice = voices.find(voice => voice.lang.startsWith('zh'));
+        if (chineseVoice) {
+            utterance.voice = chineseVoice;
+        }
+
+        speechSynthesis.speak(utterance);
+    } else {
+        // Single character - use audio file
+        const audioKey = pinyinToAudioKey(syllables[0]);
+        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+        console.log(`Using audio file: ${audioKey}.mp3`);
+
+        const audio = new Audio(audioUrl);
+        audio.play().catch(e => console.log(`Audio play failed for ${audioKey}:`, e));
+    }
 }

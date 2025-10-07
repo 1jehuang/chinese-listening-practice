@@ -374,7 +374,7 @@
                 audioSection.classList.remove('hidden');
                 document.getElementById('playAudioBtn').onclick = () => {
                     const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-                    playPinyinAudio(firstPinyin);
+                    playPinyinAudio(firstPinyin, currentQuestion.char);
                 };
                 answerInput.focus();
             } else if (mode === 'audio-to-pinyin') {
@@ -387,7 +387,7 @@
 
                     window.currentAudioPlayFunc = () => {
                         const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-                        playPinyinAudio(firstPinyin);
+                        playPinyinAudio(firstPinyin, currentQuestion.char);
                     };
 
                     if (playBtn) {
@@ -421,7 +421,7 @@
                 // Play audio when question loads
                 setTimeout(() => {
                     const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-                    playPinyinAudio(firstPinyin);
+                    playPinyinAudio(firstPinyin, currentQuestion.char);
                 }, 100);
             } else if (mode === 'draw-char') {
                 questionDisplay.innerHTML = `<div class="text-3xl my-10 text-center">${currentQuestion.pinyin} - ${currentQuestion.meaning}</div>`;
@@ -640,7 +640,7 @@
             const correct = answer === currentQuestion.meaning;
 
             const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-            playPinyinAudio(firstPinyin);
+            playPinyinAudio(firstPinyin, currentQuestion.char);
 
             if (correct) {
                 playCorrectSound();
@@ -736,7 +736,7 @@
 
                 if (mode === 'char-to-pinyin') {
                     const firstPinyin = pinyinOptions[0];
-                    playPinyinAudio(firstPinyin);
+                    playPinyinAudio(firstPinyin, currentQuestion.char);
                 }
 
                 if (correct) {
@@ -799,7 +799,7 @@
 
             // Play pronunciation audio
             const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-            playPinyinAudio(firstPinyin);
+            playPinyinAudio(firstPinyin, currentQuestion.char);
 
             if (correct) {
                 playCorrectSound();
