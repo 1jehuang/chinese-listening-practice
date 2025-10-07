@@ -182,8 +182,23 @@ function generateQuestion() {
         audioSection.classList.remove('hidden');
         setupAudioMode();
         setTimeout(() => answerInput.focus(), 100);
+    } else if (mode === 'char-to-pinyin-mc' && choiceMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        generatePinyinOptions();
+        choiceMode.style.display = 'block';
+    } else if (mode === 'pinyin-to-char' && choiceMode) {
+        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
+        generateCharOptions();
+        choiceMode.style.display = 'block';
+    } else if (mode === 'char-to-meaning' && choiceMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        generateMeaningOptions();
+        choiceMode.style.display = 'block';
+    } else if (mode === 'meaning-to-char' && choiceMode) {
+        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
+        generateCharOptions();
+        choiceMode.style.display = 'block';
     }
-    // Add other modes as needed
 }
 
 function setupAudioMode() {
@@ -336,6 +351,131 @@ function handleWrongAnswer() {
         answerInput.value = '';
         answerInput.focus();
     }, 0);
+}
+
+// =============================================================================
+// MULTIPLE CHOICE FUNCTIONS
+// =============================================================================
+
+function generatePinyinOptions() {
+    const options = document.getElementById('options');
+    if (!options) return;
+    options.innerHTML = '';
+
+    const currentPinyin = currentQuestion.pinyin.split('/')[0].trim();
+    const wrongOptions = [];
+
+    while (wrongOptions.length < 3) {
+        const random = characters[Math.floor(Math.random() * characters.length)];
+        const randomPinyin = random.pinyin.split('/')[0].trim();
+        if (random.char !== currentQuestion.char && !wrongOptions.includes(randomPinyin)) {
+            wrongOptions.push(randomPinyin);
+        }
+    }
+
+    const allOptions = [...wrongOptions, currentPinyin];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.textContent = option;
+        btn.onclick = () => checkMultipleChoice(option);
+        options.appendChild(btn);
+    });
+}
+
+function generateCharOptions() {
+    const options = document.getElementById('options');
+    if (!options) return;
+    options.innerHTML = '';
+
+    const wrongOptions = [];
+    while (wrongOptions.length < 3) {
+        const random = characters[Math.floor(Math.random() * characters.length)];
+        if (random.char !== currentQuestion.char && !wrongOptions.includes(random.char)) {
+            wrongOptions.push(random.char);
+        }
+    }
+
+    const allOptions = [...wrongOptions, currentQuestion.char];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-8 text-6xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.textContent = option;
+        btn.onclick = () => checkMultipleChoice(option);
+        options.appendChild(btn);
+    });
+}
+
+function generateMeaningOptions() {
+    const options = document.getElementById('options');
+    if (!options) return;
+    options.innerHTML = '';
+
+    const wrongOptions = [];
+    while (wrongOptions.length < 3) {
+        const random = characters[Math.floor(Math.random() * characters.length)];
+        if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
+            wrongOptions.push(random.meaning);
+        }
+    }
+
+    const allOptions = [...wrongOptions, currentQuestion.meaning];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.textContent = option;
+        btn.onclick = () => checkMultipleChoice(option);
+        options.appendChild(btn);
+    });
+}
+
+function checkMultipleChoice(answer) {
+    if (answered) return;
+
+    answered = true;
+    total++;
+
+    let correct = false;
+    let correctAnswer = '';
+
+    if (mode === 'char-to-pinyin-mc') {
+        const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+        correct = pinyinOptions.includes(answer);
+        correctAnswer = currentQuestion.pinyin;
+    } else if (mode === 'char-to-meaning') {
+        correct = answer === currentQuestion.meaning;
+        correctAnswer = currentQuestion.meaning;
+    } else if (mode === 'pinyin-to-char' || mode === 'meaning-to-char') {
+        correct = answer === currentQuestion.char;
+        correctAnswer = currentQuestion.char;
+    }
+
+    if (correct) {
+        score++;
+        playCorrectSound();
+        feedback.textContent = `✓ Correct!`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+
+        setTimeout(() => generateQuestion(), 800);
+    } else {
+        playWrongSound();
+        feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+
+        setTimeout(() => generateQuestion(), 1500);
+    }
+
+    updateStats();
 }
 
 function updateStats() {
