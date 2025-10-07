@@ -170,6 +170,7 @@
         let answered = false;
         let score = 0;
         let total = 0;
+        let enteredSyllables = [];
 
         // DOM elements
         const questionDisplay = document.getElementById('questionDisplay');
@@ -373,6 +374,7 @@
         // pinyinToAudioKey now loaded from utils.js
 
         function generateQuestion() {
+            enteredSyllables = [];
             answered = false;
             feedback.textContent = '';
             hint.textContent = '';
@@ -745,42 +747,131 @@
             }
         }
 
+        function convertPinyinToToneNumbers(pinyin) {
+            const toneMap = {
+                'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+                'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+                'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+                'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+                'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+                'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
+                'ü': 'v'
+            };
+
+            let result = pinyin.toLowerCase();
+            for (const [marked, numbered] of Object.entries(toneMap)) {
+                result = result.replace(new RegExp(marked, 'g'), numbered);
+            }
+            return result;
+        }
+
+        function splitPinyinSyllables(pinyin) {
+            // Handle both "zhong1 guo2" and "zhong1guo2"
+            let text = pinyin.trim();
+
+            // If already has spaces, split on spaces
+            if (text.includes(' ')) {
+                return text.split(/\s+/);
+            }
+
+            // Otherwise split after tone numbers (1-4)
+            const syllables = [];
+            const matches = text.match(/[a-zü]+[1-4]/gi);
+            if (matches) {
+                return matches;
+            }
+
+            // If no tone numbers, return as single syllable
+            return [text];
+        }
+
         function checkPinyinMatch(userAnswer, correct) {
-            if (userAnswer.toLowerCase() === correct.toLowerCase()) {
-                return true;
-            }
+            const user = userAnswer.toLowerCase().trim();
+            const correctLower = correct.toLowerCase().trim();
 
-            const numberedPattern = /^([a-z]+)(\d)$/i;
-            const userMatch = userAnswer.match(numberedPattern);
+            // Direct match with tone marks
+            if (user === correctLower) return true;
 
-            if (userMatch) {
-                const userBase = userMatch[1].toLowerCase();
-                const userTone = userMatch[2];
+            // Convert correct pinyin to tone numbers for comparison
+            const correctWithNumbers = convertPinyinToToneNumbers(correctLower);
 
-                const toneMap = {
-                    'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
-                    'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
-                    'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
-                    'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
-                    'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
-                    'ǖ': 'u1', 'ǘ': 'u2', 'ǚ': 'u3', 'ǜ': 'u4'
-                };
+            // Check if user input matches when both are in tone number format
+            if (user === correctWithNumbers) return true;
 
-                let correctBase = correct;
-                let correctTone = '';
+            // Also check without spaces
+            const userNoSpaces = user.replace(/\s+/g, '');
+            const correctNoSpaces = correctLower.replace(/\s+/g, '');
+            const correctWithNumbersNoSpaces = correctWithNumbers.replace(/\s+/g, '');
 
-                for (const [marked, numbered] of Object.entries(toneMap)) {
-                    if (correct.includes(marked)) {
-                        correctBase = correct.replace(marked, numbered[0]);
-                        correctTone = numbered[1];
-                        break;
-                    }
-                }
-
-                return userBase === correctBase && userTone === correctTone;
-            }
+            if (userNoSpaces === correctNoSpaces || userNoSpaces === correctWithNumbersNoSpaces) return true;
 
             return false;
+        }
+
+        function getPartialMatch(userAnswer, correct) {
+            const user = userAnswer.toLowerCase().trim();
+            const correctLower = correct.toLowerCase().trim();
+            const correctWithNumbers = convertPinyinToToneNumbers(correctLower);
+
+            // Split into syllables (handles both spaced and non-spaced)
+            const correctSyllables = correctLower.includes(' ') ? correctLower.split(/\s+/) : splitPinyinSyllables(correctWithNumbers);
+            const correctNumberSyllables = splitPinyinSyllables(correctWithNumbers);
+            const userSyllables = splitPinyinSyllables(user);
+
+            let matched = [];
+            let allCorrect = true;
+
+            for (let i = 0; i < userSyllables.length; i++) {
+                if (i >= correctSyllables.length) {
+                    allCorrect = false;
+                    break;
+                }
+
+                const userSyl = userSyllables[i];
+                const correctSyl = correctSyllables[i];
+                const correctNumSyl = correctNumberSyllables[i];
+
+                if (userSyl === correctSyl || userSyl === correctNumSyl) {
+                    matched.push(correctSyl);
+                } else {
+                    allCorrect = false;
+                    break;
+                }
+            }
+
+            return {
+                matched,
+                isComplete: matched.length === correctSyllables.length && allCorrect,
+                isPartialCorrect: matched.length > 0 && allCorrect,
+                totalSyllables: correctSyllables.length
+            };
+        }
+
+        function updatePartialProgress() {
+            if ((mode !== 'char-to-pinyin' && mode !== 'audio-to-pinyin') || answered) return;
+
+            const userAnswer = answerInput.value.trim();
+            if (!userAnswer) {
+                hint.textContent = '';
+                hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px]';
+                return;
+            }
+
+            const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+
+            for (const option of pinyinOptions) {
+                const partial = getPartialMatch(userAnswer, option);
+
+                if (partial.isPartialCorrect) {
+                    const remaining = option.split(/\s+/).slice(partial.matched.length).join(' ');
+                    hint.textContent = `✓ ${partial.matched.join(' ')}${remaining ? ' | ' + remaining : ''}`;
+                    hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-blue-600';
+                    return;
+                }
+            }
+
+            hint.textContent = '';
+            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px]';
         }
 
         function checkAnswer() {
@@ -790,14 +881,17 @@
 
             if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
                 const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
-                const correct = pinyinOptions.some(option => checkPinyinMatch(userAnswer, option));
 
-                if (mode === 'char-to-pinyin') {
-                    const firstPinyin = pinyinOptions[0];
-                    playPinyinAudio(firstPinyin, currentQuestion.char);
-                }
+                // Check if full answer is entered
+                const fullMatch = pinyinOptions.some(option => checkPinyinMatch(userAnswer, option));
 
-                if (correct) {
+                if (fullMatch) {
+                    // Full answer correct
+                    if (mode === 'char-to-pinyin') {
+                        const firstPinyin = pinyinOptions[0];
+                        playPinyinAudio(firstPinyin, currentQuestion.char);
+                    }
+
                     playCorrectSound();
                     if (!answered) {
                         answered = true;
@@ -815,27 +909,84 @@
                     setTimeout(() => {
                         generateQuestion();
                     }, 300);
-                } else {
+                    updateStats();
+                    return;
+                }
+
+                // Check if single syllable matches next expected syllable
+                let syllableMatched = false;
+                for (const option of pinyinOptions) {
+                    const optionWithNumbers = convertPinyinToToneNumbers(option);
+                    const syllables = option.includes(' ') ? option.split(/\s+/) : splitPinyinSyllables(optionWithNumbers);
+                    const syllablesWithNumbers = splitPinyinSyllables(optionWithNumbers);
+
+                    if (enteredSyllables.length < syllables.length) {
+                        const expectedSyllable = syllables[enteredSyllables.length];
+                        const expectedSyllableNum = syllablesWithNumbers[enteredSyllables.length];
+
+                        if (userAnswer.toLowerCase() === expectedSyllable.toLowerCase() ||
+                            userAnswer.toLowerCase() === expectedSyllableNum.toLowerCase()) {
+                            // Syllable correct!
+                            enteredSyllables.push(expectedSyllable);
+                            answerInput.value = '';
+
+                            if (enteredSyllables.length === syllables.length) {
+                                // All syllables entered - complete!
+                                if (mode === 'char-to-pinyin') {
+                                    playPinyinAudio(option, currentQuestion.char);
+                                }
+
+                                playCorrectSound();
+                                if (!answered) {
+                                    answered = true;
+                                    total++;
+                                    score++;
+                                }
+                                if (mode === 'audio-to-pinyin') {
+                                    feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
+                                } else {
+                                    feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
+                                }
+                                feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+                                hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                                hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+                                setTimeout(() => {
+                                    generateQuestion();
+                                }, 300);
+                                updateStats();
+                            } else {
+                                // More syllables needed
+                                const remaining = syllables.slice(enteredSyllables.length).join(' ');
+                                hint.textContent = `✓ ${enteredSyllables.join(' ')} | ${remaining}`;
+                                hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+                            }
+
+                            syllableMatched = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!syllableMatched) {
+                    // Wrong answer
                     playWrongSound();
                     if (!answered) {
                         answered = true;
                         total++;
                     }
                     if (mode === 'audio-to-pinyin') {
-                        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin} (${currentQuestion.char}). Try again!`;
+                        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin} (${currentQuestion.char})`;
                     } else {
-                        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}. Try again!`;
+                        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
                     }
                     feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
                     hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
                     setTimeout(() => {
-                        answerInput.value = '';
-                        answerInput.focus();
-                    }, 0);
+                        generateQuestion();
+                    }, 1500);
+                    updateStats();
                 }
-
-                updateStats();
             }
         }
 
@@ -913,6 +1064,10 @@
         }
 
         checkBtn.addEventListener('click', checkAnswer);
+
+        answerInput.addEventListener('input', () => {
+            updatePartialProgress();
+        });
 
         answerInput.addEventListener('keydown', (e) => {
             if (e.key === ' ' && mode === 'audio-to-pinyin') {

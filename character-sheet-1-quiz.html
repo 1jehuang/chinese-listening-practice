@@ -401,46 +401,78 @@
             return input.toLowerCase().trim();
         }
 
+        function convertPinyinToToneNumbers(pinyin) {
+            const toneMap = {
+                'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+                'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+                'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+                'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+                'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+                'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
+                'ü': 'v'
+            };
+
+            let result = pinyin.toLowerCase();
+            for (const [marked, numbered] of Object.entries(toneMap)) {
+                result = result.replace(new RegExp(marked, 'g'), numbered);
+            }
+            return result;
+        }
+
         function checkPinyinMatch(userInput, correctPinyin) {
-            // Accept tone marks or tone numbers
+            // Accept tone marks or tone numbers, handle multi-syllable
             const user = userInput.toLowerCase().trim();
             const correct = correctPinyin.toLowerCase().trim();
 
             // Direct match with tone marks
             if (user === correct) return true;
 
-            // Check if user typed with tone number (e.g., ma3)
-            const toneNumberPattern = /^([a-z]+)([1-4])$/;
-            const userMatch = user.match(toneNumberPattern);
+            // Convert correct pinyin to tone numbers for comparison
+            const correctWithNumbers = convertPinyinToToneNumbers(correct);
 
-            if (userMatch) {
-                const [, userBase, userTone] = userMatch;
-
-                // Convert correct pinyin with tone marks to base + number
-                const toneMap = {
-                    'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
-                    'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
-                    'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
-                    'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
-                    'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
-                    'ǖ': 'u1', 'ǘ': 'u2', 'ǚ': 'u3', 'ǜ': 'u4'
-                };
-
-                let correctBase = correct;
-                let correctTone = '';
-
-                for (const [marked, numbered] of Object.entries(toneMap)) {
-                    if (correct.includes(marked)) {
-                        correctBase = correct.replace(marked, numbered[0]);
-                        correctTone = numbered[1];
-                        break;
-                    }
-                }
-
-                return userBase === correctBase && userTone === correctTone;
-            }
+            // Check if user input matches when both are in tone number format
+            if (user === correctWithNumbers) return true;
 
             return false;
+        }
+
+        function getPartialMatch(userInput, correctPinyin) {
+            const user = userInput.toLowerCase().trim();
+            const correct = correctPinyin.toLowerCase().trim();
+            const correctWithNumbers = convertPinyinToToneNumbers(correct);
+
+            // Split into syllables
+            const correctSyllables = correct.split(/\s+/);
+            const correctNumberSyllables = correctWithNumbers.split(/\s+/);
+            const userSyllables = user.split(/\s+/);
+
+            let matched = [];
+            let allCorrect = true;
+
+            for (let i = 0; i < userSyllables.length; i++) {
+                if (i >= correctSyllables.length) {
+                    allCorrect = false;
+                    break;
+                }
+
+                const userSyl = userSyllables[i];
+                const correctSyl = correctSyllables[i];
+                const correctNumSyl = correctNumberSyllables[i];
+
+                if (userSyl === correctSyl || userSyl === correctNumSyl) {
+                    matched.push(correctSyl);
+                } else {
+                    allCorrect = false;
+                    break;
+                }
+            }
+
+            return {
+                matched,
+                isComplete: matched.length === correctSyllables.length && allCorrect,
+                isPartialCorrect: matched.length > 0 && allCorrect,
+                totalSyllables: correctSyllables.length
+            };
         }
 
         function checkAnswer() {
@@ -483,6 +515,31 @@
 
                 updateStats();
             }
+        }
+
+        function updatePartialProgress() {
+            if (mode !== 'char-to-pinyin' || answered) return;
+
+            const userAnswer = answerInput.value.trim();
+            if (!userAnswer) {
+                hint.textContent = '';
+                return;
+            }
+
+            const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+
+            for (const option of pinyinOptions) {
+                const partial = getPartialMatch(userAnswer, option);
+
+                if (partial.isPartialCorrect) {
+                    const remaining = option.split(/\s+/).slice(partial.matched.length).join(' ');
+                    hint.textContent = `✓ ${partial.matched.join(' ')}${remaining ? ' | ' + remaining : ''}`;
+                    hint.style.color = '#007bff';
+                    return;
+                }
+            }
+
+            hint.textContent = '';
         }
 
         function checkMultipleChoice(answer) {
@@ -578,6 +635,10 @@
         }
 
         checkBtn.addEventListener('click', checkAnswer);
+
+        answerInput.addEventListener('input', () => {
+            updatePartialProgress();
+        });
 
         answerInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
