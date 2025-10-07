@@ -285,15 +285,19 @@
             const options = document.getElementById('options');
             options.innerHTML = '';
 
+            // For multiple pronunciations, pick the first one for display
+            const currentPinyin = currentQuestion.pinyin.split('/')[0].trim();
+
             const wrongOptions = [];
             while (wrongOptions.length < 3) {
                 const random = characters[Math.floor(Math.random() * characters.length)];
-                if (random.char !== currentQuestion.char && !wrongOptions.includes(random.pinyin)) {
-                    wrongOptions.push(random.pinyin);
+                const randomPinyin = random.pinyin.split('/')[0].trim();
+                if (random.char !== currentQuestion.char && !wrongOptions.includes(randomPinyin)) {
+                    wrongOptions.push(randomPinyin);
                 }
             }
 
-            const allOptions = [...wrongOptions, currentQuestion.pinyin];
+            const allOptions = [...wrongOptions, currentPinyin];
             allOptions.sort(() => Math.random() - 0.5);
 
             allOptions.forEach((option, index) => {
@@ -490,7 +494,9 @@
             let correct = false;
 
             if (mode === 'char-to-pinyin-mc') {
-                correct = answer === currentQuestion.pinyin;
+                // Handle multiple pronunciations
+                const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
+                correct = pinyinOptions.includes(answer);
             } else if (mode === 'char-to-meaning') {
                 correct = answer === currentQuestion.meaning;
             } else if (mode === 'pinyin-to-char') {
