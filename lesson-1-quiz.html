@@ -33,7 +33,7 @@
         <div id="questionDisplay" class="text-center"></div>
 
         <!-- Hint -->
-        <div id="hint" class="text-center text-sm my-4 min-h-[20px]"></div>
+        <div id="hint" class="text-center text-2xl my-4 min-h-[20px]"></div>
 
         <!-- Audio Section -->
         <div id="audioSection" class="text-center my-4 hidden">
@@ -318,13 +318,13 @@
                 feedback.textContent = `✓ Correct! You drew ${currentQuestion.char} (${currentQuestion.pinyin})`;
                 feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                 hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
+                hint.className = 'text-center text-2xl my-4 min-h-[20px] text-green-600';
             } else {
                 playWrongSound();
                 feedback.textContent = `✗ Wrong. You drew: ${recognizedText || '(nothing recognized)'}. The answer was: ${currentQuestion.char}`;
                 feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-                hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
+                hint.className = 'text-center text-2xl my-4 min-h-[20px] text-red-600';
             }
 
             updateStats();
@@ -669,7 +669,7 @@
                 feedback.textContent = `✓ Correct!`;
                 feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
-                hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
+                hint.className = 'text-center text-2xl my-4 min-h-[20px] text-green-600';
 
                 const btn = document.querySelector(`#fuzzyOptions button[data-meaning="${answer}"]`);
                 if (btn) btn.classList.add('bg-green-500', 'text-white');
@@ -688,7 +688,7 @@
                 feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.meaning}`;
                 feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin})`;
-                hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
+                hint.className = 'text-center text-2xl my-4 min-h-[20px] text-red-600';
 
                 document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
                     if (btn.dataset.meaning === answer) {
@@ -779,7 +779,7 @@
                     }
                     feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                    hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
+                    hint.className = 'text-center text-2xl my-4 min-h-[20px] text-green-600';
                     setTimeout(() => {
                         generateQuestion();
                     }, 300);
@@ -796,7 +796,7 @@
                     }
                     feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                    hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
+                    hint.className = 'text-center text-2xl my-4 min-h-[20px] text-red-600';
                     setTimeout(() => {
                         answerInput.value = '';
                         answerInput.focus();
@@ -839,7 +839,7 @@
                 feedback.textContent = `✓ Correct!`;
                 feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-                hint.className = 'text-center text-sm my-4 min-h-[20px] text-green-600';
+                hint.className = 'text-center text-2xl my-4 min-h-[20px] text-green-600';
 
                 document.querySelectorAll('#options button').forEach(btn => {
                     if (btn.textContent === answer) {
@@ -858,7 +858,7 @@
                 feedback.textContent = `✗ Wrong!`;
                 feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
                 hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-                hint.className = 'text-center text-sm my-4 min-h-[20px] text-red-600';
+                hint.className = 'text-center text-2xl my-4 min-h-[20px] text-red-600';
 
                 document.querySelectorAll('#options button').forEach(btn => {
                     if (btn.textContent === answer) {
