@@ -53,12 +53,12 @@
         <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">部首大全 Comprehensive Radical Practice</h1>
 
         <div class="flex flex-wrap gap-2 justify-center mb-6">
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white transition" data-mode="char-to-radical">Character → Radical</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white transition" data-mode="radical-meaning">Radical Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-radical">Character → Radical</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="radical-to-char">Radical → Character</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="radical-meaning">Radical Meaning</button>
         </div>
 
-        <div id="charToRadicalMode">
+        <div id="charToRadicalMode" style="display: none;">
             <div class="text-center text-gray-600 mb-4">What is the radical of this character?</div>
             <div class="text-center text-8xl my-8 font-normal text-gray-800">
                 <div class="character" id="character"></div>
@@ -78,7 +78,7 @@
             <div class="grid grid-cols-2 gap-3" id="charOptions"></div>
         </div>
 
-        <div id="radicalMeaningMode" style="display: none;">
+        <div id="radicalMeaningMode">
             <div class="text-center text-gray-600 mb-4">What does this radical mean? (Click radical to hear pronunciation)</div>
             <div class="text-center text-8xl my-8 font-normal text-gray-800">
                 <div class="radical" id="radicalForMeaning" style="cursor: pointer;" title="Click to hear pronunciation"></div>
@@ -351,7 +351,7 @@
         let score = 0;
         let total = 0;
         let answered = false;
-        let mode = 'char-to-radical';
+        let mode = 'radical-meaning';
         let selectedOptionIndex = 0;
 
         const nextBtn = document.getElementById('nextBtn');
@@ -488,6 +488,9 @@
             radicalElement.onclick = () => {
                 playTTS(shownForm);
             };
+
+            // Auto-play audio when question loads
+            playTTS(shownForm);
 
             // Show variant info if showing a variant
             if (shownForm !== data.radical) {
