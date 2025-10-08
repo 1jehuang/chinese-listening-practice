@@ -553,6 +553,8 @@ function generateFuzzyMeaningOptions() {
     const allOptions = [...wrongOptions, currentQuestion.meaning];
     allOptions.sort(() => Math.random() - 0.5);
 
+    let lastPlayedMatch = null; // Track last played audio to avoid repeats
+
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
         btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
@@ -576,12 +578,14 @@ function generateFuzzyMeaningOptions() {
 
         let bestMatch = null;
         let bestScore = -1;
+        let bestMatchMeaning = null;
 
         allOptions.forEach((option, index) => {
             const score = fuzzyMatch(input, option.toLowerCase());
             if (score > bestScore) {
                 bestScore = score;
                 bestMatch = index;
+                bestMatchMeaning = option;
             }
         });
 
@@ -594,6 +598,15 @@ function generateFuzzyMeaningOptions() {
                 btn.classList.add('bg-gray-100', 'border-gray-300');
             }
         });
+
+        // Play audio for the character if best match is the correct answer (only once per match)
+        if (bestMatchMeaning === currentQuestion.meaning && lastPlayedMatch !== currentQuestion.char) {
+            lastPlayedMatch = currentQuestion.char;
+            const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+            if (window.playPinyinAudio) {
+                playPinyinAudio(firstPinyin, currentQuestion.char);
+            }
+        }
     };
 
     // Enter key to select highlighted option
