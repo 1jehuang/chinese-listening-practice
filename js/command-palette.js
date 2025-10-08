@@ -26,6 +26,7 @@ function initCommandPalette(modes = []) {
         { name: 'Home', url: 'home.html', type: 'page' },
         { name: 'Pinyin Practice', url: 'pinyin-practice.html', type: 'page' },
         { name: 'Radical Practice', url: 'radicals.html', type: 'page' },
+        { name: 'Radical Practice 2', url: 'radical-practice-2.html', type: 'page' },
         { name: 'Character Sheet 1', url: 'character-sheet-1-quiz.html', type: 'page' },
         { name: 'Character Sheet 2', url: 'character-sheet-2-quiz.html', type: 'page' },
         { name: 'Character Sheet 3', url: 'character-sheet-3-quiz.html', type: 'page' },
@@ -34,6 +35,7 @@ function initCommandPalette(modes = []) {
         { name: 'Test 1 Review', url: 'test1-review.html', type: 'page' },
         { name: 'Test 1 Practice', url: 'test1-practice.html', type: 'page' },
         { name: 'Lesson 1: Two Maps', url: 'lesson-1-quiz.html', type: 'page' },
+        { name: 'Lesson 1: Hard Subset', url: 'lesson-1-hard-subset.html', type: 'page' },
         { name: 'Test Modular Quiz', url: 'test-modular-quiz.html', type: 'page' }
     ];
 
