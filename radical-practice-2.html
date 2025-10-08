@@ -7,6 +7,45 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/utils.js"></script>
+    <style>
+        .option-btn {
+            font-size: 48px;
+            padding: 30px;
+            border: 2px solid #d1d5db;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: normal;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .option-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .mode-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .character, .radical {
+            font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        }
+
+        .meaning {
+            font-size: 1.5rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
