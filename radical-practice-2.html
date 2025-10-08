@@ -567,63 +567,8 @@
         }
 
         function playRadicalAudio(radical, pinyin) {
-            // Normalize pinyin to audio key format (remove tone marks, add tone number)
-            function normalizePinyin(pinyin) {
-                const toneMarkToBase = {
-                    'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
-                    'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
-                    'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
-                    'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
-                    'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
-                    'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
-                    'ü': 'v'
-                };
-
-                const toneMarkToNumber = {
-                    'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
-                    'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
-                    'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
-                    'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
-                    'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
-                    'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
-                };
-
-                let result = pinyin.toLowerCase();
-                let tone = '5'; // default neutral tone
-
-                // Find tone mark and extract tone number
-                for (const [marked, toneNum] of Object.entries(toneMarkToNumber)) {
-                    if (result.includes(marked)) {
-                        tone = toneNum;
-                        break;
-                    }
-                }
-
-                // Replace all tone marks with base vowels
-                for (const [marked, base] of Object.entries(toneMarkToBase)) {
-                    result = result.replace(new RegExp(marked, 'g'), base);
-                }
-
-                // Add tone number at the end
-                return result + tone;
-            }
-
-            const audioKey = normalizePinyin(pinyin);
-            const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-            console.log(`Playing audio: ${audioKey}.mp3 for ${radical} (${pinyin})`);
-
-            const audio = new Audio(audioUrl);
-
-            // Set up error handler to fallback to TTS
-            audio.addEventListener('error', () => {
-                console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
-                playTTS(radical);
-            });
-
-            audio.play().catch(e => {
-                console.log(`Audio play failed for ${audioKey}, falling back to TTS:`, e);
-                playTTS(radical);
-            });
+            // Use the existing playPinyinAudio function from utils.js
+            playPinyinAudio(pinyin, radical);
         }
 
         function generateQuestion() {
