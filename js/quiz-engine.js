@@ -54,42 +54,33 @@ function convertPinyinToToneNumbers(pinyin) {
     };
 
     let text = pinyin.toLowerCase();
-    let result = '';
-    let i = 0;
 
-    const isVowel = (c) => 'aeiouv'.includes(c);
-    const isEndingConsonant = (c) => 'ng'.includes(c); // Only n, g can end a syllable (r is erhua suffix, comes after tone)
+    // Split on dots and spaces first to handle syllable boundaries correctly
+    const syllables = text.split(/[\s.]+/).filter(s => s.length > 0);
 
-    while (i < text.length) {
-        const char = text[i];
+    const convertedSyllables = syllables.map(syl => {
+        let result = '';
+        let toneFound = false;
+        let tone = '5'; // Default neutral tone
 
-        if (toneMarkToNumber[char]) {
-            const toneNum = toneMarkToNumber[char];
-            const baseVowel = toneMarkToBase[char];
-            result += baseVowel;
+        for (let i = 0; i < syl.length; i++) {
+            const char = syl[i];
 
-            // After tone-marked vowel, collect: more vowels OR ending consonants (n/g/r)
-            let j = i + 1;
-            while (j < text.length && text[j] !== ' ' && text[j] !== '.' && !toneMarkToNumber[text[j]]) {
-                const nextChar = text[j];
-                if (isVowel(nextChar) || isEndingConsonant(nextChar)) {
-                    result += nextChar;
-                    j++;
-                } else {
-                    // Hit a non-ending consonant (starts new syllable)
-                    break;
-                }
+            if (toneMarkToNumber[char]) {
+                // Found tone mark
+                tone = toneMarkToNumber[char];
+                result += toneMarkToBase[char];
+                toneFound = true;
+            } else {
+                result += char;
             }
-
-            result += toneNum;
-            i = j;
-        } else {
-            result += char;
-            i++;
         }
-    }
 
-    return result;
+        // Add tone number at end
+        return result + tone;
+    });
+
+    return convertedSyllables.join('');
 }
 
 function splitPinyinSyllables(pinyin) {
@@ -148,19 +139,32 @@ function checkPinyinMatch(userAnswer, correct) {
 function normalizePinyin(pinyin) {
     // Normalize pinyin to a standard form for comparison
     // 1. Convert to lowercase
-    // 2. Convert tone marks to tone numbers (if present)
-    // 3. Remove all separators (spaces, dots, ellipsis)
-    // 4. Result: "zhong1guo2" format
+    // 2. Remove all separators (spaces, dots, ellipsis)
+    // 3. Remove all tone numbers
+    // 4. Remove all tone marks
+    // 5. Result: pure letters only (e.g., "zhongguo")
 
     let result = pinyin.toLowerCase().trim();
 
-    // Remove separators first (spaces, dots, ellipsis)
+    // Remove all separators
     result = result.replace(/[\s.]+/g, '');
 
-    // Only convert if there are tone marks (not if already using numbers)
-    const hasToneMarks = /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(result);
-    if (hasToneMarks) {
-        result = convertPinyinToToneNumbers(result);
+    // Remove tone numbers (1-5)
+    result = result.replace(/[1-5]/g, '');
+
+    // Remove tone marks by replacing with base vowels
+    const toneMarkToBase = {
+        'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+        'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+        'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+        'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+        'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+        'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
+        'ü': 'v'
+    };
+
+    for (const [marked, base] of Object.entries(toneMarkToBase)) {
+        result = result.replace(new RegExp(marked, 'g'), base);
     }
 
     return result;
