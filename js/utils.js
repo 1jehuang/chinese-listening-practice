@@ -102,7 +102,25 @@ function pinyinToAudioKey(pinyin) {
     return result + tone;
 }
 
-// Play audio for pinyin - uses TTS for multi-character words, audio files for single characters
+// Play audio using TTS
+function playTTS(chineseChar) {
+    console.log(`Using TTS for: ${chineseChar}`);
+
+    const utterance = new SpeechSynthesisUtterance(chineseChar);
+    utterance.lang = 'zh-CN'; // Mandarin Chinese
+    utterance.rate = 0.8; // Slightly slower for learning
+
+    // Try to get a Chinese voice
+    const voices = speechSynthesis.getVoices();
+    const chineseVoice = voices.find(voice => voice.lang.startsWith('zh'));
+    if (chineseVoice) {
+        utterance.voice = chineseVoice;
+    }
+
+    speechSynthesis.speak(utterance);
+}
+
+// Play audio for pinyin - uses audio files with TTS fallback
 function playPinyinAudio(pinyin, chineseChar) {
     // Use character count to determine if multi-syllable (more reliable than pinyin parsing)
     const isMultiChar = chineseChar && chineseChar.length > 1;
@@ -110,28 +128,24 @@ function playPinyinAudio(pinyin, chineseChar) {
 
     // If multi-character word, use Web Speech API (TTS)
     if (isMultiChar) {
-        console.log(`Using TTS for multi-character word: ${chineseChar}`);
-
-        // Use Web Speech API
-        const utterance = new SpeechSynthesisUtterance(chineseChar);
-        utterance.lang = 'zh-CN'; // Mandarin Chinese
-        utterance.rate = 0.8; // Slightly slower for learning
-
-        // Try to get a Chinese voice
-        const voices = speechSynthesis.getVoices();
-        const chineseVoice = voices.find(voice => voice.lang.startsWith('zh'));
-        if (chineseVoice) {
-            utterance.voice = chineseVoice;
-        }
-
-        speechSynthesis.speak(utterance);
+        playTTS(chineseChar);
     } else {
-        // Single character - use audio file
+        // Single character - try audio file first, fallback to TTS
         const audioKey = pinyinToAudioKey(pinyin);
         const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-        console.log(`Using audio file: ${audioKey}.mp3`);
+        console.log(`Trying audio file: ${audioKey}.mp3`);
 
         const audio = new Audio(audioUrl);
-        audio.play().catch(e => console.log(`Audio play failed for ${audioKey}:`, e));
+
+        // Set up error handler to fallback to TTS
+        audio.addEventListener('error', () => {
+            console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
+            playTTS(chineseChar);
+        });
+
+        audio.play().catch(e => {
+            console.log(`Audio play failed for ${audioKey}, falling back to TTS:`, e);
+            playTTS(chineseChar);
+        });
     }
 }

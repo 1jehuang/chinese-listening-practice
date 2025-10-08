@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese Learning Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/command-palette.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-6">
+<body class="bg-gray-50 min-h-screen p-4 md:p-6" onload="initCommandPalette()">
     <div class="max-w-6xl mx-auto py-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Pinyin Practice -->
@@ -102,6 +103,10 @@
 
         <div class="text-center mt-12 text-gray-600">
             Keep practicing! 加油！💪
+        </div>
+
+        <div class="text-center mt-4 text-sm text-gray-500">
+            Press <kbd class="px-2 py-1 bg-gray-200 rounded border border-gray-300 font-mono">Ctrl+K</kbd> to open command palette
         </div>
     </div>
 </body>
