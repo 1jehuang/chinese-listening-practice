@@ -1059,7 +1059,7 @@ function initCommandPalette() {
 
     function selectItem(item) {
         if (item.type === 'mode') {
-            const btn = document.querySelector(\`[data-mode="\${item.mode}"]\`);
+            const btn = document.querySelector(`[data-mode="${item.mode}"]`);
             if (btn) btn.click();
         } else if (item.type === 'page') {
             window.location.href = item.url;
