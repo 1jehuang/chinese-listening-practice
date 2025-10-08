@@ -148,17 +148,20 @@ function checkPinyinMatch(userAnswer, correct) {
 function normalizePinyin(pinyin) {
     // Normalize pinyin to a standard form for comparison
     // 1. Convert to lowercase
-    // 2. Convert tone marks to tone numbers
-    // 3. Remove all separators (spaces, dots)
+    // 2. Convert tone marks to tone numbers (if present)
+    // 3. Remove all separators (spaces, dots, ellipsis)
     // 4. Result: "zhong1guo2" format
 
     let result = pinyin.toLowerCase().trim();
 
-    // Convert tone marks to numbers
-    result = convertPinyinToToneNumbers(result);
-
-    // Remove all separators (spaces, dots, etc.)
+    // Remove separators first (spaces, dots, ellipsis)
     result = result.replace(/[\s.]+/g, '');
+
+    // Only convert if there are tone marks (not if already using numbers)
+    const hasToneMarks = /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(result);
+    if (hasToneMarks) {
+        result = convertPinyinToToneNumbers(result);
+    }
 
     return result;
 }
@@ -1170,6 +1173,13 @@ function initQuiz(charactersData, userConfig = {}) {
     });
 
     answerInput.addEventListener('keydown', (e) => {
+        // Ctrl+J to skip question
+        if (e.key === 'j' && e.ctrlKey) {
+            e.preventDefault();
+            generateQuestion();
+            return;
+        }
+
         if (mode === 'char-to-tones') {
             // In char-to-tones mode, Enter or Ctrl+C clears
             if (e.key === 'Enter' || (e.key === 'c' && e.ctrlKey)) {
