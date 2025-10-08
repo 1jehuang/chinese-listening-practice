@@ -528,6 +528,12 @@ function handleWrongAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
 
+    // Play audio for the correct answer in char-to-pinyin mode
+    if (mode === 'char-to-pinyin') {
+        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+    }
+
     updateStats();
 
     // Clear input and refocus for retry
@@ -781,6 +787,12 @@ function checkMultipleChoice(answer) {
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
 
+        // Play audio for char-to-pinyin-mc mode
+        if (mode === 'char-to-pinyin-mc') {
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        }
+
         setTimeout(() => generateQuestion(), 800);
     } else {
         playWrongSound();
@@ -788,6 +800,12 @@ function checkMultipleChoice(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+
+        // Play audio for char-to-pinyin-mc mode
+        if (mode === 'char-to-pinyin-mc') {
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        }
 
         setTimeout(() => generateQuestion(), 1500);
     }
