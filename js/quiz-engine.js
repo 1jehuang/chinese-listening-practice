@@ -9,6 +9,7 @@ let answered = false;
 let score = 0;
 let total = 0;
 let enteredSyllables = [];
+let enteredTones = '';
 let quizCharacters = [];
 let config = {};
 
@@ -57,7 +58,7 @@ function convertPinyinToToneNumbers(pinyin) {
     let i = 0;
 
     const isVowel = (c) => 'aeiouv'.includes(c);
-    const isEndingConsonant = (c) => 'ngr'.includes(c); // Only n, g, r can end a syllable
+    const isEndingConsonant = (c) => 'ng'.includes(c); // Only n, g can end a syllable (r is erhua suffix, comes after tone)
 
     while (i < text.length) {
         const char = text[i];
@@ -162,6 +163,44 @@ function normalizePinyin(pinyin) {
     return result;
 }
 
+function extractToneSequence(pinyin) {
+    // Extract just the tone numbers from pinyin
+    // Examples:
+    //   "yìdiǎnr" -> "43"
+    //   "shém.me" -> "25" (. means neutral tone)
+    //   "Zhōng.guo" -> "15"
+
+    const toneMarkToNumber = {
+        'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
+        'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
+        'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
+        'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
+        'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
+        'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
+    };
+
+    // Convert to tone numbers first (handles splitting syllables properly)
+    const withNumbers = convertPinyinToToneNumbers(pinyin.toLowerCase());
+
+    // Split into syllables using the splitPinyinSyllables function
+    const syllables = splitPinyinSyllables(withNumbers);
+
+    let tones = '';
+
+    for (const syl of syllables) {
+        // Extract the digit from this syllable
+        const match = syl.match(/[1-5]/);
+        if (match) {
+            tones += match[0];
+        } else {
+            // No tone number found, must be neutral tone
+            tones += '5';
+        }
+    }
+
+    return tones;
+}
+
 function getPartialMatch(userAnswer, correct) {
     const user = userAnswer.toLowerCase().trim();
     const correctLower = correct.toLowerCase().trim();
@@ -234,6 +273,7 @@ function updatePartialProgress() {
 
 function generateQuestion() {
     enteredSyllables = [];
+    enteredTones = '';
     answered = false;
     feedback.textContent = '';
     hint.textContent = '';
@@ -254,6 +294,11 @@ function generateQuestion() {
     // Show appropriate UI based on mode
     if (mode === 'char-to-pinyin') {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
+        typeMode.style.display = 'block';
+        setTimeout(() => answerInput.focus(), 100);
+    } else if (mode === 'char-to-tones') {
+        const expectedTones = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim());
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type tone numbers (1-5). Need ${expectedTones.length} tone${expectedTones.length > 1 ? 's' : ''}. Enter/Ctrl+C to clear.</div>`;
         typeMode.style.display = 'block';
         setTimeout(() => answerInput.focus(), 100);
     } else if (mode === 'audio-to-pinyin' && audioSection) {
@@ -326,7 +371,46 @@ function checkAnswer() {
 
     const userAnswer = answerInput.value.trim();
 
-    if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
+    if (mode === 'char-to-tones') {
+        const expectedTones = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim());
+
+        if (userAnswer === expectedTones) {
+            // Correct!
+            playCorrectSound();
+            if (!answered) {
+                answered = true;
+                total++;
+                score++;
+            }
+
+            feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin} (${expectedTones})`;
+            feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+
+            // Play audio
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+
+            updateStats();
+            setTimeout(() => generateQuestion(), 1500);
+        } else {
+            // Wrong
+            playWrongSound();
+            if (!answered) {
+                answered = true;
+                total++;
+            }
+
+            feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${currentQuestion.pinyin})`;
+            feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+
+            updateStats();
+            setTimeout(() => generateQuestion(), 2000);
+        }
+    } else if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
         const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
 
         // Check if full answer is entered
@@ -1002,6 +1086,7 @@ function initQuizCommandPalette() {
     const modes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-mc', type: 'mode' },
+        { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Pinyin → Char', mode: 'pinyin-to-char', type: 'mode' },
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
@@ -1045,12 +1130,38 @@ function initQuiz(charactersData, userConfig = {}) {
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
 
-    answerInput.addEventListener('input', () => {
-        updatePartialProgress();
+    answerInput.addEventListener('input', (e) => {
+        if (mode === 'char-to-tones') {
+            // Only allow 1-5 digits
+            const filtered = answerInput.value.replace(/[^1-5]/g, '');
+            answerInput.value = filtered;
+            enteredTones = filtered;
+
+            // Show progress hint
+            const expectedTones = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim());
+            hint.textContent = `${filtered} (${filtered.length}/${expectedTones.length})`;
+            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-blue-600';
+
+            // Auto-submit when correct length reached
+            if (filtered.length === expectedTones.length) {
+                setTimeout(() => checkAnswer(), 100);
+            }
+        } else {
+            updatePartialProgress();
+        }
     });
 
     answerInput.addEventListener('keydown', (e) => {
-        if (e.key === ' ' && mode === 'audio-to-pinyin' && audioSection) {
+        if (mode === 'char-to-tones') {
+            // In char-to-tones mode, Enter or Ctrl+C clears
+            if (e.key === 'Enter' || (e.key === 'c' && e.ctrlKey)) {
+                e.preventDefault();
+                answerInput.value = '';
+                enteredTones = '';
+                hint.textContent = '';
+                return;
+            }
+        } else if (e.key === ' ' && mode === 'audio-to-pinyin' && audioSection) {
             e.preventDefault();
             if (window.currentAudioPlayFunc) {
                 window.currentAudioPlayFunc();
