@@ -603,8 +603,11 @@ function generateFuzzyMeaningOptions() {
         if (bestMatchMeaning === currentQuestion.meaning && lastPlayedMatch !== currentQuestion.char) {
             lastPlayedMatch = currentQuestion.char;
             const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-            if (window.playPinyinAudio) {
+            console.log('Fuzzy mode: Playing audio for correct match:', currentQuestion.char, firstPinyin);
+            if (typeof playPinyinAudio === 'function') {
                 playPinyinAudio(firstPinyin, currentQuestion.char);
+            } else {
+                console.error('playPinyinAudio is not available');
             }
         }
     };
