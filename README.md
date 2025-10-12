@@ -1,7 +1,7 @@
 # Chinese Listening Practice
 
-Interactive web apps for practicing Mandarin Chinese pinyin pronunciation and tones.
+Interactive web apps for practicing Mandarin Chinese vocabulary and pinyin.
 
-**Live site:** https://1jehuang.github.io/chinese-listening-practice/
+This repository follows the UW Chinese 111 course curriculum.
 
 **Home page:** https://1jehuang.github.io/chinese-listening-practice/home.html
