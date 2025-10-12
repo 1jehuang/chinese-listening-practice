@@ -36,6 +36,7 @@ function initCommandPalette(modes = []) {
         { name: 'Test 1 Practice', url: 'test1-practice.html', type: 'page' },
         { name: 'Lesson 1: Two Maps', url: 'lesson-1-quiz.html', type: 'page' },
         { name: 'Lesson 1: Hard Subset', url: 'lesson-1-hard-subset.html', type: 'page' },
+        { name: 'Dictation: Lesson 1', url: 'lesson-1-dictation.html', type: 'page' },
         { name: 'Test Modular Quiz', url: 'test-modular-quiz.html', type: 'page' }
     ];
 

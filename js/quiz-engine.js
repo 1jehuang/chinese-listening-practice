@@ -1108,7 +1108,7 @@ function populateStudyList() {
 // =============================================================================
 
 function initQuizCommandPalette() {
-    const modes = [
+    const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-mc', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
@@ -1123,8 +1123,12 @@ function initQuizCommandPalette() {
         { name: 'Study Mode', mode: 'study', type: 'mode' }
     ];
 
+    const paletteItems = Array.isArray(config?.commandPaletteItems) && config.commandPaletteItems.length
+        ? config.commandPaletteItems
+        : defaultModes;
+
     if (typeof initCommandPalette === 'function') {
-        initCommandPalette(modes);
+        initCommandPalette(paletteItems);
     }
 }
 
@@ -1134,7 +1138,11 @@ function initQuizCommandPalette() {
 
 function initQuiz(charactersData, userConfig = {}) {
     quizCharacters = charactersData;
-    config = userConfig;
+    config = userConfig || {};
+
+    if (config.defaultMode) {
+        mode = config.defaultMode;
+    }
 
     // Get DOM elements
     questionDisplay = document.getElementById('questionDisplay');

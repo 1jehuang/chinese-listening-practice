@@ -1,5 +1,7 @@
 // Common utility functions shared across all quiz pages
 
+const globalScope = typeof window !== 'undefined' ? window : globalThis;
+
 // Sound effect functions
 function playCorrectSound() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -104,6 +106,13 @@ function pinyinToAudioKey(pinyin) {
 
 // Play audio using TTS
 function playTTS(chineseChar) {
+    if (typeof window === 'undefined' ||
+        typeof window.speechSynthesis === 'undefined' ||
+        typeof window.SpeechSynthesisUtterance === 'undefined') {
+        console.warn('SpeechSynthesis not supported in this browser.');
+        return;
+    }
+
     console.log(`Using TTS for: ${chineseChar}`);
 
     const utterance = new SpeechSynthesisUtterance(chineseChar);
@@ -117,35 +126,104 @@ function playTTS(chineseChar) {
         utterance.voice = chineseVoice;
     }
 
+    if (typeof speechSynthesis.cancel === 'function') {
+        speechSynthesis.cancel();
+    }
+
     speechSynthesis.speak(utterance);
+}
+
+function sentenceTtsUrl(sentence) {
+    const base = 'https://fanyi.baidu.com/gettts?lan=zh&spd=3&source=web&text=';
+    return base + encodeURIComponent(sentence);
+}
+
+function playSentenceAudio(sentence) {
+    if (!sentence || !sentence.trim()) return;
+
+    const cacheKey = sentence.trim();
+    if (typeof Audio === 'undefined') {
+        console.warn('Audio element not available, using SpeechSynthesis fallback for sentence.');
+        playTTS(cacheKey);
+        return;
+    }
+
+    if (!globalScope.__sentenceAudioCache) {
+        globalScope.__sentenceAudioCache = new Map();
+    }
+
+    let audio = globalScope.__sentenceAudioCache.get(cacheKey);
+    if (!audio) {
+        audio = new Audio(sentenceTtsUrl(cacheKey));
+        audio.preload = 'auto';
+        globalScope.__sentenceAudioCache.set(cacheKey, audio);
+    } else {
+        try {
+            audio.pause();
+            audio.currentTime = 0;
+        } catch (err) {
+            console.warn('Resetting cached audio failed, rebuilding instance', err);
+            globalScope.__sentenceAudioCache.delete(cacheKey);
+            audio = new Audio(sentenceTtsUrl(cacheKey));
+            audio.preload = 'auto';
+            globalScope.__sentenceAudioCache.set(cacheKey, audio);
+        }
+    }
+
+    const onError = () => {
+        console.log(`Sentence audio failed for "${cacheKey}", using SpeechSynthesis fallback`);
+        audio.removeEventListener('error', onError);
+        globalScope.__sentenceAudioCache.delete(cacheKey);
+        playTTS(cacheKey);
+    };
+
+    audio.addEventListener('error', onError, { once: true });
+
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(err => {
+            console.log(`Sentence audio playback rejected for "${cacheKey}", fallback to SpeechSynthesis`, err);
+            audio.removeEventListener('error', onError);
+            globalScope.__sentenceAudioCache.delete(cacheKey);
+            playTTS(cacheKey);
+        });
+    }
 }
 
 // Play audio for pinyin - uses audio files with TTS fallback
 function playPinyinAudio(pinyin, chineseChar) {
-    // Use character count to determine if multi-syllable (more reliable than pinyin parsing)
-    const isMultiChar = chineseChar && chineseChar.length > 1;
-    console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${isMultiChar ? 'multi-char' : 'single-char'}`);
+    const text = (chineseChar || '').trim();
+    const isMultiChar = text.length > 1;
+    console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${isMultiChar ? 'sentence' : 'single-char'}`);
 
-    // If multi-character word, use Web Speech API (TTS)
     if (isMultiChar) {
-        playTTS(chineseChar);
-    } else {
-        // Single character - try audio file first, fallback to TTS
-        const audioKey = pinyinToAudioKey(pinyin);
-        const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
-        console.log(`Trying audio file: ${audioKey}.mp3`);
-
-        const audio = new Audio(audioUrl);
-
-        // Set up error handler to fallback to TTS
-        audio.addEventListener('error', () => {
-            console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
-            playTTS(chineseChar);
-        });
-
-        audio.play().catch(e => {
-            console.log(`Audio play failed for ${audioKey}, falling back to TTS:`, e);
-            playTTS(chineseChar);
-        });
+        playSentenceAudio(text);
+        return;
     }
+
+    const audioKey = pinyinToAudioKey(pinyin);
+    const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+    console.log(`Trying audio file: ${audioKey}.mp3`);
+
+    if (typeof Audio === 'undefined') {
+        console.warn('Audio element not available, using SpeechSynthesis fallback.');
+        playTTS(chineseChar || pinyin);
+        return;
+    }
+
+    const audio = new Audio(audioUrl);
+
+    const handleError = () => {
+        console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
+        audio.removeEventListener('error', handleError);
+        playTTS(chineseChar || pinyin);
+    };
+
+    audio.addEventListener('error', handleError);
+
+    audio.play().catch(e => {
+        console.log(`Audio play failed for ${audioKey}, falling back to TTS:`, e);
+        audio.removeEventListener('error', handleError);
+        playTTS(chineseChar || pinyin);
+    });
 }

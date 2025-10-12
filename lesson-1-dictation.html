@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 1 (两张地图)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 1 两张地图</h1>
+        <p class="text-center text-gray-600 mb-6">Listen to the sentence, then type the pinyin (tone marks or numbers). Study mode lists every line with quick audio playback.</p>
+
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <div id="questionDisplay" class="text-center"></div>
+        <div id="hint" class="text-center text-2xl font-semibold my-4 min-h-[20px]"></div>
+
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
+        </div>
+
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" class="hidden"></div>
+        <div id="fuzzyMode" class="hidden"></div>
+        <div id="strokeOrderMode" class="hidden"></div>
+        <div id="handwritingMode" class="hidden"></div>
+        <div id="drawCharMode" class="hidden"></div>
+
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+        </div>
+
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '这是什么？', pinyin: 'zhè shì shén.me', meaning: '甲: What is this?' },
+            { char: '这是地图。', pinyin: 'zhè shì dì.tú', meaning: '乙: This is a map.' },
+            { char: '这是什么地图？', pinyin: 'zhè shì shén.me dì.tú', meaning: '甲: What kind of map is this?' },
+            { char: '这是中国地图。', pinyin: 'zhè shì Zhōng.guo dì.tú', meaning: '乙: This is a map of China.' },
+            { char: '那么，那是什么地图呢？', pinyin: 'nà.me nà shì shén.me dì.tú ne', meaning: '甲: Then what map is that?' },
+            { char: '那也是中国地图。', pinyin: 'nà yě shì Zhōng.guo dì.tú', meaning: '乙: That is also a map of China.' },
+            { char: '为什么这两张中国地图不一样呢？', pinyin: 'wèishém.me zhè liǎng zhāng Zhōng.guo dì.tú bù yīyàng ne', meaning: '甲: Why are these two maps of China different?' },
+            { char: '因为一张是中华民国地图；一张是中华人民共和国地图。', pinyin: 'yīn.wèi yī zhāng shì Zhōnghuá Mínguó dì.tú; yī zhāng shì Zhōnghuá Rénmín Gònghéguó dì.tú', meaning: '乙: Because one is the ROC map; one is the PRC map.' },
+            { char: '中华民国的地图为什么比中华人民共和国的地图大一点儿呢？', pinyin: 'Zhōnghuá Mínguó de dì.tú wèishém.me bǐ Zhōnghuá Rénmín Gònghéguó de dì.tú dà yīdiǎnr ne', meaning: '甲: Why is the ROC map a little bigger than the PRC map?' },
+            { char: '因为中华民国地图是1949年以前的中国，那时的地图还包括现在的蒙古国。', pinyin: 'yīn.wèi Zhōnghuá Mínguó dì.tú shì yī jiǔ sì jiǔ nián yǐqián de Zhōngguó, nà shí de dì.tú hái bāokuò xiànzài de Měnggǔguó', meaning: '乙: Because the ROC map shows pre-1949 China, which still included present-day Mongolia.' },
+            { char: '哦，我懂了。中华民国的地图是历史上的中国，中华人民共和国的地图是现在的中国。', pinyin: 'ò, wǒ dǒng.le. Zhōnghuá Mínguó de dì.tú shì lìshǐ shàng de Zhōngguó, Zhōnghuá Rénmín Gònghéguó de dì.tú shì xiànzài de Zhōngguó', meaning: '甲: Oh, I get it. The ROC map is historical China; the PRC map is China today.' },
+            { char: '对了，对了。可是中华民国也不完全是历史上的中国，他们1949年搬到台湾去了。', pinyin: 'duì.le, duì.le. kě.shì Zhōnghuá Mínguó yě bù wánquán shì lìshǐ shàng de Zhōngguó, tā.men yī jiǔ sì jiǔ nián bān dào Táiwān qù.le', meaning: '乙: Right, right. But the ROC is not entirely historical China—they moved to Taiwan in 1949.' },
+            { char: '哦，台湾就是中华民国；中华民国就是台湾。', pinyin: 'ò, Táiwān jiù.shì Zhōnghuá Mínguó; Zhōnghuá Mínguó jiù.shì Táiwān', meaning: '甲: Oh, Taiwan is the ROC; the ROC is Taiwan.' },
+            { char: '中国和台湾的政府都说只有一个中国，而台湾是中国的一部分。', pinyin: 'Zhōngguó hé Táiwān de zhèng.fǔ dōu shuō zhǐyǒu yī gè Zhōngguó, ér Táiwān shì Zhōngguó de yī bù.fèn', meaning: '乙: The governments of China and Taiwan both say there is only one China, and Taiwan is a part of China.' },
+            { char: '可是，中国和台湾是两个国家，对不对？', pinyin: 'kě.shì, Zhōngguó hé Táiwān shì liǎng gè guójiā, duì.bu.duì', meaning: '甲: But China and Taiwan are two countries, right?' },
+            { char: '这个……这个……很难说，很难说……', pinyin: 'zhè.ge zhè.ge hěn nán shuō, hěn nán shuō', meaning: '乙: That... that... is hard to say, hard to say.' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-pinyin',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>

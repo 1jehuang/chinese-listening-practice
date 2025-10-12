@@ -4,15 +4,12 @@
 CHINESE_DIR="$HOME/chinese-listening-practice"
 PORT=8001
 
-cd "$CHINESE_DIR" || exit 1
-
-# Start HTTP server in background
+# Spawn HTTP server in a persistent terminal
 echo "Starting web server on port $PORT..."
-python -m http.server $PORT > /dev/null 2>&1 &
-SERVER_PID=$!
+niri msg action spawn -- alacritty --working-directory "$CHINESE_DIR" -e bash -c "python -m http.server $PORT; exec bash"
 
 # Give server a moment to start
-sleep 1
+sleep 2
 
 # Open browser in new window
 echo "Opening Chinese learning app in browser..."
@@ -26,4 +23,3 @@ echo "Spawning Codex terminal..."
 niri msg action spawn -- alacritty --working-directory "$CHINESE_DIR" -e bash -c "codex --dangerously-bypass-approvals-and-sandbox; exec bash"
 
 echo "Workspace setup complete!"
-echo "Server PID: $SERVER_PID (kill with: kill $SERVER_PID)"
