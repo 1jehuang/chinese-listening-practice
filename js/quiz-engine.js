@@ -34,76 +34,137 @@ let drawStartTime = null;
 // PINYIN UTILITIES
 // =============================================================================
 
+const TONE_MARK_TO_BASE = {
+    'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+    'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+    'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+    'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+    'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+    'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
+    'ü': 'v'
+};
+
+const TONE_MARK_TO_NUMBER = {
+    'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
+    'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
+    'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
+    'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
+    'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
+    'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
+};
+
+const PINYIN_FINAL_LETTERS = new Set(['a', 'e', 'i', 'o', 'u', 'v', 'n', 'r']);
+
 function convertPinyinToToneNumbers(pinyin) {
-    const toneMarkToBase = {
-        'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
-        'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
-        'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
-        'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
-        'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
-        'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
-        'ü': 'v'
-    };
+    const syllables = splitPinyinSyllables(pinyin);
+    if (syllables.length === 0) return '';
 
-    const toneMarkToNumber = {
-        'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
-        'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
-        'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
-        'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
-        'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
-        'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
-    };
-
-    let text = pinyin.toLowerCase();
-
-    // Split on dots and spaces first to handle syllable boundaries correctly
-    const syllables = text.split(/[\s.]+/).filter(s => s.length > 0);
-
-    const convertedSyllables = syllables.map(syl => {
-        let result = '';
-        let toneFound = false;
-        let tone = '5'; // Default neutral tone
+    return syllables.map(syl => {
+        let tone = '5';
+        let base = '';
 
         for (let i = 0; i < syl.length; i++) {
             const char = syl[i];
 
-            if (toneMarkToNumber[char]) {
-                // Found tone mark
-                tone = toneMarkToNumber[char];
-                result += toneMarkToBase[char];
-                toneFound = true;
+            if (/[1-5]/.test(char)) {
+                tone = char;
+                continue;
+            }
+
+            const lower = char.toLowerCase();
+
+            if (TONE_MARK_TO_NUMBER[lower]) {
+                tone = TONE_MARK_TO_NUMBER[lower];
+                base += TONE_MARK_TO_BASE[lower];
+            } else if (lower === 'ü') {
+                base += 'v';
+            } else if (lower === 'u' && syl[i + 1] === ':') {
+                base += 'v';
+            } else if (char === ':') {
+                continue;
             } else {
-                result += char;
+                base += lower;
             }
         }
 
-        // Add tone number at end
-        return result + tone;
-    });
+        if (base.length === 0) {
+            base = syl.replace(/[1-5]/g, '') || syl;
+        }
 
-    return convertedSyllables.join('');
+        return base + tone;
+    }).join('');
 }
 
 function splitPinyinSyllables(pinyin) {
-    // Handle: "zhong1 guo2", "zhong1guo2", "zhong.guo", "Zhōng.guo", "Zhōngguó"
-    let text = pinyin.trim();
+    if (!pinyin) return [];
 
-    // If has spaces or dots, split on them
-    if (text.includes(' ') || text.includes('.')) {
-        return text.split(/[\s.]+/);
+    const text = pinyin.trim();
+    if (!text) return [];
+
+    const syllables = [];
+    let current = '';
+    let pendingBoundary = false;
+    let lastNonDigitChar = '';
+
+    const flush = () => {
+        if (current) {
+            syllables.push(current);
+        }
+        current = '';
+        pendingBoundary = false;
+        lastNonDigitChar = '';
+    };
+
+    const isSeparator = (char) => /\s/.test(char) || char === '.' || char === '·' || char === '/';
+
+    const isToneMark = (char) => {
+        if (!char) return false;
+        return Boolean(TONE_MARK_TO_NUMBER[char.toLowerCase()]);
+    };
+
+    const isFinalLetter = (char, previousChar) => {
+        if (!char) return false;
+        const lower = char.toLowerCase();
+        if (PINYIN_FINAL_LETTERS.has(lower)) return true;
+        if (lower === 'g') {
+            if (!previousChar) return false;
+            return previousChar.toLowerCase() === 'n';
+        }
+        if (lower === ':') return true;
+        return false;
+    };
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (isSeparator(char)) {
+            flush();
+            continue;
+        }
+
+        if (pendingBoundary && !/[1-5]/.test(char) && !isToneMark(char) && !isFinalLetter(char, lastNonDigitChar)) {
+            flush();
+        }
+
+        current += char;
+
+        if (/[1-5]/.test(char)) {
+            flush();
+            continue;
+        }
+
+        if (!/[1-5]/.test(char)) {
+            lastNonDigitChar = char;
+        }
+
+        if (isToneMark(char)) {
+            pendingBoundary = true;
+        }
     }
 
-    // Convert to tone numbers first if it has tone marks
-    const withNumbers = convertPinyinToToneNumbers(text);
+    flush();
 
-    // Split after tone numbers (1-4)
-    const matches = withNumbers.match(/[a-zv]+[1-4]/gi);
-    if (matches) {
-        return matches;
-    }
-
-    // If no tone numbers, return as single syllable
-    return [text];
+    return syllables.length > 0 ? syllables : [text];
 }
 
 function checkPinyinMatch(userAnswer, correct) {
@@ -116,23 +177,20 @@ function checkPinyinMatch(userAnswer, correct) {
         return options.some(option => checkPinyinMatch(user, option));
     }
 
-    // Direct match with tone marks
+    // Direct match first (covers identical formatting, tone marks, etc.)
     if (user === correctLower) return true;
 
     // Convert both to normalized forms for comparison
     const userNormalized = normalizePinyin(user);
     const correctNormalized = normalizePinyin(correctLower);
 
-    // Debug logging (will be visible in browser console during tests)
-    if (typeof console !== 'undefined' && console.log) {
-        console.log(`checkPinyinMatch: "${user}" vs "${correctLower}"`);
-        console.log(`  userNormalized: "${userNormalized}"`);
-        console.log(`  correctNormalized: "${correctNormalized}"`);
-        console.log(`  match: ${userNormalized === correctNormalized}`);
-    }
+    const userTones = extractToneSequence(user);
+    const correctTones = extractToneSequence(correctLower);
 
-    // Check if normalized forms match
-    if (userNormalized === correctNormalized) return true;
+    const baseMatches = userNormalized === correctNormalized;
+    const toneMatches = userTones === correctTones && userTones.length === correctTones.length;
+
+    if (baseMatches && toneMatches) return true;
 
     return false;
 }
@@ -150,21 +208,14 @@ function normalizePinyin(pinyin) {
     // Remove all separators
     result = result.replace(/[\s.]+/g, '');
 
+    // Normalize ü/u: variants to 'v'
+    result = result.replace(/u:/g, 'v');
+
     // Remove tone numbers (1-5)
     result = result.replace(/[1-5]/g, '');
 
     // Remove tone marks by replacing with base vowels
-    const toneMarkToBase = {
-        'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
-        'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
-        'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
-        'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
-        'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
-        'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v',
-        'ü': 'v'
-    };
-
-    for (const [marked, base] of Object.entries(toneMarkToBase)) {
+    for (const [marked, base] of Object.entries(TONE_MARK_TO_BASE)) {
         result = result.replace(new RegExp(marked, 'g'), base);
     }
 
@@ -172,39 +223,33 @@ function normalizePinyin(pinyin) {
 }
 
 function extractToneSequence(pinyin) {
-    // Extract just the tone numbers from pinyin
-    // Examples:
-    //   "yìdiǎnr" -> "43"
-    //   "shém.me" -> "25" (. means neutral tone)
-    //   "Zhōng.guo" -> "15"
-
-    const toneMarkToNumber = {
-        'ā': '1', 'á': '2', 'ǎ': '3', 'à': '4',
-        'ē': '1', 'é': '2', 'ě': '3', 'è': '4',
-        'ī': '1', 'í': '2', 'ǐ': '3', 'ì': '4',
-        'ō': '1', 'ó': '2', 'ǒ': '3', 'ò': '4',
-        'ū': '1', 'ú': '2', 'ǔ': '3', 'ù': '4',
-        'ǖ': '1', 'ǘ': '2', 'ǚ': '3', 'ǜ': '4'
-    };
-
-    // Convert to tone numbers first (handles splitting syllables properly)
-    const withNumbers = convertPinyinToToneNumbers(pinyin.toLowerCase());
-
-    // Split into syllables using the splitPinyinSyllables function
-    const syllables = splitPinyinSyllables(withNumbers);
+    const syllables = splitPinyinSyllables(pinyin);
+    if (syllables.length === 0) return '';
 
     let tones = '';
 
-    for (const syl of syllables) {
-        // Extract the digit from this syllable
-        const match = syl.match(/[1-5]/);
-        if (match) {
-            tones += match[0];
-        } else {
-            // No tone number found, must be neutral tone
-            tones += '5';
+    syllables.forEach(syl => {
+        let tone = null;
+        for (let i = 0; i < syl.length; i++) {
+            const char = syl[i];
+            if (/[1-5]/.test(char)) {
+                tone = char;
+                break;
+            }
+
+            const lower = char.toLowerCase();
+            if (TONE_MARK_TO_NUMBER[lower]) {
+                tone = TONE_MARK_TO_NUMBER[lower];
+                break;
+            }
         }
-    }
+
+        if (!tone) {
+            tone = '5';
+        }
+
+        tones += tone;
+    });
 
     return tones;
 }
@@ -651,8 +696,6 @@ function generateFuzzyMeaningOptions() {
     const allOptions = [...wrongOptions, currentQuestion.meaning];
     allOptions.sort(() => Math.random() - 0.5);
 
-    let lastPlayedMatch = null; // Track last played audio to avoid repeats
-
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
         btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
@@ -676,14 +719,12 @@ function generateFuzzyMeaningOptions() {
 
         let bestMatch = null;
         let bestScore = -1;
-        let bestMatchMeaning = null;
 
         allOptions.forEach((option, index) => {
             const score = fuzzyMatch(input, option.toLowerCase());
             if (score > bestScore) {
                 bestScore = score;
                 bestMatch = index;
-                bestMatchMeaning = option;
             }
         });
 
@@ -697,17 +738,6 @@ function generateFuzzyMeaningOptions() {
             }
         });
 
-        // Play audio for the character if best match is the correct answer (only once per match)
-        if (bestMatchMeaning === currentQuestion.meaning && lastPlayedMatch !== currentQuestion.char) {
-            lastPlayedMatch = currentQuestion.char;
-            const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-            console.log('Fuzzy mode: Playing audio for correct match:', currentQuestion.char, firstPinyin);
-            if (typeof playPinyinAudio === 'function') {
-                playPinyinAudio(firstPinyin, currentQuestion.char);
-            } else {
-                console.error('playPinyinAudio is not available');
-            }
-        }
     };
 
     // Enter key to select highlighted option
@@ -723,13 +753,6 @@ function generateFuzzyMeaningOptions() {
 
     fuzzyInput.focus();
 
-    // Play audio for the character when question is generated
-    const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-    if (typeof playPinyinAudio === 'function') {
-        setTimeout(() => {
-            playPinyinAudio(firstPinyin, currentQuestion.char);
-        }, 200);
-    }
 }
 
 function checkFuzzyAnswer(answer) {
@@ -750,12 +773,16 @@ function checkFuzzyAnswer(answer) {
         score++;
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
         updateStats();
         setTimeout(() => generateQuestion(), 1500);
     } else {
         playWrongSound();
         feedback.textContent = `✗ Wrong! Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
         updateStats();
         setTimeout(() => {
             feedback.textContent = '';
@@ -1262,7 +1289,109 @@ function initQuizCommandPalette() {
         : defaultModes;
 
     if (typeof initCommandPalette === 'function') {
-        initCommandPalette(paletteItems);
+        initCommandPalette({
+            modes: paletteItems,
+            actions: getQuizPaletteActions(),
+            searchPlaceholder: 'Search quiz modes, commands, or pages…'
+        });
+    }
+
+    function getQuizPaletteActions() {
+        return [
+            {
+                name: 'Next Quiz Mode',
+                type: 'action',
+                description: 'Cycle forward through the available quiz modes',
+                keywords: 'mode next cycle forward',
+                action: () => cycleQuizMode(1),
+                available: () => document.querySelectorAll('.mode-btn').length > 1
+            },
+            {
+                name: 'Previous Quiz Mode',
+                type: 'action',
+                description: 'Go back to the previous quiz mode',
+                keywords: 'mode previous back cycle',
+                action: () => cycleQuizMode(-1),
+                available: () => document.querySelectorAll('.mode-btn').length > 1
+            },
+            {
+                name: 'Copy Current Character',
+                type: 'action',
+                description: 'Copy the current prompt character to the clipboard',
+                keywords: 'copy clipboard character prompt',
+                action: () => {
+                    if (window.currentQuestion?.char) {
+                        copyToClipboard(window.currentQuestion.char);
+                    }
+                },
+                available: () => Boolean(window.currentQuestion?.char)
+            },
+            {
+                name: 'Copy Character + Pinyin',
+                type: 'action',
+                description: 'Copy the current prompt with pinyin for sharing',
+                keywords: 'copy clipboard pinyin prompt',
+                action: () => {
+                    if (window.currentQuestion?.char && window.currentQuestion?.pinyin) {
+                        copyToClipboard(`${window.currentQuestion.char} – ${window.currentQuestion.pinyin}`);
+                    }
+                },
+                available: () => Boolean(window.currentQuestion?.char && window.currentQuestion?.pinyin)
+            },
+            {
+                name: 'Play Character Audio',
+                type: 'action',
+                description: 'Hear the pronunciation for the current prompt',
+                keywords: 'audio play pronunciation sound',
+                action: () => {
+                    if (window.currentQuestion?.pinyin && typeof window.playPinyinAudio === 'function') {
+                        const firstPinyin = window.currentQuestion.pinyin.split('/')[0].trim();
+                        window.playPinyinAudio(firstPinyin, window.currentQuestion.char);
+                    }
+                },
+                available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function'
+            }
+        ];
+    }
+
+    function cycleQuizMode(direction) {
+        const buttons = Array.from(document.querySelectorAll('.mode-btn'));
+        if (!buttons.length) return;
+        const activeIndex = buttons.findIndex(btn => btn.classList.contains('active'));
+        const currentIndex = activeIndex >= 0 ? activeIndex : 0;
+        const targetIndex = (currentIndex + direction + buttons.length) % buttons.length;
+        const target = buttons[targetIndex];
+        if (target) {
+            target.click();
+        }
+    }
+
+    function copyToClipboard(text) {
+        if (!text) return;
+
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(text).catch(() => {
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.warn('Copy to clipboard failed', err);
+        }
+        document.body.removeChild(textarea);
     }
 }
 
