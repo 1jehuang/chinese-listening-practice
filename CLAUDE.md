@@ -34,3 +34,44 @@
 - `*-dictation.html` - Dictation exercises
 - `js/` - Shared JavaScript utilities (quiz engine, command palette, etc.)
 - `css/` - Shared stylesheets
+
+## Testing
+
+### Running Tests
+
+The project includes test files to verify pinyin conversion and answer validation:
+
+**Run all vocabulary tests:**
+```bash
+node test-all-vocab.js
+```
+
+This tests pinyin conversion for all vocabulary words in the app to ensure:
+- Tone marks are correctly converted to tone numbers
+- Multi-syllable words are properly split
+- Diphthongs (ai, ei, ao, ou, etc.) are handled correctly
+- Edge cases like 西南 (xīnán) and 虽然 (suīrán) work without dots
+
+**Run specific pinyin tests:**
+```bash
+node test-pinyin.js
+```
+
+This runs targeted tests for specific words/patterns.
+
+### Writing Tests
+
+When adding new vocabulary, you can add test cases to `test-all-vocab.js`:
+
+```javascript
+{ char: '新词', pinyin: 'xīncí', expected: 'xin1ci2' },
+```
+
+The test will verify that the pinyin conversion produces the expected tone number format.
+
+### What to Test
+
+Always run tests after:
+- Modifying `js/quiz-engine.js` (especially `splitPinyinSyllables` or `convertPinyinToToneNumbers`)
+- Adding new vocabulary with unusual pinyin patterns
+- Fixing bugs in answer validation

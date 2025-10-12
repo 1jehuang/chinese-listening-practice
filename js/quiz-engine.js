@@ -142,8 +142,39 @@ function splitPinyinSyllables(pinyin) {
             continue;
         }
 
-        if (pendingBoundary && !/[1-5]/.test(char) && !isToneMark(char) && !isFinalLetter(char, lastNonDigitChar)) {
-            flush();
+        if (pendingBoundary && !/[1-5]/.test(char) && !isToneMark(char)) {
+            // After a tone mark, if we encounter something that's NOT a valid continuation, split
+            const charLower = char.toLowerCase();
+            const prevLower = lastNonDigitChar.toLowerCase();
+
+            // Check if this is part of a compound final (ai, ei, ao, ou, etc.)
+            const prevIsVowel = /[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(prevLower);
+            const charIsVowel = /[aeiouü]/.test(charLower);
+
+            // Common compound finals: ai, ei, ao, ou, ia, ie, ua, uo, üe, etc.
+            const isCompoundFinal = prevIsVowel && charIsVowel;
+
+            // Check if this could be a syllable ending (n, ng, r after vowels)
+            const isValidEnding = (
+                (charLower === 'n' || charLower === 'r') ||
+                (charLower === 'g' && prevLower === 'n')
+            );
+
+            // If it's a compound final or valid ending, keep it in the same syllable
+            if (!isCompoundFinal && !isValidEnding) {
+                // This is a consonant starting a new syllable
+                flush();
+            } else if (isValidEnding) {
+                // Even if it looks like an ending, check if the NEXT character suggests otherwise
+                // e.g., in "xīnán", after "n" we see "á" which means "n" starts a new syllable
+                const nextChar = i + 1 < text.length ? text[i + 1].toLowerCase() : '';
+                const nextIsVowel = /[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(nextChar);
+
+                if (nextIsVowel) {
+                    // This "n" starts a new syllable like "nán"
+                    flush();
+                }
+            }
         }
 
         current += char;
@@ -1268,6 +1299,167 @@ function populateStudyList() {
 // COMMAND PALETTE SETUP FOR QUIZ PAGES
 // =============================================================================
 
+let quizHotkeysRegistered = false;
+
+function getCurrentPromptText() {
+    const question = window.currentQuestion;
+    const activeMode = window.mode;
+    if (!question) return '';
+
+    const asString = (value) => {
+        if (typeof value === 'string') return value.trim();
+        if (value === null || value === undefined) return '';
+        return String(value).trim();
+    };
+
+    const firstFromList = (value) => {
+        const text = asString(value);
+        if (!text) return '';
+        return text.split('/')[0].trim();
+    };
+
+    switch (activeMode) {
+        case 'pinyin-to-char':
+            return firstFromList(question.pinyin);
+        case 'meaning-to-char':
+            return asString(question.meaning);
+        case 'char-to-pinyin':
+        case 'char-to-pinyin-mc':
+        case 'char-to-tones':
+        case 'char-to-meaning':
+        case 'char-to-meaning-type':
+        case 'stroke-order':
+        case 'handwriting':
+        case 'draw-char':
+            return asString(question.char);
+        case 'audio-to-pinyin':
+            return asString(question.char) || firstFromList(question.pinyin);
+        default:
+            break;
+    }
+
+    return asString(question.char) || firstFromList(question.pinyin) || asString(question.meaning);
+}
+
+function copyToClipboard(text) {
+    if (!text) return;
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).catch(() => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+    } catch (err) {
+        console.warn('Copy to clipboard failed', err);
+    }
+    document.body.removeChild(textarea);
+}
+
+function getActiveInputField() {
+    if (mode === 'char-to-meaning-type' && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+        return fuzzyInput;
+    }
+    if (answerInput && isElementReallyVisible(answerInput)) {
+        return answerInput;
+    }
+    if (fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+        return fuzzyInput;
+    }
+    return null;
+}
+
+function isElementReallyVisible(el) {
+    if (!el) return false;
+    if (typeof el.offsetParent !== 'undefined' && el.offsetParent !== null) return true;
+    if (typeof el.getClientRects === 'function' && el.getClientRects().length > 0) return true;
+    return false;
+}
+
+function focusInputElement(el) {
+    if (!el) return;
+    try {
+        if (typeof el.focus === 'function') {
+            el.focus({ preventScroll: false });
+        }
+    } catch (err) {
+        console.warn('Failed to focus element', err);
+    }
+
+    if (typeof el.select === 'function') {
+        try {
+            el.select();
+        } catch (err) {
+            // Some inputs may not support select; ignore.
+        }
+    } else if (el.isContentEditable) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const selection = window.getSelection && window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+}
+
+function isTypingTarget(el) {
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+    return Boolean(el.isContentEditable);
+}
+
+function isCommandPaletteOpen() {
+    const palette = document.getElementById('commandPalette');
+    return Boolean(palette && palette.style.display !== 'none');
+}
+
+function handleQuizHotkeys(e) {
+    if (isCommandPaletteOpen()) return;
+
+    const target = e.target;
+    const copyComboActive = e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
+
+    if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === '/') {
+        if (isTypingTarget(target)) return;
+        if (target && typeof target.closest === 'function' && target.closest('#commandPalette')) return;
+        const input = getActiveInputField();
+        if (input) {
+            e.preventDefault();
+            focusInputElement(input);
+        }
+        return;
+    }
+
+    if (copyComboActive) {
+        e.preventDefault();
+        const prompt = getCurrentPromptText();
+        if (prompt) {
+            copyToClipboard(prompt);
+        }
+    }
+}
+
+function registerQuizHotkeys() {
+    if (quizHotkeysRegistered) return;
+    quizHotkeysRegistered = true;
+    document.addEventListener('keydown', handleQuizHotkeys);
+}
+
 function initQuizCommandPalette() {
     const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
@@ -1339,6 +1531,20 @@ function initQuizCommandPalette() {
                 available: () => Boolean(window.currentQuestion?.char && window.currentQuestion?.pinyin)
             },
             {
+                name: 'Copy Prompt Text',
+                type: 'action',
+                description: 'Copy the current question prompt to the clipboard',
+                keywords: 'copy prompt question clipboard word text',
+                shortcut: 'Ctrl+Alt+C',
+                action: () => {
+                    const prompt = getCurrentPromptText();
+                    if (prompt) {
+                        copyToClipboard(prompt);
+                    }
+                },
+                available: () => Boolean(getCurrentPromptText())
+            },
+            {
                 name: 'Play Character Audio',
                 type: 'action',
                 description: 'Hear the pronunciation for the current prompt',
@@ -1366,33 +1572,6 @@ function initQuizCommandPalette() {
         }
     }
 
-    function copyToClipboard(text) {
-        if (!text) return;
-
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            navigator.clipboard.writeText(text).catch(() => {
-                fallbackCopy(text);
-            });
-        } else {
-            fallbackCopy(text);
-        }
-    }
-
-    function fallbackCopy(text) {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'absolute';
-        textarea.style.left = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-            document.execCommand('copy');
-        } catch (err) {
-            console.warn('Copy to clipboard failed', err);
-        }
-        document.body.removeChild(textarea);
-    }
 }
 
 // =============================================================================
@@ -1498,6 +1677,8 @@ function initQuiz(charactersData, userConfig = {}) {
         initialBtn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
         initialBtn.classList.remove('border-gray-300');
     }
+
+    registerQuizHotkeys();
 
     // Initialize command palette
     initQuizCommandPalette();

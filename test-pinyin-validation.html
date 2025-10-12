@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinyin Tone Number Validation Tests</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-result {
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+        }
+        .pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pinyin Tone Number Validation Tests</h1>
+    <div id="results"></div>
+    <div id="summary" class="summary"></div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script>
+        // Simple test runner
+        let passCount = 0;
+        let failCount = 0;
+        const resultsDiv = document.getElementById('results');
+        const summaryDiv = document.getElementById('summary');
+
+        function test(description, actual, expected) {
+            const passed = actual === expected;
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+
+            if (passed) {
+                div.textContent = `✓ PASS: ${description}`;
+                passCount++;
+            } else {
+                div.textContent = `✗ FAIL: ${description}\n  Expected: "${expected}"\n  Got: "${actual}"`;
+                failCount++;
+            }
+
+            resultsDiv.appendChild(div);
+        }
+
+        // Test cases for 西南 (xīnán) = xi1nan2
+        console.log('Testing 西南 (xīnán)');
+        test(
+            '西南 with tone marks (xīnán) -> xi1nan2',
+            convertPinyinToToneNumbers('xīnán'),
+            'xi1nan2'
+        );
+
+        test(
+            '西南 with tone numbers (xi1nan2) -> xi1nan2',
+            convertPinyinToToneNumbers('xi1nan2'),
+            'xi1nan2'
+        );
+
+        // Test cases for 虽然 (suīrán) = sui1ran2
+        console.log('Testing 虽然 (suīrán)');
+        test(
+            '虽然 with tone marks (suīrán) -> sui1ran2',
+            convertPinyinToToneNumbers('suīrán'),
+            'sui1ran2'
+        );
+
+        test(
+            '虽然 with tone numbers (sui1ran2) -> sui1ran2',
+            convertPinyinToToneNumbers('sui1ran2'),
+            'sui1ran2'
+        );
+
+        // Additional test cases
+        test(
+            'Mixed case handling - XiNan -> xi1nan2',
+            convertPinyinToToneNumbers('XiNan'),
+            'xi5nan5'  // No tones = neutral tone (5)
+        );
+
+        test(
+            'Single syllable - xī -> xi1',
+            convertPinyinToToneNumbers('xī'),
+            'xi1'
+        );
+
+        test(
+            'Single syllable with number - xi1 -> xi1',
+            convertPinyinToToneNumbers('xi1'),
+            'xi1'
+        );
+
+        // Summary
+        const total = passCount + failCount;
+        summaryDiv.innerHTML = `
+            <div>Total Tests: ${total}</div>
+            <div style="color: #155724;">Passed: ${passCount}</div>
+            <div style="color: #721c24;">Failed: ${failCount}</div>
+            <div style="margin-top: 10px;">Success Rate: ${((passCount/total)*100).toFixed(1)}%</div>
+        `;
+
+        if (failCount === 0) {
+            summaryDiv.style.background = '#d4edda';
+        } else {
+            summaryDiv.style.background = '#f8d7da';
+        }
+    </script>
+</body>
+</html>
