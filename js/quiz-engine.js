@@ -931,6 +931,7 @@ function initCanvas() {
 
     const clearBtn = document.getElementById('clearCanvasBtn');
     const submitBtn = document.getElementById('submitDrawBtn');
+    let showAnswerBtn = document.getElementById('showDrawAnswerBtn');
     const recognitionContainer = drawCharMode
         ? drawCharMode.querySelector('.text-center.mb-4')
         : null;
@@ -945,12 +946,24 @@ function initCanvas() {
         recognitionContainer.appendChild(candidateContainer);
     }
 
+    if (!showAnswerBtn && clearBtn && clearBtn.parentElement) {
+        showAnswerBtn = document.createElement('button');
+        showAnswerBtn.id = 'showDrawAnswerBtn';
+        showAnswerBtn.className = 'bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg transition';
+        showAnswerBtn.textContent = '🤔 Show Answer';
+        clearBtn.parentElement.appendChild(showAnswerBtn);
+    }
+
     if (clearBtn) {
         clearBtn.onclick = clearCanvas;
     }
 
     if (submitBtn) {
         submitBtn.onclick = submitDrawing;
+    }
+
+    if (showAnswerBtn) {
+        showAnswerBtn.onclick = revealDrawingAnswer;
     }
 
     updateOcrCandidates();
@@ -1141,6 +1154,8 @@ function submitDrawing() {
     const ocrResult = document.getElementById('ocrResult');
     if (!ocrResult) return;
 
+    if (answered) return;
+
     const recognized = ocrResult.textContent.trim();
     if (!recognized) {
         feedback.textContent = '✗ Please draw a character first!';
@@ -1162,6 +1177,31 @@ function submitDrawing() {
         feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
     }
+
+    updateStats();
+    setTimeout(() => {
+        clearCanvas();
+        generateQuestion();
+    }, 2000);
+}
+
+function revealDrawingAnswer() {
+    if (!currentQuestion) return;
+
+    const ocrResult = document.getElementById('ocrResult');
+    if (ocrResult) {
+        ocrResult.textContent = currentQuestion.char;
+    }
+    updateOcrCandidates([currentQuestion.char]);
+
+    if (answered) return;
+
+    answered = true;
+    total++;
+
+    const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
+    feedback.textContent = `ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
+    feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-blue-600';
 
     updateStats();
     setTimeout(() => {
