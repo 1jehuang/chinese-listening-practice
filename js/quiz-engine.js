@@ -26,8 +26,9 @@ let canvas, ctx;
 let isDrawing = false;
 let lastX, lastY;
 let strokes = [];
-let currentStroke = [];
+let currentStroke = null;
 let ocrTimeout = null;
+let drawStartTime = null;
 
 // =============================================================================
 // PINYIN UTILITIES
@@ -925,9 +926,24 @@ function initCanvas() {
     canvas.addEventListener('touchend', stopDrawing);
 
     strokes = [];
+    currentStroke = null;
+    drawStartTime = null;
 
     const clearBtn = document.getElementById('clearCanvasBtn');
     const submitBtn = document.getElementById('submitDrawBtn');
+    const recognitionContainer = drawCharMode
+        ? drawCharMode.querySelector('.text-center.mb-4')
+        : null;
+
+    if (recognitionContainer && !document.getElementById('ocrCandidates')) {
+        const candidateContainer = document.createElement('div');
+        candidateContainer.id = 'ocrCandidates';
+        candidateContainer.className = 'flex flex-wrap justify-center gap-2 mt-2';
+        candidateContainer.style.minHeight = '64px';
+        candidateContainer.style.maxHeight = '96px';
+        candidateContainer.style.overflowY = 'auto';
+        recognitionContainer.appendChild(candidateContainer);
+    }
 
     if (clearBtn) {
         clearBtn.onclick = clearCanvas;
@@ -936,6 +952,8 @@ function initCanvas() {
     if (submitBtn) {
         submitBtn.onclick = submitDrawing;
     }
+
+    updateOcrCandidates();
 }
 
 function getCanvasCoords(e) {
@@ -952,12 +970,29 @@ function getCanvasCoords(e) {
     };
 }
 
+function getRelativeTimestamp() {
+    const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now()
+        : Date.now();
+
+    if (drawStartTime === null) {
+        drawStartTime = now;
+    }
+
+    return Math.round(now - drawStartTime);
+}
+
 function startDrawing(e) {
     isDrawing = true;
     const coords = getCanvasCoords(e);
     lastX = coords.x;
     lastY = coords.y;
-    currentStroke = [[coords.x, coords.y]];
+    const initialTimestamp = getRelativeTimestamp();
+    currentStroke = {
+        x: [Math.round(coords.x)],
+        y: [Math.round(coords.y)],
+        t: [initialTimestamp]
+    };
 }
 
 function draw(e) {
@@ -970,18 +1005,22 @@ function draw(e) {
     ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
 
-    currentStroke.push([coords.x, coords.y]);
+    if (currentStroke) {
+        currentStroke.x.push(Math.round(coords.x));
+        currentStroke.y.push(Math.round(coords.y));
+        currentStroke.t.push(getRelativeTimestamp());
+    }
     lastX = coords.x;
     lastY = coords.y;
 }
 
 function stopDrawing() {
-    if (isDrawing && currentStroke.length > 0) {
+    if (isDrawing && currentStroke && currentStroke.x.length > 0) {
         strokes.push(currentStroke);
-        currentStroke = [];
+        currentStroke = null;
 
         if (ocrTimeout) clearTimeout(ocrTimeout);
-        ocrTimeout = setTimeout(runOCR, 500);
+        ocrTimeout = setTimeout(runOCR, 400);
     }
     isDrawing = false;
 }
@@ -998,9 +1037,21 @@ function handleTouchMove(e) {
 }
 
 async function runOCR() {
-    if (strokes.length === 0) return;
+    if (strokes.length === 0) {
+        updateOcrCandidates();
+        return;
+    }
 
     try {
+        const ink = strokes.map(stroke => {
+            const x = stroke.x || [];
+            const y = stroke.y || [];
+            const t = stroke.t && stroke.t.length
+                ? stroke.t
+                : x.map(() => 0);
+            return [x, y, t];
+        });
+
         const data = {
             options: 'enable_pre_space',
             requests: [{
@@ -1008,27 +1059,39 @@ async function runOCR() {
                     writing_area_width: canvas.width,
                     writing_area_height: canvas.height
                 },
-                ink: strokes,
-                language: 'zh_CN'
+                ink,
+                language: 'zh-Hans'
             }]
         };
 
-        const response = await fetch('https://www.google.com.tw/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
+        const response = await fetch('https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
 
         const result = await response.json();
-        if (result[1] && result[1][0] && result[1][0][1]) {
-            const recognizedChar = result[1][0][1][0];
+        const candidates = Array.isArray(result?.[1]?.[0]?.[1])
+            ? result[1][0][1]
+            : [];
+
+        updateOcrCandidates(candidates);
+
+        if (candidates.length > 0) {
+            const recognizedChar = candidates[0];
             const ocrResult = document.getElementById('ocrResult');
             if (ocrResult) {
                 ocrResult.textContent = recognizedChar;
             }
+        } else {
+            const ocrResult = document.getElementById('ocrResult');
+            if (ocrResult) {
+                ocrResult.textContent = '';
+            }
         }
     } catch (error) {
         console.error('OCR error:', error);
+        updateOcrCandidates();
     }
 }
 
@@ -1036,11 +1099,42 @@ function clearCanvas() {
     if (!ctx || !canvas) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     strokes = [];
-    currentStroke = [];
+    currentStroke = null;
+    drawStartTime = null;
+    if (ocrTimeout) {
+        clearTimeout(ocrTimeout);
+        ocrTimeout = null;
+    }
+    updateOcrCandidates();
     const ocrResult = document.getElementById('ocrResult');
     if (ocrResult) {
         ocrResult.textContent = '';
     }
+}
+
+function updateOcrCandidates(candidates = []) {
+    const container = document.getElementById('ocrCandidates');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+        return;
+    }
+
+    candidates.slice(0, 5).forEach(candidate => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = candidate;
+        button.className = 'px-3 py-1 text-xl rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition';
+        button.onclick = () => {
+            const ocrResult = document.getElementById('ocrResult');
+            if (ocrResult) {
+                ocrResult.textContent = candidate;
+            }
+        };
+        container.appendChild(button);
+    });
 }
 
 function submitDrawing() {
