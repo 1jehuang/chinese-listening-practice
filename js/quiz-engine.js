@@ -1242,7 +1242,9 @@ function renderComponentStory(breakdown) {
         card.classList.add('hidden');
     };
 
-    if (!showComponentBreakdown || !breakdown) {
+    const canReveal = answered || questionAttemptRecorded;
+
+    if (!showComponentBreakdown || !breakdown || !canReveal) {
         resetCard();
         return;
     }
@@ -1389,8 +1391,7 @@ function renderMeaningQuestionLayout() {
     resetMeaningAnswerSummary();
     applyComponentPanelVisibility();
     applyComponentColoring();
-    const initialBreakdown = showComponentBreakdown ? getComponentsForQuestion(currentQuestion) : null;
-    renderComponentStory(initialBreakdown);
+    renderComponentStory(null);
 }
 
 function resetMeaningAnswerSummary() {
