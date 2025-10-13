@@ -14,10 +14,11 @@ let quizCharacters = [];
 let config = {};
 
 // DOM elements (initialized in initQuiz)
-let questionDisplay, answerInput, checkBtn, feedback, hint;
+let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
 let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
 let audioSection;
 let radicalSelectedAnswers = [];
+let questionAttemptRecorded = false;
 
 // Hanzi Writer
 let writer = null;
@@ -368,6 +369,8 @@ function generateQuestion() {
     feedback.textContent = '';
     hint.textContent = '';
     answerInput.value = '';
+    questionAttemptRecorded = false;
+    clearComponentBreakdown();
 
     currentQuestion = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
 
@@ -494,6 +497,7 @@ function checkAnswer() {
             feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+            renderCharacterComponents(currentQuestion);
 
             // Play audio
             const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
@@ -513,6 +517,7 @@ function checkAnswer() {
             feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+            renderCharacterComponents(currentQuestion);
 
             updateStats();
             setTimeout(() => generateQuestion(), 2000);
@@ -579,6 +584,7 @@ function handleCorrectFullAnswer() {
     feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+    renderCharacterComponents(currentQuestion);
 
     updateStats();
     setTimeout(() => generateQuestion(), 300);
@@ -609,6 +615,7 @@ function handleCorrectSyllable(syllables, fullPinyin) {
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        renderCharacterComponents(currentQuestion);
 
         updateStats();
         setTimeout(() => generateQuestion(), 300);
@@ -634,6 +641,7 @@ function handleWrongAnswer() {
     feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+    renderCharacterComponents(currentQuestion);
 
     // Play audio for the correct answer in char-to-pinyin mode
     if (mode === 'char-to-pinyin') {
@@ -811,8 +819,13 @@ function generateFuzzyMeaningOptions() {
 
 function checkFuzzyAnswer(answer) {
     if (answered) return;
-    answered = true;
-    total++;
+    if (!answer) return;
+
+    const isFirstAttempt = !questionAttemptRecorded;
+    if (isFirstAttempt) {
+        total++;
+        questionAttemptRecorded = true;
+    }
 
     const correct = answer === currentQuestion.meaning;
 
@@ -823,27 +836,34 @@ function checkFuzzyAnswer(answer) {
     }
 
     if (correct) {
+        answered = true;
         playCorrectSound();
-        score++;
+        if (isFirstAttempt) {
+            score++;
+        }
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        renderCharacterComponents(currentQuestion);
         updateStats();
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+        }
         setTimeout(() => generateQuestion(), 1500);
     } else {
+        answered = false;
         playWrongSound();
         feedback.textContent = `✗ Wrong! Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+        renderCharacterComponents(currentQuestion);
         updateStats();
-        setTimeout(() => {
-            feedback.textContent = '';
-            answered = false;
+        if (fuzzyInput) {
             fuzzyInput.value = '';
-            fuzzyInput.focus();
-        }, 1500);
+            setTimeout(() => fuzzyInput.focus(), 0);
+        }
     }
 }
 
@@ -875,6 +895,7 @@ function checkMultipleChoice(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        renderCharacterComponents(currentQuestion);
 
         // Play audio for char-to-pinyin-mc mode
         if (mode === 'char-to-pinyin-mc') {
@@ -889,6 +910,7 @@ function checkMultipleChoice(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+        renderCharacterComponents(currentQuestion);
 
         // Play audio for char-to-pinyin-mc mode
         if (mode === 'char-to-pinyin-mc') {
@@ -914,6 +936,135 @@ function updateStats() {
     const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
     if (percentageEl) percentageEl.textContent = percentage;
     if (accuracyEl) accuracyEl.textContent = percentage + '%';
+}
+
+function escapeHtml(value) {
+    if (value === undefined || value === null) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function clearComponentBreakdown() {
+    if (!componentBreakdown) return;
+    componentBreakdown.innerHTML = '';
+    componentBreakdown.classList.add('hidden');
+}
+
+function parseRadicalEntry(entry) {
+    if (!entry) return null;
+    const trimmed = String(entry).trim();
+    if (!trimmed) return null;
+    const match = trimmed.match(/^(.+?)\s*\((.+)\)$/);
+    if (match) {
+        return {
+            char: match[1].trim(),
+            meaning: match[2].trim()
+        };
+    }
+    return { char: trimmed, meaning: '' };
+}
+
+function convertRadicalListToBreakdown(radicals) {
+    if (!Array.isArray(radicals) || radicals.length === 0) return null;
+    const entries = radicals.map(parseRadicalEntry).filter(Boolean);
+    if (entries.length === 0) return null;
+    const breakdown = {};
+    breakdown.radical = entries[0];
+    if (entries[1]) breakdown.phonetic = entries[1];
+    if (entries.length > 2) {
+        breakdown.others = entries.slice(2);
+    }
+    return breakdown;
+}
+
+function getComponentsForQuestion(question) {
+    if (!question) return null;
+
+    if (question.componentBreakdown) {
+        return question.componentBreakdown;
+    }
+
+    if (question.components) {
+        return question.components;
+    }
+
+    if (Array.isArray(question.radicals) && question.radicals.length > 0) {
+        return convertRadicalListToBreakdown(question.radicals);
+    }
+
+    if (typeof window !== 'undefined' &&
+        window.CHARACTER_COMPONENTS &&
+        window.CHARACTER_COMPONENTS[question.char]) {
+        return window.CHARACTER_COMPONENTS[question.char];
+    }
+
+    return null;
+}
+
+function buildComponentLine(label, data, tagClass) {
+    if (!data || (!data.char && !data.meaning)) return '';
+    const componentChar = escapeHtml(data.char || '');
+    const meaning = escapeHtml(data.meaning || '');
+    const meaningHtml = meaning ? `<span class="component-meaning">${meaning}</span>` : '';
+    return `<div class="component-line"><span class="component-label">${escapeHtml(label)}</span><span class="component-tag ${tagClass}">${componentChar}</span>${meaningHtml}</div>`;
+}
+
+function renderCharacterComponents(question) {
+    if (!componentBreakdown) return;
+
+    const breakdown = getComponentsForQuestion(question);
+    const hasBreakdown = breakdown && (
+        (breakdown.radical && (breakdown.radical.char || breakdown.radical.meaning)) ||
+        (breakdown.phonetic && (breakdown.phonetic.char || breakdown.phonetic.meaning)) ||
+        (Array.isArray(breakdown.others) && breakdown.others.length > 0)
+    );
+
+    if (!hasBreakdown) {
+        clearComponentBreakdown();
+        return;
+    }
+
+    let html = '<div class="component-title">Character Components</div>';
+
+    if (breakdown.radical) {
+        html += buildComponentLine('Radical', breakdown.radical, 'component-radical');
+    }
+
+    if (breakdown.phonetic) {
+        html += buildComponentLine('Phonetic', breakdown.phonetic, 'component-phonetic');
+    }
+
+    if (Array.isArray(breakdown.others)) {
+        breakdown.others.forEach((other, index) => {
+            if (!other) return;
+            const label = breakdown.others.length > 1 ? `Component ${index + 1}` : 'Component';
+            html += buildComponentLine(label, other, 'component-other');
+        });
+    }
+
+    if (breakdown.hint) {
+        html += `<div class="component-hint">${escapeHtml(breakdown.hint)}</div>`;
+    }
+
+    componentBreakdown.innerHTML = html;
+    componentBreakdown.classList.remove('hidden');
+}
+
+function prioritizeMeaningModeButton() {
+    const preferredButton =
+        document.querySelector('.mode-btn[data-mode="char-to-meaning-type"]') ||
+        document.querySelector('.mode-btn[data-mode="char-to-meaning"]');
+
+    if (!preferredButton || !preferredButton.parentElement) return;
+
+    const parent = preferredButton.parentElement;
+    if (parent.firstElementChild === preferredButton) return;
+
+    parent.insertBefore(preferredButton, parent.firstElementChild);
 }
 
 // =============================================================================
@@ -1744,6 +1895,7 @@ function initQuiz(charactersData, userConfig = {}) {
     checkBtn = document.getElementById('checkBtn');
     feedback = document.getElementById('feedback');
     hint = document.getElementById('hint');
+    componentBreakdown = document.getElementById('componentBreakdown');
     typeMode = document.getElementById('typeMode');
     choiceMode = document.getElementById('choiceMode');
     fuzzyMode = document.getElementById('fuzzyMode');
@@ -1808,6 +1960,7 @@ function initQuiz(charactersData, userConfig = {}) {
     });
 
     // Mode selector
+    prioritizeMeaningModeButton();
     document.querySelectorAll('.mode-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.mode-btn').forEach(b => {

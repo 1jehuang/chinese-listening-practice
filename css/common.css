@@ -62,3 +62,77 @@
     border-color: #007bff;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
+
+/* Component breakdown display */
+.component-breakdown {
+    margin: 12px auto 0;
+    max-width: 520px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 16px;
+    color: #374151;
+}
+
+.component-breakdown .component-title {
+    font-weight: 600;
+    font-size: 17px;
+    margin-bottom: 8px;
+    color: #1f2937;
+}
+
+.component-breakdown .component-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0;
+}
+
+.component-label {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #4b5563;
+}
+
+.component-tag {
+    font-size: 28px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    min-width: 36px;
+}
+
+.component-radical {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.component-phonetic {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.component-other {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.component-meaning {
+    font-size: 15px;
+    color: #4b5563;
+}
+
+.component-hint {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #6b7280;
+}

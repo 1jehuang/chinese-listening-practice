@@ -1,0 +1,194 @@
+#!/usr/bin/env node
+
+/**
+ * Generate component breakdown data for the common character list.
+ * Data source: https://github.com/skishore/makemeahanzi
+ */
+
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const DICT_URL = 'https://raw.githubusercontent.com/skishore/makemeahanzi/master/dictionary.txt';
+const OUTPUT_PATH = path.join(__dirname, '..', 'js', 'character-components.js');
+const COMMON_CHAR_PATH = path.join(__dirname, '..', 'js', 'common-2500-chars.js');
+
+function fetch(url) {
+    return new Promise((resolve, reject) => {
+        https.get(url, res => {
+            if (res.statusCode !== 200) {
+                reject(new Error(`Request failed: ${res.statusCode}`));
+                return;
+            }
+
+            let raw = '';
+            res.on('data', chunk => raw += chunk);
+            res.on('end', () => resolve(raw));
+        }).on('error', reject);
+    });
+}
+
+function toDefinition(entry) {
+    if (!entry) return '';
+    const def = entry.definition;
+    if (Array.isArray(def)) {
+        return def.join('; ').replace(/<[^>]+>/g, '').trim();
+    }
+    if (typeof def === 'string') {
+        return def.replace(/<[^>]+>/g, '').trim();
+    }
+    return '';
+}
+
+function sanitize(text) {
+    if (!text) return '';
+    return text.replace(/\s+/g, ' ').trim();
+}
+
+function extractLeaves(decomposition) {
+    if (!decomposition) return [];
+    return Array.from(decomposition.replace(/[⿰⿱⿲⿳⿴⿵⿶⿷⿸⿹⿺⿻]/g, ''))
+        .filter(ch => ch && ch !== '？' && ch !== '〇');
+}
+
+function parseRadicalEntry(entry) {
+    if (!entry) return null;
+    const trimmed = String(entry).trim();
+    if (!trimmed) return null;
+    const match = trimmed.match(/^(.+?)\s*\((.+)\)$/);
+    if (match) {
+        return {
+            char: match[1].trim(),
+            meaning: match[2].trim()
+        };
+    }
+    return { char: trimmed, meaning: '' };
+}
+
+function convertRadicalList(radicals) {
+    if (!Array.isArray(radicals) || radicals.length === 0) return null;
+    const entries = radicals.map(parseRadicalEntry).filter(Boolean);
+    if (!entries.length) return null;
+
+    const breakdown = { radical: entries[0] };
+    if (entries[1]) breakdown.phonetic = entries[1];
+    if (entries.length > 2) breakdown.others = entries.slice(2);
+    return breakdown;
+}
+
+async function main() {
+    console.log('Fetching makemeahanzi dictionary...');
+    const dictionaryText = await fetch(DICT_URL);
+    const dictionaryEntries = dictionaryText.trim().split('\n').map(line => JSON.parse(line));
+    const dictionaryMap = new Map(dictionaryEntries.map(entry => [entry.character, entry]));
+
+    const commonCharsCode = fs.readFileSync(COMMON_CHAR_PATH, 'utf8');
+    const sandbox = {};
+    vm.createContext(sandbox);
+    vm.runInContext(`${commonCharsCode}\n;globalThis._CHAR_LIST = COMMON_2500_CHARS;`, sandbox);
+    const characters = sandbox._CHAR_LIST;
+
+    const componentsData = {};
+
+    for (const charData of characters) {
+        const char = charData.char;
+        const entry = dictionaryMap.get(char);
+        if (!entry) continue;
+
+        let radicalChar = null;
+        let phoneticChar = null;
+
+        if (entry.etymology && entry.etymology.type === 'pictophonetic') {
+            radicalChar = entry.etymology.semantic || entry.radical || null;
+            phoneticChar = entry.etymology.phonetic || null;
+        } else {
+            radicalChar = entry.radical || null;
+        }
+
+        const leaves = extractLeaves(entry.decomposition);
+        const uniqueLeaves = [];
+        for (const leaf of leaves) {
+            if (!uniqueLeaves.includes(leaf)) uniqueLeaves.push(leaf);
+        }
+
+        if (!phoneticChar && radicalChar && uniqueLeaves.length === 2) {
+            if (uniqueLeaves[0] === radicalChar) {
+                phoneticChar = uniqueLeaves[1];
+            } else if (uniqueLeaves[1] === radicalChar) {
+                phoneticChar = uniqueLeaves[0];
+            }
+        }
+
+        if (radicalChar === '？') radicalChar = null;
+        if (phoneticChar === '？') phoneticChar = null;
+
+        const others = uniqueLeaves.filter(ch => ch !== radicalChar && ch !== phoneticChar);
+
+        let breakdown = {};
+
+        if (entry.radicals) {
+            breakdown = convertRadicalList(entry.radicals) || breakdown;
+        }
+
+        if (radicalChar) {
+            breakdown.radical = breakdown.radical || {
+                char: radicalChar,
+                meaning: sanitize(toDefinition(dictionaryMap.get(radicalChar)))
+            };
+        }
+
+        if (phoneticChar) {
+            breakdown.phonetic = {
+                char: phoneticChar,
+                meaning: sanitize(toDefinition(dictionaryMap.get(phoneticChar)))
+            };
+        }
+
+        if (others.length > 0) {
+            breakdown.others = breakdown.others || [];
+            for (const otherChar of others) {
+                breakdown.others.push({
+                    char: otherChar,
+                    meaning: sanitize(toDefinition(dictionaryMap.get(otherChar)))
+                });
+            }
+            breakdown.others = breakdown.others.filter(Boolean);
+        }
+
+        if (entry.etymology && entry.etymology.hint) {
+            breakdown.hint = sanitize(entry.etymology.hint);
+        }
+
+        const hasData = (breakdown.radical && (breakdown.radical.char || breakdown.radical.meaning)) ||
+            (breakdown.phonetic && (breakdown.phonetic.char || breakdown.phonetic.meaning)) ||
+            (Array.isArray(breakdown.others) && breakdown.others.length > 0);
+
+        if (hasData) {
+            componentsData[char] = breakdown;
+        }
+    }
+
+    const header = [
+        '// Auto-generated component data (radical & phonetic breakdown)',
+        '// Source: makemeahanzi dictionary (https://github.com/skishore/makemeahanzi)'
+    ].join('\n');
+    const dataLiteral = JSON.stringify(componentsData, null, 2);
+
+    const fileContents = `${header}
+const CHARACTER_COMPONENTS = ${dataLiteral};
+if (typeof window !== 'undefined') {
+    window.CHARACTER_COMPONENTS = CHARACTER_COMPONENTS;
+} else if (typeof globalThis !== 'undefined') {
+    globalThis.CHARACTER_COMPONENTS = CHARACTER_COMPONENTS;
+}
+`;
+    fs.writeFileSync(OUTPUT_PATH, fileContents, 'utf8');
+
+    console.log(`Wrote ${Object.keys(componentsData).length} component entries to ${OUTPUT_PATH}`);
+}
+
+main().catch(err => {
+    console.error(err);
+    process.exit(1);
+});
