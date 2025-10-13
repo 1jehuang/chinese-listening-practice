@@ -1003,6 +1003,7 @@ function setComponentBreakdownVisibility(enabled) {
     if (!showComponentBreakdown) {
         applyComponentPanelVisibility();
         applyComponentColoring();
+        renderComponentStory(null);
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1012,11 +1013,8 @@ function setComponentBreakdownVisibility(enabled) {
         applyComponentPanelVisibility();
         if (currentQuestion) {
             const previewBreakdown = getComponentsForQuestion(currentQuestion);
-            if (previewBreakdown) {
-                applyComponentColoring();
-            } else {
-                applyComponentColoring();
-            }
+            applyComponentColoring();
+            renderComponentStory(previewBreakdown);
         }
     }
 }
@@ -1119,6 +1117,7 @@ function renderCharacterComponents(question) {
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
         applyComponentColoring();
+        renderComponentStory(null);
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1137,6 +1136,7 @@ function renderCharacterComponents(question) {
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
         applyComponentColoring();
+        renderComponentStory(null);
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1184,6 +1184,7 @@ function renderCharacterComponents(question) {
         rightPanel.innerHTML = rightChips.join('');
         applyComponentPanelVisibility();
         applyComponentColoring();
+        renderComponentStory(breakdown);
 
         if (componentBreakdown) {
             clearComponentBreakdown();
@@ -1193,6 +1194,7 @@ function renderCharacterComponents(question) {
 
     if (!componentBreakdown) {
         applyComponentColoring();
+        renderComponentStory(breakdown);
         return;
     }
 
@@ -1221,6 +1223,93 @@ function renderCharacterComponents(question) {
     componentBreakdown.innerHTML = html;
     componentBreakdown.classList.remove('hidden');
     applyComponentColoring();
+    renderComponentStory(breakdown);
+}
+
+function renderComponentStory(breakdown) {
+    const card = document.getElementById('componentStoryCard');
+    if (!card) return;
+
+    const headerEl = document.getElementById('componentStoryHeader');
+    const linesEl = document.getElementById('componentStoryLines');
+    const hintEl = document.getElementById('componentStoryHint');
+
+    const resetCard = () => {
+        if (headerEl) headerEl.textContent = '';
+        if (linesEl) linesEl.innerHTML = '';
+        if (hintEl) hintEl.textContent = '';
+        card.classList.add('hidden');
+    };
+
+    if (!showComponentBreakdown || !breakdown) {
+        resetCard();
+        return;
+    }
+
+    const current = currentQuestion || {};
+    const charText = escapeHtml(current.char || '');
+    const pinyinText = current.pinyin ? escapeHtml(current.pinyin.split('/')[0].trim()) : '';
+    const meaningText = escapeHtml(current.meaning || '');
+
+    if (headerEl) {
+        const parts = [];
+        if (charText) parts.push(charText);
+        if (pinyinText) parts.push(pinyinText);
+        if (meaningText) parts.push(meaningText);
+        headerEl.textContent = parts.join(' · ');
+    }
+
+    const formatLine = (label, data) => {
+        if (!data || !data.char) return '';
+        const charPart = escapeHtml(data.char);
+        const pinyinPart = data.pinyin ? ` (${escapeHtml(data.pinyin)})` : '';
+        const meaningPart = data.meaning ? ` — ${escapeHtml(data.meaning)}` : '';
+        return `<div class="story-line"><strong>${escapeHtml(label)}</strong> ${charPart}${pinyinPart}${meaningPart}</div>`;
+    };
+
+    const lines = [];
+    if (breakdown.radical) {
+        const line = formatLine('Radical', breakdown.radical);
+        if (line) lines.push(line);
+    }
+    if (breakdown.phonetic) {
+        const line = formatLine('Phonetic', breakdown.phonetic);
+        if (line) lines.push(line);
+    }
+    if (Array.isArray(breakdown.others)) {
+        breakdown.others.forEach((other, idx) => {
+            const label = breakdown.others.length > 1 ? `Component ${idx + 1}` : 'Component';
+            const line = formatLine(label, other);
+            if (line) lines.push(line);
+        });
+    }
+
+    if (linesEl) {
+        linesEl.innerHTML = lines.length > 0
+            ? lines.join('')
+            : '<div class="story-line story-line-muted">No component details available yet.</div>';
+    }
+
+    let hintText = breakdown.hint ? breakdown.hint : '';
+    if (!hintText) {
+        if (breakdown.radical && breakdown.phonetic) {
+            const radChar = escapeHtml(breakdown.radical.char);
+            const phoChar = escapeHtml(breakdown.phonetic.char);
+            hintText = `${radChar} conveys the meaning while ${phoChar} guides the pronunciation.`;
+        } else if (breakdown.radical) {
+            const radChar = escapeHtml(breakdown.radical.char);
+            hintText = `${radChar} anchors the meaning of this character.`;
+        } else if (breakdown.phonetic) {
+            const phoChar = escapeHtml(breakdown.phonetic.char);
+            hintText = `${phoChar} hints at how the character sounds.`;
+        }
+    }
+
+    if (hintEl) {
+        hintEl.textContent = hintText || 'Combine these pieces to make a story that sticks.';
+    }
+
+    card.classList.remove('hidden');
 }
 
 function prioritizeMeaningModeButton() {
@@ -1285,6 +1374,12 @@ function renderMeaningQuestionLayout() {
                     <div class="summary-card-meaning" id="answerSummaryMeaning"></div>
                 </div>
                 <div class="question-char-display">${charHtml}</div>
+                <div class="component-story-card hidden" id="componentStoryCard">
+                    <div class="story-title">Component story</div>
+                    <div class="story-header" id="componentStoryHeader"></div>
+                    <div class="story-lines" id="componentStoryLines"></div>
+                    <div class="story-hint" id="componentStoryHint"></div>
+                </div>
             </div>
             <div class="component-panel component-panel-right" id="componentPanelRight"></div>
         </div>
@@ -1293,12 +1388,8 @@ function renderMeaningQuestionLayout() {
     resetMeaningAnswerSummary();
     applyComponentPanelVisibility();
     applyComponentColoring();
-    if (showComponentBreakdown) {
-        const initialBreakdown = getComponentsForQuestion(currentQuestion);
-        if (initialBreakdown) {
-            applyComponentColoring();
-        }
-    }
+    const initialBreakdown = showComponentBreakdown ? getComponentsForQuestion(currentQuestion) : null;
+    renderComponentStory(initialBreakdown);
 }
 
 function resetMeaningAnswerSummary() {

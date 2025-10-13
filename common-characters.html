@@ -154,7 +154,7 @@
                     filterCharactersByRange();
 
                     // Restart quiz with new range
-                    initQuiz(filteredCharacters);
+                    initQuiz(filteredCharacters, { defaultMode: 'char-to-meaning-type' });
                 });
             });
 
@@ -162,7 +162,7 @@
             filterCharactersByRange();
 
             // Initialize quiz
-            initQuiz(filteredCharacters);
+            initQuiz(filteredCharacters, { defaultMode: 'char-to-meaning-type' });
         });
 
         function filterCharactersByRange() {
