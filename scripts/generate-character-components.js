@@ -46,6 +46,11 @@ function sanitize(text) {
     return text.replace(/\s+/g, ' ').trim();
 }
 
+function getPrimaryPinyin(entry) {
+    if (!entry || !entry.pinyin || !entry.pinyin.length) return '';
+    return sanitize(entry.pinyin[0]);
+}
+
 function extractLeaves(decomposition) {
     if (!decomposition) return [];
     return Array.from(decomposition.replace(/[⿰⿱⿲⿳⿴⿵⿶⿷⿸⿹⿺⿻]/g, ''))
@@ -134,15 +139,33 @@ async function main() {
         if (radicalChar) {
             breakdown.radical = breakdown.radical || {
                 char: radicalChar,
-                meaning: sanitize(toDefinition(dictionaryMap.get(radicalChar)))
+                meaning: sanitize(toDefinition(dictionaryMap.get(radicalChar))),
+                pinyin: sanitize(getPrimaryPinyin(dictionaryMap.get(radicalChar)))
             };
+        } else if (breakdown.radical && breakdown.radical.char) {
+            const radEntry = dictionaryMap.get(breakdown.radical.char);
+            if (radEntry) {
+                breakdown.radical.pinyin = sanitize(getPrimaryPinyin(radEntry));
+                if (!breakdown.radical.meaning) {
+                    breakdown.radical.meaning = sanitize(toDefinition(radEntry));
+                }
+            }
         }
 
         if (phoneticChar) {
             breakdown.phonetic = {
                 char: phoneticChar,
-                meaning: sanitize(toDefinition(dictionaryMap.get(phoneticChar)))
+                meaning: sanitize(toDefinition(dictionaryMap.get(phoneticChar))),
+                pinyin: sanitize(getPrimaryPinyin(dictionaryMap.get(phoneticChar)))
             };
+        } else if (breakdown.phonetic && breakdown.phonetic.char) {
+            const phoEntry = dictionaryMap.get(breakdown.phonetic.char);
+            if (phoEntry) {
+                breakdown.phonetic.pinyin = sanitize(getPrimaryPinyin(phoEntry));
+                if (!breakdown.phonetic.meaning) {
+                    breakdown.phonetic.meaning = sanitize(toDefinition(phoEntry));
+                }
+            }
         }
 
         if (others.length > 0) {
@@ -150,10 +173,22 @@ async function main() {
             for (const otherChar of others) {
                 breakdown.others.push({
                     char: otherChar,
-                    meaning: sanitize(toDefinition(dictionaryMap.get(otherChar)))
+                    meaning: sanitize(toDefinition(dictionaryMap.get(otherChar))),
+                    pinyin: sanitize(getPrimaryPinyin(dictionaryMap.get(otherChar)))
                 });
             }
             breakdown.others = breakdown.others.filter(Boolean);
+        } else if (Array.isArray(breakdown.others)) {
+            breakdown.others = breakdown.others.map(other => {
+                if (!other || !other.char) return other;
+                const data = dictionaryMap.get(other.char);
+                if (!data) return other;
+                return {
+                    char: other.char,
+                    meaning: other.meaning ? sanitize(other.meaning) : sanitize(toDefinition(data)),
+                    pinyin: other.pinyin ? sanitize(other.pinyin) : sanitize(getPrimaryPinyin(data))
+                };
+            }).filter(Boolean);
         }
 
         if (entry.etymology && entry.etymology.hint) {

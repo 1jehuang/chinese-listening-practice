@@ -1002,7 +1002,7 @@ function setComponentBreakdownVisibility(enabled) {
 
     if (!showComponentBreakdown) {
         applyComponentPanelVisibility();
-        applyComponentColoring(null);
+        applyComponentColoring();
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1013,9 +1013,9 @@ function setComponentBreakdownVisibility(enabled) {
         if (currentQuestion) {
             const previewBreakdown = getComponentsForQuestion(currentQuestion);
             if (previewBreakdown) {
-                applyComponentColoring(previewBreakdown);
+                applyComponentColoring();
             } else {
-                applyComponentColoring(null);
+                applyComponentColoring();
             }
         }
     }
@@ -1104,9 +1104,10 @@ function buildComponentChip(label, data, chipClass) {
     if (!data) return '';
     const chipLabel = label ? `<div class="component-chip-label">${escapeHtml(label)}</div>` : '';
     const chipSymbol = data.char ? `<div class="component-chip-symbol">${escapeHtml(data.char)}</div>` : '';
+    const chipPinyin = data.pinyin ? `<div class="component-chip-pinyin">${escapeHtml(data.pinyin)}</div>` : '';
     const chipMeaning = data.meaning ? `<div class="component-chip-meaning">${escapeHtml(data.meaning)}</div>` : '';
-    if (!chipLabel && !chipSymbol && !chipMeaning) return '';
-    return `<div class="component-chip ${chipClass}">${chipLabel}${chipSymbol}${chipMeaning}</div>`;
+    if (!chipLabel && !chipSymbol && !chipMeaning && !chipPinyin) return '';
+    return `<div class="component-chip ${chipClass}">${chipLabel}${chipSymbol}${chipPinyin}${chipMeaning}</div>`;
 }
 
 function renderCharacterComponents(question) {
@@ -1117,7 +1118,7 @@ function renderCharacterComponents(question) {
         if (leftPanel) leftPanel.innerHTML = '';
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
-        applyComponentColoring(null);
+        applyComponentColoring();
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1135,7 +1136,7 @@ function renderCharacterComponents(question) {
         if (leftPanel) leftPanel.innerHTML = '';
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
-        applyComponentColoring(null);
+        applyComponentColoring();
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1182,7 +1183,7 @@ function renderCharacterComponents(question) {
         leftPanel.innerHTML = leftChips.join('');
         rightPanel.innerHTML = rightChips.join('');
         applyComponentPanelVisibility();
-        applyComponentColoring(breakdown);
+        applyComponentColoring();
 
         if (componentBreakdown) {
             clearComponentBreakdown();
@@ -1191,7 +1192,7 @@ function renderCharacterComponents(question) {
     }
 
     if (!componentBreakdown) {
-        applyComponentColoring(breakdown);
+        applyComponentColoring();
         return;
     }
 
@@ -1219,7 +1220,7 @@ function renderCharacterComponents(question) {
 
     componentBreakdown.innerHTML = html;
     componentBreakdown.classList.remove('hidden');
-    applyComponentColoring(breakdown);
+    applyComponentColoring();
 }
 
 function prioritizeMeaningModeButton() {
@@ -1291,11 +1292,11 @@ function renderMeaningQuestionLayout() {
 
     resetMeaningAnswerSummary();
     applyComponentPanelVisibility();
-    applyComponentColoring(null);
+    applyComponentColoring();
     if (showComponentBreakdown) {
         const initialBreakdown = getComponentsForQuestion(currentQuestion);
         if (initialBreakdown) {
-            applyComponentColoring(initialBreakdown);
+            applyComponentColoring();
         }
     }
 }
@@ -1324,47 +1325,13 @@ function applyComponentPanelVisibility() {
     }
 }
 
-function applyComponentColoring(breakdown) {
+function applyComponentColoring() {
     const charEl = document.querySelector('.meaning-question-layout .question-char-display');
     if (!charEl) return;
-
-    if (!breakdown) {
-        charEl.style.removeProperty('background-image');
-        charEl.style.removeProperty('-webkit-background-clip');
-        charEl.style.removeProperty('background-clip');
-        charEl.style.removeProperty('color');
-        return;
-    }
-
-    const colors = [];
-    if (breakdown.radical) colors.push('#dc2626');
-    if (breakdown.phonetic) colors.push('#2563eb');
-    const otherCount = Array.isArray(breakdown.others) ? breakdown.others.length : 0;
-    for (let i = 0; i < otherCount; i++) {
-        colors.push('#b45309');
-    }
-
-    if (!colors.length) {
-        charEl.style.removeProperty('background-image');
-        charEl.style.removeProperty('-webkit-background-clip');
-        charEl.style.removeProperty('color');
-        return;
-    }
-
-    const step = 100 / colors.length;
-    const stops = colors
-        .map((color, index) => {
-            const start = Math.round(index * step);
-            const end = Math.round((index + 1) * step);
-            return `${color} ${start}% ${end}%`;
-        })
-        .join(', ');
-
-    const gradient = `linear-gradient(90deg, ${stops})`;
-    charEl.style.backgroundImage = gradient;
-    charEl.style.webkitBackgroundClip = 'text';
-    charEl.style.backgroundClip = 'text';
-    charEl.style.color = 'transparent';
+    charEl.style.removeProperty('background-image');
+    charEl.style.removeProperty('-webkit-background-clip');
+    charEl.style.removeProperty('background-clip');
+    charEl.style.color = '#111827';
 }
 
 function goToNextQuestionAfterCorrect() {
