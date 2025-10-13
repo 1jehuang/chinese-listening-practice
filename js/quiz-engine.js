@@ -1293,18 +1293,21 @@ function renderComponentStory(breakdown) {
             : '<div class="story-line story-line-muted">No component details available yet.</div>';
     }
 
-    let hintText = breakdown.hint ? breakdown.hint : '';
+    let hintText = breakdown.story ? breakdown.story : '';
     if (!hintText) {
-        if (breakdown.radical && breakdown.phonetic) {
-            const radChar = escapeHtml(breakdown.radical.char);
-            const phoChar = escapeHtml(breakdown.phonetic.char);
-            hintText = `${radChar} conveys the meaning while ${phoChar} guides the pronunciation.`;
-        } else if (breakdown.radical) {
-            const radChar = escapeHtml(breakdown.radical.char);
-            hintText = `${radChar} anchors the meaning of this character.`;
-        } else if (breakdown.phonetic) {
-            const phoChar = escapeHtml(breakdown.phonetic.char);
-            hintText = `${phoChar} hints at how the character sounds.`;
+        hintText = breakdown.hint ? breakdown.hint : '';
+        if (!hintText) {
+            if (breakdown.radical && breakdown.phonetic) {
+                const radChar = escapeHtml(breakdown.radical.char);
+                const phoChar = escapeHtml(breakdown.phonetic.char);
+                hintText = `${radChar} carries the meaning while ${phoChar} guides the pronunciation.`;
+            } else if (breakdown.radical) {
+                const radChar = escapeHtml(breakdown.radical.char);
+                hintText = `${radChar} anchors the meaning of this character.`;
+            } else if (breakdown.phonetic) {
+                const phoChar = escapeHtml(breakdown.phonetic.char);
+                hintText = `${phoChar} hints at how the character sounds.`;
+            }
         }
     }
 
