@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Most Common 2500 Characters - Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="js/common-2500-chars.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Most Common 2500 Characters</h1>
+        <p class="text-center text-gray-600 mb-6">Practice the most frequently used Chinese characters</p>
+
+        <!-- Frequency Range Selector -->
+        <div class="mb-6">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Frequency Range:</label>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white hover:bg-blue-600 transition text-sm" data-range="1-250">1-250</button>
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-sm" data-range="251-500">251-500</button>
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-sm" data-range="501-1000">501-1000</button>
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-sm" data-range="1001-1500">1001-1500</button>
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-sm" data-range="1501-2000">1501-2000</button>
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-sm" data-range="2001-2500">2001-2500</button>
+                <button class="range-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-sm" data-range="all">All (1-2500)</button>
+            </div>
+        </div>
+
+        <!-- Mode Selector -->
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500" data-mode="char-to-pinyin">Char → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-tones">Char → Tones</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="pinyin-to-char">Pinyin → Char</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">Meaning → Char</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="draw-char">Draw Character</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <!-- Question Display -->
+        <div id="questionDisplay" class="text-center"></div>
+
+        <!-- Hint -->
+        <div id="hint" class="text-center text-2xl font-semibold my-4 min-h-[20px]"></div>
+
+        <!-- Audio Section -->
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+        </div>
+
+        <!-- Type Mode -->
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <!-- Choice Mode -->
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Fuzzy Mode -->
+        <div id="fuzzyMode" class="hidden space-y-4">
+            <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Stroke Order Mode -->
+        <div id="strokeOrderMode" class="hidden">
+            <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
+        </div>
+
+        <!-- Handwriting Mode -->
+        <div id="handwritingMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
+            <div id="handwritingWriter" class="flex justify-center my-8"></div>
+            <div class="flex justify-center gap-3">
+                <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer / Replay</button>
+                <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+            </div>
+        </div>
+
+        <!-- Draw Character Mode -->
+        <div id="drawCharMode" class="hidden">
+            <div class="text-center mb-4">
+                <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
+                <div class="text-sm text-gray-500">Real-time recognition</div>
+            </div>
+            <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
+            <div class="flex gap-3 justify-center mt-4">
+                <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
+                <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+            </div>
+        </div>
+
+        <!-- Study Mode -->
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
+            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <!-- Stats -->
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        let currentRange = '1-250';
+        let allCharacters = [];
+        let filteredCharacters = [];
+
+        // Wait for common-2500-chars.js to load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof COMMON_2500_CHARS === 'undefined') {
+                document.getElementById('questionDisplay').innerHTML =
+                    '<div class="text-center text-red-600 text-xl my-8">Error: Character data file not loaded. Please check js/common-2500-chars.js</div>';
+                return;
+            }
+
+            allCharacters = COMMON_2500_CHARS;
+
+            // Set up range selector
+            document.querySelectorAll('.range-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Update active state
+                    document.querySelectorAll('.range-btn').forEach(b => {
+                        b.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                        b.classList.add('border-gray-300');
+                    });
+                    btn.classList.remove('border-gray-300');
+                    btn.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+
+                    // Filter characters
+                    currentRange = btn.dataset.range;
+                    filterCharactersByRange();
+
+                    // Restart quiz with new range
+                    initQuiz(filteredCharacters);
+                });
+            });
+
+            // Initial filter
+            filterCharactersByRange();
+
+            // Initialize quiz
+            initQuiz(filteredCharacters);
+        });
+
+        function filterCharactersByRange() {
+            if (currentRange === 'all') {
+                filteredCharacters = [...allCharacters];
+            } else {
+                const [start, end] = currentRange.split('-').map(Number);
+                filteredCharacters = allCharacters.filter(char => {
+                    return char.rank >= start && char.rank <= end;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
