@@ -1012,7 +1012,8 @@ function setComponentBreakdownVisibility(enabled) {
     } else {
         applyComponentPanelVisibility();
         if (currentQuestion) {
-            const previewBreakdown = getComponentsForQuestion(currentQuestion);
+            const canShow = answered || questionAttemptRecorded;
+            const previewBreakdown = canShow ? getComponentsForQuestion(currentQuestion) : null;
             applyComponentColoring();
             renderComponentStory(previewBreakdown);
         }
