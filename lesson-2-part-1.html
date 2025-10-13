@@ -30,6 +30,7 @@
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="draw-char">Draw Character</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="radical-practice">Radical Practice</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
         </div>
 
@@ -95,6 +96,15 @@
             <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
         </div>
 
+        <!-- Radical Practice Mode -->
+        <div id="radicalPracticeMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Select all radicals in the character</div>
+            <div id="radicalOptions" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+            <div class="mt-4 text-center">
+                <button id="radicalSubmitBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Submit Answer</button>
+            </div>
+        </div>
+
         <!-- Feedback -->
         <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
 
@@ -108,40 +118,40 @@
         const characters = [
             // Page 18 vocabulary
             { char: '我的', pinyin: 'wǒ.de', meaning: 'my' },
-            { char: '家', pinyin: 'jiā', meaning: 'home' },
-            { char: '在', pinyin: 'zài', meaning: 'be located in; at; on' },
+            { char: '家', pinyin: 'jiā', meaning: 'home', radicals: ['宀 (roof)', '豕 (pig)'] },
+            { char: '在', pinyin: 'zài', meaning: 'be located in; at; on', radicals: ['土 (earth)'] },
             { char: '哪儿', pinyin: 'nǎr', meaning: 'where' },
             { char: '父亲', pinyin: 'fù.qin', meaning: 'father' },
             { char: '书', pinyin: 'shū', meaning: 'book' },
-            { char: '书房', pinyin: 'shūfáng', meaning: 'a study' },
-            { char: '里', pinyin: 'lǐ', meaning: 'inside' },
-            { char: '挂', pinyin: 'guà', meaning: 'hang' },
+            { char: '书房', pinyin: 'shūfáng', meaning: 'a study', radicals: ['户 (door)', '方 (square)'] },
+            { char: '里', pinyin: 'lǐ', meaning: 'inside', radicals: ['田 (field)', '土 (earth)'] },
+            { char: '挂', pinyin: 'guà', meaning: 'hang', radicals: ['扌(hand)', '卦 (divination)'] },
             { char: 'V着', pinyin: 'V.zhe', meaning: 'keep on V-ing' },
             { char: '小', pinyin: 'xiǎo', meaning: 'young; small' },
-            { char: '时候', pinyin: 'shí.hou', meaning: 'time' },
-            { char: '他', pinyin: 'tā', meaning: 'he' },
-            { char: '常', pinyin: 'cháng', meaning: 'often' },
-            { char: '指', pinyin: 'zhǐ', meaning: 'point' },
+            { char: '时候', pinyin: 'shí.hou', meaning: 'time', radicals: ['日 (sun)', '寺 (temple)'] },
+            { char: '他', pinyin: 'tā', meaning: 'he', radicals: ['亻(person)', '也 (also)'] },
+            { char: '常', pinyin: 'cháng', meaning: 'often', radicals: ['巾 (cloth)', '尚 (still)'] },
+            { char: '指', pinyin: 'zhǐ', meaning: 'point', radicals: ['扌(hand)', '旨 (purpose)'] },
             { char: '西南', pinyin: 'xīnán', meaning: 'southwest' },
             // Page 19 vocabulary
-            { char: '边', pinyin: 'biān', meaning: 'side' },
-            { char: '黑', pinyin: 'hēi', meaning: 'black; dark' },
-            { char: '点', pinyin: 'diǎn', meaning: 'spot; dot' },
+            { char: '边', pinyin: 'biān', meaning: 'side', radicals: ['辶 (walk)', '自 (self)'] },
+            { char: '黑', pinyin: 'hēi', meaning: 'black; dark', radicals: ['灬 (fire)', '土 (earth)', '里 (inside)'] },
+            { char: '点', pinyin: 'diǎn', meaning: 'spot; dot', radicals: ['灬 (fire)', '占 (occupy)'] },
             { char: '我们的', pinyin: 'wǒ.men.de', meaning: 'our; ours' },
             { char: '老家', pinyin: 'lǎojiā', meaning: 'hometown' },
-            { char: '觉得', pinyin: 'jué.de', meaning: 'think; feel' },
-            { char: '很', pinyin: 'hěn', meaning: 'very' },
-            { char: '奇怪', pinyin: 'qíguài', meaning: 'strange' },
-            { char: '纽约', pinyin: 'Niǔyuē', meaning: 'New York' },
-            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
-            { char: '会', pinyin: 'huì', meaning: 'could; would; can' },
+            { char: '觉得', pinyin: 'jué.de', meaning: 'think; feel', radicals: ['见 (see)', '学 (learn)'] },
+            { char: '很', pinyin: 'hěn', meaning: 'very', radicals: ['彳 (step)', '艮 (stubborn)'] },
+            { char: '奇怪', pinyin: 'qíguài', meaning: 'strange', radicals: ['大 (big)', '可 (can)', '又 (again)'] },
+            { char: '纽约', pinyin: 'Niǔyuē', meaning: 'New York', radicals: ['纟 (silk)', '丑 (ugly)', '糸 (silk)', '勺 (ladle)'] },
+            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come', radicals: ['乍 (sudden)', '心 (heart)'] },
+            { char: '会', pinyin: 'huì', meaning: 'could; would; can', radicals: ['人 (person)', '云 (cloud)'] },
             { char: '后来', pinyin: 'hòulái', meaning: 'later' },
             { char: '才', pinyin: 'cái', meaning: 'later than expected' },
-            { char: '知道', pinyin: 'zhīdao', meaning: 'know' },
-            { char: '成都', pinyin: 'Chéngdū', meaning: 'name of a city' },
-            { char: '虽然', pinyin: 'suīrán', meaning: 'although' },
+            { char: '知道', pinyin: 'zhīdao', meaning: 'know', radicals: ['矢 (arrow)', '口 (mouth)', '辶 (walk)', '首 (head)'] },
+            { char: '成都', pinyin: 'Chéngdū', meaning: 'name of a city', radicals: ['戈 (weapon)', '丁 (nail)', '者 (person)', '阝 (city)'] },
+            { char: '虽然', pinyin: 'suīrán', meaning: 'although', radicals: ['虫 (insect)', '口 (mouth)', '灬 (fire)', '月 (moon)'] },
             { char: '来', pinyin: 'lái', meaning: 'come' },
-            { char: '美国', pinyin: 'Měiguó', meaning: 'The United States of America' },
+            { char: '美国', pinyin: 'Měiguó', meaning: 'The United States of America', radicals: ['羊 (sheep)', '大 (big)', '囗 (enclosure)', '玉 (jade)'] },
             { char: '快…了', pinyin: 'kuài... .le', meaning: 'almost, about to' }
         ];
 

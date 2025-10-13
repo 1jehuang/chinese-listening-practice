@@ -15,8 +15,9 @@ let config = {};
 
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint;
-let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode;
+let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
 let audioSection;
+let radicalSelectedAnswers = [];
 
 // Hanzi Writer
 let writer = null;
@@ -54,6 +55,8 @@ const TONE_MARK_TO_NUMBER = {
 };
 
 const PINYIN_FINAL_LETTERS = new Set(['a', 'e', 'i', 'o', 'u', 'v', 'n', 'r']);
+const PINYIN_SEPARATOR_REGEX = /[\s.,/;:!?'"“”‘’—–\-…，。、？！；：（）【】《》·]/;
+const PINYIN_STRIP_REGEX = /[\s.,/;:!?'"“”‘’—–\-…，。、？！；：（）【】《》·]/g;
 
 function convertPinyinToToneNumbers(pinyin) {
     const syllables = splitPinyinSyllables(pinyin);
@@ -115,7 +118,10 @@ function splitPinyinSyllables(pinyin) {
         lastNonDigitChar = '';
     };
 
-    const isSeparator = (char) => /\s/.test(char) || char === '.' || char === '·' || char === '/';
+    const isSeparator = (char) => {
+        if (!char) return false;
+        return PINYIN_SEPARATOR_REGEX.test(char);
+    };
 
     const isToneMark = (char) => {
         if (!char) return false;
@@ -229,15 +235,15 @@ function checkPinyinMatch(userAnswer, correct) {
 function normalizePinyin(pinyin) {
     // Normalize pinyin to a standard form for comparison
     // 1. Convert to lowercase
-    // 2. Remove all separators (spaces, dots, ellipsis)
+    // 2. Remove all separators/punctuation
     // 3. Remove all tone numbers
     // 4. Remove all tone marks
     // 5. Result: pure letters only (e.g., "zhongguo")
 
     let result = pinyin.toLowerCase().trim();
 
-    // Remove all separators
-    result = result.replace(/[\s.]+/g, '');
+    // Remove all separators and punctuation
+    result = result.replace(PINYIN_STRIP_REGEX, '');
 
     // Normalize ü/u: variants to 'v'
     result = result.replace(/u:/g, 'v');
@@ -373,6 +379,7 @@ function generateQuestion() {
     if (handwritingMode) handwritingMode.style.display = 'none';
     if (drawCharMode) drawCharMode.style.display = 'none';
     if (studyMode) studyMode.style.display = 'none';
+    if (radicalPracticeMode) radicalPracticeMode.style.display = 'none';
     if (audioSection) audioSection.classList.add('hidden');
 
     // Show appropriate UI based on mode
@@ -428,6 +435,22 @@ function generateQuestion() {
         questionDisplay.innerHTML = `<div class="text-center text-4xl my-8 font-bold text-gray-700">Study All Vocabulary</div>`;
         studyMode.style.display = 'block';
         populateStudyList();
+    } else if (mode === 'radical-practice' && radicalPracticeMode) {
+        // Skip characters without radical data
+        let attempts = 0;
+        while ((!currentQuestion.radicals || currentQuestion.radicals.length === 0) && attempts < 100) {
+            currentQuestion = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+            attempts++;
+        }
+
+        if (!currentQuestion.radicals || currentQuestion.radicals.length === 0) {
+            questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with radical data available in this lesson.</div>`;
+            return;
+        }
+
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
+        radicalPracticeMode.style.display = 'block';
+        generateRadicalOptions();
     }
 }
 
@@ -1296,6 +1319,135 @@ function populateStudyList() {
 }
 
 // =============================================================================
+// RADICAL PRACTICE MODE
+// =============================================================================
+
+function generateRadicalOptions() {
+    const radicalOptionsDiv = document.getElementById('radicalOptions');
+    const radicalSubmitBtn = document.getElementById('radicalSubmitBtn');
+    if (!radicalOptionsDiv || !radicalSubmitBtn) return;
+
+    radicalOptionsDiv.innerHTML = '';
+    radicalSelectedAnswers = [];
+
+    // Get correct radicals for current character
+    const correctRadicals = currentQuestion.radicals || [];
+
+    // Get all unique radicals from the entire character set for distractors
+    const allRadicals = new Set();
+    quizCharacters.forEach(char => {
+        if (char.radicals) {
+            char.radicals.forEach(rad => allRadicals.add(rad));
+        }
+    });
+
+    // Create distractor pool (excluding correct radicals)
+    const distractors = Array.from(allRadicals).filter(rad => !correctRadicals.includes(rad));
+
+    // Shuffle and pick some distractors (aim for 4-6 total options)
+    const numDistractors = Math.min(Math.max(3, 8 - correctRadicals.length), distractors.length);
+    const shuffledDistractors = distractors.sort(() => Math.random() - 0.5).slice(0, numDistractors);
+
+    // Combine correct and distractors, then shuffle
+    const allOptions = [...correctRadicals, ...shuffledDistractors].sort(() => Math.random() - 0.5);
+
+    // Create option buttons
+    allOptions.forEach((radical, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
+        btn.textContent = radical;
+        btn.dataset.radical = radical;
+        btn.onclick = () => toggleRadicalSelection(btn, radical);
+        radicalOptionsDiv.appendChild(btn);
+    });
+
+    // Set up submit button
+    radicalSubmitBtn.onclick = () => checkRadicalAnswer();
+}
+
+function toggleRadicalSelection(btn, radical) {
+    const index = radicalSelectedAnswers.indexOf(radical);
+
+    if (index > -1) {
+        // Deselect
+        radicalSelectedAnswers.splice(index, 1);
+        btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-600');
+        btn.classList.add('bg-gray-100', 'border-gray-300');
+    } else {
+        // Select
+        radicalSelectedAnswers.push(radical);
+        btn.classList.remove('bg-gray-100', 'border-gray-300');
+        btn.classList.add('bg-blue-500', 'text-white', 'border-blue-600');
+    }
+}
+
+function checkRadicalAnswer() {
+    if (answered) return;
+    answered = true;
+    total++;
+
+    const correctRadicals = currentQuestion.radicals || [];
+
+    // Check if selected radicals match exactly
+    const selectedSet = new Set(radicalSelectedAnswers);
+    const correctSet = new Set(correctRadicals);
+
+    const allCorrect = radicalSelectedAnswers.length === correctRadicals.length &&
+                       radicalSelectedAnswers.every(r => correctSet.has(r));
+
+    // Highlight buttons
+    const buttons = document.querySelectorAll('#radicalOptions button');
+    buttons.forEach(btn => {
+        const radical = btn.dataset.radical;
+        const isCorrect = correctSet.has(radical);
+        const wasSelected = selectedSet.has(radical);
+
+        if (isCorrect && wasSelected) {
+            // Correct and selected - green
+            btn.classList.remove('bg-blue-500', 'bg-gray-100', 'border-blue-600', 'border-gray-300');
+            btn.classList.add('bg-green-500', 'text-white', 'border-green-600');
+        } else if (isCorrect && !wasSelected) {
+            // Correct but not selected - show as missed (green border)
+            btn.classList.remove('bg-gray-100', 'border-gray-300');
+            btn.classList.add('bg-green-100', 'border-green-500', 'border-4');
+        } else if (!isCorrect && wasSelected) {
+            // Incorrect selection - red
+            btn.classList.remove('bg-blue-500', 'border-blue-600');
+            btn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+        }
+    });
+
+    if (allCorrect) {
+        playCorrectSound();
+        score++;
+        feedback.textContent = `✓ Correct! All radicals found.`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-xl font-semibold my-4 min-h-[20px] text-green-600';
+    } else {
+        playWrongSound();
+        const missed = correctRadicals.filter(r => !selectedSet.has(r));
+        const wrong = radicalSelectedAnswers.filter(r => !correctSet.has(r));
+
+        let msg = '✗ Incorrect.';
+        if (missed.length > 0) msg += ` Missed: ${missed.join(', ')}.`;
+        if (wrong.length > 0) msg += ` Wrong: ${wrong.join(', ')}.`;
+
+        feedback.textContent = msg;
+        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        hint.textContent = `Correct radicals: ${correctRadicals.join(', ')}`;
+        hint.className = 'text-center text-xl font-semibold my-4 min-h-[20px] text-red-600';
+    }
+
+    // Play audio
+    const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+    playPinyinAudio(firstPinyin, currentQuestion.char);
+
+    updateStats();
+    setTimeout(() => generateQuestion(), 2500);
+}
+
+// =============================================================================
 // COMMAND PALETTE SETUP FOR QUIZ PAGES
 // =============================================================================
 
@@ -1600,6 +1752,7 @@ function initQuiz(charactersData, userConfig = {}) {
     handwritingMode = document.getElementById('handwritingMode');
     drawCharMode = document.getElementById('drawCharMode');
     studyMode = document.getElementById('studyMode');
+    radicalPracticeMode = document.getElementById('radicalPracticeMode');
     audioSection = document.getElementById('audioSection');
 
     // Setup event listeners
