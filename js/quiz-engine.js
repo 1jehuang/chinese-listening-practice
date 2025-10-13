@@ -19,6 +19,11 @@ let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMod
 let audioSection;
 let radicalSelectedAnswers = [];
 let questionAttemptRecorded = false;
+let lastAnswerCorrect = false;
+let showComponentBreakdown = true;
+let componentPreferenceLoaded = false;
+const COMPONENT_PREF_KEY = 'componentHintsEnabled';
+let pendingNextQuestionTimeout = null;
 
 // Hanzi Writer
 let writer = null;
@@ -337,7 +342,7 @@ function updatePartialProgress() {
     const userAnswer = answerInput.value.trim();
     if (!userAnswer) {
         hint.textContent = '';
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px]';
+        hint.className = 'text-center text-2xl font-semibold my-4';
         return;
     }
 
@@ -349,13 +354,13 @@ function updatePartialProgress() {
         if (partial.isPartialCorrect) {
             const remaining = option.split(/\s+/).slice(partial.matched.length).join(' ');
             hint.textContent = `✓ ${partial.matched.join(' ')}${remaining ? ' | ' + remaining : ''}`;
-            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-blue-600';
+            hint.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
             return;
         }
     }
 
     hint.textContent = '';
-    hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px]';
+    hint.className = 'text-center text-2xl font-semibold my-4';
 }
 
 // =============================================================================
@@ -363,13 +368,16 @@ function updatePartialProgress() {
 // =============================================================================
 
 function generateQuestion() {
+    clearPendingNextQuestion();
     enteredSyllables = [];
     enteredTones = '';
     answered = false;
     feedback.textContent = '';
     hint.textContent = '';
+    hint.className = 'text-center text-2xl font-semibold my-4';
     answerInput.value = '';
     questionAttemptRecorded = false;
+    lastAnswerCorrect = false;
     clearComponentBreakdown();
 
     currentQuestion = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
@@ -410,11 +418,11 @@ function generateQuestion() {
         generateCharOptions();
         choiceMode.style.display = 'block';
     } else if (mode === 'char-to-meaning' && choiceMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        renderMeaningQuestionLayout();
         generateMeaningOptions();
         choiceMode.style.display = 'block';
     } else if (mode === 'char-to-meaning-type' && fuzzyMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        renderMeaningQuestionLayout();
         generateFuzzyMeaningOptions();
         fuzzyMode.style.display = 'block';
     } else if (mode === 'meaning-to-char' && choiceMode) {
@@ -492,11 +500,12 @@ function checkAnswer() {
                 total++;
                 score++;
             }
+            lastAnswerCorrect = true;
 
             feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin} (${expectedTones})`;
-            feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+            hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             renderCharacterComponents(currentQuestion);
 
             // Play audio
@@ -504,7 +513,7 @@ function checkAnswer() {
             playPinyinAudio(firstPinyin, currentQuestion.char);
 
             updateStats();
-            setTimeout(() => generateQuestion(), 1500);
+            scheduleNextQuestion(1500);
         } else {
             // Wrong
             playWrongSound();
@@ -512,15 +521,16 @@ function checkAnswer() {
                 answered = true;
                 total++;
             }
+            lastAnswerCorrect = false;
 
             feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${currentQuestion.pinyin})`;
-            feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+            hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
             renderCharacterComponents(currentQuestion);
 
             updateStats();
-            setTimeout(() => generateQuestion(), 2000);
+            scheduleNextQuestion(2000);
         }
     } else if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
         const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
@@ -575,19 +585,20 @@ function handleCorrectFullAnswer() {
         total++;
         score++;
     }
+    lastAnswerCorrect = true;
 
     if (mode === 'audio-to-pinyin') {
         feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
     } else {
         feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
     }
-    feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+    feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-    hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+    hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     renderCharacterComponents(currentQuestion);
 
     updateStats();
-    setTimeout(() => generateQuestion(), 300);
+    scheduleNextQuestion(300);
 }
 
 function handleCorrectSyllable(syllables, fullPinyin) {
@@ -606,27 +617,29 @@ function handleCorrectSyllable(syllables, fullPinyin) {
             total++;
             score++;
         }
+        lastAnswerCorrect = true;
 
         if (mode === 'audio-to-pinyin') {
             feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
         } else {
             feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
         }
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         renderCharacterComponents(currentQuestion);
 
         updateStats();
-        setTimeout(() => generateQuestion(), 300);
+        scheduleNextQuestion(300);
     } else {
         // More syllables needed - show progress without revealing remaining syllables
         hint.textContent = `✓ ${enteredSyllables.join(' ')} (${enteredSyllables.length}/${syllables.length})`;
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     }
 }
 
 function handleWrongAnswer() {
+    lastAnswerCorrect = false;
     playWrongSound();
     if (!answered) {
         answered = true;
@@ -638,9 +651,9 @@ function handleWrongAnswer() {
     } else {
         feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
     }
-    feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+    feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-    hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+    hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     renderCharacterComponents(currentQuestion);
 
     // Play audio for the correct answer in char-to-pinyin mode
@@ -802,8 +815,14 @@ function generateFuzzyMeaningOptions() {
 
     };
 
-    // Enter key to select highlighted option
+    // Enter key handler
     fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+            e.preventDefault();
+            goToNextQuestionAfterCorrect();
+            return;
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
             const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
@@ -841,23 +860,23 @@ function checkFuzzyAnswer(answer) {
         if (isFirstAttempt) {
             score++;
         }
+        lastAnswerCorrect = true;
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
-        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+        renderMeaningHint(currentQuestion, 'correct');
         renderCharacterComponents(currentQuestion);
         updateStats();
         if (fuzzyInput) {
             fuzzyInput.value = '';
         }
-        setTimeout(() => generateQuestion(), 1500);
+        scheduleNextQuestion(1500);
     } else {
         answered = false;
         playWrongSound();
+        lastAnswerCorrect = false;
         feedback.textContent = `✗ Wrong! Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
-        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+        renderMeaningHint(currentQuestion, 'incorrect');
         renderCharacterComponents(currentQuestion);
         updateStats();
         if (fuzzyInput) {
@@ -892,9 +911,14 @@ function checkMultipleChoice(answer) {
         score++;
         playCorrectSound();
         feedback.textContent = `✓ Correct!`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
-        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-green-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+        lastAnswerCorrect = true;
+        if (mode === 'char-to-meaning') {
+            renderMeaningHint(currentQuestion, 'correct');
+        } else {
+            hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+        }
         renderCharacterComponents(currentQuestion);
 
         // Play audio for char-to-pinyin-mc mode
@@ -903,13 +927,18 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        setTimeout(() => generateQuestion(), 800);
+        scheduleNextQuestion(800);
     } else {
         playWrongSound();
         feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
-        hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-red-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+        lastAnswerCorrect = false;
+        if (mode === 'char-to-meaning') {
+            renderMeaningHint(currentQuestion, 'incorrect');
+        } else {
+            hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+        }
         renderCharacterComponents(currentQuestion);
 
         // Play audio for char-to-pinyin-mc mode
@@ -918,7 +947,7 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        setTimeout(() => generateQuestion(), 1500);
+        scheduleNextQuestion(1500);
     }
 
     updateStats();
@@ -936,6 +965,64 @@ function updateStats() {
     const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
     if (percentageEl) percentageEl.textContent = percentage;
     if (accuracyEl) accuracyEl.textContent = percentage + '%';
+}
+
+function loadComponentPreference() {
+    if (componentPreferenceLoaded) return;
+    componentPreferenceLoaded = true;
+
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
+    try {
+        const stored = window.localStorage.getItem(COMPONENT_PREF_KEY);
+        if (stored === '0') {
+            showComponentBreakdown = false;
+        } else if (stored === '1') {
+            showComponentBreakdown = true;
+        }
+    } catch (err) {
+        console.warn('Failed to load component hint preference', err);
+    }
+}
+
+function saveComponentPreference() {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+        window.localStorage.setItem(COMPONENT_PREF_KEY, showComponentBreakdown ? '1' : '0');
+    } catch (err) {
+        console.warn('Failed to save component hint preference', err);
+    }
+}
+
+function setComponentBreakdownVisibility(enabled) {
+    const newValue = Boolean(enabled);
+    if (showComponentBreakdown === newValue) return;
+    showComponentBreakdown = newValue;
+    saveComponentPreference();
+
+    if (!showComponentBreakdown) {
+        applyComponentPanelVisibility();
+        applyComponentColoring(null);
+        if (componentBreakdown) {
+            clearComponentBreakdown();
+        }
+    } else if (currentQuestion && answered) {
+        renderCharacterComponents(currentQuestion);
+    } else {
+        applyComponentPanelVisibility();
+        if (currentQuestion) {
+            const previewBreakdown = getComponentsForQuestion(currentQuestion);
+            if (previewBreakdown) {
+                applyComponentColoring(previewBreakdown);
+            } else {
+                applyComponentColoring(null);
+            }
+        }
+    }
+}
+
+function toggleComponentBreakdownVisibility() {
+    setComponentBreakdownVisibility(!showComponentBreakdown);
 }
 
 function escapeHtml(value) {
@@ -1013,8 +1100,29 @@ function buildComponentLine(label, data, tagClass) {
     return `<div class="component-line"><span class="component-label">${escapeHtml(label)}</span><span class="component-tag ${tagClass}">${componentChar}</span>${meaningHtml}</div>`;
 }
 
+function buildComponentChip(label, data, chipClass) {
+    if (!data) return '';
+    const chipLabel = label ? `<div class="component-chip-label">${escapeHtml(label)}</div>` : '';
+    const chipSymbol = data.char ? `<div class="component-chip-symbol">${escapeHtml(data.char)}</div>` : '';
+    const chipMeaning = data.meaning ? `<div class="component-chip-meaning">${escapeHtml(data.meaning)}</div>` : '';
+    if (!chipLabel && !chipSymbol && !chipMeaning) return '';
+    return `<div class="component-chip ${chipClass}">${chipLabel}${chipSymbol}${chipMeaning}</div>`;
+}
+
 function renderCharacterComponents(question) {
-    if (!componentBreakdown) return;
+    const leftPanel = document.getElementById('componentPanelLeft');
+    const rightPanel = document.getElementById('componentPanelRight');
+
+    if (!showComponentBreakdown) {
+        if (leftPanel) leftPanel.innerHTML = '';
+        if (rightPanel) rightPanel.innerHTML = '';
+        applyComponentPanelVisibility();
+        applyComponentColoring(null);
+        if (componentBreakdown) {
+            clearComponentBreakdown();
+        }
+        return;
+    }
 
     const breakdown = getComponentsForQuestion(question);
     const hasBreakdown = breakdown && (
@@ -1024,7 +1132,66 @@ function renderCharacterComponents(question) {
     );
 
     if (!hasBreakdown) {
-        clearComponentBreakdown();
+        if (leftPanel) leftPanel.innerHTML = '';
+        if (rightPanel) rightPanel.innerHTML = '';
+        applyComponentPanelVisibility();
+        applyComponentColoring(null);
+        if (componentBreakdown) {
+            clearComponentBreakdown();
+        }
+        return;
+    }
+
+    if (leftPanel && rightPanel) {
+        leftPanel.innerHTML = '';
+        rightPanel.innerHTML = '';
+
+        const leftChips = [];
+        const rightChips = [];
+
+        if (breakdown.radical) {
+            const chip = buildComponentChip('Radical', breakdown.radical, 'chip-radical');
+            if (chip) leftChips.push(chip);
+        }
+
+        if (breakdown.phonetic) {
+            const chip = buildComponentChip('Phonetic', breakdown.phonetic, 'chip-phonetic');
+            if (chip) rightChips.push(chip);
+        }
+
+        const others = Array.isArray(breakdown.others) ? breakdown.others.filter(Boolean) : [];
+        others.forEach((other, index) => {
+            const chip = buildComponentChip(others.length > 1 ? `Component ${index + 1}` : 'Component', other, 'chip-other');
+            if (!chip) return;
+            if (leftChips.length <= rightChips.length) {
+                leftChips.push(chip);
+            } else {
+                rightChips.push(chip);
+            }
+        });
+
+        if (breakdown.hint) {
+            const hintHtml = `<div class="component-hint-chip">${escapeHtml(breakdown.hint)}</div>`;
+            if (leftChips.length <= rightChips.length) {
+                leftChips.push(hintHtml);
+            } else {
+                rightChips.push(hintHtml);
+            }
+        }
+
+        leftPanel.innerHTML = leftChips.join('');
+        rightPanel.innerHTML = rightChips.join('');
+        applyComponentPanelVisibility();
+        applyComponentColoring(breakdown);
+
+        if (componentBreakdown) {
+            clearComponentBreakdown();
+        }
+        return;
+    }
+
+    if (!componentBreakdown) {
+        applyComponentColoring(breakdown);
         return;
     }
 
@@ -1052,6 +1219,7 @@ function renderCharacterComponents(question) {
 
     componentBreakdown.innerHTML = html;
     componentBreakdown.classList.remove('hidden');
+    applyComponentColoring(breakdown);
 }
 
 function prioritizeMeaningModeButton() {
@@ -1065,6 +1233,160 @@ function prioritizeMeaningModeButton() {
     if (parent.firstElementChild === preferredButton) return;
 
     parent.insertBefore(preferredButton, parent.firstElementChild);
+}
+
+function renderMeaningHint(question, status) {
+    if (!question) return;
+
+    const card = document.getElementById('answerSummaryCard');
+    const charText = question.char || '';
+    const pinyinText = (question.pinyin || '').split('/').map(p => p.trim())[0] || '';
+    const meaningText = question.meaning || '';
+
+    if (card) {
+        const charEl = document.getElementById('answerSummaryChar');
+        const pinyinEl = document.getElementById('answerSummaryPinyin');
+        const meaningEl = document.getElementById('answerSummaryMeaning');
+
+        if (charEl) charEl.textContent = charText;
+        if (pinyinEl) pinyinEl.textContent = pinyinText;
+        if (meaningEl) meaningEl.textContent = meaningText;
+
+        card.classList.remove('summary-correct', 'summary-incorrect', 'visible');
+        if (status === 'correct') {
+            card.classList.add('summary-correct');
+        } else if (status === 'incorrect') {
+            card.classList.add('summary-incorrect');
+        }
+        card.classList.add('visible');
+        return;
+    }
+
+    if (!hint) return;
+    hint.className = 'text-center text-2xl font-semibold my-4';
+    hint.textContent = `${charText} (${pinyinText}) - ${meaningText}`;
+}
+
+function renderMeaningQuestionLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    const charHtml = escapeHtml(currentQuestion.char || '');
+
+    questionDisplay.innerHTML = `
+        <div class="meaning-question-layout${showComponentBreakdown ? '' : ' components-hidden'}">
+            <div class="component-panel component-panel-left" id="componentPanelLeft"></div>
+            <div class="meaning-char-column">
+                <div class="answer-summary-card" id="answerSummaryCard">
+                    <div class="summary-card-header">
+                        <span class="summary-card-char" id="answerSummaryChar"></span>
+                        <span class="summary-card-pinyin" id="answerSummaryPinyin"></span>
+                    </div>
+                    <div class="summary-card-meaning" id="answerSummaryMeaning"></div>
+                </div>
+                <div class="question-char-display">${charHtml}</div>
+            </div>
+            <div class="component-panel component-panel-right" id="componentPanelRight"></div>
+        </div>
+    `;
+
+    resetMeaningAnswerSummary();
+    applyComponentPanelVisibility();
+    applyComponentColoring(null);
+    if (showComponentBreakdown) {
+        const initialBreakdown = getComponentsForQuestion(currentQuestion);
+        if (initialBreakdown) {
+            applyComponentColoring(initialBreakdown);
+        }
+    }
+}
+
+function resetMeaningAnswerSummary() {
+    const card = document.getElementById('answerSummaryCard');
+    if (!card) return;
+    card.classList.remove('visible', 'summary-correct', 'summary-incorrect');
+
+    const charEl = document.getElementById('answerSummaryChar');
+    const pinyinEl = document.getElementById('answerSummaryPinyin');
+    const meaningEl = document.getElementById('answerSummaryMeaning');
+
+    if (charEl) charEl.textContent = '';
+    if (pinyinEl) pinyinEl.textContent = '';
+    if (meaningEl) meaningEl.textContent = '';
+}
+
+function applyComponentPanelVisibility() {
+    const layout = document.querySelector('.meaning-question-layout');
+    if (!layout) return;
+    if (showComponentBreakdown) {
+        layout.classList.remove('components-hidden');
+    } else {
+        layout.classList.add('components-hidden');
+    }
+}
+
+function applyComponentColoring(breakdown) {
+    const charEl = document.querySelector('.meaning-question-layout .question-char-display');
+    if (!charEl) return;
+
+    if (!breakdown) {
+        charEl.style.removeProperty('background-image');
+        charEl.style.removeProperty('-webkit-background-clip');
+        charEl.style.removeProperty('background-clip');
+        charEl.style.removeProperty('color');
+        return;
+    }
+
+    const colors = [];
+    if (breakdown.radical) colors.push('#dc2626');
+    if (breakdown.phonetic) colors.push('#2563eb');
+    const otherCount = Array.isArray(breakdown.others) ? breakdown.others.length : 0;
+    for (let i = 0; i < otherCount; i++) {
+        colors.push('#b45309');
+    }
+
+    if (!colors.length) {
+        charEl.style.removeProperty('background-image');
+        charEl.style.removeProperty('-webkit-background-clip');
+        charEl.style.removeProperty('color');
+        return;
+    }
+
+    const step = 100 / colors.length;
+    const stops = colors
+        .map((color, index) => {
+            const start = Math.round(index * step);
+            const end = Math.round((index + 1) * step);
+            return `${color} ${start}% ${end}%`;
+        })
+        .join(', ');
+
+    const gradient = `linear-gradient(90deg, ${stops})`;
+    charEl.style.backgroundImage = gradient;
+    charEl.style.webkitBackgroundClip = 'text';
+    charEl.style.backgroundClip = 'text';
+    charEl.style.color = 'transparent';
+}
+
+function goToNextQuestionAfterCorrect() {
+    if (!lastAnswerCorrect) return;
+    clearPendingNextQuestion();
+    lastAnswerCorrect = false;
+    generateQuestion();
+}
+
+function clearPendingNextQuestion() {
+    if (pendingNextQuestionTimeout) {
+        clearTimeout(pendingNextQuestionTimeout);
+        pendingNextQuestionTimeout = null;
+    }
+}
+
+function scheduleNextQuestion(delay) {
+    clearPendingNextQuestion();
+    pendingNextQuestionTimeout = setTimeout(() => {
+        pendingNextQuestionTimeout = null;
+        generateQuestion();
+    }, delay);
 }
 
 // =============================================================================
@@ -1127,7 +1449,7 @@ function initHandwriting() {
             writer.animateCharacter();
 
             feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-            feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-blue-600';
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
         };
     }
 
@@ -1391,7 +1713,7 @@ function submitDrawing() {
     const recognized = ocrResult.textContent.trim();
     if (!recognized) {
         feedback.textContent = '✗ Please draw a character first!';
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         return;
     }
 
@@ -1403,11 +1725,11 @@ function submitDrawing() {
         playCorrectSound();
         score++;
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     } else {
         playWrongSound();
         feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     }
 
     updateStats();
@@ -1433,7 +1755,7 @@ function revealDrawingAnswer() {
 
     const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
     feedback.textContent = `ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
-    feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-blue-600';
+    feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
 
     updateStats();
     setTimeout(() => {
@@ -1572,9 +1894,9 @@ function checkRadicalAnswer() {
         playCorrectSound();
         score++;
         feedback.textContent = `✓ Correct! All radicals found.`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-green-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-xl font-semibold my-4 min-h-[20px] text-green-600';
+        hint.className = 'text-center text-xl font-semibold my-4 text-green-600';
     } else {
         playWrongSound();
         const missed = correctRadicals.filter(r => !selectedSet.has(r));
@@ -1585,9 +1907,9 @@ function checkRadicalAnswer() {
         if (wrong.length > 0) msg += ` Wrong: ${wrong.join(', ')}.`;
 
         feedback.textContent = msg;
-        feedback.className = 'text-center text-2xl font-semibold my-4 min-h-[24px] text-red-600';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         hint.textContent = `Correct radicals: ${correctRadicals.join(', ')}`;
-        hint.className = 'text-center text-xl font-semibold my-4 min-h-[20px] text-red-600';
+        hint.className = 'text-center text-xl font-semibold my-4 text-red-600';
     }
 
     // Play audio
@@ -1595,7 +1917,7 @@ function checkRadicalAnswer() {
     playPinyinAudio(firstPinyin, currentQuestion.char);
 
     updateStats();
-    setTimeout(() => generateQuestion(), 2500);
+    scheduleNextQuestion(2500);
 }
 
 // =============================================================================
@@ -1737,6 +2059,16 @@ function handleQuizHotkeys(e) {
     const target = e.target;
     const copyComboActive = e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
 
+    if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === 'Enter' && answered && lastAnswerCorrect) {
+        if (target === answerInput || target === fuzzyInput) {
+            // Input handlers will manage this case
+        } else {
+            e.preventDefault();
+            goToNextQuestionAfterCorrect();
+            return;
+        }
+    }
+
     if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === '/') {
         if (isTypingTarget(target)) return;
         if (target && typeof target.closest === 'function' && target.closest('#commandPalette')) return;
@@ -1793,6 +2125,16 @@ function initQuizCommandPalette() {
 
     function getQuizPaletteActions() {
         return [
+            {
+                name: 'Toggle Component Hints',
+                type: 'action',
+                description: 'Show or hide radical/phonetic breakdowns for the current quiz',
+                keywords: 'component breakdown hint radical phonetic toggle',
+                action: () => {
+                    toggleComponentBreakdownVisibility();
+                },
+                available: () => Boolean(componentBreakdown || document.querySelector('.meaning-question-layout'))
+            },
             {
                 name: 'Next Quiz Mode',
                 type: 'action',
@@ -1885,6 +2227,8 @@ function initQuiz(charactersData, userConfig = {}) {
     quizCharacters = charactersData;
     config = userConfig || {};
 
+    loadComponentPreference();
+
     if (config.defaultMode) {
         mode = config.defaultMode;
     }
@@ -1920,7 +2264,7 @@ function initQuiz(charactersData, userConfig = {}) {
             // Show progress hint
             const expectedTones = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim());
             hint.textContent = `${filtered} (${filtered.length}/${expectedTones.length})`;
-            hint.className = 'text-center text-2xl font-semibold my-4 min-h-[20px] text-blue-600';
+            hint.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
 
             // Auto-submit when correct length reached
             if (filtered.length === expectedTones.length) {
@@ -1932,6 +2276,12 @@ function initQuiz(charactersData, userConfig = {}) {
     });
 
     answerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+            e.preventDefault();
+            goToNextQuestionAfterCorrect();
+            return;
+        }
+
         // Ctrl+J to skip question
         if (e.key === 'j' && e.ctrlKey) {
             e.preventDefault();
