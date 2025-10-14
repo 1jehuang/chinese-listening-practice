@@ -12,7 +12,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "spoon, ladle; unit of volume",
       "pinyin": "sháo"
     },
-    "story": "白 (bái) = white; clear, pure, unblemished; bright carries the meaning; 勺 (sháo) = spoon, ladle; unit of volume echoes the sound → think \"possessive particle\""
+    "etymologyNote": "白 (white; clear, pure, unblemished; bright) supplies the idea; 勺 (sháo) supplies the sound → possessive particle"
   },
   "一": {
     "radical": {
@@ -21,7 +21,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "hint": "Represents heaven (天), earth (旦), or the number 1",
-    "story": "一 (yī) = one; a, an; alone carries the meaning → think \"one\". Origin: Represents heaven (天), earth (旦), or the number 1"
+    "etymologyNote": "Represents heaven (天), earth (旦), or the number 1 → one"
   },
   "是": {
     "radical": {
@@ -35,7 +35,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "pǐ"
     },
     "hint": "To speak 日 directly 疋",
-    "story": "日 (rì) = sun; day; daytime carries the meaning; 疋 (pǐ) = roll, bolt of cloth; foot echoes the sound → think \"to be\". Origin: To speak 日 directly 疋"
+    "etymologyNote": "To speak 日 directly 疋 → to be"
   },
   "不": {
     "radical": {
@@ -44,7 +44,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "hint": "A bird flying toward the sky 一",
-    "story": "一 (yī) = one; a, an; alone carries the meaning → think \"not\". Origin: A bird flying toward the sky 一"
+    "etymologyNote": "A bird flying toward the sky 一 → not"
   },
   "了": {
     "radical": {
@@ -58,7 +58,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "ya"
     },
     "hint": "A child swaddled in blanklets; compare 子",
-    "story": "亅 (jué) = hook carries the meaning; 乛 (ya) = kwukyel echoes the sound → think \"particle indicating completed action\". Origin: A child swaddled in blanklets; compare 子"
+    "etymologyNote": "A child swaddled in blanklets; compare 子 → particle indicating completed action"
   },
   "人": {
     "radical": {
@@ -67,7 +67,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rén"
     },
     "hint": "The legs of a human being",
-    "story": "人 (rén) = man, person; people carries the meaning → think \"person\". Origin: The legs of a human being"
+    "etymologyNote": "The legs of a human being → person"
   },
   "我": {
     "radical": {
@@ -81,7 +81,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǒu"
     },
     "hint": "A hand 扌 holding a weapon 戈",
-    "story": "戈 (gē) = spear, lance, halberd carries the meaning; 扌 (shǒu) = hand echoes the sound → think \"I, me\". Origin: A hand 扌 holding a weapon 戈"
+    "etymologyNote": "A hand 扌 holding a weapon 戈 → I, me"
   },
   "在": {
     "radical": {
@@ -95,7 +95,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "cái"
     },
     "hint": "earth",
-    "story": "土 (tǔ) = soil, earth; items made of earth carries the meaning; 才 (cái) = ability, talent, gift; just, only echoes the sound → think \"at, in, on\""
+    "etymologyNote": "earth → at, in, on"
   },
   "有": {
     "radical": {
@@ -108,7 +108,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "moon; month",
       "pinyin": "yuè"
     },
-    "story": "月 (yuè) = moon; month carries the meaning; 月 (yuè) = moon; month echoes the sound → think \"to have\""
+    "etymologyNote": "月 (moon; month) supplies the idea; 月 (yuè) supplies the sound → to have"
   },
   "他": {
     "radical": {
@@ -122,7 +122,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yě"
     },
     "hint": "An additional, \"also\" 也 person 亻",
-    "story": "亻 (rén) = man, person; people carries the meaning; 也 (yě) = also, too echoes the sound → think \"he, him\". Origin: An additional, \"also\" 也 person 亻"
+    "etymologyNote": "An additional, \"also\" 也 person 亻 → he, him"
   },
   "这": {
     "radical": {
@@ -135,7 +135,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "culture, literature, writing",
       "pinyin": "wén"
     },
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 文 (wén) = culture, literature, writing echoes the sound → think \"this\""
+    "etymologyNote": "辶 (to walk; walking) supplies the idea; 文 (wén) supplies the sound → this"
   },
   "中": {
     "radical": {
@@ -149,7 +149,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǒu"
     },
     "hint": "A line 丨 through the center of a box 口",
-    "story": "丨 (shù) = number one; line carries the meaning; 口 (kǒu) = mouth; entrance, gate, opening echoes the sound → think \"middle, center\". Origin: A line 丨 through the center of a box 口"
+    "etymologyNote": "A line 丨 through the center of a box 口 → middle, center"
   },
   "大": {
     "radical": {
@@ -170,7 +170,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A man 人 with outstretched arms",
-    "story": "大 (dà) = big, great, vast, high, deep carries the meaning → think \"big, large\". Origin: A man 人 with outstretched arms"
+    "etymologyNote": "A man 人 with outstretched arms → big, large"
   },
   "来": {
     "radical": {
@@ -191,7 +191,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A wheat plant that has not yet borne fruit; compare 來",
-    "story": "木 (mù) = tree; wood, lumber; wooden carries the meaning → think \"to come\". Origin: A wheat plant that has not yet borne fruit; compare 來"
+    "etymologyNote": "A wheat plant that has not yet borne fruit; compare 來 → to come"
   },
   "上": {
     "radical": {
@@ -205,7 +205,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": ""
     },
     "hint": "One stroke on top of another; compare 下 (below)",
-    "story": "一 (yī) = one; a, an; alone carries the meaning; ⺊ echoes the sound → think \"up, above\". Origin: One stroke on top of another; compare 下 (below)"
+    "etymologyNote": "One stroke on top of another; compare 下 (below) → up, above"
   },
   "国": {
     "radical": {
@@ -219,7 +219,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yù"
     },
     "hint": "Treasure 玉 within a country's borders 囗",
-    "story": "囗 (wéi) = enclosure; border carries the meaning; 玉 (yù) = jade, gem, precious stone echoes the sound → think \"country\". Origin: Treasure 玉 within a country's borders 囗"
+    "etymologyNote": "Treasure 玉 within a country's borders 囗 → country"
   },
   "个": {
     "radical": {
@@ -233,7 +233,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rén"
     },
     "hint": "A tally 丨 of people 人",
-    "story": "丨 (shù) = number one; line carries the meaning; 人 (rén) = man, person; people echoes the sound → think \"measure word (general)\". Origin: A tally 丨 of people 人"
+    "etymologyNote": "A tally 丨 of people 人 → measure word (general)"
   },
   "到": {
     "radical": {
@@ -247,7 +247,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "dāo"
     },
     "hint": "arrive",
-    "story": "至 (zhì) = reach, arrive; very, extremely carries the meaning; 刂 (dāo) = knife echoes the sound → think \"to arrive\""
+    "etymologyNote": "arrive → to arrive"
   },
   "说": {
     "radical": {
@@ -261,7 +261,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "duì"
     },
     "hint": "speech",
-    "story": "讠 (yán) = words, speech; to speak, to say carries the meaning; 兑 (duì) = cash, check; to exchange echoes the sound → think \"to say, speak\""
+    "etymologyNote": "speech → to say, speak"
   },
   "们": {
     "radical": {
@@ -275,7 +275,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "mén"
     },
     "hint": "people",
-    "story": "亻 (rén) = man, person; people carries the meaning; 门 (mén) = gate, door, entrance, opening echoes the sound → think \"plural suffix\""
+    "etymologyNote": "people → plural suffix"
   },
   "为": {
     "radical": {
@@ -288,7 +288,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "strength, power; capability, influence",
       "pinyin": "lì"
     },
-    "story": "丶 (diǎn) = dot carries the meaning; 力 (lì) = strength, power; capability, influence echoes the sound → think \"for, because of\""
+    "etymologyNote": "丶 (dot) supplies the idea; 力 (lì) supplies the sound → for, because of"
   },
   "子": {
     "radical": {
@@ -309,7 +309,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A child in a wrap, with outstretched arms but bundled legs",
-    "story": "子 (zi) = son, child; seed, egg; fruit; small thing carries the meaning → think \"son, child\". Origin: A child in a wrap, with outstretched arms but bundled legs"
+    "etymologyNote": "A child in a wrap, with outstretched arms but bundled legs → son, child"
   },
   "和": {
     "radical": {
@@ -323,7 +323,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "hé"
     },
     "hint": "mouth",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 禾 (hé) = cereal, grain, rice; plant, stalk echoes the sound → think \"and, with\""
+    "etymologyNote": "mouth → and, with"
   },
   "你": {
     "radical": {
@@ -337,7 +337,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "ěr"
     },
     "hint": "Pronoun 尔 for a person 亻",
-    "story": "亻 (rén) = man, person; people carries the meaning; 尔 (ěr) = you; that, those; final particle echoes the sound → think \"you\". Origin: Pronoun 尔 for a person 亻"
+    "etymologyNote": "Pronoun 尔 for a person 亻 → you"
   },
   "地": {
     "radical": {
@@ -351,7 +351,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yě"
     },
     "hint": "earth",
-    "story": "土 (tǔ) = soil, earth; items made of earth carries the meaning; 也 (yě) = also, too echoes the sound → think \"earth, land\""
+    "etymologyNote": "earth → earth, land"
   },
   "出": {
     "radical": {
@@ -365,7 +365,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "chè"
     },
     "hint": "A sprout 屮 growing out of a container 凵",
-    "story": "凵 (qiǎn) = container; receptacle carries the meaning; 屮 (chè) = sprout echoes the sound → think \"to go out\". Origin: A sprout 屮 growing out of a container 凵"
+    "etymologyNote": "A sprout 屮 growing out of a container 凵 → to go out"
   },
   "道": {
     "radical": {
@@ -379,7 +379,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǒu"
     },
     "hint": "walk",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 首 (shǒu) = chief, head, leader echoes the sound → think \"way, method\""
+    "etymologyNote": "walk → way, method"
   },
   "也": {
     "radical": {
@@ -387,7 +387,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "secret, hidden, mysterious; small, minute; to conceal",
       "pinyin": "gōu"
     },
-    "story": "乚 (gōu) = secret, hidden, mysterious; small, minute; to conceal carries the meaning → think \"also, too\""
+    "etymologyNote": "乚 (secret, hidden, mysterious; small, minute; to conceal) points to the meaning → also, too"
   },
   "时": {
     "radical": {
@@ -401,7 +401,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "cùn"
     },
     "hint": "day",
-    "story": "日 (rì) = sun; day; daytime carries the meaning; 寸 (cùn) = inch; small, tiny echoes the sound → think \"time\""
+    "etymologyNote": "day → time"
   },
   "年": {
     "radical": {
@@ -410,7 +410,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gàn"
     },
     "hint": "A man 干 carrying grain, representing the annual harvest",
-    "story": "干 (gàn) = arid, dry; to oppose; to offend; to invade carries the meaning → think \"year\". Origin: A man 干 carrying grain, representing the annual harvest"
+    "etymologyNote": "A man 干 carrying grain, representing the annual harvest → year"
   },
   "得": {
     "radical": {
@@ -431,7 +431,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A hand 寸 grabbing a shell 旦",
-    "story": "彳 (chì) = to step with the left foot carries the meaning → think \"particle / to get / must\". Origin: A hand 寸 grabbing a shell 旦"
+    "etymologyNote": "A hand 寸 grabbing a shell 旦 → particle / to get / must"
   },
   "就": {
     "radical": {
@@ -445,7 +445,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jīng"
     },
     "hint": "specialty",
-    "story": "尤 (yóu) = especially, particularly carries the meaning; 京 (jīng) = capital city echoes the sound → think \"then, at once\". Origin: specialty"
+    "etymologyNote": "specialty → then, at once"
   },
   "那": {
     "radical": {
@@ -453,7 +453,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "place, town, city",
       "pinyin": "yì"
     },
-    "story": "阝 (yì) = place, town, city carries the meaning → think \"that\""
+    "etymologyNote": "阝 (place, town, city) points to the meaning → that"
   },
   "要": {
     "radical": {
@@ -467,7 +467,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "nǚ"
     },
     "hint": "A woman 女 with hands on her waist 覀",
-    "story": "覀 (xī) = west, western, westward carries the meaning; 女 (nǚ) = woman, girl; female echoes the sound → think \"to want, need\". Origin: A woman 女 with hands on her waist 覀"
+    "etymologyNote": "A woman 女 with hands on her waist 覀 → to want, need"
   },
   "下": {
     "radical": {
@@ -481,7 +481,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bo"
     },
     "hint": "One stroke under another; compare 上 (above)",
-    "story": "一 (yī) = one; a, an; alone carries the meaning; 卜 (bo) = divination, fortune-telling; prophecy echoes the sound → think \"down, below\". Origin: One stroke under another; compare 上 (above)"
+    "etymologyNote": "One stroke under another; compare 上 (above) → down, below"
   },
   "以": {
     "radical": {
@@ -489,7 +489,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "man, person; people",
       "pinyin": "rén"
     },
-    "story": "人 (rén) = man, person; people carries the meaning → think \"to use, according to\""
+    "etymologyNote": "人 (man, person; people) points to the meaning → to use, according to"
   },
   "生": {
     "radical": {
@@ -510,7 +510,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A shoot 屮 growing in the soil 土",
-    "story": "生 (shēng) = life, lifetime; birth; growth carries the meaning → think \"to be born, life\". Origin: A shoot 屮 growing in the soil 土"
+    "etymologyNote": "A shoot 屮 growing in the soil 土 → to be born, life"
   },
   "会": {
     "radical": {
@@ -524,7 +524,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yún"
     },
     "hint": "People 人 speaking 云",
-    "story": "人 (rén) = man, person; people carries the meaning; 云 (yún) = cloud; to say, to speak echoes the sound → think \"can, will, meeting\". Origin: People 人 speaking 云"
+    "etymologyNote": "People 人 speaking 云 → can, will, meeting"
   },
   "家": {
     "radical": {
@@ -538,7 +538,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǐ"
     },
     "hint": "roof",
-    "story": "宀 (gài) = roof; house carries the meaning; 豕 (shǐ) = pig, boar echoes the sound → think \"home, family\""
+    "etymologyNote": "roof → home, family"
   },
   "可": {
     "radical": {
@@ -552,7 +552,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǒu"
     },
     "hint": "vigorous",
-    "story": "丁 (dīng) = male adult; robust, vigorous; 4th heavenly stem carries the meaning; 口 (kǒu) = mouth; entrance, gate, opening echoes the sound → think \"can, may\""
+    "etymologyNote": "vigorous → can, may"
   },
   "后": {
     "radical": {
@@ -560,7 +560,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "mouth; entrance, gate, opening",
       "pinyin": "kǒu"
     },
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning → think \"after, behind\""
+    "etymologyNote": "口 (mouth; entrance, gate, opening) points to the meaning → after, behind"
   },
   "过": {
     "radical": {
@@ -581,7 +581,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "walk",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 咼 (guō) = to chat, to gossip, to jaw, to talk; mouth echoes the sound → think \"to pass, particle\""
+    "etymologyNote": "walk → to pass, particle"
   },
   "天": {
     "radical": {
@@ -595,7 +595,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "hint": "The heavens 一 above a man 大",
-    "story": "大 (dà) = big, great, vast, high, deep carries the meaning; 一 (yī) = one; a, an; alone echoes the sound → think \"sky, heaven, day\". Origin: The heavens 一 above a man 大"
+    "etymologyNote": "The heavens 一 above a man 大 → sky, heaven, day"
   },
   "能": {
     "radical": {
@@ -616,7 +616,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A bear's head 厶, body ⺼, and claws 匕",
-    "story": "⺼ = meat, flesh; organic compound carries the meaning → think \"can, able\". Origin: A bear's head 厶, body ⺼, and claws 匕"
+    "etymologyNote": "A bear's head 厶, body ⺼, and claws 匕 → can, able"
   },
   "好": {
     "radical": {
@@ -630,7 +630,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zi"
     },
     "hint": "A woman 女 with a son 子",
-    "story": "女 (nǚ) = woman, girl; female carries the meaning; 子 (zi) = son, child; seed, egg; fruit; small thing echoes the sound → think \"good, well\". Origin: A woman 女 with a son 子"
+    "etymologyNote": "A woman 女 with a son 子 → good, well"
   },
   "都": {
     "radical": {
@@ -644,7 +644,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhě"
     },
     "hint": "city",
-    "story": "阝 (yì) = place, town, city carries the meaning; 者 (zhě) = that which; they who; those who echoes the sound → think \"all, both\""
+    "etymologyNote": "city → all, both"
   },
   "然": {
     "radical": {
@@ -658,7 +658,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rán"
     },
     "hint": "fire",
-    "story": "灬 (huǒ) = fire carries the meaning; 肰 (rán) = dog meat echoes the sound → think \"correct, so\""
+    "etymologyNote": "fire → correct, so"
   },
   "没": {
     "radical": {
@@ -672,7 +672,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shū"
     },
     "hint": "water",
-    "story": "氵 (shuǐ) = water carries the meaning; 殳 (shū) = tool, weapon echoes the sound → think \"not, without\""
+    "etymologyNote": "water → not, without"
   },
   "日": {
     "radical": {
@@ -693,7 +693,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "The sun",
-    "story": "日 (rì) = sun; day; daytime carries the meaning → think \"sun, day\". Origin: The sun"
+    "etymologyNote": "The sun → sun, day"
   },
   "于": {
     "radical": {
@@ -706,7 +706,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "hook",
       "pinyin": "jué"
     },
-    "story": "二 (èr) = two; twice carries the meaning; 亅 (jué) = hook echoes the sound → think \"at, in, on\""
+    "etymologyNote": "二 (two; twice) supplies the idea; 亅 (jué) supplies the sound → at, in, on"
   },
   "起": {
     "radical": {
@@ -720,7 +720,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jǐ"
     },
     "hint": "walk",
-    "story": "走 (zǒu) = to walk, to run, to flee carries the meaning; 己 (jǐ) = self, oneself; personal, private; 6th heavenly stem echoes the sound → think \"to rise, start\""
+    "etymologyNote": "walk → to rise, start"
   },
   "还": {
     "radical": {
@@ -734,7 +734,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bù"
     },
     "hint": "Not 不 moving 辶",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 不 (bù) = no, not, un-; negative prefix echoes the sound → think \"still / to return\". Origin: Not 不 moving 辶"
+    "etymologyNote": "Not 不 moving 辶 → still / to return"
   },
   "发": {
     "radical": {
@@ -742,7 +742,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "and, also, again, in addition",
       "pinyin": "yòu"
     },
-    "story": "又 (yòu) = and, also, again, in addition carries the meaning → think \"to send out, emit\""
+    "etymologyNote": "又 (and, also, again, in addition) points to the meaning → to send out, emit"
   },
   "成": {
     "radical": {
@@ -755,7 +755,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "male adult; robust, vigorous; 4th heavenly stem",
       "pinyin": "dīng"
     },
-    "story": "戈 (gē) = spear, lance, halberd carries the meaning; 丁 (dīng) = male adult; robust, vigorous; 4th heavenly stem echoes the sound → think \"to become, succeed\""
+    "etymologyNote": "戈 (spear, lance, halberd) supplies the idea; 丁 (dīng) supplies the sound → to become, succeed"
   },
   "事": {
     "radical": {
@@ -780,7 +780,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "jì"
       }
     ],
-    "story": "亅 (jué) = hook carries the meaning → think \"matter, thing, event\""
+    "etymologyNote": "亅 (hook) points to the meaning → matter, thing, event"
   },
   "只": {
     "radical": {
@@ -794,7 +794,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bā"
     },
     "hint": "Simple words 八 coming from the mouth 口",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 八 (bā) = eight; all around, all sides echoes the sound → think \"only / measure word\". Origin: Simple words 八 coming from the mouth 口"
+    "etymologyNote": "Simple words 八 coming from the mouth 口 → only / measure word"
   },
   "作": {
     "radical": {
@@ -808,7 +808,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhà"
     },
     "hint": "A person 亻 making something for the first time 乍; 乍 also provides the pronunciation",
-    "story": "亻 (rén) = man, person; people carries the meaning; 乍 (zhà) = first time, for the first time, suddenly echoes the sound → think \"to do, make\". Origin: A person 亻 making something for the first time 乍; 乍 also provides the pronunciation"
+    "etymologyNote": "A person 亻 making something for the first time 乍; 乍 also provides the pronunciation → to do, make"
   },
   "当": {
     "radical": {
@@ -821,7 +821,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "snout",
       "pinyin": "jì"
     },
-    "story": "⺌ carries the meaning; 彐 (jì) = snout echoes the sound → think \"to be, serve as\""
+    "etymologyNote": "⺌ supplies the idea; 彐 (jì) supplies the sound → to be, serve as"
   },
   "想": {
     "radical": {
@@ -835,7 +835,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "xiāng"
     },
     "hint": "mind",
-    "story": "心 (xīn) = heart; mind; soul carries the meaning; 相 (xiāng) = mutual, reciprocal; equal; each other echoes the sound → think \"to think, want\""
+    "etymologyNote": "mind → to think, want"
   },
   "看": {
     "radical": {
@@ -849,7 +849,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǒu"
     },
     "hint": "Shielding one's eyes 目 with a hand 手 to look to the distance",
-    "story": "目 (mù) = eye; to look, to see; division, topic carries the meaning; 手 (shǒu) = hand echoes the sound → think \"to look, see\". Origin: Shielding one's eyes 目 with a hand 手 to look to the distance"
+    "etymologyNote": "Shielding one's eyes 目 with a hand 手 to look to the distance → to look, see"
   },
   "文": {
     "radical": {
@@ -870,7 +870,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A tattooed chest, representing writing",
-    "story": "文 (wén) = culture, literature, writing carries the meaning → think \"language, culture\". Origin: A tattooed chest, representing writing"
+    "etymologyNote": "A tattooed chest, representing writing → language, culture"
   },
   "无": {
     "radical": {
@@ -890,7 +890,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "yóu"
       }
     ],
-    "story": "无 (wú) = no, not; lacking, -less carries the meaning → think \"without, none\""
+    "etymologyNote": "无 (no, not; lacking, -less) points to the meaning → without, none"
   },
   "开": {
     "radical": {
@@ -904,7 +904,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "hint": "Simplified form of 開; hands 廾 lifting the latch 一 of a door",
-    "story": "廾 (gǒng) = two hands carries the meaning; 一 (yī) = one; a, an; alone echoes the sound → think \"to open, start\". Origin: Simplified form of 開; hands 廾 lifting the latch 一 of a door"
+    "etymologyNote": "Simplified form of 開; hands 廾 lifting the latch 一 of a door → to open, start"
   },
   "手": {
     "radical": {
@@ -913,7 +913,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǒu"
     },
     "hint": "A hand with the fingers splayed",
-    "story": "手 (shǒu) = hand carries the meaning → think \"hand\". Origin: A hand with the fingers splayed"
+    "etymologyNote": "A hand with the fingers splayed → hand"
   },
   "十": {
     "radical": {
@@ -933,7 +933,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "shù"
       }
     ],
-    "story": "十 (shí) = ten, tenth; complete; perfect carries the meaning → think \"ten\""
+    "etymologyNote": "十 (ten, tenth; complete; perfect) points to the meaning → ten"
   },
   "用": {
     "radical": {
@@ -948,7 +948,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "jiōng"
       }
     ],
-    "story": "用 (yòng) = to use, to employ, to apply; use carries the meaning → think \"to use\""
+    "etymologyNote": "用 (to use, to employ, to apply; use) points to the meaning → to use"
   },
   "主": {
     "radical": {
@@ -962,7 +962,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "wáng"
     },
     "hint": "A lamp 王 with a flame 丶",
-    "story": "丶 (diǎn) = dot carries the meaning; 王 (wáng) = king, ruler; royal; surname echoes the sound → think \"main, master\". Origin: A lamp 王 with a flame 丶"
+    "etymologyNote": "A lamp 王 with a flame 丶 → main, master"
   },
   "行": {
     "radical": {
@@ -983,7 +983,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "To take small steps 亍 with one's feet 彳",
-    "story": "行 (xíng) = to go, to walk, to move; professional carries the meaning → think \"to walk / row, line\". Origin: To take small steps 亍 with one's feet 彳"
+    "etymologyNote": "To take small steps 亍 with one's feet 彳 → to walk / row, line"
   },
   "方": {
     "radical": {
@@ -998,7 +998,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "tóu"
       }
     ],
-    "story": "方 (fāng) = square, rectangle; side; region; flag carries the meaning → think \"square, direction\""
+    "etymologyNote": "方 (square, rectangle; side; region; flag) points to the meaning → square, direction"
   },
   "又": {
     "radical": {
@@ -1007,7 +1007,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yòu"
     },
     "hint": "A right hand, representing a pair; compare 左",
-    "story": "又 (yòu) = and, also, again, in addition carries the meaning → think \"again, also\". Origin: A right hand, representing a pair; compare 左"
+    "etymologyNote": "A right hand, representing a pair; compare 左 → again, also"
   },
   "如": {
     "radical": {
@@ -1021,7 +1021,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǒu"
     },
     "hint": "A wife 女 following her husband's words 口",
-    "story": "女 (nǚ) = woman, girl; female carries the meaning; 口 (kǒu) = mouth; entrance, gate, opening echoes the sound → think \"if, like\". Origin: A wife 女 following her husband's words 口"
+    "etymologyNote": "A wife 女 following her husband's words 口 → if, like"
   },
   "前": {
     "radical": {
@@ -1046,7 +1046,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "yuè"
       }
     ],
-    "story": "刂 (dāo) = knife carries the meaning → think \"front, before\""
+    "etymologyNote": "刂 (knife) points to the meaning → front, before"
   },
   "所": {
     "radical": {
@@ -1060,7 +1060,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jīn"
     },
     "hint": "An axe 斤 swung at a door 户",
-    "story": "户 (hù) = door; family carries the meaning; 斤 (jīn) = a catty (about 500 grams); an axe; keen, shrewd echoes the sound → think \"place, that which\". Origin: An axe 斤 swung at a door 户"
+    "etymologyNote": "An axe 斤 swung at a door 户 → place, that which"
   },
   "本": {
     "radical": {
@@ -1074,7 +1074,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "hint": "A tree 木 with its roots highlighted",
-    "story": "木 (mù) = tree; wood, lumber; wooden carries the meaning; 一 (yī) = one; a, an; alone echoes the sound → think \"root, origin, measure word for books\". Origin: A tree 木 with its roots highlighted"
+    "etymologyNote": "A tree 木 with its roots highlighted → root, origin, measure word for books"
   },
   "见": {
     "radical": {
@@ -1095,7 +1095,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Simplified form of 見; a man 儿 with the eye 目 emphasized",
-    "story": "见 (jiàn) = to see, to observe, to meet, to appear carries the meaning → think \"to see, meet\". Origin: Simplified form of 見; a man 儿 with the eye 目 emphasized"
+    "etymologyNote": "Simplified form of 見; a man 儿 with the eye 目 emphasized → to see, meet"
   },
   "经": {
     "radical": {
@@ -1109,7 +1109,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gōng"
     },
     "hint": "thread",
-    "story": "纟 (sī) = silk; thread carries the meaning; 工 (gōng) = labor, work; laborer, worker echoes the sound → think \"to pass through, classic\""
+    "etymologyNote": "thread → to pass through, classic"
   },
   "头": {
     "radical": {
@@ -1123,7 +1123,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": ""
     },
     "hint": "high",
-    "story": "大 (dà) = big, great, vast, high, deep carries the meaning; ⺀ = ice echoes the sound → think \"head\""
+    "etymologyNote": "high → head"
   },
   "面": {
     "radical": {
@@ -1132,7 +1132,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "miàn"
     },
     "hint": "A person's face",
-    "story": "面 (miàn) = face; surface, side; plane, dimension carries the meaning → think \"face, surface\". Origin: A person's face"
+    "etymologyNote": "A person's face → face, surface"
   },
   "公": {
     "radical": {
@@ -1146,7 +1146,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "sī"
     },
     "hint": "To divide 八 what is private 厶",
-    "story": "八 (bā) = eight; all around, all sides carries the meaning; 厶 (sī) = private, secret echoes the sound → think \"public, male\". Origin: To divide 八 what is private 厶"
+    "etymologyNote": "To divide 八 what is private 厶 → public, male"
   },
   "同": {
     "radical": {
@@ -1160,7 +1160,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "fán"
     },
     "hint": "Sharing a common 凡 tongue 口",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 凡 (fán) = any, every, all; common, ordinary echoes the sound → think \"same, together\". Origin: Sharing a common 凡 tongue 口"
+    "etymologyNote": "Sharing a common 凡 tongue 口 → same, together"
   },
   "三": {
     "radical": {
@@ -1174,7 +1174,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "èr"
     },
     "hint": "Three parallel lines; compare 一 (one) and 二 (two)",
-    "story": "一 (yī) = one; a, an; alone carries the meaning; 二 (èr) = two; twice echoes the sound → think \"three\". Origin: Three parallel lines; compare 一 (one) and 二 (two)"
+    "etymologyNote": "Three parallel lines; compare 一 (one) and 二 (two) → three"
   },
   "已": {
     "radical": {
@@ -1182,7 +1182,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "self, oneself; personal, private; 6th heavenly stem",
       "pinyin": "jǐ"
     },
-    "story": "己 (jǐ) = self, oneself; personal, private; 6th heavenly stem carries the meaning → think \"already, to stop\""
+    "etymologyNote": "己 (self, oneself; personal, private; 6th heavenly stem) points to the meaning → already, to stop"
   },
   "老": {
     "radical": {
@@ -1203,7 +1203,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A person bent over with long hair 匕 and a crutch; compare 耂",
-    "story": "老 (lǎo) = old, aged; experienced carries the meaning → think \"old\". Origin: A person bent over with long hair 匕 and a crutch; compare 耂"
+    "etymologyNote": "A person bent over with long hair 匕 and a crutch; compare 耂 → old"
   },
   "从": {
     "radical": {
@@ -1212,7 +1212,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rén"
     },
     "hint": "One person 人 following another",
-    "story": "人 (rén) = man, person; people carries the meaning → think \"from\". Origin: One person 人 following another"
+    "etymologyNote": "One person 人 following another → from"
   },
   "动": {
     "radical": {
@@ -1226,7 +1226,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yún"
     },
     "hint": "strength",
-    "story": "力 (lì) = strength, power; capability, influence carries the meaning; 云 (yún) = cloud; to say, to speak echoes the sound → think \"to move\""
+    "etymologyNote": "strength → to move"
   },
   "两": {
     "radical": {
@@ -1247,7 +1247,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Two people 从 together in a cart",
-    "story": "一 (yī) = one; a, an; alone carries the meaning → think \"two\". Origin: Two people 从 together in a cart"
+    "etymologyNote": "Two people 从 together in a cart → two"
   },
   "长": {
     "radical": {
@@ -1263,7 +1263,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Simplified form of 長; an old man with long hair and a cane",
-    "story": "长 (zhǎng) = long, lasting; to excel in carries the meaning → think \"long / to grow\". Origin: Simplified form of 長; an old man with long hair and a cane"
+    "etymologyNote": "Simplified form of 長; an old man with long hair and a cane → long / to grow"
   },
   "把": {
     "radical": {
@@ -1277,7 +1277,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bā"
     },
     "hint": "hand",
-    "story": "扌 (shǒu) = hand carries the meaning; 巴 (bā) = to desire, to wish for echoes the sound → think \"to hold, handle\""
+    "etymologyNote": "hand → to hold, handle"
   },
   "小": {
     "radical": {
@@ -1298,7 +1298,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Dividing 八 by a line 亅",
-    "story": "小 (xiǎo) = small, tiny, insignificant carries the meaning → think \"small\". Origin: Dividing 八 by a line 亅"
+    "etymologyNote": "Dividing 八 by a line 亅 → small"
   },
   "什": {
     "radical": {
@@ -1312,7 +1312,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shí"
     },
     "hint": "A file of ten 十 people 亻",
-    "story": "亻 (rén) = man, person; people carries the meaning; 十 (shí) = ten, tenth; complete; perfect echoes the sound → think \"what (in 什么)\". Origin: A file of ten 十 people 亻"
+    "etymologyNote": "A file of ten 十 people 亻 → what (in 什么)"
   },
   "但": {
     "radical": {
@@ -1325,7 +1325,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "dawn; morning; day",
       "pinyin": "dàn"
     },
-    "story": "亻 (rén) = man, person; people carries the meaning; 旦 (dàn) = dawn; morning; day echoes the sound → think \"but, however\""
+    "etymologyNote": "亻 (man, person; people) supplies the idea; 旦 (dàn) supplies the sound → but, however"
   },
   "因": {
     "radical": {
@@ -1338,7 +1338,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "big, great, vast, high, deep",
       "pinyin": "dà"
     },
-    "story": "囗 (wéi) = enclosure; border carries the meaning; 大 (dà) = big, great, vast, high, deep echoes the sound → think \"because, cause\""
+    "etymologyNote": "囗 (enclosure; border) supplies the idea; 大 (dà) supplies the sound → because, cause"
   },
   "此": {
     "radical": {
@@ -1352,7 +1352,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhǐ"
     },
     "hint": "sitting man",
-    "story": "匕 (bǐ) = spoon, ladle; knife, dirk carries the meaning; 止 (zhǐ) = to stop, to halt; to detain; to desist echoes the sound → think \"this\". Origin: sitting man"
+    "etymologyNote": "sitting man → this"
   },
   "高": {
     "radical": {
@@ -1378,7 +1378,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A tall palace",
-    "story": "高 (gāo) = tall, lofty; high, elevated carries the meaning → think \"tall, high\". Origin: A tall palace"
+    "etymologyNote": "A tall palace → tall, high"
   },
   "她": {
     "radical": {
@@ -1392,7 +1392,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yě"
     },
     "hint": "A woman 女 beside you 也",
-    "story": "女 (nǚ) = woman, girl; female carries the meaning; 也 (yě) = also, too echoes the sound → think \"she, her\". Origin: A woman 女 beside you 也"
+    "etymologyNote": "A woman 女 beside you 也 → she, her"
   },
   "水": {
     "radical": {
@@ -1408,7 +1408,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A river running between two banks; compare 川",
-    "story": "水 (shuǐ) = water, liquid, lotion, juice carries the meaning → think \"water\". Origin: A river running between two banks; compare 川"
+    "etymologyNote": "A river running between two banks; compare 川 → water"
   },
   "新": {
     "radical": {
@@ -1422,7 +1422,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "qīn"
     },
     "hint": "A freshly chopped 斤 tree 亲",
-    "story": "斤 (jīn) = a catty (about 500 grams); an axe; keen, shrewd carries the meaning; 亲 (qīn) = relatives, parents; intimate; the hazelnut tree echoes the sound → think \"new\". Origin: A freshly chopped 斤 tree 亲"
+    "etymologyNote": "A freshly chopped 斤 tree 亲 → new"
   },
   "学": {
     "radical": {
@@ -1443,7 +1443,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A building 冖 where children 子 study; ⺍ provides the pronunciation",
-    "story": "子 (zi) = son, child; seed, egg; fruit; small thing carries the meaning → think \"to study, learn\". Origin: A building 冖 where children 子 study; ⺍ provides the pronunciation"
+    "etymologyNote": "A building 冖 where children 子 study; ⺍ provides the pronunciation → to study, learn"
   },
   "现": {
     "radical": {
@@ -1457,7 +1457,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jiàn"
     },
     "hint": "To see 见 jade 王; 见 also provides the pronunciation",
-    "story": "王 (wáng) = king, ruler; royal; surname carries the meaning; 见 (jiàn) = to see, to observe, to meet, to appear echoes the sound → think \"current, appear\". Origin: To see 见 jade 王; 见 also provides the pronunciation"
+    "etymologyNote": "To see 见 jade 王; 见 also provides the pronunciation → current, appear"
   },
   "去": {
     "radical": {
@@ -1470,7 +1470,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "soil, earth; items made of earth",
       "pinyin": "tǔ"
     },
-    "story": "厶 (sī) = private, secret carries the meaning; 土 (tǔ) = soil, earth; items made of earth echoes the sound → think \"to go\""
+    "etymologyNote": "厶 (private, secret) supplies the idea; 土 (tǔ) supplies the sound → to go"
   },
   "么": {
     "radical": {
@@ -1483,7 +1483,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "private, secret",
       "pinyin": "sī"
     },
-    "story": "丿 (piě) = slash carries the meaning; 厶 (sī) = private, secret echoes the sound → think \"particle (in 什么, 怎么)\""
+    "etymologyNote": "丿 (slash) supplies the idea; 厶 (sī) supplies the sound → particle (in 什么, 怎么)"
   },
   "民": {
     "radical": {
@@ -1504,7 +1504,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "An eye 巳 pierced by a dagger 戈, an old mark of slavery",
-    "story": "民 (mín) = citizens, subjects; a nation's people carries the meaning → think \"people, citizen\". Origin: An eye 巳 pierced by a dagger 戈, an old mark of slavery"
+    "etymologyNote": "An eye 巳 pierced by a dagger 戈, an old mark of slavery → people, citizen"
   },
   "分": {
     "radical": {
@@ -1518,7 +1518,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bā"
     },
     "hint": "Pieces 八 being further subdivided with a knife 刀",
-    "story": "刀 (dāo) = knife; old coin; measure carries the meaning; 八 (bā) = eight; all around, all sides echoes the sound → think \"to divide, minute\". Origin: Pieces 八 being further subdivided with a knife 刀"
+    "etymologyNote": "Pieces 八 being further subdivided with a knife 刀 → to divide, minute"
   },
   "它": {
     "radical": {
@@ -1531,7 +1531,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "spoon, ladle; knife, dirk",
       "pinyin": "bǐ"
     },
-    "story": "宀 (gài) = roof; house carries the meaning; 匕 (bǐ) = spoon, ladle; knife, dirk echoes the sound → think \"it\""
+    "etymologyNote": "宀 (roof; house) supplies the idea; 匕 (bǐ) supplies the sound → it"
   },
   "回": {
     "radical": {
@@ -1545,7 +1545,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǒu"
     },
     "hint": "Originally, a spiral signifying return",
-    "story": "囗 (wéi) = enclosure; border carries the meaning; 口 (kǒu) = mouth; entrance, gate, opening echoes the sound → think \"to return\". Origin: Originally, a spiral signifying return"
+    "etymologyNote": "Originally, a spiral signifying return → to return"
   },
   "最": {
     "radical": {
@@ -1566,7 +1566,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "To take place 取 under the sun 日 (that is, everywhere)",
-    "story": "曰 (yuē) = to speak; to say carries the meaning → think \"most\". Origin: To take place 取 under the sun 日 (that is, everywhere)"
+    "etymologyNote": "To take place 取 under the sun 日 (that is, everywhere) → most"
   },
   "而": {
     "radical": {
@@ -1574,7 +1574,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "and, and then, and yet; but",
       "pinyin": "ér"
     },
-    "story": "而 (ér) = and, and then, and yet; but carries the meaning → think \"and, but\""
+    "etymologyNote": "而 (and, and then, and yet; but) points to the meaning → and, but"
   },
   "多": {
     "radical": {
@@ -1583,7 +1583,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "xī"
     },
     "hint": "Two nights 夕, suggesting many",
-    "story": "夕 (xī) = evening, night, dusk; slanted carries the meaning → think \"many, much\". Origin: Two nights 夕, suggesting many"
+    "etymologyNote": "Two nights 夕, suggesting many → many, much"
   },
   "自": {
     "radical": {
@@ -1599,7 +1599,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A nose; in China, people refer to themselves by pointing to their noses",
-    "story": "自 (zì) = self; private, personal; from carries the meaning → think \"self\". Origin: A nose; in China, people refer to themselves by pointing to their noses"
+    "etymologyNote": "A nose; in China, people refer to themselves by pointing to their noses → self"
   },
   "二": {
     "radical": {
@@ -1615,7 +1615,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Two parallel lines; compare 一 (one) and 三 (three)",
-    "story": "二 (èr) = two; twice carries the meaning → think \"two\". Origin: Two parallel lines; compare 一 (one) and 三 (three)"
+    "etymologyNote": "Two parallel lines; compare 一 (one) and 三 (three) → two"
   },
   "心": {
     "radical": {
@@ -1624,7 +1624,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "xīn"
     },
     "hint": "A heart",
-    "story": "心 (xīn) = heart; mind; soul carries the meaning → think \"heart, mind\". Origin: A heart"
+    "etymologyNote": "A heart → heart, mind"
   },
   "进": {
     "radical": {
@@ -1638,7 +1638,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jǐng"
     },
     "hint": "walk",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 井 (jǐng) = well, mine shaft, pit echoes the sound → think \"to enter\""
+    "etymologyNote": "walk → to enter"
   },
   "力": {
     "radical": {
@@ -1654,7 +1654,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A plow's head representing strength",
-    "story": "力 (lì) = strength, power; capability, influence carries the meaning → think \"power, strength\". Origin: A plow's head representing strength"
+    "etymologyNote": "A plow's head representing strength → power, strength"
   },
   "之": {
     "radical": {
@@ -1670,7 +1670,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A foot meaning \"to follow\"; cursive version of 止",
-    "story": "丿 (piě) = slash carries the meaning → think \"possessive particle (classical)\". Origin: A foot meaning \"to follow\"; cursive version of 止"
+    "etymologyNote": "A foot meaning \"to follow\"; cursive version of 止 → possessive particle (classical)"
   },
   "问": {
     "radical": {
@@ -1684,7 +1684,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "mén"
     },
     "hint": "mouth",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 门 (mén) = gate, door, entrance, opening echoes the sound → think \"to ask\""
+    "etymologyNote": "mouth → to ask"
   },
   "很": {
     "radical": {
@@ -1698,7 +1698,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gěn"
     },
     "hint": "step",
-    "story": "彳 (chì) = to step with the left foot carries the meaning; 艮 (gěn) = blunt; tough, chewy echoes the sound → think \"very\""
+    "etymologyNote": "step → very"
   },
   "着": {
     "radical": {
@@ -1711,7 +1711,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "sheep, goat",
       "pinyin": "yáng"
     },
-    "story": "目 (mù) = eye; to look, to see; division, topic carries the meaning; 羊 (yáng) = sheep, goat echoes the sound → think \"particle / to touch\""
+    "etymologyNote": "目 (eye; to look, to see; division, topic) supplies the idea; 羊 (yáng) supplies the sound → particle / to touch"
   },
   "重": {
     "radical": {
@@ -1725,7 +1725,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "qiān"
     },
     "hint": "A burden carried for a thousand 千 miles 里",
-    "story": "里 (lǐ) = unit of distance equal to 0.5km; village; lane carries the meaning; 千 (qiān) = thousand; many, numerous; very echoes the sound → think \"heavy / again\". Origin: A burden carried for a thousand 千 miles 里"
+    "etymologyNote": "A burden carried for a thousand 千 miles 里 → heavy / again"
   },
   "明": {
     "radical": {
@@ -1739,7 +1739,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yuè"
     },
     "hint": "The light of the sun 日 and moon 月",
-    "story": "日 (rì) = sun; day; daytime carries the meaning; 月 (yuè) = moon; month echoes the sound → think \"bright, clear\". Origin: The light of the sun 日 and moon 月"
+    "etymologyNote": "The light of the sun 日 and moon 月 → bright, clear"
   },
   "里": {
     "radical": {
@@ -1760,7 +1760,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Unit of measure for farm 田 land 土",
-    "story": "里 (lǐ) = unit of distance equal to 0.5km; village; lane carries the meaning → think \"inside, li (unit)\". Origin: Unit of measure for farm 田 land 土"
+    "etymologyNote": "Unit of measure for farm 田 land 土 → inside, li (unit)"
   },
   "儿": {
     "radical": {
@@ -1781,7 +1781,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Simplified form of 兒, a picture of a child; compare 人",
-    "story": "儿 (ér) = son, child carries the meaning → think \"son, child, suffix\". Origin: Simplified form of 兒, a picture of a child; compare 人"
+    "etymologyNote": "Simplified form of 兒, a picture of a child; compare 人 → son, child, suffix"
   },
   "其": {
     "radical": {
@@ -1801,7 +1801,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "yī"
       }
     ],
-    "story": "八 (bā) = eight; all around, all sides carries the meaning → think \"his, her, its\""
+    "etymologyNote": "八 (eight; all around, all sides) points to the meaning → his, her, its"
   },
   "通": {
     "radical": {
@@ -1815,7 +1815,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yǒng"
     },
     "hint": "walk",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 甬 (yǒng) = path; river in Ningbo; Ningbo echoes the sound → think \"to pass through\""
+    "etymologyNote": "walk → to pass through"
   },
   "与": {
     "radical": {
@@ -1823,7 +1823,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "one; a, an; alone",
       "pinyin": "yī"
     },
-    "story": "一 (yī) = one; a, an; alone carries the meaning → think \"and, with\""
+    "etymologyNote": "一 (one; a, an; alone) points to the meaning → and, with"
   },
   "实": {
     "radical": {
@@ -1836,7 +1836,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "head; chief, boss; first, top",
       "pinyin": "tóu"
     },
-    "story": "宀 (gài) = roof; house carries the meaning; 头 (tóu) = head; chief, boss; first, top echoes the sound → think \"real, solid\""
+    "etymologyNote": "宀 (roof; house) supplies the idea; 头 (tóu) supplies the sound → real, solid"
   },
   "将": {
     "radical": {
@@ -1857,7 +1857,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Going to bed 丬 at night 夕, a predictable future",
-    "story": "丬 (qiáng) = half of tree trunk carries the meaning → think \"will, about to\". Origin: Going to bed 丬 at night 夕, a predictable future"
+    "etymologyNote": "Going to bed 丬 at night 夕, a predictable future → will, about to"
   },
   "外": {
     "radical": {
@@ -1871,7 +1871,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bo"
     },
     "hint": "Night-time 夕 divinations 卜; the supernatural, the foreign",
-    "story": "夕 (xī) = evening, night, dusk; slanted carries the meaning; 卜 (bo) = divination, fortune-telling; prophecy echoes the sound → think \"outside\". Origin: Night-time 夕 divinations 卜; the supernatural, the foreign"
+    "etymologyNote": "Night-time 夕 divinations 卜; the supernatural, the foreign → outside"
   },
   "被": {
     "radical": {
@@ -1885,7 +1885,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "pí"
     },
     "hint": "cloth",
-    "story": "衤 (yī) = cloth carries the meaning; 皮 (pí) = skin, hide, fur, feathers echoes the sound → think \"by (passive marker)\""
+    "etymologyNote": "cloth → by (passive marker)"
   },
   "等": {
     "radical": {
@@ -1899,7 +1899,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "sì"
     },
     "hint": "Bamboo strips ⺮ laid before a court 寺",
-    "story": "⺮ (zhú) = bamboo; flute carries the meaning; 寺 (sì) = court, office; temple, monastery echoes the sound → think \"to wait, etc.\". Origin: Bamboo strips ⺮ laid before a court 寺"
+    "etymologyNote": "Bamboo strips ⺮ laid before a court 寺 → to wait, etc."
   },
   "几": {
     "radical": {
@@ -1920,7 +1920,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A small table; compare 丌",
-    "story": "几 (jǐ) = small table; how many; a few, some carries the meaning → think \"how many, several\". Origin: A small table; compare 丌"
+    "etymologyNote": "A small table; compare 丌 → how many, several"
   },
   "理": {
     "radical": {
@@ -1934,7 +1934,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "lǐ"
     },
     "hint": "king",
-    "story": "王 (wáng) = king, ruler; royal; surname carries the meaning; 里 (lǐ) = unit of distance equal to 0.5km; village; lane echoes the sound → think \"logic, to manage\""
+    "etymologyNote": "king → logic, to manage"
   },
   "口": {
     "radical": {
@@ -1955,7 +1955,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "An open mouth",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning → think \"mouth\". Origin: An open mouth"
+    "etymologyNote": "An open mouth → mouth"
   },
   "度": {
     "radical": {
@@ -1976,7 +1976,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Twenty 廿 people 又 meeting inside a building 广 to deliberate",
-    "story": "广 (guǎng) = broad, vast, wide; building, house carries the meaning → think \"degree, measure\". Origin: Twenty 廿 people 又 meeting inside a building 广 to deliberate"
+    "etymologyNote": "Twenty 廿 people 又 meeting inside a building 广 to deliberate → degree, measure"
   },
   "第": {
     "radical": {
@@ -1990,7 +1990,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "dì"
     },
     "hint": "Bamboo strips ⺮ arrayed in sequence; 弟 provides the pronunciation",
-    "story": "⺮ (zhú) = bamboo; flute carries the meaning; 弟 (dì) = young brother, junior echoes the sound → think \"ordinal prefix\". Origin: Bamboo strips ⺮ arrayed in sequence; 弟 provides the pronunciation"
+    "etymologyNote": "Bamboo strips ⺮ arrayed in sequence; 弟 provides the pronunciation → ordinal prefix"
   },
   "全": {
     "radical": {
@@ -2004,7 +2004,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yù"
     },
     "hint": "Jade 玉 put away 入 for safe-keeping",
-    "story": "入 (rù) = to enter, to come in; to join carries the meaning; 玉 (yù) = jade, gem, precious stone echoes the sound → think \"complete, whole\". Origin: Jade 玉 put away 入 for safe-keeping"
+    "etymologyNote": "Jade 玉 put away 入 for safe-keeping → complete, whole"
   },
   "先": {
     "radical": {
@@ -2018,7 +2018,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "tǔ"
     },
     "hint": "Someone stepping 止 in front of another person 儿",
-    "story": "儿 (ér) = son, child carries the meaning; 土 (tǔ) = soil, earth; items made of earth echoes the sound → think \"first, before\". Origin: Someone stepping 止 in front of another person 儿"
+    "etymologyNote": "Someone stepping 止 in front of another person 儿 → first, before"
   },
   "给": {
     "radical": {
@@ -2032,7 +2032,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "hé"
     },
     "hint": "thread",
-    "story": "纟 (sī) = silk; thread carries the meaning; 合 (hé) = to combine, to join, to unite; to gather echoes the sound → think \"to give\""
+    "etymologyNote": "thread → to give"
   },
   "电": {
     "radical": {
@@ -2046,7 +2046,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gōu"
     },
     "hint": "Simplified form of 電; lightning 申 from a storm cloud 雨",
-    "story": "曰 (yuē) = to speak; to say carries the meaning; 乚 (gōu) = secret, hidden, mysterious; small, minute; to conceal echoes the sound → think \"electricity\". Origin: Simplified form of 電; lightning 申 from a storm cloud 雨"
+    "etymologyNote": "Simplified form of 電; lightning 申 from a storm cloud 雨 → electricity"
   },
   "次": {
     "radical": {
@@ -2060,7 +2060,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bīng"
     },
     "hint": "A person 欠 yawning multiple times 冫",
-    "story": "欠 (qiàn) = to lack, to owe; to breathe, to yawn carries the meaning; 冫 (bīng) = ice echoes the sound → think \"time, order\". Origin: A person 欠 yawning multiple times 冫"
+    "etymologyNote": "A person 欠 yawning multiple times 冫 → time, order"
   },
   "正": {
     "radical": {
@@ -2074,7 +2074,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "hint": "A foot 止 stopping in the right place 一",
-    "story": "止 (zhǐ) = to stop, to halt; to detain; to desist carries the meaning; 一 (yī) = one; a, an; alone echoes the sound → think \"just, correct\". Origin: A foot 止 stopping in the right place 一"
+    "etymologyNote": "A foot 止 stopping in the right place 一 → just, correct"
   },
   "美": {
     "radical": {
@@ -2088,7 +2088,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "dà"
     },
     "hint": "A person 大 wearing an elegant crown 羊",
-    "story": "羊 (yáng) = sheep, goat carries the meaning; 大 (dà) = big, great, vast, high, deep echoes the sound → think \"beautiful, America\". Origin: A person 大 wearing an elegant crown 羊"
+    "etymologyNote": "A person 大 wearing an elegant crown 羊 → beautiful, America"
   },
   "部": {
     "radical": {
@@ -2102,7 +2102,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "pǒu"
     },
     "hint": "place",
-    "story": "阝 (yì) = place, town, city carries the meaning; 咅 (pǒu) = to spit out echoes the sound → think \"part, section\""
+    "etymologyNote": "place → part, section"
   },
   "间": {
     "radical": {
@@ -2116,7 +2116,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rì"
     },
     "hint": "The sun 日 shining through a doorway 门",
-    "story": "门 (mén) = gate, door, entrance, opening carries the meaning; 日 (rì) = sun; day; daytime echoes the sound → think \"between, space\". Origin: The sun 日 shining through a doorway 门"
+    "etymologyNote": "The sun 日 shining through a doorway 门 → between, space"
   },
   "意": {
     "radical": {
@@ -2130,7 +2130,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yīn"
     },
     "hint": "heart",
-    "story": "心 (xīn) = heart; mind; soul carries the meaning; 音 (yīn) = sound, tone, pitch, pronunciation echoes the sound → think \"meaning, idea\""
+    "etymologyNote": "heart → meaning, idea"
   },
   "四": {
     "radical": {
@@ -2144,7 +2144,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "ér"
     },
     "hint": "A child 儿 in a room with four walls 囗",
-    "story": "囗 (wéi) = enclosure; border carries the meaning; 儿 (ér) = son, child echoes the sound → think \"four\". Origin: A child 儿 in a room with four walls 囗"
+    "etymologyNote": "A child 儿 in a room with four walls 囗 → four"
   },
   "向": {
     "radical": {
@@ -2152,7 +2152,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "mouth; entrance, gate, opening",
       "pinyin": "kǒu"
     },
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning → think \"towards, direction\""
+    "etymologyNote": "口 (mouth; entrance, gate, opening) points to the meaning → towards, direction"
   },
   "机": {
     "radical": {
@@ -2166,7 +2166,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jǐ"
     },
     "hint": "A table 几 made of wood 木; 几 also provides the pronunciation",
-    "story": "木 (mù) = tree; wood, lumber; wooden carries the meaning; 几 (jǐ) = small table; how many; a few, some echoes the sound → think \"machine\". Origin: A table 几 made of wood 木; 几 also provides the pronunciation"
+    "etymologyNote": "A table 几 made of wood 木; 几 also provides the pronunciation → machine"
   },
   "表": {
     "radical": {
@@ -2180,7 +2180,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "máo"
     },
     "hint": "Fur 毛 clothing 衣; a shawl or wrap",
-    "story": "衣 (yī) = cloth; clothes, apparel; dress, coat carries the meaning; 毛 (máo) = hair, fur, feathers; coarse echoes the sound → think \"surface, to express\". Origin: Fur 毛 clothing 衣; a shawl or wrap"
+    "etymologyNote": "Fur 毛 clothing 衣; a shawl or wrap → surface, to express"
   },
   "化": {
     "radical": {
@@ -2193,7 +2193,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "man, person; people",
       "pinyin": "rén"
     },
-    "story": "匕 (bǐ) = spoon, ladle; knife, dirk carries the meaning; 亻 (rén) = man, person; people echoes the sound → think \"to change, -ize\""
+    "etymologyNote": "匕 (spoon, ladle; knife, dirk) supplies the idea; 亻 (rén) supplies the sound → to change, -ize"
   },
   "觉": {
     "radical": {
@@ -2214,7 +2214,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "see",
-    "story": "见 (jiàn) = to see, to observe, to meet, to appear carries the meaning; ⺍ echoes the sound → think \"to feel / sleep\""
+    "etymologyNote": "see → to feel / sleep"
   },
   "路": {
     "radical": {
@@ -2228,7 +2228,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gè"
     },
     "hint": "foot",
-    "story": "足 (zú) = foot; to attain, to satisfy; enough carries the meaning; 各 (gè) = individual; each, every; all echoes the sound → think \"road, way\""
+    "etymologyNote": "foot → road, way"
   },
   "反": {
     "radical": {
@@ -2242,7 +2242,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "chǎng"
     },
     "hint": "A hand 又 held up against a cliff 厂",
-    "story": "又 (yòu) = and, also, again, in addition carries the meaning; 厂 (chǎng) = cliff; factory, workshop; building echoes the sound → think \"opposite, reverse\". Origin: A hand 又 held up against a cliff 厂"
+    "etymologyNote": "A hand 又 held up against a cliff 厂 → opposite, reverse"
   },
   "应": {
     "radical": {
@@ -2262,7 +2262,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "yī"
       }
     ],
-    "story": "广 (guǎng) = broad, vast, wide; building, house carries the meaning → think \"should / to respond\""
+    "etymologyNote": "广 (broad, vast, wide; building, house) points to the meaning → should / to respond"
   },
   "情": {
     "radical": {
@@ -2276,7 +2276,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "qīng"
     },
     "hint": "heart",
-    "story": "忄 (xīn) = heart; mind; soul carries the meaning; 青 (qīng) = nature's color; blue, green, black; young echoes the sound → think \"feeling, emotion\""
+    "etymologyNote": "heart → feeling, emotion"
   },
   "性": {
     "radical": {
@@ -2290,7 +2290,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shēng"
     },
     "hint": "heart",
-    "story": "忄 (xīn) = heart; mind; soul carries the meaning; 生 (shēng) = life, lifetime; birth; growth echoes the sound → think \"nature, gender\""
+    "etymologyNote": "heart → nature, gender"
   },
   "点": {
     "radical": {
@@ -2304,7 +2304,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhàn"
     },
     "hint": "fire",
-    "story": "灬 (huǒ) = fire carries the meaning; 占 (zhàn) = to divine; to observe; to versify echoes the sound → think \"point, dot, a little\""
+    "etymologyNote": "fire → point, dot, a little"
   },
   "记": {
     "radical": {
@@ -2318,7 +2318,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jǐ"
     },
     "hint": "A private 己 note 讠; 己 also provides the pronunciation",
-    "story": "讠 (yán) = words, speech; to speak, to say carries the meaning; 己 (jǐ) = self, oneself; personal, private; 6th heavenly stem echoes the sound → think \"to record, remember\". Origin: A private 己 note 讠; 己 also provides the pronunciation"
+    "etymologyNote": "A private 己 note 讠; 己 also provides the pronunciation → to record, remember"
   },
   "月": {
     "radical": {
@@ -2339,7 +2339,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A crescent moon",
-    "story": "月 (yuè) = moon; month carries the meaning → think \"moon, month\". Origin: A crescent moon"
+    "etymologyNote": "A crescent moon → moon, month"
   },
   "原": {
     "radical": {
@@ -2353,7 +2353,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "quán"
     },
     "hint": "cliff",
-    "story": "厂 (chǎng) = cliff; factory, workshop; building carries the meaning; 泉 (quán) = spring, fountain; wealth, money echoes the sound → think \"original, plain\""
+    "etymologyNote": "cliff → original, plain"
   },
   "内": {
     "radical": {
@@ -2374,7 +2374,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A man 人 entering a door 冂",
-    "story": "入 (rù) = to enter, to come in; to join carries the meaning → think \"inside, inner\". Origin: A man 人 entering a door 冂"
+    "etymologyNote": "A man 人 entering a door 冂 → inside, inner"
   },
   "五": {
     "radical": {
@@ -2383,7 +2383,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "èr"
     },
     "hint": "Five elements (the cross with the extra stroke) between heaven 一 and earth 一",
-    "story": "二 (èr) = two; twice carries the meaning → think \"five\". Origin: Five elements (the cross with the extra stroke) between heaven 一 and earth 一"
+    "etymologyNote": "Five elements (the cross with the extra stroke) between heaven 一 and earth 一 → five"
   },
   "平": {
     "radical": {
@@ -2404,7 +2404,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A leveling scale",
-    "story": "广 (guǎng) = broad, vast, wide; building, house carries the meaning → think \"flat, level\". Origin: A leveling scale"
+    "etymologyNote": "A leveling scale → flat, level"
   },
   "今": {
     "radical": {
@@ -2413,7 +2413,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rén"
     },
     "hint": "A mouth 亼 talking about things",
-    "story": "人 (rén) = man, person; people carries the meaning → think \"today, now\". Origin: A mouth 亼 talking about things"
+    "etymologyNote": "A mouth 亼 talking about things → today, now"
   },
   "管": {
     "radical": {
@@ -2427,7 +2427,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "guān"
     },
     "hint": "bamboo",
-    "story": "⺮ (zhú) = bamboo; flute carries the meaning; 官 (guān) = official, public servant echoes the sound → think \"to manage, tube\""
+    "etymologyNote": "bamboo → to manage, tube"
   },
   "期": {
     "radical": {
@@ -2441,7 +2441,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "qí"
     },
     "hint": "moon",
-    "story": "月 (yuè) = moon; month carries the meaning; 其 (qí) = his, her, its, their; that echoes the sound → think \"period, expect\""
+    "etymologyNote": "moon → period, expect"
   },
   "指": {
     "radical": {
@@ -2455,7 +2455,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhǐ"
     },
     "hint": "To point 旨 by hand 扌; 旨 also provides the pronunciation",
-    "story": "扌 (shǒu) = hand carries the meaning; 旨 (zhǐ) = aim, intention, purpose, will echoes the sound → think \"finger, to point\". Origin: To point 旨 by hand 扌; 旨 also provides the pronunciation"
+    "etymologyNote": "To point 旨 by hand 扌; 旨 also provides the pronunciation → finger, to point"
   },
   "体": {
     "radical": {
@@ -2468,7 +2468,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "root, origin, source; basis",
       "pinyin": "běn"
     },
-    "story": "亻 (rén) = man, person; people carries the meaning; 本 (běn) = root, origin, source; basis echoes the sound → think \"body, form\""
+    "etymologyNote": "亻 (man, person; people) supplies the idea; 本 (běn) supplies the sound → body, form"
   },
   "利": {
     "radical": {
@@ -2482,7 +2482,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "hé"
     },
     "hint": "Harvesting 刂 grain 禾",
-    "story": "刂 (dāo) = knife carries the meaning; 禾 (hé) = cereal, grain, rice; plant, stalk echoes the sound → think \"advantage, profit\". Origin: Harvesting 刂 grain 禾"
+    "etymologyNote": "Harvesting 刂 grain 禾 → advantage, profit"
   },
   "政": {
     "radical": {
@@ -2496,7 +2496,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhèng"
     },
     "hint": "script",
-    "story": "攵 (pū) = to rap, to tap; script; to let go carries the meaning; 正 (zhèng) = straight, right, proper, correct, just, true echoes the sound → think \"politics, government\""
+    "etymologyNote": "script → politics, government"
   },
   "号": {
     "radical": {
@@ -2510,7 +2510,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǎo"
     },
     "hint": "mouth",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 丂 (kǎo) = obstruction of breath (qi); variant of 考 echoes the sound → think \"mark, number\""
+    "etymologyNote": "mouth → mark, number"
   },
   "由": {
     "radical": {
@@ -2519,7 +2519,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "tián"
     },
     "hint": "Road 丨 leading to the farm 田",
-    "story": "田 (tián) = field, farm, arable land; cultivated carries the meaning → think \"from, by, reason\". Origin: Road 丨 leading to the farm 田"
+    "etymologyNote": "Road 丨 leading to the farm 田 → from, by, reason"
   },
   "战": {
     "radical": {
@@ -2533,7 +2533,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhàn"
     },
     "hint": "spear",
-    "story": "戈 (gē) = spear, lance, halberd carries the meaning; 占 (zhàn) = to divine; to observe; to versify echoes the sound → think \"war, battle\""
+    "etymologyNote": "spear → war, battle"
   },
   "立": {
     "radical": {
@@ -2559,7 +2559,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A man standing on the ground 一",
-    "story": "立 (lì) = to stand; to establish, to set up carries the meaning → think \"to stand, establish\". Origin: A man standing on the ground 一"
+    "etymologyNote": "A man standing on the ground 一 → to stand, establish"
   },
   "代": {
     "radical": {
@@ -2573,7 +2573,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yì"
     },
     "hint": "A man 亻 caught 弋 by the passing of time",
-    "story": "亻 (rén) = man, person; people carries the meaning; 弋 (yì) = to catch, to arrest; to shoot with a bow echoes the sound → think \"generation, era\". Origin: A man 亻 caught 弋 by the passing of time"
+    "etymologyNote": "A man 亻 caught 弋 by the passing of time → generation, era"
   },
   "品": {
     "radical": {
@@ -2582,7 +2582,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǒu"
     },
     "hint": "Something that everyone is talking 口 about",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning → think \"product, goods\". Origin: Something that everyone is talking 口 about"
+    "etymologyNote": "Something that everyone is talking 口 about → product, goods"
   },
   "门": {
     "radical": {
@@ -2603,7 +2603,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "An open doorway or gate",
-    "story": "门 (mén) = gate, door, entrance, opening carries the meaning → think \"door, gate\". Origin: An open doorway or gate"
+    "etymologyNote": "An open doorway or gate → door, gate"
   },
   "提": {
     "radical": {
@@ -2617,7 +2617,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shì"
     },
     "hint": "hand",
-    "story": "扌 (shǒu) = hand carries the meaning; 是 (shì) = to be; indeed, right, yes; okay echoes the sound → think \"to raise, mention\""
+    "etymologyNote": "hand → to raise, mention"
   },
   "相": {
     "radical": {
@@ -2631,7 +2631,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "mù"
     },
     "hint": "To stare 目 at a tree 木, meaning to observe",
-    "story": "目 (mù) = eye; to look, to see; division, topic carries the meaning; 木 (mù) = tree; wood, lumber; wooden echoes the sound → think \"each other / appearance\". Origin: To stare 目 at a tree 木, meaning to observe"
+    "etymologyNote": "To stare 目 at a tree 木, meaning to observe → each other / appearance"
   },
   "白": {
     "radical": {
@@ -2647,7 +2647,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A burning candle; the rays of the sun",
-    "story": "白 (bái) = white; clear, pure, unblemished; bright carries the meaning → think \"white, clear\". Origin: A burning candle; the rays of the sun"
+    "etymologyNote": "A burning candle; the rays of the sun → white, clear"
   },
   "定": {
     "radical": {
@@ -2661,7 +2661,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "pǐ"
     },
     "hint": "A person 疋 settling under a roof 宀",
-    "story": "宀 (gài) = roof; house carries the meaning; 疋 (pǐ) = roll, bolt of cloth; foot echoes the sound → think \"to fix, decide\". Origin: A person 疋 settling under a roof 宀"
+    "etymologyNote": "A person 疋 settling under a roof 宀 → to fix, decide"
   },
   "身": {
     "radical": {
@@ -2670,7 +2670,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shēn"
     },
     "hint": "A pregnant woman",
-    "story": "身 (shēn) = body, torso; person; pregnancy carries the meaning → think \"body, oneself\". Origin: A pregnant woman"
+    "etymologyNote": "A pregnant woman → body, oneself"
   },
   "放": {
     "radical": {
@@ -2684,7 +2684,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "fāng"
     },
     "hint": "let go",
-    "story": "攵 (pū) = to rap, to tap; script; to let go carries the meaning; 方 (fāng) = square, rectangle; side; region; flag echoes the sound → think \"to release, put\""
+    "etymologyNote": "let go → to release, put"
   },
   "特": {
     "radical": {
@@ -2698,7 +2698,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "sì"
     },
     "hint": "ox",
-    "story": "牛 (niú) = ox, cow, bull carries the meaning; 寺 (sì) = court, office; temple, monastery echoes the sound → think \"special\""
+    "etymologyNote": "ox → special"
   },
   "名": {
     "radical": {
@@ -2712,7 +2712,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "xī"
     },
     "hint": "A name called out 口 to hail someone at night 夕",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 夕 (xī) = evening, night, dusk; slanted echoes the sound → think \"name\". Origin: A name called out 口 to hail someone at night 夕"
+    "etymologyNote": "A name called out 口 to hail someone at night 夕 → name"
   },
   "制": {
     "radical": {
@@ -2726,7 +2726,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jīn"
     },
     "hint": "knife",
-    "story": "刂 (dāo) = knife carries the meaning; 巾 (jīn) = cloth, curtain, handkerchief, towel echoes the sound → think \"to make, system\""
+    "etymologyNote": "knife → to make, system"
   },
   "造": {
     "radical": {
@@ -2740,7 +2740,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gào"
     },
     "hint": "walk",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 告 (gào) = to tell, to inform, to announce; to accuse echoes the sound → think \"to make, create\""
+    "etymologyNote": "walk → to make, create"
   },
   "单": {
     "radical": {
@@ -2748,7 +2748,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "kwukyel",
       "pinyin": "ha"
     },
-    "story": "丷 (ha) = kwukyel carries the meaning → think \"single, simple\""
+    "etymologyNote": "丷 (kwukyel) points to the meaning → single, simple"
   },
   "教": {
     "radical": {
@@ -2762,7 +2762,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "xiào"
     },
     "hint": "script",
-    "story": "攵 (pū) = to rap, to tap; script; to let go carries the meaning; 孝 (xiào) = filial piety, obedience; mourning echoes the sound → think \"to teach / religion\""
+    "etymologyNote": "script → to teach / religion"
   },
   "必": {
     "radical": {
@@ -2775,20 +2775,27 @@ const CHARACTER_COMPONENTS = {
       "meaning": "slash",
       "pinyin": "piě"
     },
-    "story": "心 (xīn) = heart; mind; soul carries the meaning; 丿 (piě) = slash echoes the sound → think \"must, certainly\""
+    "etymologyNote": "心 (heart; mind; soul) supplies the idea; 丿 (piě) supplies the sound → must, certainly"
   },
   "条": {
     "radical": {
-      "char": "木",
-      "meaning": "tree; wood, lumber; wooden",
-      "pinyin": "mù"
+      "char": "���",
+      "meaning": "",
+      "pinyin": ""
     },
-    "phonetic": {
-      "char": "夂",
-      "meaning": "to go",
-      "pinyin": "zhǐ"
-    },
-    "story": "木 (mù) = tree; wood, lumber; wooden carries the meaning; 夂 (zhǐ) = to go echoes the sound → think \"strip, item\""
+    "others": [
+      {
+        "char": "夂",
+        "meaning": "to go",
+        "pinyin": "zhǐ"
+      },
+      {
+        "char": "木",
+        "meaning": "tree; wood, lumber; wooden",
+        "pinyin": "mù"
+      }
+    ],
+    "etymologyNote": "��� points to the meaning → strip, item"
   },
   "至": {
     "radical": {
@@ -2814,7 +2821,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A bird alighting on the ground 土",
-    "story": "至 (zhì) = reach, arrive; very, extremely carries the meaning → think \"to, until\". Origin: A bird alighting on the ground 土"
+    "etymologyNote": "A bird alighting on the ground 土 → to, until"
   },
   "却": {
     "radical": {
@@ -2828,7 +2835,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "qù"
     },
     "hint": "seal",
-    "story": "卩 (jié) = seal; kneeling person carries the meaning; 去 (qù) = to go away, to leave, to depart echoes the sound → think \"yet, however\""
+    "etymologyNote": "seal → yet, however"
   },
   "知": {
     "radical": {
@@ -2842,7 +2849,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǐ"
     },
     "hint": "mouth",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 矢 (shǐ) = arrow, dart; to vow, to swear echoes the sound → think \"to know\""
+    "etymologyNote": "mouth → to know"
   },
   "王": {
     "radical": {
@@ -2863,7 +2870,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A man 十 bridging heaven and earth (both 一)",
-    "story": "王 (wáng) = king, ruler; royal; surname carries the meaning → think \"king\". Origin: A man 十 bridging heaven and earth (both 一)"
+    "etymologyNote": "A man 十 bridging heaven and earth (both 一) → king"
   },
   "叫": {
     "radical": {
@@ -2877,7 +2884,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jiū"
     },
     "hint": "mouth",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 丩 (jiū) = to connect, to join; vine echoes the sound → think \"to call, be called\""
+    "etymologyNote": "mouth → to call, be called"
   },
   "打": {
     "radical": {
@@ -2891,7 +2898,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "dīng"
     },
     "hint": "hand",
-    "story": "扌 (shǒu) = hand carries the meaning; 丁 (dīng) = male adult; robust, vigorous; 4th heavenly stem echoes the sound → think \"to hit, strike\""
+    "etymologyNote": "hand → to hit, strike"
   },
   "书": {
     "radical": {
@@ -2900,7 +2907,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shù"
     },
     "hint": "A mark made by a pen ⺺",
-    "story": "丨 (shù) = number one; line carries the meaning → think \"book\". Origin: A mark made by a pen ⺺"
+    "etymologyNote": "A mark made by a pen ⺺ → book"
   },
   "场": {
     "radical": {
@@ -2921,7 +2928,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "earth",
-    "story": "土 (tǔ) = soil, earth; items made of earth carries the meaning; 昜 (yáng) = bright, glorious; to expand, to open up echoes the sound → think \"field, place\""
+    "etymologyNote": "earth → field, place"
   },
   "元": {
     "radical": {
@@ -2935,7 +2942,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "èr"
     },
     "hint": "A man 儿 with two lines emphasizing their head 二",
-    "story": "儿 (ér) = son, child carries the meaning; 二 (èr) = two; twice echoes the sound → think \"dollar, origin\". Origin: A man 儿 with two lines emphasizing their head 二"
+    "etymologyNote": "A man 儿 with two lines emphasizing their head 二 → dollar, origin"
   },
   "总": {
     "radical": {
@@ -2956,7 +2963,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Many mouths 口 speaking with one mind 心",
-    "story": "心 (xīn) = heart; mind; soul carries the meaning → think \"total, general\". Origin: Many mouths 口 speaking with one mind 心"
+    "etymologyNote": "Many mouths 口 speaking with one mind 心 → total, general"
   },
   "报": {
     "radical": {
@@ -2977,7 +2984,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A hand 扌 cuffing 又 a criminal 卩, representing sentencing",
-    "story": "扌 (shǒu) = hand carries the meaning → think \"newspaper, report\". Origin: A hand 扌 cuffing 又 a criminal 卩, representing sentencing"
+    "etymologyNote": "A hand 扌 cuffing 又 a criminal 卩, representing sentencing → newspaper, report"
   },
   "才": {
     "radical": {
@@ -2986,7 +2993,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shǒu"
     },
     "hint": "A sprout growing in the ground, representing a budding talent",
-    "story": "扌 (shǒu) = hand carries the meaning → think \"talent, just\". Origin: A sprout growing in the ground, representing a budding talent"
+    "etymologyNote": "A sprout growing in the ground, representing a budding talent → talent, just"
   },
   "目": {
     "radical": {
@@ -3007,7 +3014,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "An eye drawn on its side",
-    "story": "目 (mù) = eye; to look, to see; division, topic carries the meaning → think \"eye, item\". Origin: An eye drawn on its side"
+    "etymologyNote": "An eye drawn on its side → eye, item"
   },
   "认": {
     "radical": {
@@ -3021,7 +3028,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rén"
     },
     "hint": "speech",
-    "story": "讠 (yán) = words, speech; to speak, to say carries the meaning; 人 (rén) = man, person; people echoes the sound → think \"to recognize\""
+    "etymologyNote": "speech → to recognize"
   },
   "社": {
     "radical": {
@@ -3035,7 +3042,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "tǔ"
     },
     "hint": "An earth 土 spirit 礻; 礻 also provides the pronunciation",
-    "story": "礻 (shì) = spirit carries the meaning; 土 (tǔ) = soil, earth; items made of earth echoes the sound → think \"society\". Origin: An earth 土 spirit 礻; 礻 also provides the pronunciation"
+    "etymologyNote": "An earth 土 spirit 礻; 礻 also provides the pronunciation → society"
   },
   "更": {
     "radical": {
@@ -3055,7 +3062,7 @@ const CHARACTER_COMPONENTS = {
         "pinyin": "yì"
       }
     ],
-    "story": "曰 (yuē) = to speak; to say carries the meaning → think \"more, even more\""
+    "etymologyNote": "曰 (to speak; to say) points to the meaning → more, even more"
   },
   "关": {
     "radical": {
@@ -3068,7 +3075,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "sky, heaven; god, celestial",
       "pinyin": "tiān"
     },
-    "story": "丷 (ha) = kwukyel carries the meaning; 天 (tiān) = sky, heaven; god, celestial echoes the sound → think \"to close, concern\""
+    "etymologyNote": "丷 (kwukyel) supplies the idea; 天 (tiān) supplies the sound → to close, concern"
   },
   "真": {
     "radical": {
@@ -3089,7 +3096,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A straight 直 (that is, level) table 几",
-    "story": "目 (mù) = eye; to look, to see; division, topic carries the meaning → think \"true, real\". Origin: A straight 直 (that is, level) table 几"
+    "etymologyNote": "A straight 直 (that is, level) table 几 → true, real"
   },
   "少": {
     "radical": {
@@ -3103,7 +3110,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "piě"
     },
     "hint": "Grains of sand; 小 provides the pronunciation and meaning",
-    "story": "小 (xiǎo) = small, tiny, insignificant carries the meaning; 丿 (piě) = slash echoes the sound → think \"few, little / young\". Origin: Grains of sand; 小 provides the pronunciation and meaning"
+    "etymologyNote": "Grains of sand; 小 provides the pronunciation and meaning → few, little / young"
   },
   "些": {
     "radical": {
@@ -3117,7 +3124,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "cǐ"
     },
     "hint": "two",
-    "story": "二 (èr) = two; twice carries the meaning; 此 (cǐ) = this, these; in this case, then echoes the sound → think \"some\""
+    "etymologyNote": "two → some"
   },
   "接": {
     "radical": {
@@ -3131,7 +3138,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "qiè"
     },
     "hint": "hand",
-    "story": "扌 (shǒu) = hand carries the meaning; 妾 (qiè) = concubine echoes the sound → think \"to receive, connect\""
+    "etymologyNote": "hand → to receive, connect"
   },
   "史": {
     "radical": {
@@ -3145,7 +3152,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yì"
     },
     "hint": "A hand 乂 using a pen to record a history",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 乂 (yì) = to govern; to control; to nurture echoes the sound → think \"history\". Origin: A hand 乂 using a pen to record a history"
+    "etymologyNote": "A hand 乂 using a pen to record a history → history"
   },
   "山": {
     "radical": {
@@ -3166,7 +3173,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Three mountain peaks",
-    "story": "山 (shān) = mountain, hill, peak carries the meaning → think \"mountain\". Origin: Three mountain peaks"
+    "etymologyNote": "Three mountain peaks → mountain"
   },
   "受": {
     "radical": {
@@ -3187,7 +3194,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "Something 冖 passed from one hand 爫 to another 又",
-    "story": "又 (yòu) = and, also, again, in addition carries the meaning → think \"to receive, bear\". Origin: Something 冖 passed from one hand 爫 to another 又"
+    "etymologyNote": "Something 冖 passed from one hand 爫 to another 又 → to receive, bear"
   },
   "处": {
     "radical": {
@@ -3201,7 +3208,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "bo"
     },
     "hint": "To go somewhere 夂 and put down a flag 卜",
-    "story": "夂 (zhǐ) = to go carries the meaning; 卜 (bo) = divination, fortune-telling; prophecy echoes the sound → think \"to deal with / place\". Origin: To go somewhere 夂 and put down a flag 卜"
+    "etymologyNote": "To go somewhere 夂 and put down a flag 卜 → to deal with / place"
   },
   "义": {
     "radical": {
@@ -3222,7 +3229,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "sheep; simplified form of 義",
-    "story": "⺷ carries the meaning; 乂 (yì) = to govern; to control; to nurture echoes the sound → think \"justice, meaning\". Origin: sheep; simplified form of 義"
+    "etymologyNote": "sheep; simplified form of 義 → justice, meaning"
   },
   "思": {
     "radical": {
@@ -3236,7 +3243,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "tián"
     },
     "hint": "Weighing something with your mind 囟 (altered) and heart 心",
-    "story": "心 (xīn) = heart; mind; soul carries the meaning; 田 (tián) = field, farm, arable land; cultivated echoes the sound → think \"to think\". Origin: Weighing something with your mind 囟 (altered) and heart 心"
+    "etymologyNote": "Weighing something with your mind 囟 (altered) and heart 心 → to think"
   },
   "听": {
     "radical": {
@@ -3250,7 +3257,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jīn"
     },
     "hint": "Words 口 reaching an ear 斤",
-    "story": "口 (kǒu) = mouth; entrance, gate, opening carries the meaning; 斤 (jīn) = a catty (about 500 grams); an axe; keen, shrewd echoes the sound → think \"to listen\". Origin: Words 口 reaching an ear 斤"
+    "etymologyNote": "Words 口 reaching an ear 斤 → to listen"
   },
   "任": {
     "radical": {
@@ -3264,7 +3271,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "rén"
     },
     "hint": "person",
-    "story": "亻 (rén) = man, person; people carries the meaning; 壬 (rén) = 9th heavenly stem echoes the sound → think \"to appoint, allow\""
+    "etymologyNote": "person → to appoint, allow"
   },
   "转": {
     "radical": {
@@ -3278,7 +3285,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhuān"
     },
     "hint": "cart",
-    "story": "车 (chē) = cart, vehicle; to move in a cart carries the meaning; 专 (zhuān) = concentrated, specialized; to monopolize echoes the sound → think \"to turn\""
+    "etymologyNote": "cart → to turn"
   },
   "军": {
     "radical": {
@@ -3292,7 +3299,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "mì"
     },
     "hint": "Soldiers 冖 (distorted 力) in a cart 车",
-    "story": "车 (chē) = cart, vehicle; to move in a cart carries the meaning; 冖 (mì) = cover echoes the sound → think \"army, military\". Origin: Soldiers 冖 (distorted 力) in a cart 车"
+    "etymologyNote": "Soldiers 冖 (distorted 力) in a cart 车 → army, military"
   },
   "该": {
     "radical": {
@@ -3306,7 +3313,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "hài"
     },
     "hint": "speech",
-    "story": "讠 (yán) = words, speech; to speak, to say carries the meaning; 亥 (hài) = 12th terrestrial branch; used in transliterations echoes the sound → think \"should, ought to\""
+    "etymologyNote": "speech → should, ought to"
   },
   "信": {
     "radical": {
@@ -3319,7 +3326,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "words, speech; to speak, to say",
       "pinyin": "yán"
     },
-    "story": "亻 (rén) = man, person; people carries the meaning; 言 (yán) = words, speech; to speak, to say echoes the sound → think \"letter, to believe\""
+    "etymologyNote": "亻 (man, person; people) supplies the idea; 言 (yán) supplies the sound → letter, to believe"
   },
   "便": {
     "radical": {
@@ -3332,7 +3339,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "more, further; to shift, to alternate; to modify",
       "pinyin": "gèng"
     },
-    "story": "亻 (rén) = man, person; people carries the meaning; 更 (gèng) = more, further; to shift, to alternate; to modify echoes the sound → think \"convenient, then\""
+    "etymologyNote": "亻 (man, person; people) supplies the idea; 更 (gèng) supplies the sound → convenient, then"
   },
   "收": {
     "radical": {
@@ -3346,7 +3353,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jiū"
     },
     "hint": "hand",
-    "story": "攵 (pū) = to rap, to tap; script; to let go carries the meaning; 丩 (jiū) = to connect, to join; vine echoes the sound → think \"to receive, collect\". Origin: hand"
+    "etymologyNote": "hand → to receive, collect"
   },
   "且": {
     "radical": {
@@ -3360,7 +3367,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yuè"
     },
     "hint": "A stone altar",
-    "story": "一 (yī) = one; a, an; alone carries the meaning; 月 (yuè) = moon; month echoes the sound → think \"moreover, and\". Origin: A stone altar"
+    "etymologyNote": "A stone altar → moreover, and"
   },
   "业": {
     "radical": {
@@ -3368,7 +3375,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "one; a, an; alone",
       "pinyin": "yī"
     },
-    "story": "一 (yī) = one; a, an; alone carries the meaning → think \"business, industry\""
+    "etymologyNote": "一 (one; a, an; alone) points to the meaning → business, industry"
   },
   "金": {
     "radical": {
@@ -3394,7 +3401,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A cast-iron bell",
-    "story": "金 (jīn) = gold, metal; money carries the meaning → think \"gold, metal\". Origin: A cast-iron bell"
+    "etymologyNote": "A cast-iron bell → gold, metal"
   },
   "调": {
     "radical": {
@@ -3408,7 +3415,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhōu"
     },
     "hint": "speech",
-    "story": "讠 (yán) = words, speech; to speak, to say carries the meaning; 周 (zhōu) = Zhou dynasty; circumference echoes the sound → think \"to adjust / tone\""
+    "etymologyNote": "speech → to adjust / tone"
   },
   "算": {
     "radical": {
@@ -3422,7 +3429,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "jù"
     },
     "hint": "A bamboo ⺮ abacus 具",
-    "story": "⺮ (zhú) = bamboo; flute carries the meaning; 具 (jù) = tool, implement; to draw up, to write echoes the sound → think \"to calculate, count\". Origin: A bamboo ⺮ abacus 具"
+    "etymologyNote": "A bamboo ⺮ abacus 具 → to calculate, count"
   },
   "决": {
     "radical": {
@@ -3435,7 +3442,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "decisive, certain; parted; fork",
       "pinyin": "guài"
     },
-    "story": "冫 (bīng) = ice carries the meaning; 夬 (guài) = decisive, certain; parted; fork echoes the sound → think \"to decide\""
+    "etymologyNote": "冫 (ice) supplies the idea; 夬 (guài) supplies the sound → to decide"
   },
   "加": {
     "radical": {
@@ -3449,7 +3456,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "kǒu"
     },
     "hint": "Supporting a cause with the strength 力 of one's words 口",
-    "story": "力 (lì) = strength, power; capability, influence carries the meaning; 口 (kǒu) = mouth; entrance, gate, opening echoes the sound → think \"to add, plus\". Origin: Supporting a cause with the strength 力 of one's words 口"
+    "etymologyNote": "Supporting a cause with the strength 力 of one's words 口 → to add, plus"
   },
   "式": {
     "radical": {
@@ -3463,7 +3470,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "gōng"
     },
     "hint": "A craftsman using an awl 弋 and a measuring square 工",
-    "story": "弋 (yì) = to catch, to arrest; to shoot with a bow carries the meaning; 工 (gōng) = labor, work; laborer, worker echoes the sound → think \"style, form\". Origin: A craftsman using an awl 弋 and a measuring square 工"
+    "etymologyNote": "A craftsman using an awl 弋 and a measuring square 工 → style, form"
   },
   "际": {
     "radical": {
@@ -3477,7 +3484,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "shì"
     },
     "hint": "hill",
-    "story": "阝 (yì) = place, town, city carries the meaning; 示 (shì) = altar; ceremony; to show, to demonstrate echoes the sound → think \"border, international\". Origin: hill"
+    "etymologyNote": "hill → border, international"
   },
   "斯": {
     "radical": {
@@ -3490,7 +3497,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "his, her, its, their; that",
       "pinyin": "qí"
     },
-    "story": "斤 (jīn) = a catty (about 500 grams); an axe; keen, shrewd carries the meaning; 其 (qí) = his, her, its, their; that echoes the sound → think \"this (transliteration)\""
+    "etymologyNote": "斤 (a catty (about 500 grams); an axe; keen, shrewd) supplies the idea; 其 (qí) supplies the sound → this (transliteration)"
   },
   "石": {
     "radical": {
@@ -3511,7 +3518,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "A rock 口 at the base of a cliff 厂",
-    "story": "石 (shí) = stone, rock, mineral carries the meaning → think \"stone, rock\". Origin: A rock 口 at the base of a cliff 厂"
+    "etymologyNote": "A rock 口 at the base of a cliff 厂 → stone, rock"
   },
   "运": {
     "radical": {
@@ -3525,7 +3532,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yún"
     },
     "hint": "walk",
-    "story": "辶 (chuò) = to walk; walking carries the meaning; 云 (yún) = cloud; to say, to speak echoes the sound → think \"to transport, luck\""
+    "etymologyNote": "walk → to transport, luck"
   },
   "离": {
     "radical": {
@@ -3546,7 +3553,7 @@ const CHARACTER_COMPONENTS = {
       }
     ],
     "hint": "An animal standing straight; 亠 is the head",
-    "story": "禸 (róu) = rump carries the meaning → think \"to leave, from\". Origin: An animal standing straight; 亠 is the head"
+    "etymologyNote": "An animal standing straight; 亠 is the head → to leave, from"
   },
   "规": {
     "radical": {
@@ -3560,7 +3567,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "fū"
     },
     "hint": "observe",
-    "story": "见 (jiàn) = to see, to observe, to meet, to appear carries the meaning; 夫 (fū) = man, husband; worker; those echoes the sound → think \"rule, regulation\""
+    "etymologyNote": "observe → rule, regulation"
   },
   "程": {
     "radical": {
@@ -3574,7 +3581,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "chéng"
     },
     "hint": "grain",
-    "story": "禾 (hé) = cereal, grain, rice; plant, stalk carries the meaning; 呈 (chéng) = to petition, to submit; to appear, to show echoes the sound → think \"rule, journey\""
+    "etymologyNote": "grain → rule, journey"
   },
   "导": {
     "radical": {
@@ -3588,7 +3595,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "sì"
     },
     "hint": "A hand 寸 pointing the way to someplace 巳",
-    "story": "寸 (cùn) = inch; small, tiny carries the meaning; 巳 (sì) = the hours from 9 to 11; 6th terrestrial branch echoes the sound → think \"to lead, guide\". Origin: A hand 寸 pointing the way to someplace 巳"
+    "etymologyNote": "A hand 寸 pointing the way to someplace 巳 → to lead, guide"
   },
   "术": {
     "radical": {
@@ -3601,7 +3608,7 @@ const CHARACTER_COMPONENTS = {
       "meaning": "dot",
       "pinyin": "diǎn"
     },
-    "story": "木 (mù) = tree; wood, lumber; wooden carries the meaning; 丶 (diǎn) = dot echoes the sound → think \"skill, technique\""
+    "etymologyNote": "木 (tree; wood, lumber; wooden) supplies the idea; 丶 (diǎn) supplies the sound → skill, technique"
   },
   "步": {
     "radical": {
@@ -3610,7 +3617,7 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "zhǐ"
     },
     "hint": "Modern form of 歨; putting one foot 止 in front of the other",
-    "story": "止 (zhǐ) = to stop, to halt; to detain; to desist carries the meaning → think \"step, pace\". Origin: Modern form of 歨; putting one foot 止 in front of the other"
+    "etymologyNote": "Modern form of 歨; putting one foot 止 in front of the other → step, pace"
   }
 };
 if (typeof window !== 'undefined') {

@@ -1003,7 +1003,7 @@ function setComponentBreakdownVisibility(enabled) {
     if (!showComponentBreakdown) {
         applyComponentPanelVisibility();
         applyComponentColoring();
-        renderComponentStory(null);
+        renderEtymologyNote(null);
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1015,7 +1015,7 @@ function setComponentBreakdownVisibility(enabled) {
             const canShow = answered || questionAttemptRecorded;
             const previewBreakdown = canShow ? getComponentsForQuestion(currentQuestion) : null;
             applyComponentColoring();
-            renderComponentStory(previewBreakdown);
+            renderEtymologyNote(previewBreakdown);
         }
     }
 }
@@ -1118,7 +1118,7 @@ function renderCharacterComponents(question) {
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
         applyComponentColoring();
-        renderComponentStory(null);
+        renderEtymologyNote(null);
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1137,7 +1137,7 @@ function renderCharacterComponents(question) {
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
         applyComponentColoring();
-        renderComponentStory(null);
+        renderEtymologyNote(null);
         if (componentBreakdown) {
             clearComponentBreakdown();
         }
@@ -1185,7 +1185,7 @@ function renderCharacterComponents(question) {
         rightPanel.innerHTML = rightChips.join('');
         applyComponentPanelVisibility();
         applyComponentColoring();
-        renderComponentStory(breakdown);
+        renderEtymologyNote(breakdown);
 
         if (componentBreakdown) {
             clearComponentBreakdown();
@@ -1195,7 +1195,7 @@ function renderCharacterComponents(question) {
 
     if (!componentBreakdown) {
         applyComponentColoring();
-        renderComponentStory(breakdown);
+        renderEtymologyNote(breakdown);
         return;
     }
 
@@ -1224,21 +1224,19 @@ function renderCharacterComponents(question) {
     componentBreakdown.innerHTML = html;
     componentBreakdown.classList.remove('hidden');
     applyComponentColoring();
-    renderComponentStory(breakdown);
+    renderEtymologyNote(breakdown);
 }
 
-function renderComponentStory(breakdown) {
-    const card = document.getElementById('componentStoryCard');
+function renderEtymologyNote(breakdown) {
+    const card = document.getElementById('etymologyNoteCard');
     if (!card) return;
 
-    const headerEl = document.getElementById('componentStoryHeader');
-    const linesEl = document.getElementById('componentStoryLines');
-    const hintEl = document.getElementById('componentStoryHint');
+    const headerEl = document.getElementById('etymologyNoteHeader');
+    const bodyEl = document.getElementById('etymologyNoteBody');
 
     const resetCard = () => {
         if (headerEl) headerEl.textContent = '';
-        if (linesEl) linesEl.innerHTML = '';
-        if (hintEl) hintEl.textContent = '';
+        if (bodyEl) bodyEl.textContent = '';
         card.classList.add('hidden');
     };
 
@@ -1258,61 +1256,28 @@ function renderComponentStory(breakdown) {
         const parts = [];
         if (charText) parts.push(charText);
         if (pinyinText) parts.push(pinyinText);
-        if (meaningText) parts.push(meaningText);
-        headerEl.textContent = parts.join(' · ');
+        if (meaningText) parts.push(`→ ${meaningText}`);
+        headerEl.textContent = parts.join(' ');
     }
 
-    const formatLine = (label, data) => {
-        if (!data || !data.char) return '';
-        const charPart = escapeHtml(data.char);
-        const pinyinPart = data.pinyin ? ` (${escapeHtml(data.pinyin)})` : '';
-        const meaningPart = data.meaning ? ` — ${escapeHtml(data.meaning)}` : '';
-        return `<div class="story-line"><strong>${escapeHtml(label)}</strong> ${charPart}${pinyinPart}${meaningPart}</div>`;
-    };
+    let note = breakdown.etymologyNote ? escapeHtml(breakdown.etymologyNote) : '';
 
-    const lines = [];
-    if (breakdown.radical) {
-        const line = formatLine('Radical', breakdown.radical);
-        if (line) lines.push(line);
-    }
-    if (breakdown.phonetic) {
-        const line = formatLine('Phonetic', breakdown.phonetic);
-        if (line) lines.push(line);
-    }
-    if (Array.isArray(breakdown.others)) {
-        breakdown.others.forEach((other, idx) => {
-            const label = breakdown.others.length > 1 ? `Component ${idx + 1}` : 'Component';
-            const line = formatLine(label, other);
-            if (line) lines.push(line);
-        });
+    if (!note && breakdown.hint) {
+        note = escapeHtml(breakdown.hint);
     }
 
-    if (linesEl) {
-        linesEl.innerHTML = lines.length > 0
-            ? lines.join('')
-            : '<div class="story-line story-line-muted">No component details available yet.</div>';
-    }
-
-    let hintText = breakdown.story ? breakdown.story : '';
-    if (!hintText) {
-        hintText = breakdown.hint ? breakdown.hint : '';
-        if (!hintText) {
-            if (breakdown.radical && breakdown.phonetic) {
-                const radChar = escapeHtml(breakdown.radical.char);
-                const phoChar = escapeHtml(breakdown.phonetic.char);
-                hintText = `${radChar} carries the meaning while ${phoChar} guides the pronunciation.`;
-            } else if (breakdown.radical) {
-                const radChar = escapeHtml(breakdown.radical.char);
-                hintText = `${radChar} anchors the meaning of this character.`;
-            } else if (breakdown.phonetic) {
-                const phoChar = escapeHtml(breakdown.phonetic.char);
-                hintText = `${phoChar} hints at how the character sounds.`;
-            }
+    if (!note) {
+        if (breakdown.radical && breakdown.radical.char && breakdown.phonetic && breakdown.phonetic.char) {
+            note = `${escapeHtml(breakdown.radical.char)} hints the meaning while ${escapeHtml(breakdown.phonetic.char)} guides the pronunciation.`;
+        } else if (breakdown.radical && breakdown.radical.char) {
+            note = `${escapeHtml(breakdown.radical.char)} anchors the meaning of this character.`;
+        } else if (breakdown.phonetic && breakdown.phonetic.char) {
+            note = `${escapeHtml(breakdown.phonetic.char)} points to how it sounds.`;
         }
     }
 
-    if (hintEl) {
-        hintEl.textContent = hintText || 'Combine these pieces to make a story that sticks.';
+    if (bodyEl) {
+        bodyEl.textContent = note || 'Combine these pieces to make a story that sticks.';
     }
 
     card.classList.remove('hidden');
@@ -1380,12 +1345,11 @@ function renderMeaningQuestionLayout() {
                     <div class="summary-card-meaning" id="answerSummaryMeaning"></div>
                 </div>
                 <div class="question-char-display">${charHtml}</div>
-                <div class="component-story-card hidden" id="componentStoryCard">
-                    <div class="story-title">Component story</div>
-                    <div class="story-header" id="componentStoryHeader"></div>
-                    <div class="story-lines" id="componentStoryLines"></div>
-                    <div class="story-hint" id="componentStoryHint"></div>
-                </div>
+                <div class="etymology-note-card hidden" id="etymologyNoteCard">
+                    <div class="etymology-title">Etymology note</div>
+                    <div class="etymology-header" id="etymologyNoteHeader"></div>
+                    <div class="etymology-body" id="etymologyNoteBody"></div>
+                                    </div>
             </div>
             <div class="component-panel component-panel-right" id="componentPanelRight"></div>
         </div>
@@ -1394,7 +1358,7 @@ function renderMeaningQuestionLayout() {
     resetMeaningAnswerSummary();
     applyComponentPanelVisibility();
     applyComponentColoring();
-    renderComponentStory(null);
+    renderEtymologyNote(null);
 }
 
 function resetMeaningAnswerSummary() {

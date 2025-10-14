@@ -229,7 +229,7 @@
     color: #b45309;
 }
 
-.component-story-card {
+.etymology-note-card {
     width: 260px;
     margin-top: 12px;
     padding: 14px 16px;
@@ -240,13 +240,13 @@
     transition: opacity 0.25s ease, transform 0.2s ease;
 }
 
-.component-story-card.hidden {
+.etymology-note-card.hidden {
     opacity: 0;
     transform: translateY(6px);
     pointer-events: none;
 }
 
-.component-story-card .story-title {
+.etymology-note-card .etymology-title {
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -254,39 +254,17 @@
     margin-bottom: 6px;
 }
 
-.component-story-card .story-header {
+.etymology-note-card .etymology-header {
     font-size: 16px;
     font-weight: 600;
     color: #0f172a;
     margin-bottom: 10px;
 }
 
-.component-story-card .story-lines {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.component-story-card .story-line {
+.etymology-note-card .etymology-body {
+    margin-top: 10px;
     font-size: 14px;
     color: #1f2937;
-    line-height: 1.45;
-    margin-bottom: 6px;
-}
-
-.component-story-card .story-line strong {
-    color: #0f172a;
-}
-
-.component-story-card .story-line-muted {
-    color: #94a3b8;
-    font-style: italic;
-}
-
-.component-story-card .story-hint {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #475569;
     line-height: 1.5;
 }
 

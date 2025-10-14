@@ -57,47 +57,49 @@ function sanitizeDefinition(entry) {
     return def.replace(/\(.*?\)/g, '').trim();
 }
 
-function buildComponentStory(charData, breakdown, entry) {
+function buildEtymologyNote(charData, breakdown, entry) {
     if (!breakdown) return '';
 
-    const meaningSource = charData && charData.meaning ? sanitize(charData.meaning) : '';
-    const defFallback = sanitizeDefinition(entry);
-    const meaning = meaningSource || defFallback || '';
-
-    const parts = [];
-
-    if (breakdown.radical && breakdown.radical.char) {
-        const rad = breakdown.radical;
-        const radialPieces = [sanitize(rad.char)];
-        if (rad.pinyin) radialPieces.push(`(${sanitize(rad.pinyin)})`);
-        if (rad.meaning) radialPieces.push(`= ${sanitize(rad.meaning)}`);
-        parts.push(`${radialPieces.join(' ')} carries the meaning`);
-    }
-
-    if (breakdown.phonetic && breakdown.phonetic.char) {
-        const pho = breakdown.phonetic;
-        const phoneticPieces = [sanitize(pho.char)];
-        if (pho.pinyin) phoneticPieces.push(`(${sanitize(pho.pinyin)})`);
-        if (pho.meaning) phoneticPieces.push(`= ${sanitize(pho.meaning)}`);
-        parts.push(`${phoneticPieces.join(' ')} echoes the sound`);
-    }
+    const meaning = charData && charData.meaning
+        ? sanitize(charData.meaning)
+        : sanitizeDefinition(entry);
 
     const hint = entry && entry.etymology && entry.etymology.hint
         ? sanitizeHint(entry.etymology.hint)
         : '';
 
-    let story = parts.join('; ');
-    if (meaning) {
-        story += (story ? ' → ' : '') + `think "${meaning}"`;
+    if (hint) {
+        return meaning ? `${hint} → ${meaning}` : hint;
     }
 
-    if (!story && hint) {
-        story = `Origin: ${hint}`;
-    } else if (hint && !story.toLowerCase().includes(hint.toLowerCase())) {
-        story += `. Origin: ${hint}`;
+    if (breakdown.radical && breakdown.radical.char && breakdown.phonetic && breakdown.phonetic.char) {
+        const radMeaning = breakdown.radical.meaning ? sanitize(breakdown.radical.meaning) : '';
+        const radChar = sanitize(breakdown.radical.char);
+        const phoChar = sanitize(breakdown.phonetic.char);
+        const phoPinyin = breakdown.phonetic.pinyin ? ` (${sanitize(breakdown.phonetic.pinyin)})` : '';
+        const meaningPart = radMeaning
+            ? `${radChar} (${radMeaning}) supplies the idea`
+            : `${radChar} supplies the idea`;
+        const soundPart = `${phoChar}${phoPinyin} supplies the sound`;
+        const tail = meaning ? ` → ${meaning}` : '';
+        return `${meaningPart}; ${soundPart}${tail}`;
     }
 
-    return story.trim();
+    if (breakdown.radical && breakdown.radical.char) {
+        const radMeaning = breakdown.radical.meaning ? sanitize(breakdown.radical.meaning) : '';
+        const radChar = sanitize(breakdown.radical.char);
+        const tail = meaning ? ` → ${meaning}` : '';
+        return `${radChar}${radMeaning ? ' (' + radMeaning + ')' : ''} points to the meaning${tail}`;
+    }
+
+    if (breakdown.phonetic && breakdown.phonetic.char) {
+        const phoChar = sanitize(breakdown.phonetic.char);
+        const phoPinyin = breakdown.phonetic.pinyin ? ` (${sanitize(breakdown.phonetic.pinyin)})` : '';
+        const tail = meaning ? ` for "${meaning}"` : '';
+        return `${phoChar}${phoPinyin} guides the pronunciation${tail}`;
+    }
+
+    return meaning || '';
 }
 
 function getPrimaryPinyin(entry) {
@@ -249,9 +251,9 @@ async function main() {
             breakdown.hint = sanitize(entry.etymology.hint);
         }
 
-        const storyText = buildComponentStory(charData, breakdown, entry);
-        if (storyText) {
-            breakdown.story = storyText;
+        const etymologyText = buildEtymologyNote(charData, breakdown, entry);
+        if (etymologyText) {
+            breakdown.etymologyNote = etymologyText;
         }
 
         const hasData = (breakdown.radical && (breakdown.radical.char || breakdown.radical.meaning)) ||
