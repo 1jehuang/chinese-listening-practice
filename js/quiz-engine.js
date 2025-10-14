@@ -1242,7 +1242,7 @@ function renderEtymologyNote(breakdown) {
 
     const canReveal = answered || questionAttemptRecorded;
 
-    if (!showComponentBreakdown || !breakdown || !canReveal) {
+    if (!showComponentBreakdown || !canReveal) {
         resetCard();
         return;
     }
@@ -1260,13 +1260,22 @@ function renderEtymologyNote(breakdown) {
         headerEl.textContent = parts.join(' ');
     }
 
-    let note = breakdown.etymologyNote ? escapeHtml(breakdown.etymologyNote) : '';
+    let note = '';
 
-    if (!note && breakdown.hint) {
+    // Priority 1: Check ETYMOLOGY_NOTES dataset for short, curated notes
+    if (typeof ETYMOLOGY_NOTES !== 'undefined' && ETYMOLOGY_NOTES[current.char]) {
+        note = escapeHtml(ETYMOLOGY_NOTES[current.char]);
+    }
+    // Priority 2: Check breakdown.etymologyNote from character-components.js
+    else if (breakdown && breakdown.etymologyNote) {
+        note = escapeHtml(breakdown.etymologyNote);
+    }
+    // Priority 3: Check breakdown.hint
+    else if (breakdown && breakdown.hint) {
         note = escapeHtml(breakdown.hint);
     }
-
-    if (!note) {
+    // Priority 4: Generate default note from radical/phonetic
+    else if (breakdown) {
         if (breakdown.radical && breakdown.radical.char && breakdown.phonetic && breakdown.phonetic.char) {
             note = `${escapeHtml(breakdown.radical.char)} hints the meaning while ${escapeHtml(breakdown.phonetic.char)} guides the pronunciation.`;
         } else if (breakdown.radical && breakdown.radical.char) {
