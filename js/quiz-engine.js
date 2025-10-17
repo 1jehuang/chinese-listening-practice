@@ -651,7 +651,7 @@ function generateQuestion() {
         generateCharOptions();
         choiceMode.style.display = 'block';
     } else if (mode === 'stroke-order' && strokeOrderMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">Watch the stroke order:</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-lg text-gray-500 mt-2">Trace each stroke in order</div>`;
         strokeOrderMode.style.display = 'block';
         initStrokeOrder();
     } else if (mode === 'handwriting' && handwritingMode) {
@@ -1506,8 +1506,13 @@ function renderEtymologyNote(breakdown) {
         }
     }
 
+    if (!note) {
+        resetCard();
+        return;
+    }
+
     if (bodyEl) {
-        bodyEl.textContent = note || 'Combine these pieces to make a story that sticks.';
+        bodyEl.textContent = note;
     }
 
     card.classList.remove('hidden');
@@ -1657,22 +1662,73 @@ function initStrokeOrder() {
     writerDiv.innerHTML = '';
 
     // Use first character for multi-character words
-    const char = currentQuestion.char[0];
+    const char = (currentQuestion.char && currentQuestion.char[0]) || currentQuestion.char;
+    if (!char) return;
+
+    let statusEl = document.getElementById('strokeOrderStatus');
+    if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'strokeOrderStatus';
+        statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
+        strokeOrderMode.appendChild(statusEl);
+    } else {
+        statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
+    }
+    statusEl.textContent = 'Trace each stroke in order';
+
+    feedback.textContent = 'Draw the strokes in order. Strokes will fill as you trace them correctly.';
+    feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
+    hint.textContent = '';
+    hint.className = 'text-center text-2xl font-semibold my-4';
 
     writer = HanziWriter.create(writerDiv, char, {
-        width: 300,
-        height: 300,
-        padding: 5,
+        width: 320,
+        height: 320,
+        padding: 8,
         showOutline: true,
+        showCharacter: false,
         strokeAnimationSpeed: 1,
-        delayBetweenStrokes: 200
+        delayBetweenStrokes: 0
     });
 
-    writer.animateCharacter({
+    let completed = false;
+
+    writer.quiz({
+        onMistake: () => {
+            if (statusEl) {
+                statusEl.textContent = '✗ Wrong stroke. Try again.';
+                statusEl.className = 'text-center text-xl font-semibold my-4 text-red-600';
+            }
+        },
+        onCorrectStroke: (strokeData) => {
+            if (!statusEl) return;
+            const current = strokeData.strokeNum + 1;
+            const total = strokeData.strokesRemaining + current;
+            statusEl.textContent = `✓ Stroke ${current}/${total}`;
+            statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+        },
         onComplete: () => {
-            setTimeout(() => {
-                generateQuestion();
-            }, 1000);
+            if (completed) return;
+            completed = true;
+
+            playCorrectSound();
+            lastAnswerCorrect = true;
+            if (!answered) {
+                answered = true;
+                total++;
+                score++;
+            }
+
+            statusEl.textContent = '✓ Character complete!';
+            statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+
+            feedback.textContent = `Great job! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+
+            updateStats();
+            scheduleNextQuestion(1500);
         }
     });
 }
