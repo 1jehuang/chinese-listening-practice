@@ -27,6 +27,12 @@ let pendingNextQuestionTimeout = null;
 let toneCyclerEnabled = true;
 let toneCyclerStatusTimeout = null;
 let componentPanelsHaveContent = false;
+let previewQueueEnabled = false;
+let previewQueue = [];
+let previewQueueSize = 3;
+let previewElement = null;
+let previewListElement = null;
+let previewApplicableModes = null;
 
 // Hanzi Writer
 let writer = null;
@@ -432,6 +438,81 @@ function showToneCyclerStatus() {
     }, 1600);
 }
 
+function getRandomQuestion() {
+    if (!Array.isArray(quizCharacters) || quizCharacters.length === 0) return null;
+    const index = Math.floor(Math.random() * quizCharacters.length);
+    return quizCharacters[index];
+}
+
+function isPreviewModeActive() {
+    if (!previewQueueEnabled || !previewElement) return false;
+    if (!Array.isArray(quizCharacters) || quizCharacters.length === 0) return false;
+    if (Array.isArray(previewApplicableModes) && previewApplicableModes.length > 0) {
+        return previewApplicableModes.includes(mode);
+    }
+    return true;
+}
+
+function ensurePreviewQueue() {
+    if (!previewQueueEnabled || !previewElement) return;
+    if (!Array.isArray(previewQueue)) {
+        previewQueue = [];
+    }
+    while (previewQueue.length < previewQueueSize) {
+        const candidate = getRandomQuestion();
+        if (!candidate) break;
+        previewQueue.push(candidate);
+        if (quizCharacters.length <= 1) break;
+    }
+}
+
+function updatePreviewDisplay() {
+    if (!previewElement) return;
+    const active = isPreviewModeActive();
+    if (!active || !previewQueue.length) {
+        previewElement.classList.add('hidden');
+        if (previewListElement) {
+            previewListElement.innerHTML = '';
+        }
+        return;
+    }
+
+    previewElement.classList.remove('hidden');
+    if (!previewListElement) return;
+
+    previewListElement.innerHTML = previewQueue.map(item => {
+        if (!item) return '';
+        const char = escapeHtml(item.char || '?');
+        const primaryPinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+        const pinyin = primaryPinyin ? `<span class="text-xs text-gray-400">${escapeHtml(primaryPinyin)}</span>` : '';
+        const rank = typeof item.rank === 'number'
+            ? `<span class="text-[10px] uppercase tracking-widest text-gray-300">#${item.rank}</span>`
+            : '';
+        return `<div class="flex flex-col items-center gap-1 px-1">
+                    <span class="text-4xl text-gray-300">${char}</span>
+                    ${pinyin}
+                    ${rank}
+                </div>`;
+    }).join('');
+}
+
+function setPreviewQueueEnabled(enabled) {
+    const shouldEnable = Boolean(enabled && previewElement);
+    previewQueueEnabled = shouldEnable;
+    if (!shouldEnable) {
+        previewQueue = [];
+        updatePreviewDisplay();
+        return;
+    }
+    previewQueue = [];
+    ensurePreviewQueue();
+    updatePreviewDisplay();
+}
+
+function togglePreviewQueue() {
+    setPreviewQueueEnabled(!previewQueueEnabled);
+}
+
 function checkPinyinMatch(userAnswer, correct) {
     const user = userAnswer.toLowerCase().trim();
     const correctLower = correct.toLowerCase().trim();
@@ -602,7 +683,29 @@ function generateQuestion() {
     lastAnswerCorrect = false;
     clearComponentBreakdown();
 
-    currentQuestion = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+    const previewActive = isPreviewModeActive();
+    let nextQuestion = null;
+
+    if (previewActive) {
+        ensurePreviewQueue();
+        if (previewQueue.length) {
+            nextQuestion = previewQueue.shift();
+        }
+        ensurePreviewQueue();
+    }
+
+    if (!nextQuestion) {
+        nextQuestion = getRandomQuestion();
+    }
+
+    if (!nextQuestion) {
+        questionDisplay.innerHTML = `<div class="text-center text-2xl text-red-600 my-8">No questions available.</div>`;
+        return;
+    }
+
+    currentQuestion = nextQuestion;
+    updatePreviewDisplay();
+    window.currentQuestion = currentQuestion;
 
     // Hide all mode containers
     typeMode.style.display = 'none';
@@ -672,9 +775,13 @@ function generateQuestion() {
         // Skip characters without radical data
         let attempts = 0;
         while ((!currentQuestion.radicals || currentQuestion.radicals.length === 0) && attempts < 100) {
-            currentQuestion = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+            const candidate = getRandomQuestion();
+            if (!candidate) break;
+            currentQuestion = candidate;
             attempts++;
         }
+
+        window.currentQuestion = currentQuestion;
 
         if (!currentQuestion.radicals || currentQuestion.radicals.length === 0) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with radical data available in this lesson.</div>`;
@@ -2469,95 +2576,119 @@ function initQuizCommandPalette() {
     }
 
     function getQuizPaletteActions() {
-        return [
-            {
-                name: 'Toggle Tab Tone Cycling',
+        const actions = [];
+
+        if (previewElement && config.enablePreviewQueue) {
+            actions.push({
+                name: previewQueueEnabled ? 'Hide Upcoming Characters' : 'Show Upcoming Characters',
                 type: 'action',
-                description: 'Enable or disable Tab/Shift+Tab tone selection for single-syllable input',
-                keywords: 'tone tab cycling pinyin toggle shift',
+                description: previewQueueEnabled
+                    ? 'Turn off the upcoming character preview queue'
+                    : 'Display the next few characters in the queue',
+                keywords: 'preview upcoming queue characters toggle',
                 action: () => {
-                    toggleToneCycler();
+                    togglePreviewQueue();
                 },
-                available: () => Boolean(answerInput)
+                available: () => Boolean(previewElement)
+            });
+        }
+
+        actions.push({
+            name: 'Toggle Tab Tone Cycling',
+            type: 'action',
+            description: 'Enable or disable Tab/Shift+Tab tone selection for single-syllable input',
+            keywords: 'tone tab cycling pinyin toggle shift',
+            action: () => {
+                toggleToneCycler();
             },
-            {
-                name: 'Toggle Component Hints',
-                type: 'action',
-                description: 'Show or hide radical/phonetic breakdowns for the current quiz',
-                keywords: 'component breakdown hint radical phonetic toggle',
-                action: () => {
-                    toggleComponentBreakdownVisibility();
-                },
-                available: () => Boolean(componentBreakdown || document.querySelector('.meaning-question-layout'))
+            available: () => Boolean(answerInput)
+        });
+
+        actions.push({
+            name: 'Toggle Component Hints',
+            type: 'action',
+            description: 'Show or hide radical/phonetic breakdowns for the current quiz',
+            keywords: 'component breakdown hint radical phonetic toggle',
+            action: () => {
+                toggleComponentBreakdownVisibility();
             },
-            {
-                name: 'Next Quiz Mode',
-                type: 'action',
-                description: 'Cycle forward through the available quiz modes',
-                keywords: 'mode next cycle forward',
-                action: () => cycleQuizMode(1),
-                available: () => document.querySelectorAll('.mode-btn').length > 1
+            available: () => Boolean(componentBreakdown || document.querySelector('.meaning-question-layout'))
+        });
+
+        actions.push({
+            name: 'Next Quiz Mode',
+            type: 'action',
+            description: 'Cycle forward through the available quiz modes',
+            keywords: 'mode next cycle forward',
+            action: () => cycleQuizMode(1),
+            available: () => document.querySelectorAll('.mode-btn').length > 1
+        });
+
+        actions.push({
+            name: 'Previous Quiz Mode',
+            type: 'action',
+            description: 'Go back to the previous quiz mode',
+            keywords: 'mode previous back cycle',
+            action: () => cycleQuizMode(-1),
+            available: () => document.querySelectorAll('.mode-btn').length > 1
+        });
+
+        actions.push({
+            name: 'Copy Current Character',
+            type: 'action',
+            description: 'Copy the current prompt character to the clipboard',
+            keywords: 'copy clipboard character prompt',
+            action: () => {
+                if (window.currentQuestion?.char) {
+                    copyToClipboard(window.currentQuestion.char);
+                }
             },
-            {
-                name: 'Previous Quiz Mode',
-                type: 'action',
-                description: 'Go back to the previous quiz mode',
-                keywords: 'mode previous back cycle',
-                action: () => cycleQuizMode(-1),
-                available: () => document.querySelectorAll('.mode-btn').length > 1
+            available: () => Boolean(window.currentQuestion?.char)
+        });
+
+        actions.push({
+            name: 'Copy Character + Pinyin',
+            type: 'action',
+            description: 'Copy the current prompt with pinyin for sharing',
+            keywords: 'copy clipboard pinyin prompt',
+            action: () => {
+                if (window.currentQuestion?.char && window.currentQuestion?.pinyin) {
+                    copyToClipboard(`${window.currentQuestion.char} – ${window.currentQuestion.pinyin}`);
+                }
             },
-            {
-                name: 'Copy Current Character',
-                type: 'action',
-                description: 'Copy the current prompt character to the clipboard',
-                keywords: 'copy clipboard character prompt',
-                action: () => {
-                    if (window.currentQuestion?.char) {
-                        copyToClipboard(window.currentQuestion.char);
-                    }
-                },
-                available: () => Boolean(window.currentQuestion?.char)
+            available: () => Boolean(window.currentQuestion?.char && window.currentQuestion?.pinyin)
+        });
+
+        actions.push({
+            name: 'Copy Prompt Text',
+            type: 'action',
+            description: 'Copy the current question prompt to the clipboard',
+            keywords: 'copy prompt question clipboard word text',
+            shortcut: 'Ctrl+Alt+C',
+            action: () => {
+                const prompt = getCurrentPromptText();
+                if (prompt) {
+                    copyToClipboard(prompt);
+                }
             },
-            {
-                name: 'Copy Character + Pinyin',
-                type: 'action',
-                description: 'Copy the current prompt with pinyin for sharing',
-                keywords: 'copy clipboard pinyin prompt',
-                action: () => {
-                    if (window.currentQuestion?.char && window.currentQuestion?.pinyin) {
-                        copyToClipboard(`${window.currentQuestion.char} – ${window.currentQuestion.pinyin}`);
-                    }
-                },
-                available: () => Boolean(window.currentQuestion?.char && window.currentQuestion?.pinyin)
+            available: () => Boolean(getCurrentPromptText())
+        });
+
+        actions.push({
+            name: 'Play Character Audio',
+            type: 'action',
+            description: 'Hear the pronunciation for the current prompt',
+            keywords: 'audio play pronunciation sound',
+            action: () => {
+                if (window.currentQuestion?.pinyin && typeof window.playPinyinAudio === 'function') {
+                    const firstPinyin = window.currentQuestion.pinyin.split('/')[0].trim();
+                    window.playPinyinAudio(firstPinyin, window.currentQuestion.char);
+                }
             },
-            {
-                name: 'Copy Prompt Text',
-                type: 'action',
-                description: 'Copy the current question prompt to the clipboard',
-                keywords: 'copy prompt question clipboard word text',
-                shortcut: 'Ctrl+Alt+C',
-                action: () => {
-                    const prompt = getCurrentPromptText();
-                    if (prompt) {
-                        copyToClipboard(prompt);
-                    }
-                },
-                available: () => Boolean(getCurrentPromptText())
-            },
-            {
-                name: 'Play Character Audio',
-                type: 'action',
-                description: 'Hear the pronunciation for the current prompt',
-                keywords: 'audio play pronunciation sound',
-                action: () => {
-                    if (window.currentQuestion?.pinyin && typeof window.playPinyinAudio === 'function') {
-                        const firstPinyin = window.currentQuestion.pinyin.split('/')[0].trim();
-                        window.playPinyinAudio(firstPinyin, window.currentQuestion.char);
-                    }
-                },
-                available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function'
-            }
-        ];
+            available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function'
+        });
+
+        return actions;
     }
 
     function cycleQuizMode(direction) {
@@ -2605,6 +2736,24 @@ function initQuiz(charactersData, userConfig = {}) {
     studyMode = document.getElementById('studyMode');
     radicalPracticeMode = document.getElementById('radicalPracticeMode');
     audioSection = document.getElementById('audioSection');
+
+    previewQueue = [];
+    const requestedPreviewSize = Number(config.previewQueueSize);
+    previewQueueSize = Number.isFinite(requestedPreviewSize) && requestedPreviewSize > 0
+        ? Math.floor(requestedPreviewSize)
+        : 3;
+    previewApplicableModes = Array.isArray(config.previewApplicableModes)
+        ? config.previewApplicableModes.slice()
+        : null;
+
+    const previewElementId = typeof config.previewElementId === 'string' && config.previewElementId.trim()
+        ? config.previewElementId.trim()
+        : null;
+    previewElement = previewElementId ? document.getElementById(previewElementId) : document.getElementById('questionPreview');
+    previewListElement = previewElement
+        ? (previewElement.querySelector('.preview-list') || previewElement)
+        : null;
+    setPreviewQueueEnabled(config.enablePreviewQueue && previewElement);
 
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
