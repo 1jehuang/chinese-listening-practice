@@ -290,22 +290,70 @@ function getToneNumberWithStep(currentTone, step = 1) {
     return TONE_SEQUENCE[nextIdx];
 }
 
+function findPinyinTokenRange(value, caretPos) {
+    if (typeof value !== 'string' || value.length === 0) return null;
+
+    const length = value.length;
+    let pos = typeof caretPos === 'number' ? caretPos : length;
+    if (pos < 0) pos = 0;
+    if (pos > length) pos = length;
+
+    const isWhitespace = (idx) => idx >= 0 && idx < length && /\s/.test(value[idx]);
+
+    let index = pos;
+
+    if (pos > 0 && pos <= length && !isWhitespace(pos - 1)) {
+        index = pos - 1;
+    } else if (pos < length && !isWhitespace(pos)) {
+        index = pos;
+    } else {
+        let left = pos - 1;
+        while (left >= 0 && isWhitespace(left)) left--;
+        if (left >= 0) {
+            index = left;
+        } else {
+            let right = pos;
+            while (right < length && isWhitespace(right)) right++;
+            if (right < length) {
+                index = right;
+            } else {
+                return null;
+            }
+        }
+    }
+
+    let start = index;
+    while (start > 0 && !isWhitespace(start - 1)) start--;
+
+    let end = index + 1;
+    while (end < length && !isWhitespace(end)) end++;
+
+    return { start, end };
+}
+
 function cycleToneForInputField(inputEl, direction = 1) {
     if (!inputEl || typeof inputEl.value !== 'string') return false;
 
     const value = inputEl.value;
-    const leadingMatch = value.match(/^\s*/);
-    const trailingMatch = value.match(/\s*$/);
-    const leading = leadingMatch ? leadingMatch[0] : '';
-    const trailing = trailingMatch ? trailingMatch[0] : '';
-    const core = value.slice(leading.length, value.length - trailing.length);
+    if (!value.trim()) return false;
 
-    if (!core || !/^[a-zA-Z:üÜǕǗǙǛǖǘǚǜāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ1-5]+$/.test(core)) return false;
+    const selectionStart = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : value.length;
+    const selectionEnd = typeof inputEl.selectionEnd === 'number' ? inputEl.selectionEnd : selectionStart;
+    const caretPos = selectionEnd;
+    const range = findPinyinTokenRange(value, caretPos);
 
-    const syllables = splitPinyinSyllables(core);
+    if (!range) return false;
+
+    const token = value.slice(range.start, range.end);
+    if (!token || !/^[a-zA-Z:üÜǕǗǙǛǖǘǚǜāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ1-5]+$/.test(token)) return false;
+
+    const trimmedToken = token.trim();
+    if (!trimmedToken) return false;
+
+    const syllables = splitPinyinSyllables(trimmedToken);
     if (syllables.length !== 1) return false;
 
-    const numbered = convertPinyinToToneNumbers(core);
+    const numbered = convertPinyinToToneNumbers(trimmedToken);
     if (!numbered) return false;
 
     const match = numbered.match(/^([a-z]+)([1-5])$/);
@@ -315,16 +363,16 @@ function cycleToneForInputField(inputEl, direction = 1) {
     const step = direction < 0 ? -1 : 1;
     const nextTone = getToneNumberWithStep(currentTone, step);
     const formatted = formatSyllableWithToneMark(base, Number(nextTone));
-    const adjusted = applyOriginalCasing(core, formatted);
-    const finalValue = leading + adjusted + trailing;
+    const adjusted = applyOriginalCasing(trimmedToken, formatted);
+    const finalValue = value.slice(0, range.start) + adjusted + value.slice(range.end);
 
     if (finalValue === value) return false;
 
     inputEl.value = finalValue;
     if (typeof inputEl.setSelectionRange === 'function') {
-        const caretPos = finalValue.length - trailing.length;
         try {
-            inputEl.setSelectionRange(caretPos, caretPos);
+            const newCaret = range.start + adjusted.length;
+            inputEl.setSelectionRange(newCaret, newCaret);
         } catch (_) {
             // Ignore selection errors (e.g., unsupported input types)
         }
