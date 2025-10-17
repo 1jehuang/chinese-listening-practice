@@ -24,6 +24,8 @@ let showComponentBreakdown = true;
 let componentPreferenceLoaded = false;
 const COMPONENT_PREF_KEY = 'componentHintsEnabled';
 let pendingNextQuestionTimeout = null;
+let toneCyclerEnabled = true;
+let toneCyclerStatusTimeout = null;
 
 // Hanzi Writer
 let writer = null;
@@ -63,6 +65,15 @@ const TONE_MARK_TO_NUMBER = {
 const PINYIN_FINAL_LETTERS = new Set(['a', 'e', 'i', 'o', 'u', 'v', 'n', 'r']);
 const PINYIN_SEPARATOR_REGEX = /[\s.,/;:!?'"“”‘’—–\-…，。、？！；：（）【】《》·]/;
 const PINYIN_STRIP_REGEX = /[\s.,/;:!?'"“”‘’—–\-…，。、？！；：（）【】《》·]/g;
+const TONE_SEQUENCE = ['1', '2', '3', '4', '5'];
+const TONE_MARK_MAP = {
+    'a': ['ā', 'á', 'ǎ', 'à'],
+    'e': ['ē', 'é', 'ě', 'è'],
+    'i': ['ī', 'í', 'ǐ', 'ì'],
+    'o': ['ō', 'ó', 'ǒ', 'ò'],
+    'u': ['ū', 'ú', 'ǔ', 'ù'],
+    'ü': ['ǖ', 'ǘ', 'ǚ', 'ǜ']
+};
 
 function convertPinyinToToneNumbers(pinyin) {
     const syllables = splitPinyinSyllables(pinyin);
@@ -208,6 +219,168 @@ function splitPinyinSyllables(pinyin) {
     flush();
 
     return syllables.length > 0 ? syllables : [text];
+}
+
+function formatSyllableWithToneMark(baseSyllable, toneNumber) {
+    if (!baseSyllable) return '';
+
+    const tone = Number(toneNumber);
+    const normalized = baseSyllable
+        .toLowerCase()
+        .replace(/u:/g, 'v');
+    const displaySyllable = normalized.replace(/v/g, 'ü');
+
+    if (!Number.isFinite(tone) || tone === 5 || tone < 1 || tone > 4) {
+        return displaySyllable;
+    }
+
+    let toneIndex = -1;
+    if (displaySyllable.includes('a')) {
+        toneIndex = displaySyllable.indexOf('a');
+    } else if (displaySyllable.includes('e')) {
+        toneIndex = displaySyllable.indexOf('e');
+    } else if (displaySyllable.includes('ou')) {
+        toneIndex = displaySyllable.indexOf('o');
+    } else {
+        for (let i = displaySyllable.length - 1; i >= 0; i--) {
+            if ('aeiouü'.includes(displaySyllable[i])) {
+                toneIndex = i;
+                break;
+            }
+        }
+    }
+
+    if (toneIndex === -1) return displaySyllable;
+
+    const vowel = displaySyllable[toneIndex];
+    const replacements = TONE_MARK_MAP[vowel];
+    if (!replacements) return displaySyllable;
+
+    const tonedVowel = replacements[tone - 1];
+    if (!tonedVowel) return displaySyllable;
+
+    return displaySyllable.slice(0, toneIndex) + tonedVowel + displaySyllable.slice(toneIndex + 1);
+}
+
+function applyOriginalCasing(original, formatted) {
+    if (!formatted) return formatted;
+    if (!original) return formatted;
+    if (original === original.toUpperCase()) {
+        return formatted.toUpperCase();
+    }
+    if (original[0] === original[0].toUpperCase()) {
+        return formatted[0].toUpperCase() + formatted.slice(1);
+    }
+    return formatted;
+}
+
+function getToneNumberWithStep(currentTone, step = 1) {
+    const tone = String(currentTone);
+    if (!Number.isFinite(step)) step = 1;
+    const offset = Math.trunc(step);
+    if (offset === 0) return tone;
+
+    let idx = TONE_SEQUENCE.indexOf(tone);
+    if (idx === -1) idx = 0;
+
+    let nextIdx = (idx + offset) % TONE_SEQUENCE.length;
+    if (nextIdx < 0) {
+        nextIdx += TONE_SEQUENCE.length;
+    }
+    return TONE_SEQUENCE[nextIdx];
+}
+
+function cycleToneForInputField(inputEl, direction = 1) {
+    if (!inputEl || typeof inputEl.value !== 'string') return false;
+
+    const value = inputEl.value;
+    const leadingMatch = value.match(/^\s*/);
+    const trailingMatch = value.match(/\s*$/);
+    const leading = leadingMatch ? leadingMatch[0] : '';
+    const trailing = trailingMatch ? trailingMatch[0] : '';
+    const core = value.slice(leading.length, value.length - trailing.length);
+
+    if (!core || !/^[a-zA-Z:üÜǕǗǙǛǖǘǚǜāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ1-5]+$/.test(core)) return false;
+
+    const syllables = splitPinyinSyllables(core);
+    if (syllables.length !== 1) return false;
+
+    const numbered = convertPinyinToToneNumbers(core);
+    if (!numbered) return false;
+
+    const match = numbered.match(/^([a-z]+)([1-5])$/);
+    if (!match) return false;
+
+    const [, base, currentTone] = match;
+    const step = direction < 0 ? -1 : 1;
+    const nextTone = getToneNumberWithStep(currentTone, step);
+    const formatted = formatSyllableWithToneMark(base, Number(nextTone));
+    const adjusted = applyOriginalCasing(core, formatted);
+    const finalValue = leading + adjusted + trailing;
+
+    if (finalValue === value) return false;
+
+    inputEl.value = finalValue;
+    if (typeof inputEl.setSelectionRange === 'function') {
+        const caretPos = finalValue.length - trailing.length;
+        try {
+            inputEl.setSelectionRange(caretPos, caretPos);
+        } catch (_) {
+            // Ignore selection errors (e.g., unsupported input types)
+        }
+    }
+    return true;
+}
+
+function handleToneCyclerKeydown(event) {
+    if (event.key !== 'Tab') return false;
+    if (event.altKey || event.ctrlKey || event.metaKey) return false;
+    if (!toneCyclerEnabled) return false;
+    if (!(mode === 'char-to-pinyin' || mode === 'audio-to-pinyin')) return false;
+    if (!answerInput || event.target !== answerInput) return false;
+
+    const direction = event.shiftKey ? -1 : 1;
+    const cycled = cycleToneForInputField(answerInput, direction);
+    if (!cycled) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+    updatePartialProgress();
+    return true;
+}
+
+function toggleToneCycler() {
+    toneCyclerEnabled = !toneCyclerEnabled;
+    showToneCyclerStatus();
+}
+
+function showToneCyclerStatus() {
+    const message = toneCyclerEnabled
+        ? 'Tab tone cycling enabled (Tab=next tone, Shift+Tab=previous tone)'
+        : 'Tab tone cycling disabled';
+
+    console.log(message);
+
+    if (!hint) return;
+
+    if (toneCyclerStatusTimeout) {
+        clearTimeout(toneCyclerStatusTimeout);
+        toneCyclerStatusTimeout = null;
+    }
+
+    const previousText = hint.textContent;
+    const previousClass = hint.className;
+
+    hint.textContent = message;
+    hint.className = 'text-center text-xl font-semibold my-4 text-purple-600';
+
+    toneCyclerStatusTimeout = setTimeout(() => {
+        if (hint && hint.textContent === message) {
+            hint.textContent = previousText;
+            hint.className = previousClass;
+        }
+        toneCyclerStatusTimeout = null;
+    }, 1600);
 }
 
 function checkPinyinMatch(userAnswer, correct) {
@@ -2162,6 +2335,16 @@ function initQuizCommandPalette() {
     function getQuizPaletteActions() {
         return [
             {
+                name: 'Toggle Tab Tone Cycling',
+                type: 'action',
+                description: 'Enable or disable Tab/Shift+Tab tone selection for single-syllable input',
+                keywords: 'tone tab cycling pinyin toggle shift',
+                action: () => {
+                    toggleToneCycler();
+                },
+                available: () => Boolean(answerInput)
+            },
+            {
                 name: 'Toggle Component Hints',
                 type: 'action',
                 description: 'Show or hide radical/phonetic breakdowns for the current quiz',
@@ -2312,6 +2495,10 @@ function initQuiz(charactersData, userConfig = {}) {
     });
 
     answerInput.addEventListener('keydown', (e) => {
+        if (handleToneCyclerKeydown(e)) {
+            return;
+        }
+
         if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
             e.preventDefault();
             goToNextQuestionAfterCorrect();
