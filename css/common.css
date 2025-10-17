@@ -158,7 +158,7 @@
 }
 
 .meaning-question-layout.components-hidden .component-panel {
-    visibility: hidden;
+    display: none;
 }
 
 .component-panel {

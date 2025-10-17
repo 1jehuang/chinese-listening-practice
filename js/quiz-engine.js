@@ -26,6 +26,7 @@ const COMPONENT_PREF_KEY = 'componentHintsEnabled';
 let pendingNextQuestionTimeout = null;
 let toneCyclerEnabled = true;
 let toneCyclerStatusTimeout = null;
+let componentPanelsHaveContent = false;
 
 // Hanzi Writer
 let writer = null;
@@ -1222,6 +1223,7 @@ function setComponentBreakdownVisibility(enabled) {
     saveComponentPreference();
 
     if (!showComponentBreakdown) {
+        componentPanelsHaveContent = false;
         applyComponentPanelVisibility();
         applyComponentColoring();
         renderEtymologyNote(null);
@@ -1231,10 +1233,14 @@ function setComponentBreakdownVisibility(enabled) {
     } else if (currentQuestion && answered) {
         renderCharacterComponents(currentQuestion);
     } else {
-        applyComponentPanelVisibility();
+        let previewBreakdown = null;
         if (currentQuestion) {
             const canShow = answered || questionAttemptRecorded;
-            const previewBreakdown = canShow ? getComponentsForQuestion(currentQuestion) : null;
+            previewBreakdown = canShow ? getComponentsForQuestion(currentQuestion) : null;
+        }
+        componentPanelsHaveContent = showComponentBreakdown && hasComponentPanelContent(previewBreakdown);
+        applyComponentPanelVisibility();
+        if (currentQuestion) {
             applyComponentColoring();
             renderEtymologyNote(previewBreakdown);
         }
@@ -1312,6 +1318,34 @@ function getComponentsForQuestion(question) {
     return null;
 }
 
+function hasComponentPanelContent(breakdown) {
+    if (!breakdown) return false;
+
+    const hasRadical = breakdown.radical && (
+        Boolean(breakdown.radical.char) ||
+        Boolean(breakdown.radical.meaning) ||
+        Boolean(breakdown.radical.pinyin)
+    );
+
+    const hasPhonetic = breakdown.phonetic && (
+        Boolean(breakdown.phonetic.char) ||
+        Boolean(breakdown.phonetic.meaning) ||
+        Boolean(breakdown.phonetic.pinyin)
+    );
+
+    const hasOther = Array.isArray(breakdown.others) && breakdown.others.some(entry => {
+        if (!entry) return false;
+        return Boolean(entry.char) || Boolean(entry.meaning) || Boolean(entry.pinyin);
+    });
+
+    return Boolean(
+        hasRadical ||
+        hasPhonetic ||
+        hasOther ||
+        (breakdown.hint && breakdown.hint.trim())
+    );
+}
+
 function buildComponentLine(label, data, tagClass) {
     if (!data || (!data.char && !data.meaning)) return '';
     const componentChar = escapeHtml(data.char || '');
@@ -1335,6 +1369,7 @@ function renderCharacterComponents(question) {
     const rightPanel = document.getElementById('componentPanelRight');
 
     if (!showComponentBreakdown) {
+        componentPanelsHaveContent = false;
         if (leftPanel) leftPanel.innerHTML = '';
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
@@ -1347,13 +1382,10 @@ function renderCharacterComponents(question) {
     }
 
     const breakdown = getComponentsForQuestion(question);
-    const hasBreakdown = breakdown && (
-        (breakdown.radical && (breakdown.radical.char || breakdown.radical.meaning)) ||
-        (breakdown.phonetic && (breakdown.phonetic.char || breakdown.phonetic.meaning)) ||
-        (Array.isArray(breakdown.others) && breakdown.others.length > 0)
-    );
+    const hasBreakdown = hasComponentPanelContent(breakdown);
 
     if (!hasBreakdown) {
+        componentPanelsHaveContent = false;
         if (leftPanel) leftPanel.innerHTML = '';
         if (rightPanel) rightPanel.innerHTML = '';
         applyComponentPanelVisibility();
@@ -1402,6 +1434,7 @@ function renderCharacterComponents(question) {
             }
         }
 
+        componentPanelsHaveContent = showComponentBreakdown && hasBreakdown;
         leftPanel.innerHTML = leftChips.join('');
         rightPanel.innerHTML = rightChips.join('');
         applyComponentPanelVisibility();
@@ -1415,6 +1448,7 @@ function renderCharacterComponents(question) {
     }
 
     if (!componentBreakdown) {
+        componentPanelsHaveContent = false;
         applyComponentColoring();
         renderEtymologyNote(breakdown);
         return;
@@ -1566,6 +1600,7 @@ function renderMeaningHint(question, status) {
 function renderMeaningQuestionLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
+    componentPanelsHaveContent = false;
     const charHtml = escapeHtml(currentQuestion.char || '');
 
     questionDisplay.innerHTML = `
@@ -1613,11 +1648,8 @@ function resetMeaningAnswerSummary() {
 function applyComponentPanelVisibility() {
     const layout = document.querySelector('.meaning-question-layout');
     if (!layout) return;
-    if (showComponentBreakdown) {
-        layout.classList.remove('components-hidden');
-    } else {
-        layout.classList.add('components-hidden');
-    }
+    const shouldHide = !showComponentBreakdown || !componentPanelsHaveContent;
+    layout.classList.toggle('components-hidden', shouldHide);
 }
 
 function applyComponentColoring() {
