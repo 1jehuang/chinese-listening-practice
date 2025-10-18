@@ -12,6 +12,7 @@ const DEFAULT_PAGES = [
     { name: 'Character Sheet 2', url: 'character-sheet-2-quiz.html', type: 'page', keywords: 'lesson 2 characters quiz' },
     { name: 'Character Sheet 3', url: 'character-sheet-3-quiz.html', type: 'page', keywords: 'lesson 3 characters quiz' },
     { name: 'Character Sheet 4', url: 'character-sheet-4-quiz.html', type: 'page', keywords: 'lesson 4 characters quiz' },
+    { name: 'Most Common 2500 Characters', url: 'common-characters.html', type: 'page', keywords: 'frequency list common 2500 quiz' },
     { name: 'Lesson 1 Quiz', url: 'lesson-1-quiz.html', type: 'page', keywords: 'lesson 1 two maps quiz' },
     { name: 'Lesson 1 Hard Subset', url: 'lesson-1-hard-subset.html', type: 'page', keywords: 'lesson 1 challenge drill' },
     { name: 'Lesson 1 Dictation', url: 'lesson-1-dictation.html', type: 'page', keywords: 'lesson 1 listening dictation' },
