@@ -1800,9 +1800,11 @@ function initStrokeOrder() {
 
     writerDiv.innerHTML = '';
 
-    // Use first character for multi-character words
-    const char = (currentQuestion.char && currentQuestion.char[0]) || currentQuestion.char;
-    if (!char) return;
+    const rawText = (currentQuestion.char || '').trim();
+    if (!rawText) return;
+
+    const characters = Array.from(rawText).filter(ch => /\S/.test(ch));
+    if (!characters.length) return;
 
     let statusEl = document.getElementById('strokeOrderStatus');
     if (!statusEl) {
@@ -1813,63 +1815,101 @@ function initStrokeOrder() {
     } else {
         statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
     }
+
     statusEl.textContent = 'Trace each stroke in order';
 
-    feedback.textContent = 'Draw the strokes in order. Strokes will fill as you trace them correctly.';
+    feedback.textContent = characters.length > 1
+        ? 'Draw the strokes for each character in order.'
+        : 'Draw the strokes in order. Strokes will fill as you trace them correctly.';
     feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
     hint.textContent = '';
     hint.className = 'text-center text-2xl font-semibold my-4';
 
-    writer = HanziWriter.create(writerDiv, char, {
-        width: 320,
-        height: 320,
-        padding: 8,
-        showOutline: true,
-        showCharacter: false,
-        strokeAnimationSpeed: 1,
-        delayBetweenStrokes: 0
-    });
+    let currentIndex = 0;
 
-    let completed = false;
+    const initializeCharacter = () => {
+        const targetChar = characters[currentIndex];
+        if (!targetChar) return;
 
-    writer.quiz({
-        onMistake: () => {
-            if (statusEl) {
-                statusEl.textContent = '✗ Wrong stroke. Try again.';
-                statusEl.className = 'text-center text-xl font-semibold my-4 text-red-600';
+        writerDiv.innerHTML = '';
+
+        try {
+            writer = HanziWriter.create(writerDiv, targetChar, {
+                width: 320,
+                height: 320,
+                padding: 8,
+                showOutline: true,
+                showCharacter: false,
+                strokeAnimationSpeed: 1,
+                delayBetweenStrokes: 0
+            });
+        } catch (error) {
+            console.warn('Failed to initialize stroke order quiz for character:', targetChar, error);
+            if (currentIndex < characters.length - 1) {
+                currentIndex++;
+                initializeCharacter();
+                return;
             }
-        },
-        onCorrectStroke: (strokeData) => {
-            if (!statusEl) return;
-            const current = strokeData.strokeNum + 1;
-            const total = strokeData.strokesRemaining + current;
-            statusEl.textContent = `✓ Stroke ${current}/${total}`;
-            statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
-        },
-        onComplete: () => {
-            if (completed) return;
-            completed = true;
-
-            playCorrectSound();
-            lastAnswerCorrect = true;
-            if (!answered) {
-                answered = true;
-                total++;
-                score++;
-            }
-
-            statusEl.textContent = '✓ Character complete!';
-            statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
-
-            feedback.textContent = `Great job! ${currentQuestion.char} (${currentQuestion.pinyin})`;
-            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-            hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-            hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-
-            updateStats();
-            scheduleNextQuestion(1500);
+            scheduleNextQuestion(0);
+            return;
         }
-    });
+
+        statusEl.textContent = characters.length > 1
+            ? `Trace each stroke (${currentIndex + 1}/${characters.length})`
+            : 'Trace each stroke in order';
+        statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
+
+        let completed = false;
+
+        writer.quiz({
+            onMistake: () => {
+                if (statusEl) {
+                    statusEl.textContent = `✗ Wrong stroke. Try again. (${currentIndex + 1}/${characters.length})`;
+                    statusEl.className = 'text-center text-xl font-semibold my-4 text-red-600';
+                }
+            },
+            onCorrectStroke: (strokeData) => {
+                if (!statusEl) return;
+                const currentStroke = strokeData.strokeNum + 1;
+                const totalStrokes = strokeData.strokesRemaining + currentStroke;
+                statusEl.textContent = `✓ Stroke ${currentStroke}/${totalStrokes} (${currentIndex + 1}/${characters.length})`;
+                statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+            },
+            onComplete: () => {
+                if (completed) return;
+                completed = true;
+
+                if (currentIndex < characters.length - 1) {
+                    currentIndex++;
+                    statusEl.textContent = `✓ Character complete! (${currentIndex}/${characters.length})`;
+                    statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+                    setTimeout(() => initializeCharacter(), 400);
+                    return;
+                }
+
+                playCorrectSound();
+                lastAnswerCorrect = true;
+                if (!answered) {
+                    answered = true;
+                    total++;
+                    score++;
+                }
+
+                statusEl.textContent = '✓ All characters complete!';
+                statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+
+                feedback.textContent = `Great job! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+                feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+                hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+
+                updateStats();
+                scheduleNextQuestion(1500);
+            }
+        });
+    };
+
+    initializeCharacter();
 }
 
 function initHandwriting() {
