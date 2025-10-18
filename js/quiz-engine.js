@@ -1624,26 +1624,31 @@ function renderEtymologyNote(breakdown) {
 
     let note = '';
 
+    const normalizeNote = (value) => {
+        if (typeof value !== 'string') return '';
+        return value.replace(/\s+/g, ' ').trim();
+    };
+
     // Priority 1: Check ETYMOLOGY_NOTES dataset for short, curated notes
     if (typeof ETYMOLOGY_NOTES !== 'undefined' && ETYMOLOGY_NOTES[current.char]) {
-        note = escapeHtml(ETYMOLOGY_NOTES[current.char]);
+        note = normalizeNote(ETYMOLOGY_NOTES[current.char]);
     }
     // Priority 2: Check breakdown.etymologyNote from character-components.js
     else if (breakdown && breakdown.etymologyNote) {
-        note = escapeHtml(breakdown.etymologyNote);
+        note = normalizeNote(breakdown.etymologyNote);
     }
     // Priority 3: Check breakdown.hint
     else if (breakdown && breakdown.hint) {
-        note = escapeHtml(breakdown.hint);
+        note = normalizeNote(breakdown.hint);
     }
     // Priority 4: Generate default note from radical/phonetic
     else if (breakdown) {
         if (breakdown.radical && breakdown.radical.char && breakdown.phonetic && breakdown.phonetic.char) {
-            note = `${escapeHtml(breakdown.radical.char)} hints the meaning while ${escapeHtml(breakdown.phonetic.char)} guides the pronunciation.`;
+            note = `${normalizeNote(breakdown.radical.char)} hints the meaning while ${normalizeNote(breakdown.phonetic.char)} guides the pronunciation.`;
         } else if (breakdown.radical && breakdown.radical.char) {
-            note = `${escapeHtml(breakdown.radical.char)} anchors the meaning of this character.`;
+            note = `${normalizeNote(breakdown.radical.char)} anchors the meaning of this character.`;
         } else if (breakdown.phonetic && breakdown.phonetic.char) {
-            note = `${escapeHtml(breakdown.phonetic.char)} points to how it sounds.`;
+            note = `${normalizeNote(breakdown.phonetic.char)} points to how it sounds.`;
         }
     }
 
