@@ -2779,23 +2779,16 @@ const CHARACTER_COMPONENTS = {
   },
   "条": {
     "radical": {
-      "char": "���",
-      "meaning": "",
-      "pinyin": ""
+      "char": "木",
+      "meaning": "tree; wood, lumber; wooden",
+      "pinyin": "mù"
     },
-    "others": [
-      {
-        "char": "夂",
-        "meaning": "to go",
-        "pinyin": "zhǐ"
-      },
-      {
-        "char": "木",
-        "meaning": "tree; wood, lumber; wooden",
-        "pinyin": "mù"
-      }
-    ],
-    "etymologyNote": "��� points to the meaning → strip, item"
+    "phonetic": {
+      "char": "夂",
+      "meaning": "to go",
+      "pinyin": "zhǐ"
+    },
+    "etymologyNote": "木 (tree; wood, lumber; wooden) supplies the idea; 夂 (zhǐ) supplies the sound → strip, item"
   },
   "至": {
     "radical": {
@@ -3376,6 +3369,19 @@ const CHARACTER_COMPONENTS = {
       "pinyin": "yī"
     },
     "etymologyNote": "一 (one; a, an; alone) points to the meaning → business, industry"
+  },
+  "六": {
+    "radical": {
+      "char": "八",
+      "meaning": "eight; all around, all sides",
+      "pinyin": "bā"
+    },
+    "phonetic": {
+      "char": "亠",
+      "meaning": "lid, cover; head",
+      "pinyin": "tóu"
+    },
+    "etymologyNote": "八 (eight; all around, all sides) supplies the idea; 亠 (tóu) supplies the sound → six"
   },
   "金": {
     "radical": {

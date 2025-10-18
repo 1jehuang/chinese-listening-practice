@@ -244,7 +244,7 @@ const COMMON_2500_CHARS = [
     { rank: 230, char: '收', pinyin: 'shōu', meaning: 'to receive, collect' },
     { rank: 231, char: '且', pinyin: 'qiě', meaning: 'moreover, and' },
     { rank: 232, char: '业', pinyin: 'yè', meaning: 'business, industry' },
-    { rank: 233, char: 'VI', pinyin: 'liù', meaning: 'six' },
+    { rank: 233, char: '六', pinyin: 'liù', meaning: 'six' },
     { rank: 234, char: '金', pinyin: 'jīn', meaning: 'gold, metal' },
     { rank: 235, char: '调', pinyin: 'tiáo/diào', meaning: 'to adjust / tone' },
     { rank: 236, char: '算', pinyin: 'suàn', meaning: 'to calculate, count' },
