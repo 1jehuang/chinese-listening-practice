@@ -16,15 +16,30 @@ async function loadEtymologyNotes() {
         const commonNotes = await commonResponse.json();
         let lessonNotes = {};
 
+        // Load lesson 1-2 etymology
         try {
             const lessonResponse = await fetch('data/lesson1-2-etymology.json');
             if (lessonResponse.ok) {
-                lessonNotes = await lessonResponse.json();
+                const lesson12Notes = await lessonResponse.json();
+                lessonNotes = { ...lessonNotes, ...lesson12Notes };
             } else {
-                console.warn('Lesson etymology notes unavailable:', lessonResponse.statusText);
+                console.warn('Lesson 1-2 etymology notes unavailable:', lessonResponse.statusText);
             }
         } catch (lessonError) {
-            console.warn('Failed to load lesson etymology notes:', lessonError);
+            console.warn('Failed to load lesson 1-2 etymology notes:', lessonError);
+        }
+
+        // Load lesson 3 etymology
+        try {
+            const lesson3Response = await fetch('data/lesson3-etymology.json');
+            if (lesson3Response.ok) {
+                const lesson3Notes = await lesson3Response.json();
+                lessonNotes = { ...lessonNotes, ...lesson3Notes };
+            } else {
+                console.warn('Lesson 3 etymology notes unavailable:', lesson3Response.statusText);
+            }
+        } catch (lesson3Error) {
+            console.warn('Failed to load lesson 3 etymology notes:', lesson3Error);
         }
 
         ETYMOLOGY_NOTES = { ...commonNotes, ...lessonNotes };
