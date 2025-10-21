@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Context Listening · Easy Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/command-palette.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-4xl mx-auto mt-16 md:mt-0 bg-white rounded-xl shadow-lg p-6 md:p-8">
+        <h1 class="text-3xl font-bold text-center mb-3 text-gray-800">Context Listening · Easy Mode</h1>
+        <p class="text-gray-600 text-center mb-6">
+            Simpler sentences with instant advance: listen as each prompt plays, read along, and confirm the highlighted chunk’s meaning by typing or selecting a choice.
+        </p>
+
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 md:p-8">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <span id="questionNumber" class="text-sm uppercase tracking-widest text-gray-400">Loading…</span>
+                <button id="replayAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-5 py-2 rounded-lg transition">
+                    🔁 Replay audio
+                </button>
+            </div>
+
+            <div id="audioUnsupported" class="hidden text-sm text-yellow-600 mb-4 text-center">
+                Your browser does not support speech synthesis; rely on the on-screen sentence.
+            </div>
+
+            <div id="sentenceDisplay" class="text-2xl leading-relaxed text-center text-gray-900 mb-6">Loading prompts…</div>
+
+            <div class="flex flex-col items-center gap-4 mb-6">
+                <div class="text-center text-lg text-gray-700">
+                    👉 在这句里，「<span id="targetPrompt" class="font-semibold text-gray-900">—</span>」是什么意思？
+                </div>
+            </div>
+
+            <div id="typeAnswerGroup" class="space-y-3 mb-6">
+                <label for="answerInput" class="block text-sm font-medium text-gray-600">
+                    Type what the highlighted chunk means (optional):
+                </label>
+                <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your understanding of the highlighted chunk..." disabled>
+                <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition" disabled>Check answer</button>
+            </div>
+
+            <div id="choiceAnswerGroup" class="mb-2">
+                <div class="text-sm font-medium text-gray-600 mb-2">Or pick the closest meaning:</div>
+                <div id="choiceOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+
+            <div id="feedback" class="mt-4 text-center text-lg font-semibold"></div>
+
+            <div class="flex flex-col items-center gap-3 mt-6">
+                <button id="toggleMeaningBtn" class="w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition">
+                    Show meaning
+                </button>
+
+                <div id="meaningPanel" class="hidden w-full bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                    <div class="text-xs uppercase tracking-widest text-blue-500 mb-1">Meaning in context</div>
+                    <p id="meaningText" class="text-lg text-blue-900 leading-relaxed"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-3 mt-6">
+            <button id="prevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition">Previous</button>
+            <button id="nextBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition">Next</button>
+            <button id="randomBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition">Random</button>
+        </div>
+
+        <div id="keyboardHint" class="text-center text-sm text-gray-500 mt-6">
+            Keyboard: ← previous • → next • Space reveal meaning • Enter check • ⇧+A replay audio
+        </div>
+    </div>
+
+    <script src="data/context-listening-easy-data.js"></script>
+    <script>
+        window.CONTEXT_DRILL_CONFIG = {
+            dataUrl: 'data/context-listening-easy.json',
+            datasetKey: 'context-listening-easy',
+            autoAdvanceDelay: 0,
+            replayShortcut: { code: 'KeyA', shift: true, ctrl: false, alt: false, label: '⇧+A' }
+        };
+    </script>
+    <script src="js/context-listening.js"></script>
+</body>
+</html>

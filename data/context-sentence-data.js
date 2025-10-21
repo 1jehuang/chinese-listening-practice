@@ -1,0 +1,8 @@
+window.__CONTEXT_DATASETS__ = window.__CONTEXT_DATASETS__ || {};
+window.__CONTEXT_DATASETS__['context-sentence'] = [
+  {"sentence":"老师让我们把作业在星期五前交上去。","prompt":"What does the whole sentence communicate?","meaning":"The teacher told us to hand in the homework before Friday."},
+  {"sentence":"她从地上捡起那枚硬币，小心地放进口袋。","prompt":"State the sentence meaning.","meaning":"She picked the coin up from the ground and carefully put it into her pocket."},
+  {"sentence":"会议推迟到下周二举行了。","prompt":"State the sentence meaning.","meaning":"The meeting has been postponed until next Tuesday."},
+  {"sentence":"我们昨天沿着河边散步到了很晚。","prompt":"What is the sentence conveying?","meaning":"We strolled along the riverbank until late last night."},
+  {"sentence":"别忘了把灯关掉再走。","prompt":"Explain the sentence meaning.","meaning":"Don't forget to turn off the light before you leave."}
+];

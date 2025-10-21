@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 3 (我们都是美国人)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 3 我们都是美国人</h1>
+        <p class="text-center text-gray-600 mb-6">Listen to the sentence, then type the pinyin (tone marks or numbers). Study mode lists every line with quick audio playback.</p>
+
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <div id="questionDisplay" class="text-center"></div>
+        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
+        </div>
+
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" class="hidden"></div>
+        <div id="fuzzyMode" class="hidden"></div>
+        <div id="strokeOrderMode" class="hidden"></div>
+        <div id="handwritingMode" class="hidden"></div>
+        <div id="drawCharMode" class="hidden"></div>
+
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+        </div>
+
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '你是从哪儿来的吗？', pinyin: 'nǐ shì cóng nǎr lái.de ma', meaning: 'Where are you from?' },
+            { char: '我是从德州来的。', pinyin: 'wǒ shì cóng Dézhōu lái.de', meaning: 'I am from Texas.' },
+            { char: '从德州来的？你怎么有起来像个中国人呢？', pinyin: 'cóng Dézhōu lái.de? nǐ zěn.me yǒu qǐ.lái xiàng.ge Zhōngguó rén ne', meaning: 'From Texas? How come you look like a Chinese person?' },
+            { char: '这是什么意思？我跟你一样都是美国人呀。', pinyin: 'zhè shì shén.me yì.si? wǒ gēn nǐ yī.yàng dōu shì Měiguó rén .a', meaning: 'What does that mean? I, like you, am an American.' },
+            { char: '可是，我真看不出来你是美国人。', pinyin: 'kě.shì, wǒ zhēn kàn.bu.chū.lái nǐ shì Měiguó rén', meaning: 'But I really can\'t tell that you are American.' },
+            { char: '你觉得什么样的人才是美国人呢？', pinyin: 'nǐ jué.de shén.me yàng.de rén cái shì Měiguó rén .ne', meaning: 'What kind of person do you think is American?' },
+            { char: '我想美国人都是……都是……', pinyin: 'wǒ xiǎng Měiguó rén dōu shì... dōu shì...', meaning: 'I think Americans are all... are all...' },
+            { char: '都是什么？', pinyin: 'dōu shì shén.me', meaning: 'Are all what?' },
+            { char: '都是……都是……', pinyin: 'dōu shì... dōu shì...', meaning: 'Are all... are all...' },
+            { char: '都是黄头发的，蓝眼睛的吗？', pinyin: 'dōu shì huáng tóu.fa .de, lán yǎn.jing .de .ma', meaning: 'All have yellow hair and blue eyes?' },
+            { char: '不一定，不一定。', pinyin: 'bù.yī.dìng, bù.yī.dìng', meaning: 'Not necessarily, not necessarily.' },
+            { char: '中国人头发和眼睛都是黑的，但是有黑头发、黑眼睛的却不一定都是中国人。', pinyin: 'Zhōngguó rén tóu.fa hé yǎn.jing dōu shì hēi.de, dàn.shì yǒu hēi tóu.fa, hēi yǎn.jing .de què bù.yī.dìng dōu shì Zhōngguó rén', meaning: 'Chinese people have black hair and eyes, but those with black hair and black eyes are not necessarily all Chinese.' },
+            { char: '对，日本人也是黑头发黑眼睛。', pinyin: 'duì, Rìběn rén yě.shì hēi tóu.fa hēi yǎn.jing', meaning: 'Right, Japanese people also have black hair and black eyes.' },
+            { char: '那么美国人是什么样的呢？', pinyin: 'nà.me Měiguó rén shì shén.me yàng.de ne', meaning: 'So what are Americans like?' },
+            { char: '什么人都可以是美国人，所以有的美国人是白人，有的是黑人，有的是黄种人。', pinyin: 'shén.me rén dōu kě.yǐ shì Měiguó rén, suǒ.yǐ yǒu.de Měiguó rén shì bái rén, yǒu.de shì hēi rén, yǒu.de shì huáng.zhǒng.rén', meaning: 'Anyone can be American, so some Americans are Caucasian, some are African American, some are Asian American.' },
+            { char: '欧洲人可以是美国人，非洲人也可以是美国人，亚洲人也可以是美国人。', pinyin: 'Ōuzhōu rén kě.yǐ shì Měiguó rén, Fēizhōu rén yě kě.yǐ shì Měiguó rén, Yàzhōu rén yě kě.yǐ shì Měiguó rén', meaning: 'Europeans can be American, Africans can also be American, Asians can also be American.' },
+            { char: '对了，一个人只要生在美国就是美国人。', pinyin: 'duì.le, yī.ge rén zhǐ.yào shēng zài Měiguó jiù.shì Měiguó rén', meaning: 'That\'s right, as long as a person is born in America, they are American.' },
+            { char: '但是，美国人却不一定都得生在美国。', pinyin: 'dàn.shì, Měiguó rén què bù.yī.dìng dōu děi shēng zài Měiguó', meaning: 'But Americans don\'t necessarily all have to be born in America.' },
+            { char: '所以我们都是美国人。', pinyin: 'suǒ.yǐ wǒ.men dōu shì Měiguó rén', meaning: 'So we are all Americans.' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-pinyin',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>
