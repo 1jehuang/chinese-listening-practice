@@ -48,9 +48,16 @@ let canvas, ctx;
 let isDrawing = false;
 let lastX, lastY;
 let strokes = [];
+let undoneStrokes = [];
 let currentStroke = null;
 let ocrTimeout = null;
 let drawStartTime = null;
+let canvasScale = 1;
+let canvasOffsetX = 0;
+let canvasOffsetY = 0;
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
 
 // =============================================================================
 // PINYIN UTILITIES
@@ -2320,10 +2327,11 @@ function initCanvas() {
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#000';
 
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
+    canvas.addEventListener('mousedown', handleCanvasMouseDown);
+    canvas.addEventListener('mousemove', handleCanvasMouseMove);
+    canvas.addEventListener('mouseup', handleCanvasMouseUp);
+    canvas.addEventListener('mouseout', handleCanvasMouseUp);
+    canvas.addEventListener('wheel', handleCanvasWheel);
 
     canvas.addEventListener('touchstart', handleTouchStart);
     canvas.addEventListener('touchmove', handleTouchMove);
@@ -2332,6 +2340,9 @@ function initCanvas() {
     strokes = [];
     currentStroke = null;
     drawStartTime = null;
+    canvasScale = 1;
+    canvasOffsetX = 0;
+    canvasOffsetY = 0;
 
     const clearBtn = document.getElementById('clearCanvasBtn');
     const submitBtn = document.getElementById('submitDrawBtn');
@@ -2358,6 +2369,59 @@ function initCanvas() {
         clearBtn.parentElement.appendChild(showAnswerBtn);
     }
 
+    // Add control buttons (undo/redo/zoom/reset)
+    if (clearBtn && clearBtn.parentElement && !document.getElementById('undoBtn')) {
+        const undoBtn = document.createElement('button');
+        undoBtn.id = 'undoBtn';
+        undoBtn.className = 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed';
+        undoBtn.textContent = '↶ Undo';
+        undoBtn.disabled = true;
+        undoBtn.onclick = undoStroke;
+        clearBtn.parentElement.insertBefore(undoBtn, clearBtn);
+
+        const redoBtn = document.createElement('button');
+        redoBtn.id = 'redoBtn';
+        redoBtn.className = 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed';
+        redoBtn.textContent = '↷ Redo';
+        redoBtn.disabled = true;
+        redoBtn.onclick = redoStroke;
+        clearBtn.parentElement.insertBefore(redoBtn, clearBtn);
+    }
+
+    // Add zoom/reset buttons in a separate row
+    if (drawCharMode && !document.getElementById('zoomControls')) {
+        const zoomContainer = document.createElement('div');
+        zoomContainer.id = 'zoomControls';
+        zoomContainer.className = 'flex gap-2 justify-center mt-2';
+
+        const zoomInBtn = document.createElement('button');
+        zoomInBtn.className = 'bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded text-sm transition';
+        zoomInBtn.textContent = '🔍+ Zoom In';
+        zoomInBtn.onclick = zoomIn;
+
+        const zoomOutBtn = document.createElement('button');
+        zoomOutBtn.className = 'bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded text-sm transition';
+        zoomOutBtn.textContent = '🔍- Zoom Out';
+        zoomOutBtn.onclick = zoomOut;
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm transition';
+        resetBtn.textContent = '⟲ Reset View';
+        resetBtn.onclick = resetView;
+
+        const helpText = document.createElement('div');
+        helpText.className = 'text-xs text-gray-500 mt-1';
+        helpText.textContent = 'Tip: Hold Space + drag to pan, or scroll to zoom';
+
+        zoomContainer.appendChild(zoomInBtn);
+        zoomContainer.appendChild(zoomOutBtn);
+        zoomContainer.appendChild(resetBtn);
+
+        const canvasParent = canvas.parentElement;
+        canvasParent.insertBefore(zoomContainer, canvas);
+        canvasParent.insertBefore(helpText, canvas);
+    }
+
     if (clearBtn) {
         clearBtn.onclick = clearCanvas;
     }
@@ -2371,20 +2435,26 @@ function initCanvas() {
     }
 
     updateOcrCandidates();
+    updateUndoRedoButtons();
 }
 
 function getCanvasCoords(e) {
     const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+
     if (e.touches && e.touches[0]) {
-        return {
-            x: e.touches[0].clientX - rect.left,
-            y: e.touches[0].clientY - rect.top
-        };
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
     }
-    return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-    };
+
+    // Transform coordinates based on zoom and pan
+    const x = (clientX - rect.left - canvasOffsetX) / canvasScale;
+    const y = (clientY - rect.top - canvasOffsetY) / canvasScale;
+
+    return { x, y };
 }
 
 function getRelativeTimestamp() {
@@ -2413,14 +2483,23 @@ function startDrawing(e) {
 }
 
 function draw(e) {
+    if (isPanning) return;
     if (!isDrawing) return;
     e.preventDefault();
 
     const coords = getCanvasCoords(e);
+
+    // Apply transformation for drawing
+    ctx.save();
+    ctx.translate(canvasOffsetX, canvasOffsetY);
+    ctx.scale(canvasScale, canvasScale);
+
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
     ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
+
+    ctx.restore();
 
     if (currentStroke) {
         currentStroke.x.push(Math.round(coords.x));
@@ -2434,12 +2513,66 @@ function draw(e) {
 function stopDrawing() {
     if (isDrawing && currentStroke && currentStroke.x.length > 0) {
         strokes.push(currentStroke);
+        undoneStrokes = []; // Clear redo history when new stroke is added
         currentStroke = null;
+        updateUndoRedoButtons();
 
         if (ocrTimeout) clearTimeout(ocrTimeout);
         ocrTimeout = setTimeout(runOCR, 400);
     }
     isDrawing = false;
+}
+
+function handleCanvasMouseDown(e) {
+    if (e.button === 1 || e.shiftKey) {
+        // Middle mouse or Shift + left mouse = pan
+        e.preventDefault();
+        isPanning = true;
+        const rect = canvas.getBoundingClientRect();
+        panStartX = e.clientX - canvasOffsetX;
+        panStartY = e.clientY - canvasOffsetY;
+        canvas.style.cursor = 'grabbing';
+    } else if (e.button === 0) {
+        // Left mouse = draw
+        startDrawing(e);
+    }
+}
+
+function handleCanvasMouseMove(e) {
+    if (isPanning) {
+        e.preventDefault();
+        canvasOffsetX = e.clientX - panStartX;
+        canvasOffsetY = e.clientY - panStartY;
+        redrawCanvas();
+    } else {
+        draw(e);
+    }
+}
+
+function handleCanvasMouseUp(e) {
+    if (isPanning) {
+        isPanning = false;
+        canvas.style.cursor = 'crosshair';
+    }
+    stopDrawing();
+}
+
+function handleCanvasWheel(e) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(0.5, Math.min(3, canvasScale * delta));
+
+    // Zoom toward mouse position
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const scaleChange = newScale / canvasScale;
+    canvasOffsetX = mouseX - (mouseX - canvasOffsetX) * scaleChange;
+    canvasOffsetY = mouseY - (mouseY - canvasOffsetY) * scaleChange;
+
+    canvasScale = newScale;
+    redrawCanvas();
 }
 
 function handleTouchStart(e) {
@@ -2514,8 +2647,10 @@ async function runOCR() {
 
 function clearCanvas() {
     if (!ctx || !canvas) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     strokes = [];
+    undoneStrokes = [];
     currentStroke = null;
     drawStartTime = null;
     if (ocrTimeout) {
@@ -2523,9 +2658,98 @@ function clearCanvas() {
         ocrTimeout = null;
     }
     updateOcrCandidates();
+    updateUndoRedoButtons();
     const ocrResult = document.getElementById('ocrResult');
     if (ocrResult) {
         ocrResult.textContent = '';
+    }
+}
+
+function zoomIn() {
+    canvasScale = Math.min(canvasScale * 1.2, 3);
+    redrawCanvas();
+}
+
+function zoomOut() {
+    canvasScale = Math.max(canvasScale / 1.2, 0.5);
+    redrawCanvas();
+}
+
+function resetView() {
+    canvasScale = 1;
+    canvasOffsetX = 0;
+    canvasOffsetY = 0;
+    redrawCanvas();
+}
+
+function undoStroke() {
+    if (strokes.length === 0) return;
+
+    const lastStroke = strokes.pop();
+    undoneStrokes.push(lastStroke);
+
+    redrawCanvas();
+    updateUndoRedoButtons();
+
+    if (ocrTimeout) clearTimeout(ocrTimeout);
+    ocrTimeout = setTimeout(runOCR, 400);
+}
+
+function redoStroke() {
+    if (undoneStrokes.length === 0) return;
+
+    const stroke = undoneStrokes.pop();
+    strokes.push(stroke);
+
+    redrawCanvas();
+    updateUndoRedoButtons();
+
+    if (ocrTimeout) clearTimeout(ocrTimeout);
+    ocrTimeout = setTimeout(runOCR, 400);
+}
+
+function redrawCanvas() {
+    if (!ctx || !canvas) return;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply zoom and pan transformations
+    ctx.translate(canvasOffsetX, canvasOffsetY);
+    ctx.scale(canvasScale, canvasScale);
+
+    strokes.forEach(stroke => {
+        if (stroke.x.length === 0) return;
+
+        ctx.beginPath();
+        ctx.moveTo(stroke.x[0], stroke.y[0]);
+
+        for (let i = 1; i < stroke.x.length; i++) {
+            ctx.lineTo(stroke.x[i], stroke.y[i]);
+        }
+        ctx.stroke();
+    });
+
+    // Reset transform for next operations
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
+    if (undoBtn) {
+        undoBtn.disabled = strokes.length === 0;
+        undoBtn.className = strokes.length === 0
+            ? 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed'
+            : 'bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition';
+    }
+
+    if (redoBtn) {
+        redoBtn.disabled = undoneStrokes.length === 0;
+        redoBtn.className = undoneStrokes.length === 0
+            ? 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed'
+            : 'bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition';
     }
 }
 
