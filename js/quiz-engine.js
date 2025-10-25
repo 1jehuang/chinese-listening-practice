@@ -1015,11 +1015,17 @@ function generateQuestion() {
         strokeOrderMode.style.display = 'block';
         initStrokeOrder();
     } else if (mode === 'handwriting' && handwritingMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">Practice: ${currentQuestion.pinyin}</div>`;
+        const charCount = currentQuestion.char.length;
+        const charText = charCount > 1 ? `Practice ${charCount} characters: ` : 'Practice: ';
+        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">${charText}${currentQuestion.pinyin}</div>`;
         handwritingMode.style.display = 'block';
         initHandwriting();
     } else if (mode === 'draw-char' && drawCharMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-4xl my-8 font-bold text-gray-700">Draw: ${currentQuestion.pinyin}</div>`;
+        const charCount = currentQuestion.char.length;
+        const charText = charCount > 1 ? `Draw ${charCount} characters: ` : 'Draw: ';
+        const pinyinParts = currentQuestion.pinyin.split(/[.\s]+/).filter(p => p).join(' + ');
+        const meaningText = currentQuestion.meaning ? ` <span class="text-2xl text-gray-500">(${currentQuestion.meaning})</span>` : '';
+        questionDisplay.innerHTML = `<div class="text-center text-4xl my-8 font-bold text-gray-700">${charText}${pinyinParts}${meaningText}</div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
@@ -1080,10 +1086,17 @@ function ensureTtsSpeedControl() {
     const optionSource = typeof getQuizTtsOptions === 'function'
         ? getQuizTtsOptions()
         : [
+            { value: 0.5, label: 'Very Slow · 0.5×' },
             { value: 0.7, label: 'Slow · 0.7×' },
             { value: 0.85, label: 'Learning · 0.85×' },
             { value: 1.0, label: 'Normal · 1.0×' },
-            { value: 1.15, label: 'Quick · 1.15×' }
+            { value: 1.15, label: 'Quick · 1.15×' },
+            { value: 1.3, label: 'Fast · 1.3×' },
+            { value: 1.5, label: 'Faster · 1.5×' },
+            { value: 1.75, label: 'Very Fast · 1.75×' },
+            { value: 2.0, label: 'Ultra Fast · 2.0×' },
+            { value: 2.5, label: 'Maximum · 2.5×' },
+            { value: 3.0, label: 'Extreme · 3.0×' }
         ];
 
     if (!ttsSpeedSelect.dataset.initialized) {
@@ -2283,17 +2296,31 @@ function initHandwriting() {
 
     writerDiv.innerHTML = '';
 
-    // Use first character for multi-character words
-    const char = currentQuestion.char[0];
+    // Create HanziWriter instances for all characters
+    const chars = currentQuestion.char.split('');
+    const writers = [];
 
-    writer = HanziWriter.create(writerDiv, char, {
-        width: 300,
-        height: 300,
-        padding: 5,
-        showOutline: false,
-        showCharacter: false,
-        strokeAnimationSpeed: 1,
-        delayBetweenStrokes: 50
+    // Adjust size based on number of characters
+    const charWidth = chars.length > 1 ? 250 : 300;
+    const charHeight = chars.length > 1 ? 250 : 300;
+
+    chars.forEach(char => {
+        const charDiv = document.createElement('div');
+        charDiv.style.display = 'inline-block';
+        charDiv.style.margin = '0 10px';
+        writerDiv.appendChild(charDiv);
+
+        const charWriter = HanziWriter.create(charDiv, char, {
+            width: charWidth,
+            height: charHeight,
+            padding: 5,
+            showOutline: false,
+            showCharacter: false,
+            strokeAnimationSpeed: 1,
+            delayBetweenStrokes: 50
+        });
+
+        writers.push(charWriter);
     });
 
     const hwShowBtn = document.getElementById('hwShowBtn');
@@ -2301,9 +2328,14 @@ function initHandwriting() {
 
     if (hwShowBtn) {
         hwShowBtn.onclick = () => {
-            writer.showCharacter();
-            writer.showOutline();
-            writer.animateCharacter();
+            // Show and animate all characters
+            writers.forEach((w, index) => {
+                setTimeout(() => {
+                    w.showCharacter();
+                    w.showOutline();
+                    w.animateCharacter();
+                }, index * 1000); // Stagger animations by 1 second
+            });
 
             feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
@@ -2782,8 +2814,6 @@ function submitDrawing() {
     const ocrResult = document.getElementById('ocrResult');
     if (!ocrResult) return;
 
-    if (answered) return;
-
     const recognized = ocrResult.textContent.trim();
     if (!recognized) {
         feedback.textContent = '✗ Please draw a character first!';
@@ -2791,25 +2821,35 @@ function submitDrawing() {
         return;
     }
 
-    answered = true;
-    total++;
     const correct = recognized === currentQuestion.char;
+    const isFirstAttempt = !answered;
+
+    if (isFirstAttempt) {
+        answered = true;
+        total++;
+        if (correct) {
+            score++;
+        }
+    }
 
     if (correct) {
         playCorrectSound();
-        score++;
-        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        const tryAgainText = isFirstAttempt ? '' : ' (practice attempt)';
+        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${tryAgainText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     } else {
         playWrongSound();
-        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        const tryAgainText = isFirstAttempt ? ' - Keep practicing!' : ' - Try again!';
+        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${tryAgainText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     }
 
     updateStats();
 
-    // Show the next button instead of auto-progressing
-    showDrawNextButton();
+    // Show the next button after first attempt
+    if (isFirstAttempt) {
+        showDrawNextButton();
+    }
 }
 
 function revealDrawingAnswer() {
@@ -2818,22 +2858,42 @@ function revealDrawingAnswer() {
     const ocrResult = document.getElementById('ocrResult');
     if (ocrResult) {
         ocrResult.textContent = currentQuestion.char;
+        // Adjust font size for multi-character words to ensure all characters are visible
+        ocrResult.style.fontFamily = "'ZCOOL XiaoWei', cursive";
+        ocrResult.style.fontWeight = '400';
+        if (currentQuestion.char.length > 1) {
+            ocrResult.className = 'text-5xl min-h-[80px] text-blue-600 font-bold';
+        } else {
+            ocrResult.className = 'text-6xl min-h-[80px] text-blue-600 font-bold';
+        }
     }
-    updateOcrCandidates([currentQuestion.char]);
 
-    if (answered) return;
+    // Show individual characters as candidates for multi-character words
+    if (currentQuestion.char.length > 1) {
+        const individualChars = currentQuestion.char.split('');
+        updateOcrCandidates([currentQuestion.char, ...individualChars]);
+    } else {
+        updateOcrCandidates([currentQuestion.char]);
+    }
 
-    answered = true;
-    total++;
+    const isFirstReveal = !answered;
+
+    if (isFirstReveal) {
+        answered = true;
+        total++;
+    }
 
     const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
-    feedback.textContent = `ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
+    const revealText = isFirstReveal ? 'ⓘ Answer: ' : 'ⓘ Answer (shown again): ';
+    feedback.textContent = `${revealText}${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
     feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
 
     updateStats();
 
-    // Show the next button instead of auto-progressing
-    showDrawNextButton();
+    // Show the next button after first reveal
+    if (isFirstReveal) {
+        showDrawNextButton();
+    }
 }
 
 function showDrawNextButton() {
