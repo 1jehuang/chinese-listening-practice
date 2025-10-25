@@ -27,6 +27,7 @@
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="pinyin-to-char">Pinyin → Char</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning">Char → Meaning (MC)</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning (Fuzzy)</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">Meaning → Char</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
@@ -132,7 +133,7 @@
             enablePreviewQueue: true,
             previewQueueSize: 4,
             previewElementId: 'upcomingCharacters',
-            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning']
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
         });
     </script>
 </body>

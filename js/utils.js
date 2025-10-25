@@ -2,7 +2,140 @@
 
 const globalScope = typeof window !== 'undefined' ? window : globalThis;
 
-// Sound effect functions
+// TTS speed configuration ----------------------------------------------------
+
+const TTS_RATE_STORAGE_KEY = 'quizTtsRate';
+const DEFAULT_TTS_RATE = 0.85;
+const MIN_TTS_RATE = 0.6;
+const MAX_TTS_RATE = 1.25;
+const TTS_SPEED_OPTIONS = [
+    { value: 0.7, label: 'Slow · 0.7×' },
+    { value: 0.85, label: 'Learning · 0.85×' },
+    { value: 1.0, label: 'Normal · 1.0×' },
+    { value: 1.15, label: 'Quick · 1.15×' }
+];
+
+function clampTtsRate(rate) {
+    if (Number.isNaN(rate)) return DEFAULT_TTS_RATE;
+    return Math.min(MAX_TTS_RATE, Math.max(MIN_TTS_RATE, rate));
+}
+
+function readStoredTtsRate() {
+    if (typeof globalScope.localStorage === 'undefined') return DEFAULT_TTS_RATE;
+    try {
+        const raw = globalScope.localStorage.getItem(TTS_RATE_STORAGE_KEY);
+        if (!raw) return DEFAULT_TTS_RATE;
+        const parsed = parseFloat(raw);
+        return clampTtsRate(parsed);
+    } catch (err) {
+        console.warn('Unable to read stored TTS rate, falling back to default', err);
+        return DEFAULT_TTS_RATE;
+    }
+}
+
+function persistTtsRate(rate) {
+    if (typeof globalScope.localStorage === 'undefined') return;
+    try {
+        globalScope.localStorage.setItem(TTS_RATE_STORAGE_KEY, rate.toString());
+    } catch (err) {
+        console.warn('Unable to persist TTS rate', err);
+    }
+}
+
+function getQuizTtsRate() {
+    if (typeof globalScope.__quizTtsRate === 'number') {
+        return clampTtsRate(globalScope.__quizTtsRate);
+    }
+    const stored = readStoredTtsRate();
+    globalScope.__quizTtsRate = stored;
+    return stored;
+}
+
+function setQuizTtsRate(rate) {
+    const clamped = clampTtsRate(Number(rate));
+    globalScope.__quizTtsRate = clamped;
+    persistTtsRate(clamped);
+    return clamped;
+}
+
+function getQuizTtsOptions() {
+    return TTS_SPEED_OPTIONS.map(option => ({ ...option }));
+}
+
+globalScope.getQuizTtsRate = getQuizTtsRate;
+globalScope.setQuizTtsRate = setQuizTtsRate;
+globalScope.getQuizTtsOptions = getQuizTtsOptions;
+
+// Active audio management ----------------------------------------------------
+
+function detachActiveAudio(audio) {
+    if (!audio) return;
+    const cleanup = audio.__activeCleanup;
+    if (typeof cleanup === 'function') {
+        cleanup();
+    } else if (globalScope.__activeAudio === audio) {
+        globalScope.__activeAudio = null;
+    }
+}
+
+function stopActiveAudio() {
+    const current = globalScope.__activeAudio;
+    if (!current) return;
+
+    try {
+        current.pause();
+    } catch (err) {
+        console.warn('Failed to pause active audio', err);
+    }
+
+    try {
+        if (typeof current.currentTime === 'number') {
+            current.currentTime = 0;
+        }
+    } catch (err) {
+        // Ignore currentTime reset errors (e.g., streaming sources)
+    }
+
+    detachActiveAudio(current);
+}
+
+function setActiveAudio(audio) {
+    if (!audio) {
+        stopActiveAudio();
+        return;
+    }
+
+    stopActiveAudio();
+
+    let clear = null;
+    const handlePause = () => {
+        if (!audio) return;
+        if (!audio.paused) return;
+        const duration = audio.duration || 0;
+        const endedNaturally = duration && Math.abs(audio.currentTime - duration) < 0.05;
+        if (audio.currentTime === 0 || endedNaturally) {
+            clear?.();
+        }
+    };
+
+    clear = () => {
+        audio.removeEventListener('ended', clear);
+        audio.removeEventListener('pause', handlePause);
+        delete audio.__activeCleanup;
+        if (globalScope.__activeAudio === audio) {
+            globalScope.__activeAudio = null;
+        }
+    };
+
+    audio.__activeCleanup = clear;
+    audio.addEventListener('ended', clear);
+    audio.addEventListener('pause', handlePause);
+
+    globalScope.__activeAudio = audio;
+}
+
+// Sound effect functions -----------------------------------------------------
+
 function playCorrectSound() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -106,6 +239,8 @@ function pinyinToAudioKey(pinyin) {
 
 // Play audio using TTS
 function playTTS(chineseChar) {
+    stopActiveAudio();
+
     if (typeof window === 'undefined' ||
         typeof window.speechSynthesis === 'undefined' ||
         typeof window.SpeechSynthesisUtterance === 'undefined') {
@@ -117,7 +252,11 @@ function playTTS(chineseChar) {
 
     const utterance = new SpeechSynthesisUtterance(chineseChar);
     utterance.lang = 'zh-CN'; // Mandarin Chinese
-    utterance.rate = 0.8; // Slightly slower for learning
+    if (typeof getQuizTtsRate === 'function') {
+        utterance.rate = getQuizTtsRate();
+    } else {
+        utterance.rate = DEFAULT_TTS_RATE;
+    }
 
     // Try to get a Chinese voice
     const voices = speechSynthesis.getVoices();
@@ -133,17 +272,28 @@ function playTTS(chineseChar) {
     speechSynthesis.speak(utterance);
 }
 
-function sentenceTtsUrl(sentence) {
-    const base = 'https://fanyi.baidu.com/gettts?lan=zh&spd=3&source=web&text=';
+function mapRateToSentenceSpeed(rate) {
+    const clamped = clampTtsRate(rate);
+    const normalized = (clamped - MIN_TTS_RATE) / (MAX_TTS_RATE - MIN_TTS_RATE);
+    const spd = Math.round(2 + normalized * 5); // map to range [2,7]
+    return Math.min(9, Math.max(1, spd));
+}
+
+function sentenceTtsUrl(sentence, rate) {
+    const effectiveRate = typeof rate === 'number' ? rate : getQuizTtsRate();
+    const speedParam = mapRateToSentenceSpeed(effectiveRate);
+    const base = `https://fanyi.baidu.com/gettts?lan=zh&spd=${speedParam}&source=web&text=`;
     return base + encodeURIComponent(sentence);
 }
 
 function playSentenceAudio(sentence) {
     if (!sentence || !sentence.trim()) return;
 
-    const cacheKey = sentence.trim();
+    const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
+    const cacheKey = `${sentence.trim()}|${rate.toFixed(2)}`;
     if (typeof Audio === 'undefined') {
         console.warn('Audio element not available, using SpeechSynthesis fallback for sentence.');
+        stopActiveAudio();
         playTTS(cacheKey);
         return;
     }
@@ -154,7 +304,7 @@ function playSentenceAudio(sentence) {
 
     let audio = globalScope.__sentenceAudioCache.get(cacheKey);
     if (!audio) {
-        audio = new Audio(sentenceTtsUrl(cacheKey));
+        audio = new Audio(sentenceTtsUrl(sentence, rate));
         audio.preload = 'auto';
         globalScope.__sentenceAudioCache.set(cacheKey, audio);
     } else {
@@ -164,15 +314,18 @@ function playSentenceAudio(sentence) {
         } catch (err) {
             console.warn('Resetting cached audio failed, rebuilding instance', err);
             globalScope.__sentenceAudioCache.delete(cacheKey);
-            audio = new Audio(sentenceTtsUrl(cacheKey));
+            audio = new Audio(sentenceTtsUrl(sentence, rate));
             audio.preload = 'auto';
             globalScope.__sentenceAudioCache.set(cacheKey, audio);
         }
     }
 
+    setActiveAudio(audio);
+
     const onError = () => {
         console.log(`Sentence audio failed for "${cacheKey}", using SpeechSynthesis fallback`);
         audio.removeEventListener('error', onError);
+        detachActiveAudio(audio);
         globalScope.__sentenceAudioCache.delete(cacheKey);
         playTTS(cacheKey);
     };
@@ -184,6 +337,11 @@ function playSentenceAudio(sentence) {
         playPromise.catch(err => {
             console.log(`Sentence audio playback rejected for "${cacheKey}", fallback to SpeechSynthesis`, err);
             audio.removeEventListener('error', onError);
+            if (globalScope.__activeAudio === audio) {
+                stopActiveAudio();
+            } else {
+                detachActiveAudio(audio);
+            }
             globalScope.__sentenceAudioCache.delete(cacheKey);
             playTTS(cacheKey);
         });
@@ -207,15 +365,18 @@ function playPinyinAudio(pinyin, chineseChar) {
 
     if (typeof Audio === 'undefined') {
         console.warn('Audio element not available, using SpeechSynthesis fallback.');
+        stopActiveAudio();
         playTTS(chineseChar || pinyin);
         return;
     }
 
     const audio = new Audio(audioUrl);
+    setActiveAudio(audio);
 
     const handleError = () => {
         console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
         audio.removeEventListener('error', handleError);
+        detachActiveAudio(audio);
         playTTS(chineseChar || pinyin);
     };
 
@@ -224,6 +385,11 @@ function playPinyinAudio(pinyin, chineseChar) {
     audio.play().catch(e => {
         console.log(`Audio play failed for ${audioKey}, falling back to TTS:`, e);
         audio.removeEventListener('error', handleError);
+        if (globalScope.__activeAudio === audio) {
+            stopActiveAudio();
+        } else {
+            detachActiveAudio(audio);
+        }
         playTTS(chineseChar || pinyin);
     });
 }

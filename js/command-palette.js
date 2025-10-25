@@ -7,6 +7,7 @@ const DEFAULT_PAGES = [
     { name: 'Context Listening Comprehension', url: 'listening-context.html', type: 'page', keywords: 'context listening comprehension vocabulary sentence meaning audio' },
     { name: 'Context Listening · Easy', url: 'listening-context-easy.html', type: 'page', keywords: 'context listening easy comprehension beginner audio' },
     { name: 'Sentence Meaning Drill', url: 'context-sentence.html', type: 'page', keywords: 'sentence listening comprehension summary audio meaning' },
+    { name: 'Phrase Meaning Drill', url: 'phrase-meaning-quiz.html', type: 'page', keywords: 'phrase meaning comprehension quiz' },
     { name: 'Toneless Minimal Pairs', url: 'toneless-minimal-pairs.html', type: 'page', keywords: 'tones listening minimal pairs' },
     { name: 'Radical Practice', url: 'radicals.html', type: 'page', keywords: 'radicals components drill' },
     { name: 'Radical Practice 2', url: 'radical-practice-2.html', type: 'page', keywords: 'radicals components drill advanced' },

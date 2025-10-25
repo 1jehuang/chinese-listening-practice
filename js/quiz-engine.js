@@ -17,6 +17,7 @@ let config = {};
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
 let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
 let audioSection;
+let ttsSpeedSelect = null;
 let radicalSelectedAnswers = [];
 let questionAttemptRecorded = false;
 let lastAnswerCorrect = false;
@@ -33,6 +34,11 @@ let previewQueueSize = 3;
 let previewElement = null;
 let previewListElement = null;
 let previewApplicableModes = null;
+let dictationParts = [];
+let dictationPartElements = [];
+let dictationTotalSyllables = 0;
+let dictationMatchedSyllables = 0;
+let dictationPrimaryPinyin = '';
 
 // Hanzi Writer
 let writer = null;
@@ -81,6 +87,7 @@ const TONE_MARK_MAP = {
     'u': ['ū', 'ú', 'ǔ', 'ù'],
     'ü': ['ǖ', 'ǘ', 'ǚ', 'ǜ']
 };
+const PINYIN_WORD_SEPARATOR_REGEX = /[\s,，、。！？；：:;（）()【】《》「」『』…—–-]+/;
 
 function convertPinyinToToneNumbers(pinyin) {
     const syllables = splitPinyinSyllables(pinyin);
@@ -666,6 +673,241 @@ function updatePartialProgress() {
     hint.className = 'text-center text-2xl font-semibold my-4';
 }
 
+function resetDictationState() {
+    dictationParts = [];
+    dictationPartElements = [];
+    dictationTotalSyllables = 0;
+    dictationMatchedSyllables = 0;
+    dictationPrimaryPinyin = '';
+}
+
+function isDictationSyllableChar(char) {
+    if (!char) return false;
+    const code = char.codePointAt(0);
+    if (code >= 0x3400 && code <= 0x9FFF) return true;
+    if (code >= 0xF900 && code <= 0xFAFF) return true;
+    if (/[A-Za-z0-9]/.test(char)) return true;
+    return false;
+}
+
+function getPinyinWordSyllableCounts(pinyin) {
+    if (!pinyin) return [];
+    return pinyin
+        .split(PINYIN_WORD_SEPARATOR_REGEX)
+        .filter(Boolean)
+        .map(token => {
+            const syllableCount = splitPinyinSyllables(token).length;
+            return syllableCount > 0 ? syllableCount : 1;
+        });
+}
+
+function buildDictationParts(question) {
+    const text = Array.from(question?.char || '');
+    const primaryPinyin = (question?.pinyin || '').split('/')[0]?.trim() || '';
+    const syllables = splitPinyinSyllables(primaryPinyin);
+    const wordSyllableCounts = getPinyinWordSyllableCounts(primaryPinyin);
+
+    const parts = [];
+    let currentPart = null;
+    let syllableCursor = 0;
+    let wordIndex = 0;
+    let charactersAssignedToWord = 0;
+    let targetSyllablesForWord = wordSyllableCounts[wordIndex] || 1;
+
+    const finalizeCurrentPart = () => {
+        if (!currentPart) return;
+        const syllableCount = currentPart.syllables.filter(Boolean).length;
+        currentPart.endIndex = currentPart.startIndex + syllableCount;
+        currentPart.index = parts.length;
+        parts.push(currentPart);
+        currentPart = null;
+        charactersAssignedToWord = 0;
+        wordIndex++;
+        targetSyllablesForWord = wordSyllableCounts[wordIndex] || 1;
+    };
+
+    for (const char of text) {
+        if (isDictationSyllableChar(char)) {
+            if (!currentPart) {
+                currentPart = {
+                    text: '',
+                    syllables: [],
+                    startIndex: syllableCursor,
+                    isDelimiter: false
+                };
+                charactersAssignedToWord = 0;
+                targetSyllablesForWord = wordSyllableCounts[wordIndex] || 1;
+            }
+
+            currentPart.text += char;
+            if (syllableCursor < syllables.length) {
+                currentPart.syllables.push(syllables[syllableCursor]);
+            } else {
+                currentPart.syllables.push('');
+            }
+            syllableCursor++;
+            charactersAssignedToWord++;
+
+            if (charactersAssignedToWord >= targetSyllablesForWord) {
+                finalizeCurrentPart();
+            }
+        } else {
+            if (currentPart) {
+                currentPart.text += char;
+            } else if (parts.length) {
+                parts[parts.length - 1].text += char;
+            } else {
+                parts.push({
+                    text: char,
+                    syllables: [],
+                    startIndex: syllableCursor,
+                    endIndex: syllableCursor,
+                    isDelimiter: true,
+                    index: 0
+                });
+            }
+        }
+    }
+
+    finalizeCurrentPart();
+
+    const totalSyllables = syllables.length;
+    parts.forEach((part, idx) => {
+        if (typeof part.endIndex !== 'number') {
+            const syllableCount = part.syllables.filter(Boolean).length;
+            part.endIndex = part.startIndex + syllableCount;
+        }
+        part.index = idx;
+    });
+
+    return {
+        parts,
+        primaryPinyin,
+        totalSyllables
+    };
+}
+
+function renderDictationSentence(question) {
+    const { parts, primaryPinyin, totalSyllables } = buildDictationParts(question);
+    dictationParts = parts;
+    dictationPrimaryPinyin = primaryPinyin;
+    dictationTotalSyllables = totalSyllables;
+    dictationMatchedSyllables = 0;
+
+    const sentenceHtml = parts.map(part => {
+        const classes = ['dictation-part'];
+        if (!part.syllables.length) {
+            classes.push('dictation-part-delimiter');
+        }
+        return `<span class="${classes.join(' ')}" data-part-index="${part.index}" data-syllables="${part.syllables.length}">${escapeHtml(part.text)}</span>`;
+    }).join('');
+
+    questionDisplay.innerHTML = `
+        <div class="dictation-sentence text-center text-5xl md:text-6xl my-8 font-normal text-gray-800 leading-snug">
+            ${sentenceHtml}
+        </div>
+        <div class="dictation-controls text-center text-sm text-gray-500 -mt-4 mb-4">
+            Type with tone marks (mǎ) or numbers (ma3). Click any segment to replay it. Space = play current part · Ctrl+Space = play full sentence · Shift+Space inserts a space.
+        </div>
+    `;
+
+    dictationPartElements = Array.from(questionDisplay.querySelectorAll('.dictation-part'));
+    dictationPartElements.forEach(el => {
+        const index = Number(el.dataset.partIndex);
+        if (!Number.isFinite(index)) return;
+        el.addEventListener('click', () => {
+            const part = dictationParts[index];
+            if (!part || !part.syllables.length) return;
+            playDictationPart(part);
+        });
+    });
+
+    updateDictationProgress(0);
+}
+
+function updateDictationProgress(matchedSyllables) {
+    dictationMatchedSyllables = Math.max(0, Math.min(matchedSyllables || 0, dictationTotalSyllables || 0));
+
+    if (!Array.isArray(dictationPartElements) || !dictationPartElements.length) return;
+
+    const activeIndex = getDictationPartIndexForMatched(dictationMatchedSyllables);
+
+    dictationPartElements.forEach((el, idx) => {
+        const part = dictationParts[idx];
+        if (!part) return;
+
+        el.classList.remove('dictation-part-current', 'dictation-part-complete');
+
+        if (!part.syllables.length) return;
+
+        if (dictationMatchedSyllables >= part.endIndex) {
+            el.classList.add('dictation-part-complete');
+        } else if (idx === activeIndex) {
+            el.classList.add('dictation-part-current');
+        }
+    });
+}
+
+function getDictationPartIndexForMatched(matchedSyllables) {
+    if (!Array.isArray(dictationParts) || !dictationParts.length) return -1;
+    for (const part of dictationParts) {
+        if (!part || !part.syllables.length) continue;
+        if (matchedSyllables < part.endIndex) {
+            return part.index;
+        }
+    }
+    return -1;
+}
+
+function playDictationPart(part) {
+    if (!part || !currentQuestion) return;
+
+    const textToPlay = (part.text || '').trim();
+    const pinyinToPlay = part.syllables.filter(Boolean).join(' ');
+
+    if (!textToPlay) {
+        playFullDictationSentence();
+        return;
+    }
+
+    const fallbackPinyin = dictationPrimaryPinyin || currentQuestion.pinyin.split('/')[0].trim();
+    playPinyinAudio(pinyinToPlay || fallbackPinyin, textToPlay);
+}
+
+function playCurrentDictationPart() {
+    if (mode !== 'char-to-pinyin') return;
+    const targetIndex = getDictationPartIndexForMatched(dictationMatchedSyllables);
+    let part = null;
+
+    if (targetIndex === -1) {
+        for (let i = dictationParts.length - 1; i >= 0; i--) {
+            if (dictationParts[i]?.syllables?.length) {
+                part = dictationParts[i];
+                break;
+            }
+        }
+    } else {
+        part = dictationParts[targetIndex];
+    }
+
+    if (!part && dictationParts.length) {
+        part = dictationParts.find(p => p.syllables && p.syllables.length);
+    }
+
+    if (!part) {
+        playFullDictationSentence();
+        return;
+    }
+
+    playDictationPart(part);
+}
+
+function playFullDictationSentence() {
+    if (!currentQuestion) return;
+    const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+    playPinyinAudio(firstPinyin, currentQuestion.char);
+}
+
 // =============================================================================
 // QUIZ LOGIC
 // =============================================================================
@@ -682,6 +924,7 @@ function generateQuestion() {
     questionAttemptRecorded = false;
     lastAnswerCorrect = false;
     clearComponentBreakdown();
+    hideDrawNextButton();
 
     const previewActive = isPreviewModeActive();
     let nextQuestion = null;
@@ -717,10 +960,11 @@ function generateQuestion() {
     if (studyMode) studyMode.style.display = 'none';
     if (radicalPracticeMode) radicalPracticeMode.style.display = 'none';
     if (audioSection) audioSection.classList.add('hidden');
+    resetDictationState();
 
     // Show appropriate UI based on mode
     if (mode === 'char-to-pinyin') {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type with tone marks (mǎ) or numbers (ma3)</div>`;
+        renderDictationSentence(currentQuestion);
         typeMode.style.display = 'block';
         setTimeout(() => answerInput.focus(), 100);
     } else if (mode === 'char-to-tones') {
@@ -732,8 +976,13 @@ function generateQuestion() {
         questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div>`;
         typeMode.style.display = 'block';
         audioSection.classList.remove('hidden');
-        setupAudioMode();
-        setTimeout(() => answerInput.focus(), 100);
+        setupAudioMode({ focusAnswer: true });
+    } else if (mode === 'audio-to-meaning' && audioSection && choiceMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div><div class="text-center text-lg text-gray-500 -mt-4">Choose the matching meaning</div>`;
+        audioSection.classList.remove('hidden');
+        generateMeaningOptions();
+        choiceMode.style.display = 'block';
+        setupAudioMode({ focusAnswer: false });
     } else if (mode === 'char-to-pinyin-mc' && choiceMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generatePinyinOptions();
@@ -794,22 +1043,113 @@ function generateQuestion() {
     }
 }
 
-function setupAudioMode() {
+function ensureTtsSpeedControl() {
+    if (!audioSection) return null;
+
+    let wrapper = audioSection.querySelector('.tts-speed-control');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'tts-speed-control flex flex-wrap items-center justify-center gap-2 mt-3 text-sm text-gray-600';
+
+        const label = document.createElement('label');
+        label.textContent = 'Speech speed';
+        label.className = 'font-medium text-gray-600';
+        label.htmlFor = 'ttsSpeedSelect';
+
+        const select = document.createElement('select');
+        select.id = 'ttsSpeedSelect';
+        select.className = 'border-2 border-gray-300 rounded-lg px-3 py-1 bg-white text-sm focus:border-blue-500 focus:outline-none';
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(select);
+        audioSection.appendChild(wrapper);
+        ttsSpeedSelect = select;
+    } else {
+        ttsSpeedSelect = wrapper.querySelector('select');
+    }
+
+    if (!ttsSpeedSelect) return null;
+
+    const optionSource = typeof getQuizTtsOptions === 'function'
+        ? getQuizTtsOptions()
+        : [
+            { value: 0.7, label: 'Slow · 0.7×' },
+            { value: 0.85, label: 'Learning · 0.85×' },
+            { value: 1.0, label: 'Normal · 1.0×' },
+            { value: 1.15, label: 'Quick · 1.15×' }
+        ];
+
+    if (!ttsSpeedSelect.dataset.initialized) {
+        ttsSpeedSelect.innerHTML = '';
+        optionSource.forEach(option => {
+            const numericValue = Number(option.value);
+            const valueString = Number.isFinite(numericValue) ? numericValue.toFixed(2) : String(option.value);
+            const opt = document.createElement('option');
+            opt.value = valueString;
+            opt.textContent = option.label || `${valueString}×`;
+            ttsSpeedSelect.appendChild(opt);
+        });
+        ttsSpeedSelect.dataset.initialized = 'true';
+
+        ttsSpeedSelect.addEventListener('change', () => {
+            const newRate = parseFloat(ttsSpeedSelect.value);
+            const applied = typeof setQuizTtsRate === 'function'
+                ? setQuizTtsRate(newRate)
+                : newRate;
+            if (Number.isFinite(applied)) {
+                const formatted = Number(applied).toFixed(2);
+                ttsSpeedSelect.value = formatted;
+            }
+        });
+    }
+
+    const currentRate = typeof getQuizTtsRate === 'function'
+        ? getQuizTtsRate()
+        : 0.85;
+    const formattedCurrent = Number(currentRate).toFixed(2);
+
+    if (ttsSpeedSelect.value !== formattedCurrent) {
+        const existingValues = Array.from(ttsSpeedSelect.options).map(opt => opt.value);
+        if (!existingValues.includes(formattedCurrent)) {
+            const opt = document.createElement('option');
+            opt.value = formattedCurrent;
+            opt.textContent = `${formattedCurrent}×`;
+            ttsSpeedSelect.appendChild(opt);
+        }
+        ttsSpeedSelect.value = formattedCurrent;
+    }
+
+    return ttsSpeedSelect;
+}
+
+function setupAudioMode(options = {}) {
+    const { focusAnswer = true } = options;
     const playBtn = document.getElementById('playAudioBtn');
-    if (!playBtn) return;
+    if (!playBtn || !currentQuestion) return;
 
-    const pinyinOptions = currentQuestion.pinyin.split('/');
-    const firstPinyin = pinyinOptions[0].trim();
+    ensureTtsSpeedControl();
 
-    window.currentAudioPlayFunc = () => {
-        playPinyinAudio(firstPinyin, currentQuestion.char);
+    const pinyinOptions = (currentQuestion.pinyin || '').split('/');
+    const firstPinyin = (pinyinOptions[0] || '').trim();
+
+    const playCurrentPrompt = () => {
+        if (firstPinyin) {
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        } else if (currentQuestion.char) {
+            playSentenceAudio(currentQuestion.char);
+        }
     };
 
-    playBtn.onclick = window.currentAudioPlayFunc;
+    window.currentAudioPlayFunc = playCurrentPrompt;
+    playBtn.onclick = playCurrentPrompt;
+
+    if (focusAnswer && answerInput && isElementReallyVisible(answerInput)) {
+        setTimeout(() => answerInput.focus(), 100);
+    }
 
     // Auto-play once
     setTimeout(() => {
-        playPinyinAudio(firstPinyin, currentQuestion.char);
+        playCurrentPrompt();
     }, 200);
 }
 
@@ -925,6 +1265,9 @@ function handleCorrectFullAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     renderCharacterComponents(currentQuestion);
+    if (mode === 'char-to-pinyin') {
+        updateDictationProgress(dictationTotalSyllables || 0);
+    }
 
     updateStats();
     scheduleNextQuestion(300);
@@ -933,6 +1276,9 @@ function handleCorrectFullAnswer() {
 function handleCorrectSyllable(syllables, fullPinyin) {
     enteredSyllables.push(syllables[enteredSyllables.length]);
     answerInput.value = '';
+    if (mode === 'char-to-pinyin') {
+        updateDictationProgress(enteredSyllables.length);
+    }
 
     if (enteredSyllables.length === syllables.length) {
         // All syllables entered - complete!
@@ -957,6 +1303,9 @@ function handleCorrectSyllable(syllables, fullPinyin) {
         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         renderCharacterComponents(currentQuestion);
+        if (mode === 'char-to-pinyin') {
+            updateDictationProgress(dictationTotalSyllables || enteredSyllables.length);
+        }
 
         updateStats();
         scheduleNextQuestion(300);
@@ -984,6 +1333,9 @@ function handleWrongAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     renderCharacterComponents(currentQuestion);
+    if (mode === 'char-to-pinyin') {
+        updateDictationProgress(dictationTotalSyllables || 0);
+    }
 
     // Play audio for the correct answer in char-to-pinyin mode
     if (mode === 'char-to-pinyin') {
@@ -1228,7 +1580,7 @@ function checkMultipleChoice(answer) {
         const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
         correct = pinyinOptions.includes(answer);
         correctAnswer = currentQuestion.pinyin;
-    } else if (mode === 'char-to-meaning') {
+    } else if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
         correct = answer === currentQuestion.meaning;
         correctAnswer = currentQuestion.meaning;
     } else if (mode === 'pinyin-to-char' || mode === 'meaning-to-char') {
@@ -1242,7 +1594,7 @@ function checkMultipleChoice(answer) {
         feedback.textContent = `✓ Correct!`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         lastAnswerCorrect = true;
-        if (mode === 'char-to-meaning') {
+        if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
             renderMeaningHint(currentQuestion, 'correct');
         } else {
             hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
@@ -1262,7 +1614,7 @@ function checkMultipleChoice(answer) {
         feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         lastAnswerCorrect = false;
-        if (mode === 'char-to-meaning') {
+        if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
             renderMeaningHint(currentQuestion, 'incorrect');
         } else {
             hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
@@ -1667,6 +2019,7 @@ function renderEtymologyNote(breakdown) {
 function prioritizeMeaningModeButton() {
     const preferredButton =
         document.querySelector('.mode-btn[data-mode="char-to-meaning-type"]') ||
+        document.querySelector('.mode-btn[data-mode="audio-to-meaning"]') ||
         document.querySelector('.mode-btn[data-mode="char-to-meaning"]');
 
     if (!preferredButton || !preferredButton.parentElement) return;
@@ -2230,10 +2583,9 @@ function submitDrawing() {
     }
 
     updateStats();
-    setTimeout(() => {
-        clearCanvas();
-        generateQuestion();
-    }, 2000);
+
+    // Show the next button instead of auto-progressing
+    showDrawNextButton();
 }
 
 function revealDrawingAnswer() {
@@ -2255,10 +2607,42 @@ function revealDrawingAnswer() {
     feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
 
     updateStats();
-    setTimeout(() => {
-        clearCanvas();
-        generateQuestion();
-    }, 2000);
+
+    // Show the next button instead of auto-progressing
+    showDrawNextButton();
+}
+
+function showDrawNextButton() {
+    const drawCharMode = document.getElementById('drawCharacterMode');
+    if (!drawCharMode) return;
+
+    let nextBtn = document.getElementById('drawNextBtn');
+    if (!nextBtn) {
+        const buttonContainer = drawCharMode.querySelector('.flex.gap-3.mb-4') ||
+                               drawCharMode.querySelector('.text-center.mb-4');
+        if (buttonContainer) {
+            nextBtn = document.createElement('button');
+            nextBtn.id = 'drawNextBtn';
+            nextBtn.className = 'bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition font-semibold';
+            nextBtn.textContent = '→ Next';
+            nextBtn.onclick = () => {
+                clearCanvas();
+                generateQuestion();
+                nextBtn.style.display = 'none';
+            };
+            buttonContainer.appendChild(nextBtn);
+        }
+    }
+    if (nextBtn) {
+        nextBtn.style.display = 'inline-block';
+    }
+}
+
+function hideDrawNextButton() {
+    const nextBtn = document.getElementById('drawNextBtn');
+    if (nextBtn) {
+        nextBtn.style.display = 'none';
+    }
 }
 
 function populateStudyList() {
@@ -2455,6 +2839,7 @@ function getCurrentPromptText() {
         case 'draw-char':
             return asString(question.char);
         case 'audio-to-pinyin':
+        case 'audio-to-meaning':
             return asString(question.char) || firstFromList(question.pinyin);
         default:
             break;
@@ -2598,6 +2983,7 @@ function initQuizCommandPalette() {
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-mc', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+        { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
         { name: 'Pinyin → Char', mode: 'pinyin-to-char', type: 'mode' },
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
         { name: 'Char → Meaning (Fuzzy)', mode: 'char-to-meaning-type', type: 'mode' },
@@ -2851,7 +3237,21 @@ function initQuiz(charactersData, userConfig = {}) {
                 hint.textContent = '';
                 return;
             }
-        } else if (e.key === ' ' && mode === 'audio-to-pinyin' && audioSection) {
+        } else if (mode === 'char-to-pinyin' && e.key === ' ') {
+            if (e.altKey) {
+                return;
+            }
+            if (!e.ctrlKey && !e.metaKey && e.shiftKey) {
+                // Allow Shift+Space to insert a literal space
+                return;
+            }
+            e.preventDefault();
+            if (e.ctrlKey || e.metaKey) {
+                playFullDictationSentence();
+            } else {
+                playCurrentDictationPart();
+            }
+        } else if (e.key === ' ' && (mode === 'audio-to-pinyin' || mode === 'audio-to-meaning') && audioSection) {
             e.preventDefault();
             if (window.currentAudioPlayFunc) {
                 window.currentAudioPlayFunc();

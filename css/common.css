@@ -137,6 +137,40 @@
     color: #6b7280;
 }
 
+.dictation-sentence {
+    word-break: keep-all;
+}
+
+.dictation-part {
+    display: inline-block;
+    padding: 0 6px;
+    border-radius: 10px;
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    cursor: pointer;
+}
+
+.dictation-part:hover {
+    background: rgba(191, 219, 254, 0.45);
+}
+
+.dictation-part-current {
+    background: #bfdbfe;
+    color: #1e3a8a;
+}
+
+.dictation-part-complete {
+    color: #6b7280;
+    opacity: 0.7;
+}
+
+.dictation-part[data-syllables="0"] {
+    cursor: default;
+    pointer-events: none;
+    background: transparent;
+    color: inherit;
+    opacity: 1;
+}
+
 #hint {
     min-height: 48px;
     display: flex;
