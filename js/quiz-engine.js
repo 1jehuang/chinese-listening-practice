@@ -2613,12 +2613,12 @@ function revealDrawingAnswer() {
 }
 
 function showDrawNextButton() {
-    const drawCharMode = document.getElementById('drawCharacterMode');
+    const drawCharMode = document.getElementById('drawCharMode');
     if (!drawCharMode) return;
 
     let nextBtn = document.getElementById('drawNextBtn');
     if (!nextBtn) {
-        const buttonContainer = drawCharMode.querySelector('.flex.gap-3.mb-4') ||
+        const buttonContainer = drawCharMode.querySelector('.flex.gap-3.justify-center.mt-4') ||
                                drawCharMode.querySelector('.text-center.mb-4');
         if (buttonContainer) {
             nextBtn = document.createElement('button');
