@@ -27,6 +27,8 @@ const DEFAULT_PAGES = [
     { name: 'Lesson 3 Part 1', url: 'lesson-3-part-1.html', type: 'page', keywords: 'lesson 3 part1 quiz americans' },
     { name: 'Lesson 3 Part 2', url: 'lesson-3-part-2.html', type: 'page', keywords: 'lesson 3 part2 quiz americans' },
     { name: 'Lesson 3 Cumulative', url: 'lesson-3-cumulative.html', type: 'page', keywords: 'lesson 3 cumulative all quiz americans' },
+    { name: 'Lesson 3 Dictation', url: 'lesson-3-dictation.html', type: 'page', keywords: 'lesson 3 listening dictation' },
+    { name: 'Dialogue Practice', url: 'dialogue-practice.html', type: 'page', keywords: 'dialogue speaking practice jeremy lines summer vacation 暑假' },
     { name: 'Test 1 Practice', url: 'test1-practice.html', type: 'page', keywords: 'test 1 practice review' },
     { name: 'Test 1 Review', url: 'test1-review.html', type: 'page', keywords: 'test 1 review analysis' },
     { name: 'Modular Quiz Sandbox', url: 'test-modular-quiz.html', type: 'page', keywords: 'sandbox modular dev' },
