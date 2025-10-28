@@ -40,6 +40,14 @@ let dictationTotalSyllables = 0;
 let dictationMatchedSyllables = 0;
 let dictationPrimaryPinyin = '';
 
+// Timer state
+let timerEnabled = false;
+let timerSeconds = 10;
+let timerIntervalId = null;
+let timerRemainingSeconds = 0;
+const TIMER_ENABLED_KEY = 'quizTimerEnabled';
+const TIMER_SECONDS_KEY = 'quizTimerSeconds';
+
 // Hanzi Writer
 let writer = null;
 
@@ -921,6 +929,7 @@ function playFullDictationSentence() {
 
 function generateQuestion() {
     clearPendingNextQuestion();
+    stopTimer();
     enteredSyllables = [];
     enteredTones = '';
     answered = false;
@@ -1054,6 +1063,11 @@ function generateQuestion() {
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
     }
+
+    // Start timer for the new question
+    if (timerEnabled) {
+        startTimer();
+    }
 }
 
 function ensureTtsSpeedControl() {
@@ -1174,6 +1188,8 @@ function setupAudioMode(options = {}) {
 }
 
 function checkAnswer() {
+    stopTimer();
+
     if (!answerInput.value.trim()) return;
 
     const userAnswer = answerInput.value.trim();
@@ -1666,6 +1682,112 @@ function updateStats() {
     const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
     if (percentageEl) percentageEl.textContent = percentage;
     if (accuracyEl) accuracyEl.textContent = percentage + '%';
+
+    updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+    const timerEl = document.getElementById('timerDisplay');
+    if (!timerEl) return;
+
+    if (timerEnabled) {
+        const mins = Math.floor(timerRemainingSeconds / 60);
+        const secs = timerRemainingSeconds % 60;
+        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+        const isLow = timerRemainingSeconds <= 5;
+        const colorClass = isLow ? 'text-red-600 font-bold' : 'text-gray-600';
+        timerEl.innerHTML = `<span class="${colorClass}">⏱ ${timeStr}</span>`;
+        timerEl.style.display = 'inline';
+    } else {
+        timerEl.style.display = 'none';
+    }
+}
+
+function stopTimer() {
+    if (timerIntervalId) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+    }
+}
+
+function startTimer() {
+    stopTimer();
+    if (!timerEnabled) return;
+
+    timerRemainingSeconds = timerSeconds;
+    updateTimerDisplay();
+
+    timerIntervalId = setInterval(() => {
+        timerRemainingSeconds--;
+        updateTimerDisplay();
+
+        if (timerRemainingSeconds <= 0) {
+            stopTimer();
+            // Auto-submit when time runs out
+            if (!answered) {
+                checkAnswer();
+            }
+        }
+    }, 1000);
+}
+
+function loadTimerSettings() {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
+    try {
+        const storedEnabled = window.localStorage.getItem(TIMER_ENABLED_KEY);
+        if (storedEnabled === '1') {
+            timerEnabled = true;
+        } else if (storedEnabled === '0') {
+            timerEnabled = false;
+        }
+
+        const storedSeconds = window.localStorage.getItem(TIMER_SECONDS_KEY);
+        if (storedSeconds) {
+            const parsed = parseInt(storedSeconds, 10);
+            if (Number.isFinite(parsed) && parsed > 0) {
+                timerSeconds = parsed;
+            }
+        }
+    } catch (err) {
+        console.warn('Failed to load timer settings', err);
+    }
+}
+
+function saveTimerSettings() {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
+    try {
+        window.localStorage.setItem(TIMER_ENABLED_KEY, timerEnabled ? '1' : '0');
+        window.localStorage.setItem(TIMER_SECONDS_KEY, String(timerSeconds));
+    } catch (err) {
+        console.warn('Failed to save timer settings', err);
+    }
+}
+
+function setTimerEnabled(enabled) {
+    timerEnabled = enabled;
+    saveTimerSettings();
+    updateTimerDisplay();
+
+    if (enabled && !answered && currentQuestion) {
+        startTimer();
+    } else {
+        stopTimer();
+    }
+}
+
+function setTimerSeconds(seconds) {
+    const parsed = parseInt(seconds, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+
+    timerSeconds = parsed;
+    saveTimerSettings();
+
+    // Restart timer if it's currently running
+    if (timerEnabled && !answered && currentQuestion) {
+        startTimer();
+    }
 }
 
 function loadComponentPreference() {
@@ -2859,8 +2981,8 @@ function revealDrawingAnswer() {
     if (ocrResult) {
         ocrResult.textContent = currentQuestion.char;
         // Adjust font size for multi-character words to ensure all characters are visible
-        ocrResult.style.fontFamily = "'ZCOOL XiaoWei', cursive";
-        ocrResult.style.fontWeight = '400';
+        ocrResult.style.fontFamily = "'Noto Sans SC', sans-serif";
+        ocrResult.style.fontWeight = '700';
         if (currentQuestion.char.length > 1) {
             ocrResult.className = 'text-5xl min-h-[80px] text-blue-600 font-bold';
         } else {
@@ -3403,6 +3525,36 @@ function initQuizCommandPalette() {
             available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function'
         });
 
+        actions.push({
+            name: timerEnabled ? 'Disable Answer Timer' : 'Enable Answer Timer',
+            type: 'action',
+            description: timerEnabled
+                ? 'Turn off the countdown timer for questions'
+                : 'Add a time limit for answering each question',
+            keywords: 'timer countdown time limit enable disable toggle',
+            action: () => {
+                setTimerEnabled(!timerEnabled);
+            }
+        });
+
+        actions.push({
+            name: 'Set Timer Duration',
+            type: 'action',
+            description: `Current: ${timerSeconds}s. Change how many seconds you have to answer`,
+            keywords: 'timer duration seconds time limit set change',
+            action: () => {
+                const input = prompt(`Enter timer duration in seconds (currently ${timerSeconds}s):`, String(timerSeconds));
+                if (input !== null && input.trim() !== '') {
+                    const seconds = parseInt(input.trim(), 10);
+                    if (Number.isFinite(seconds) && seconds > 0) {
+                        setTimerSeconds(seconds);
+                    } else {
+                        alert('Please enter a valid positive number of seconds.');
+                    }
+                }
+            }
+        });
+
         return actions;
     }
 
@@ -3429,6 +3581,7 @@ function initQuiz(charactersData, userConfig = {}) {
     config = userConfig || {};
 
     loadComponentPreference();
+    loadTimerSettings();
 
     if (config.defaultMode) {
         mode = config.defaultMode;

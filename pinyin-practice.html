@@ -49,11 +49,19 @@
         <!-- Speak Mode -->
         <div id="speakMode" class="hidden text-center">
             <div id="displayPinyin" class="text-6xl font-bold text-blue-600 my-8"></div>
-            <button id="micBtn" class="bg-red-500 hover:bg-red-600 text-white px-12 py-6 rounded-full font-semibold text-lg transition">
-                🎤 Hold to Speak
-            </button>
-            <div class="text-gray-500 text-sm mt-4">Hold the button and say the pinyin syllable</div>
+
+            <!-- Audio Visualizer -->
+            <div class="flex justify-center mb-6">
+                <canvas id="visualizer" width="300" height="100" class="border-2 border-gray-300 rounded-lg bg-gray-50"></canvas>
+            </div>
+
+            <div class="bg-green-100 border-2 border-green-500 rounded-lg p-4 inline-block">
+                <div class="text-green-700 font-semibold text-lg">🎤 Listening continuously...</div>
+                <div class="text-green-600 text-sm mt-1">Just speak the pinyin syllable</div>
+            </div>
+
             <div id="recognizedText" class="text-blue-600 font-medium mt-4 min-h-[25px]"></div>
+            <div id="debugInfo" class="text-xs text-gray-400 mt-2"></div>
         </div>
 
         <!-- Double Mode -->
@@ -157,6 +165,10 @@
         let selectedOptionIndex = 0;
         let recognition = null;
         let isRecognizing = false;
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let animationId = null;
 
         const playBtn = document.getElementById('playBtn');
         const nextBtn = document.getElementById('nextBtn');
@@ -170,7 +182,6 @@
         const doubleMode = document.getElementById('doubleMode');
         const doubleAnswerInput = document.getElementById('doubleAnswerInput');
         const doubleCheckBtn = document.getElementById('doubleCheckBtn');
-        const micBtn = document.getElementById('micBtn');
         const displayPinyin = document.getElementById('displayPinyin');
         const recognizedText = document.getElementById('recognizedText');
 
@@ -587,7 +598,104 @@
             }
         });
 
-        // Speech Recognition - Rewritten from scratch
+        // Audio Visualizer
+        function initAudioVisualizer() {
+            const canvas = document.getElementById('visualizer');
+            if (!canvas) return;
+
+            const canvasCtx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            function draw() {
+                if (!analyser) {
+                    // Draw idle state
+                    canvasCtx.fillStyle = '#f9fafb';
+                    canvasCtx.fillRect(0, 0, width, height);
+                    canvasCtx.fillStyle = '#d1d5db';
+                    canvasCtx.fillRect(0, height / 2 - 1, width, 2);
+                    return;
+                }
+
+                animationId = requestAnimationFrame(draw);
+
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyser.getByteTimeDomainData(dataArray);
+
+                canvasCtx.fillStyle = '#f9fafb';
+                canvasCtx.fillRect(0, 0, width, height);
+
+                canvasCtx.lineWidth = 2;
+                canvasCtx.strokeStyle = '#3b82f6';
+                canvasCtx.beginPath();
+
+                const sliceWidth = width / bufferLength;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * height / 2;
+
+                    if (i === 0) {
+                        canvasCtx.moveTo(x, y);
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+
+                    x += sliceWidth;
+                }
+
+                canvasCtx.lineTo(width, height / 2);
+                canvasCtx.stroke();
+            }
+
+            draw();
+        }
+
+        async function startAudioVisualizer() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+
+                analyser.fftSize = 2048;
+                microphone.connect(analyser);
+
+                initAudioVisualizer();
+
+                const debugInfo = document.getElementById('debugInfo');
+                if (debugInfo) {
+                    debugInfo.textContent = '✓ Microphone connected';
+                }
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                const debugInfo = document.getElementById('debugInfo');
+                if (debugInfo) {
+                    debugInfo.textContent = `✗ Microphone error: ${error.message}`;
+                }
+            }
+        }
+
+        function stopAudioVisualizer() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            if (microphone && microphone.mediaStream) {
+                microphone.mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            analyser = null;
+            microphone = null;
+        }
+
+        // Speech Recognition - Continuous mode
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -598,45 +706,56 @@
 
             const rec = new SpeechRecognition();
             rec.lang = 'zh-CN';
-            rec.continuous = false;
-            rec.interimResults = false;
+            rec.continuous = true; // Keep listening continuously
+            rec.interimResults = true; // Show interim results
 
             rec.onstart = () => {
+                console.log('Speech recognition started');
                 isRecognizing = true;
-                if (micBtn) {
-                    micBtn.style.background = '#28a745';
-                    micBtn.textContent = '🎤 Listening...';
-                }
                 if (recognizedText) {
                     recognizedText.textContent = 'Listening...';
+                }
+                const debugInfo = document.getElementById('debugInfo');
+                if (debugInfo) {
+                    debugInfo.textContent = '✓ Recognition active';
                 }
             };
 
             rec.onresult = (event) => {
-                const result = event.results[0][0];
-                const transcript = result.transcript.trim();
-                const confidence = Math.round(result.confidence * 100);
+                console.log('Speech recognition result:', event);
+
+                // Get the latest result
+                const lastResultIndex = event.results.length - 1;
+                const result = event.results[lastResultIndex];
+                const transcript = result[0].transcript.trim();
+                const confidence = Math.round(result[0].confidence * 100);
+                const isFinal = result.isFinal;
+
+                console.log('Transcript:', transcript, 'Confidence:', confidence, 'Final:', isFinal);
 
                 if (recognizedText) {
-                    recognizedText.textContent = `Heard: "${transcript}" (${confidence}%)`;
+                    if (isFinal) {
+                        recognizedText.textContent = `Heard: "${transcript}" (${confidence}%)`;
+                        checkSpeechAnswer(transcript);
+                    } else {
+                        // Show interim results in lighter color
+                        recognizedText.textContent = `Listening... "${transcript}"`;
+                        recognizedText.style.color = '#93c5fd'; // lighter blue
+                    }
                 }
-
-                checkSpeechAnswer(transcript);
             };
 
             rec.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
-                isRecognizing = false;
 
-                if (micBtn) {
-                    micBtn.style.background = '#dc3545';
-                    micBtn.textContent = '🎤 Hold to Speak';
+                // Don't stop on no-speech error, just ignore it in continuous mode
+                if (event.error === 'no-speech') {
+                    console.log('No speech detected, continuing to listen...');
+                    return;
                 }
 
                 if (recognizedText) {
-                    if (event.error === 'no-speech') {
-                        recognizedText.textContent = 'No speech detected. Try again.';
-                    } else if (event.error === 'audio-capture') {
+                    if (event.error === 'audio-capture') {
                         recognizedText.textContent = 'No microphone found.';
                     } else if (event.error === 'not-allowed') {
                         recognizedText.textContent = 'Microphone permission denied.';
@@ -644,13 +763,29 @@
                         recognizedText.textContent = `Error: ${event.error}`;
                     }
                 }
+
+                const debugInfo = document.getElementById('debugInfo');
+                if (debugInfo) {
+                    debugInfo.textContent = `✗ Error: ${event.error}`;
+                }
             };
 
             rec.onend = () => {
+                console.log('Speech recognition ended');
                 isRecognizing = false;
-                if (micBtn) {
-                    micBtn.style.background = '#dc3545';
-                    micBtn.textContent = '🎤 Hold to Speak';
+
+                // Auto-restart if still in speak mode
+                if (mode === 'speak') {
+                    console.log('Auto-restarting recognition...');
+                    setTimeout(() => {
+                        if (mode === 'speak' && recognition) {
+                            try {
+                                recognition.start();
+                            } catch (e) {
+                                console.error('Failed to restart recognition:', e);
+                            }
+                        }
+                    }, 100);
                 }
             };
 
@@ -662,60 +797,56 @@
 
             const targetPinyin = addToneMarks(currentPinyin, currentTone);
 
-            // Normalize both strings for comparison
-            const normalizedTarget = targetPinyin.toLowerCase().replace(/\s/g, '');
-            const normalizedTranscript = transcript.toLowerCase().replace(/\s/g, '');
-
-            // Check if speech matches target
-            const correct = normalizedTranscript === normalizedTarget ||
-                           normalizedTranscript.includes(normalizedTarget);
+            // Speech recognition returns Chinese characters, not pinyin
+            // Show what character was recognized so user can verify pronunciation
+            console.log('Target pinyin:', targetPinyin, 'Recognized as:', transcript);
 
             answered = true;
-            total++;
 
-            if (correct) {
-                score++;
-                feedback.textContent = `✓ Correct! You said "${transcript}"`;
-                feedback.className = 'feedback correct';
+            // Display what was recognized
+            feedback.innerHTML = `
+                <div class="text-lg">
+                    <div class="mb-2">Target: <span class="text-blue-600 font-bold text-2xl">${targetPinyin}</span></div>
+                    <div>You said: <span class="text-green-600 font-bold text-2xl">${transcript}</span></div>
+                    <div class="text-sm text-gray-600 mt-2">Did it match? Press Next for another</div>
+                </div>
+            `;
+            feedback.className = 'feedback';
 
-                updateStats();
-
-                setTimeout(() => {
-                    generateQuestion();
-                }, 1500);
-            } else {
-                feedback.textContent = `✗ Wrong. Expected: ${targetPinyin}, You said: "${transcript}"`;
-                feedback.className = 'feedback incorrect';
-
-                updateStats();
-
-                // Allow retry
-                setTimeout(() => {
-                    answered = false;
-                    total--;
-                    feedback.textContent = '';
-                    if (recognizedText) recognizedText.textContent = '';
-                }, 2000);
-            }
+            // Don't auto-advance, let user decide
         }
 
-        function startListening() {
+        async function startContinuousListening() {
             if (mode !== 'speak' || isRecognizing) return;
 
+            console.log('Starting continuous listening...');
+
+            // Start audio visualizer
+            if (!audioContext) {
+                await startAudioVisualizer();
+            }
+
+            // Start speech recognition
             if (!recognition) {
                 recognition = initSpeechRecognition();
             }
 
             if (recognition) {
                 try {
+                    console.log('Starting speech recognition...');
                     recognition.start();
                 } catch (e) {
                     console.error('Failed to start recognition:', e);
+                    const debugInfo = document.getElementById('debugInfo');
+                    if (debugInfo) {
+                        debugInfo.textContent = `✗ Start error: ${e.message}`;
+                    }
                 }
             }
         }
 
-        function stopListening() {
+        function stopContinuousListening() {
+            console.log('Stopping continuous listening...');
             if (recognition && isRecognizing) {
                 try {
                     recognition.stop();
@@ -725,28 +856,15 @@
             }
         }
 
-        // Microphone button controls
-        if (micBtn) {
-            // Mouse events
-            micBtn.addEventListener('mousedown', startListening);
-            micBtn.addEventListener('mouseup', stopListening);
-            micBtn.addEventListener('mouseleave', stopListening);
-
-            // Touch events for mobile
-            micBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                startListening();
-            });
-
-            micBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                stopListening();
-            });
-        }
-
         // Mode selector
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Clean up previous mode
+                if (mode === 'speak') {
+                    stopContinuousListening();
+                    stopAudioVisualizer();
+                }
+
                 // Remove active state from all buttons
                 document.querySelectorAll('.mode-btn').forEach(b => {
                     b.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
@@ -773,6 +891,10 @@
                     tone24Mode.classList.remove('hidden');
                 } else if (mode === 'speak') {
                     speakMode.classList.remove('hidden');
+                    // Initialize visualizer canvas
+                    initAudioVisualizer();
+                    // Auto-start continuous listening
+                    setTimeout(() => startContinuousListening(), 500);
                 } else if (mode === 'double') {
                     doubleMode.classList.remove('hidden');
                 }
