@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dialogue Practice - Jeremy's Lines</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/command-palette.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen" onload="initCommandPalette()">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Header -->
+        <div class="mb-6">
+            <a href="home.html" class="text-blue-600 hover:text-blue-800 text-sm">← Back to Home</a>
+            <h1 class="text-3xl font-bold mt-2 mb-2">Dialogue Practice - Jeremy's Lines</h1>
+            <p class="text-gray-600">Practice your lines from the summer vacation dialogue (暑假计划)</p>
+        </div>
+
+        <!-- Progress and Controls -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="text-lg font-semibold">
+                    Line <span id="currentLineNum">1</span> of <span id="totalLines">6</span>
+                </div>
+                <div class="text-sm text-gray-600">
+                    Press <kbd class="px-2 py-1 bg-gray-200 rounded text-xs font-mono">Space</kbd> for audio
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button onclick="revealChinese()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Reveal Chinese
+                </button>
+                <button onclick="revealPinyin()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Reveal Pinyin
+                </button>
+                <button onclick="playAudio()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
+                    🔊 Play Audio
+                </button>
+                <button onclick="nextLine()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                    Next →
+                </button>
+                <button onclick="prevLine()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                    ← Previous
+                </button>
+                <button onclick="shuffle()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
+                    🔀 Shuffle
+                </button>
+            </div>
+        </div>
+
+        <!-- Practice Card -->
+        <div id="practiceCard" class="bg-white rounded-lg shadow-lg p-8">
+            <!-- Content loaded by JS -->
+        </div>
+
+        <!-- Keyboard Shortcuts -->
+        <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <h3 class="font-semibold mb-2">⌨️ Keyboard Shortcuts:</h3>
+            <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                <div><kbd class="px-2 py-1 bg-white rounded border">→</kbd> Next line</div>
+                <div><kbd class="px-2 py-1 bg-white rounded border">←</kbd> Previous line</div>
+                <div><kbd class="px-2 py-1 bg-white rounded border">C</kbd> Reveal Chinese</div>
+                <div><kbd class="px-2 py-1 bg-white rounded border">P</kbd> Reveal Pinyin</div>
+                <div><kbd class="px-2 py-1 bg-white rounded border">Space</kbd> Play audio</div>
+                <div><kbd class="px-2 py-1 bg-white rounded border">S</kbd> Shuffle</div>
+            </div>
+        </div>
+
+        <!-- Full Dialogue Script -->
+        <div class="mt-8 bg-white rounded-lg shadow p-6">
+            <h2 class="text-2xl font-bold mb-4">📜 Full Dialogue Script</h2>
+            <p class="text-sm text-gray-600 mb-4">Click any line to hear it spoken 🔊</p>
+            <div class="space-y-4 text-sm">
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('乐乐，你今年暑假有什么计划呢？')">
+                    <div class="font-semibold text-gray-700">F (Fiona):</div>
+                    <div class="mt-1">乐乐，你今年暑假有什么计划呢？</div>
+                    <div class="text-gray-600 italic">lèlè, nǐ jīnnián shǔjià yǒu shénme jìhuà ne?</div>
+                    <div class="text-gray-500 text-xs mt-1">Lele, what are your plans for this summer vacation?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('这个暑假我想去西班牙。你呢？')">
+                    <div class="font-semibold text-gray-700">S (Sophia/乐乐):</div>
+                    <div class="mt-1">这个暑假我想去西班牙。你呢？</div>
+                    <div class="text-gray-600 italic">zhège shǔjià wǒ xiǎng qù xībānyá. nǐ ne?</div>
+                    <div class="text-gray-500 text-xs mt-1">This summer break, I want to go to Spain. What about you?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('我想去日本。')">
+                    <div class="font-semibold text-gray-700">F:</div>
+                    <div class="mt-1">我想去日本。</div>
+                    <div class="text-gray-600 italic">wǒ xiǎng qù rìběn.</div>
+                    <div class="text-gray-500 text-xs mt-1">I want to go to Japan.</div>
+                </div>
+
+                <div class="p-3 bg-green-50 rounded border-l-4 border-green-500 cursor-pointer hover:bg-green-100 transition" onclick="playScriptLine('真的吗？我也想去日本！')">
+                    <div class="font-semibold text-green-700">J (Jeremy) - Line 1:</div>
+                    <div class="mt-1 font-medium">真的吗？我也想去日本！</div>
+                    <div class="text-gray-600 italic">zhēn de ma? wǒ yě xiǎng qù rìběn!</div>
+                    <div class="text-gray-500 text-xs mt-1">Really? I also want to go to Japan!</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('噢，你想去哪一个城市呢？')">
+                    <div class="font-semibold text-gray-700">F:</div>
+                    <div class="mt-1">噢，你想去哪一个城市呢？</div>
+                    <div class="text-gray-600 italic">ō, nǐ xiǎng qù nǎ yīgè chéngshì ne?</div>
+                    <div class="text-gray-500 text-xs mt-1">Oh, what city do you want to go to?</div>
+                </div>
+
+                <div class="p-3 bg-green-50 rounded border-l-4 border-green-500 cursor-pointer hover:bg-green-100 transition" onclick="playScriptLine('我想去大阪。它们有很好吃的菜。')">
+                    <div class="font-semibold text-green-700">J - Line 2:</div>
+                    <div class="mt-1 font-medium">我想去大阪。它们有很好吃的菜。</div>
+                    <div class="text-gray-600 italic">wǒ xiǎng qù dàbǎn. tāmen yǒu hěn hǎochī de cài.</div>
+                    <div class="text-gray-500 text-xs mt-1">I want to go to Osaka. They have great food.</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('大阪？大阪到底在日本哪里？')">
+                    <div class="font-semibold text-gray-700">S:</div>
+                    <div class="mt-1">大阪？大阪到底在日本哪里？</div>
+                    <div class="text-gray-600 italic">dàbǎn? dàbǎn dàodǐ zài rìběn nǎlǐ?</div>
+                    <div class="text-gray-500 text-xs mt-1">Osaka? Where is that in Japan?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('大阪是在日本的南边。哎，乐乐，你为什么要去西班牙呢？')">
+                    <div class="font-semibold text-gray-700">F:</div>
+                    <div class="mt-1">大阪是在日本的南边。哎，乐乐，你为什么要去西班牙呢？</div>
+                    <div class="text-gray-600 italic">dàbǎn shì zài rìběn de nánbiān. āi, lèlè, nǐ wèishénme yào qù xībānyá ne?</div>
+                    <div class="text-gray-500 text-xs mt-1">Osaka is in the south of Japan. Hey, Sophia, why do you want to go to Spain?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('因为，我的爸爸是西班牙人，所以我要去西班牙学西班牙语。你们看得出来看不出来我是一个西班牙人？')">
+                    <div class="font-semibold text-gray-700">S:</div>
+                    <div class="mt-1">因为，我的爸爸是西班牙人，所以我要去西班牙学西班牙语。你们看得出来看不出来我是一个西班牙人？</div>
+                    <div class="text-gray-600 italic">yīnwèi, wǒ de bàba shì xībānyá rén, suǒyǐ wǒ yào qù xībānyá xué xībānyá yǔ. nǐmen kàn de chūlái kàn bù chūlái wǒ shì yīgè xībānyá rén?</div>
+                    <div class="text-gray-500 text-xs mt-1">Because my dad is Spanish, I'm going to Spain to learn Spanish. Can you guys tell that I'm Spanish?</div>
+                </div>
+
+                <div class="p-3 bg-green-50 rounded border-l-4 border-green-500 cursor-pointer hover:bg-green-100 transition" onclick="playScriptLine('我觉得你看起来像中国人。')">
+                    <div class="font-semibold text-green-700">J - Line 3:</div>
+                    <div class="mt-1 font-medium">我觉得你看起来像中国人。</div>
+                    <div class="text-gray-600 italic">wǒ juéde nǐ kàn qǐlái xiàng zhōngguó rén.</div>
+                    <div class="text-gray-500 text-xs mt-1">I feel like you resemble a Chinese person.</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('很多人都一样的说。哎，Wu qi na，你为什么要去日本呢？')">
+                    <div class="font-semibold text-gray-700">S:</div>
+                    <div class="mt-1">很多人都一样的说。哎，Wu qi na，你为什么要去日本呢？</div>
+                    <div class="text-gray-600 italic">hěn duō rén dōu yīyàng de shuō. āi, Wu qi na, nǐ wèishénme yào qù rìběn ne?</div>
+                    <div class="text-gray-500 text-xs mt-1">A lotta people say that. Why did you want to go to Japan, Fiona?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('因为我大二以前学过日语，所以我今年想去日本。')">
+                    <div class="font-semibold text-gray-700">F:</div>
+                    <div class="mt-1">因为我大二以前学过日语，所以我今年想去日本。</div>
+                    <div class="text-gray-600 italic">yīnwèi wǒ dà èr yǐqián xuéguò rìyǔ, suǒyǐ wǒ jīnnián xiǎng qù rìběn.</div>
+                    <div class="text-gray-500 text-xs mt-1">I studied Japanese before my sophomore year, so I want to go to Japan this year.</div>
+                </div>
+
+                <div class="p-3 bg-green-50 rounded border-l-4 border-green-500 cursor-pointer hover:bg-green-100 transition" onclick="playScriptLine('啊啊啊，虽然我没学过日语，但是我知道很多日本的文化。')">
+                    <div class="font-semibold text-green-700">J - Line 4:</div>
+                    <div class="mt-1 font-medium">啊啊啊，虽然我没学过日语，但是我知道很多日本的文化。</div>
+                    <div class="text-gray-600 italic">āāāā, suīrán wǒ méi xuéguò rìyǔ, dànshì wǒ zhīdào hěn duō rìběn de wénhuà.</div>
+                    <div class="text-gray-500 text-xs mt-1">Ahhh, although I haven't studied Japanese, I know a lot about Japanese culture.</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('那，你们怎么去日本呢？')">
+                    <div class="font-semibold text-gray-700">S:</div>
+                    <div class="mt-1">那，你们怎么去日本呢？</div>
+                    <div class="text-gray-600 italic">nà, nǐmen zěnme qù rìběn ne?</div>
+                    <div class="text-gray-500 text-xs mt-1">How are you going to get there?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('我会坐飞机去因为飞机比船快得多。Jeremy，你在日本想吃什么？')">
+                    <div class="font-semibold text-gray-700">F:</div>
+                    <div class="mt-1">我会坐飞机去因为飞机比船快得多。Jeremy，你在日本想吃什么？</div>
+                    <div class="text-gray-600 italic">wǒ huì zuò fēijī qù yīnwèi fēijī bǐ chuán kuài de duō. Jeremy, nǐ zài rìběn xiǎng chī shénme?</div>
+                    <div class="text-gray-500 text-xs mt-1">I'm going to go by plane because plane is much faster than boat. Jeremy, what do you want to eat in Japan?</div>
+                </div>
+
+                <div class="p-3 bg-green-50 rounded border-l-4 border-green-500 cursor-pointer hover:bg-green-100 transition" onclick="playScriptLine('我什么都想吃！乐乐，西班牙的菜好吃吗？')">
+                    <div class="font-semibold text-green-700">J - Line 5:</div>
+                    <div class="mt-1 font-medium">我什么都想吃！乐乐，西班牙的菜好吃吗？</div>
+                    <div class="text-gray-600 italic">wǒ shénme dōu xiǎng chī! lèlè, xībānyá de cài hǎochī ma?</div>
+                    <div class="text-gray-500 text-xs mt-1">I want to eat anything! Sophia, is the food in Spain good?</div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition" onclick="playScriptLine('有的好吃，有的不好吃。我觉得 Paella 非常非常好吃的。')">
+                    <div class="font-semibold text-gray-700">S:</div>
+                    <div class="mt-1">有的好吃，有的不好吃。我觉得 Paella 非常非常好吃的。</div>
+                    <div class="text-gray-600 italic">yǒu de hǎochī, yǒu de bù hǎochī. wǒ juéde Paella fēicháng fēicháng hǎochī de.</div>
+                    <div class="text-gray-500 text-xs mt-1">Some is good, some is not good. I think Paella is very, very delicious.</div>
+                </div>
+
+                <div class="p-3 bg-green-50 rounded border-l-4 border-green-500 cursor-pointer hover:bg-green-100 transition" onclick="playScriptLine('听起来很好吃！我也想有一天去西班牙。')">
+                    <div class="font-semibold text-green-700">J - Line 6 (Conclusion):</div>
+                    <div class="mt-1 font-medium">听起来很好吃！我也想有一天去西班牙。</div>
+                    <div class="text-gray-600 italic">tīng qǐlái hěn hǎochī! wǒ yě xiǎng yǒu yītiān qù xībānyá.</div>
+                    <div class="text-gray-500 text-xs mt-1">Sounds delicious! I also want to go to Spain one day.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const jeremyLines = [
+            {
+                number: "J1",
+                chinese: "真的吗？我也想去日本！",
+                pinyin: "zhēn de ma? wǒ yě xiǎng qù rìběn!",
+                translation: "Really? I also want to go to Japan!",
+                context: "Response to Fiona saying she wants to go to Japan"
+            },
+            {
+                number: "J2",
+                chinese: "我想去大阪。它们有很好吃的菜。",
+                pinyin: "wǒ xiǎng qù dàbǎn. tāmen yǒu hěn hǎochī de cài.",
+                translation: "I want to go to Osaka. They have great food.",
+                context: "Answering which city in Japan you want to visit"
+            },
+            {
+                number: "J3",
+                chinese: "我觉得你看起来像中国人。",
+                pinyin: "wǒ juéde nǐ kàn qǐlái xiàng zhōngguó rén.",
+                translation: "I feel like you resemble a Chinese person.",
+                context: "Response to Sophia asking if she looks Spanish"
+            },
+            {
+                number: "J4",
+                chinese: "啊啊啊，虽然我没学过日语，但是我知道很多日本的文化。",
+                pinyin: "āāāā, suīrán wǒ méi xuéguò rìyǔ, dànshì wǒ zhīdào hěn duō rìběn de wénhuà.",
+                translation: "Ahhh, although I haven't studied Japanese, I know a lot about Japanese culture.",
+                context: "Responding to the conversation about learning Japanese"
+            },
+            {
+                number: "J5",
+                chinese: "我什么都想吃！乐乐，西班牙的菜好吃吗？",
+                pinyin: "wǒ shénme dōu xiǎng chī! lèlè, xībānyá de cài hǎochī ma?",
+                translation: "I want to eat anything! Sophia, is the food in Spain good?",
+                context: "When Fiona asks what you want to eat in Japan"
+            },
+            {
+                number: "J6 (Conclusion)",
+                chinese: "听起来很好吃！我也想有一天去西班牙。",
+                pinyin: "tīng qǐlái hěn hǎochī! wǒ yě xiǎng yǒu yītiān qù xībānyá.",
+                translation: "Sounds delicious! I also want to go to Spain one day.",
+                context: "Final line, responding to Sophia talking about Spanish food"
+            }
+        ];
+
+        let currentIndex = 0;
+        let order = [...Array(jeremyLines.length).keys()];
+
+        function displayLine(index) {
+            const line = jeremyLines[order[index]];
+            const card = document.getElementById('practiceCard');
+
+            card.innerHTML = `
+                <div class="mb-4">
+                    <span class="inline-block bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded">
+                        ${line.number}
+                    </span>
+                </div>
+
+                <div class="mb-6 p-4 bg-gray-50 rounded border-l-4 border-gray-400">
+                    <div class="text-sm text-gray-600 uppercase tracking-wide mb-2">Context:</div>
+                    <div class="text-gray-700">${line.context}</div>
+                </div>
+
+                <div class="mb-6 p-4 bg-blue-50 rounded border-l-4 border-blue-400">
+                    <div class="text-sm text-gray-600 uppercase tracking-wide mb-2">English Translation:</div>
+                    <div class="text-lg text-gray-800">${line.translation}</div>
+                </div>
+
+                <div class="mb-6 p-6 bg-yellow-50 rounded border-l-4 border-yellow-400">
+                    <div class="text-sm text-gray-600 uppercase tracking-wide mb-3">Chinese:</div>
+                    <div id="chineseText" class="text-3xl font-medium text-gray-900 blur-md select-none transition-all duration-300">
+                        ${line.chinese}
+                    </div>
+                </div>
+
+                <div class="p-6 bg-purple-50 rounded border-l-4 border-purple-400">
+                    <div class="text-sm text-gray-600 uppercase tracking-wide mb-3">Pinyin:</div>
+                    <div id="pinyinText" class="text-xl text-gray-700 italic blur-md select-none transition-all duration-300">
+                        ${line.pinyin}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('currentLineNum').textContent = index + 1;
+            document.getElementById('totalLines').textContent = jeremyLines.length;
+        }
+
+        function revealChinese() {
+            const elem = document.getElementById('chineseText');
+            if (elem) {
+                elem.classList.remove('blur-md', 'select-none');
+            }
+        }
+
+        function revealPinyin() {
+            const elem = document.getElementById('pinyinText');
+            if (elem) {
+                elem.classList.remove('blur-md', 'select-none');
+            }
+        }
+
+        function playAudio() {
+            const line = jeremyLines[order[currentIndex]];
+            const utterance = new SpeechSynthesisUtterance(line.chinese);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.75;
+            speechSynthesis.cancel(); // Cancel any ongoing speech
+            speechSynthesis.speak(utterance);
+        }
+
+        function playScriptLine(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.75;
+            speechSynthesis.cancel(); // Cancel any ongoing speech
+            speechSynthesis.speak(utterance);
+        }
+
+        function nextLine() {
+            currentIndex = (currentIndex + 1) % jeremyLines.length;
+            displayLine(currentIndex);
+        }
+
+        function prevLine() {
+            currentIndex = (currentIndex - 1 + jeremyLines.length) % jeremyLines.length;
+            displayLine(currentIndex);
+        }
+
+        function shuffle() {
+            for (let i = order.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [order[i], order[j]] = [order[j], order[i]];
+            }
+            currentIndex = 0;
+            displayLine(currentIndex);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts if command palette is open
+            const palette = document.getElementById('commandPalette');
+            if (palette && palette.style.display !== 'none') return;
+
+            switch(e.key) {
+                case 'ArrowRight':
+                    e.preventDefault();
+                    nextLine();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    prevLine();
+                    break;
+                case 'c':
+                case 'C':
+                    revealChinese();
+                    break;
+                case 'p':
+                case 'P':
+                    revealPinyin();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    playAudio();
+                    break;
+                case 's':
+                case 'S':
+                    shuffle();
+                    break;
+            }
+        });
+
+        // Initialize
+        displayLine(currentIndex);
+    </script>
+</body>
+</html>
