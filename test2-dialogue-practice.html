@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Test 2 - Dialogue Completion Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="test2-practice.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Back to Test 2</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dialogue Completion Practice</h1>
+        <p class="text-center text-gray-600 mb-6">Written Test 2 - Section 2</p>
+
+        <!-- Mode Selector -->
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500" data-mode="meaning-to-char">Complete Dialogue</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Identify Pattern</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <!-- Question Display -->
+        <div id="questionDisplay" class="text-center mb-4"></div>
+
+        <!-- Hint -->
+        <div id="hint" class="text-center text-sm my-4"></div>
+
+        <!-- Audio Section -->
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+        </div>
+
+        <!-- Type Mode -->
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <!-- Choice Mode -->
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Fuzzy Mode -->
+        <div id="fuzzyMode" class="hidden space-y-4">
+            <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Study Mode -->
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Study all dialogues</div>
+            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <!-- Stats -->
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span id="timerDisplay" style="display: none;"></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+
+        <!-- Pattern Guide -->
+        <div class="mt-8 bg-gradient-to-r from-pink-50 to-purple-50 p-4 rounded-lg">
+            <h3 class="font-bold mb-2">📚 Grammar Patterns Reference</h3>
+            <div class="text-xs space-y-1 text-gray-700">
+                <div><span class="font-semibold">1.</span> A跟B一样 / A比B + adj - Comparison</div>
+                <div><span class="font-semibold">2.</span> V1着V2 - Simultaneous actions</div>
+                <div><span class="font-semibold">3.</span> 时间+才 - Late occurrence</div>
+                <div><span class="font-semibold">4.</span> (A不V), B才V - Contrastive emphasis</div>
+                <div><span class="font-semibold">5.</span> 到底 - Emphatic questions</div>
+                <div><span class="font-semibold">6.</span> 看起来/看出来 - Appearance vs perception</div>
+                <div><span class="font-semibold">7.</span> QW+都 - Universal quantifier</div>
+                <div><span class="font-semibold">8.</span> 只要...就... - Conditional</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dialogues = [
+            // Pattern 1: A跟B一样
+            {
+                char: '跟',
+                pinyin: 'gēn',
+                meaning: 'A: 你的房间大吗？ B: 不太大。我的房间___你的一样大。'
+            },
+
+            // Pattern 2: V1着V2
+            {
+                char: '坐着',
+                pinyin: 'zuòzhe',
+                meaning: 'A: 你喜欢怎么学习？ B: 我喜欢___听音乐。'
+            },
+
+            // Pattern 3: 时间+才
+            {
+                char: '才',
+                pinyin: 'cái',
+                meaning: 'A: 他什么时候到的？ B: 很晚。他十一点___到。'
+            },
+
+            // Pattern 4: (A不V), B才V
+            {
+                char: '不/才',
+                pinyin: 'bù/cái',
+                meaning: 'A: 我们去看电影吧！ B: 你___去，我___不去呢。'
+            },
+
+            // Pattern 5: 到底
+            {
+                char: '到底',
+                pinyin: 'dàodǐ',
+                meaning: 'A: 你想吃中国菜还是美国菜？ B: 我不知道。 A: 你___想吃什么？'
+            },
+
+            // Pattern 6: 看起来
+            {
+                char: '看起来',
+                pinyin: 'kàn qǐlái',
+                meaning: 'A: 你觉得这个菜怎么样？ B: ___很好吃。'
+            },
+
+            // Pattern 6b: 看出来
+            {
+                char: '看出来',
+                pinyin: 'kàn chūlái',
+                meaning: 'A: 她怎么了？ B: 我___她不高兴。'
+            },
+
+            // Pattern 7: QW+都
+            {
+                char: '什么都',
+                pinyin: 'shénme dōu',
+                meaning: 'A: 你喜欢吃什么菜？ B: 我___喜欢吃。'
+            },
+
+            // Pattern 8: 只要...就...
+            {
+                char: '只要/就',
+                pinyin: 'zhǐyào/jiù',
+                meaning: 'A: 你会来吗？ B: ___你请我，我___来。'
+            },
+
+            // Pattern 1b: A比B
+            {
+                char: '比',
+                pinyin: 'bǐ',
+                meaning: 'A: 你哥哥和你弟弟谁高？ B: 我哥哥___我弟弟高。'
+            },
+
+            // Additional practice
+            {
+                char: '站着',
+                pinyin: 'zhànzhe',
+                meaning: 'A: 他在做什么？ B: 他___说话。'
+            },
+
+            {
+                char: '才',
+                pinyin: 'cái',
+                meaning: 'A: 她什么时候到的？ B: 她九点___到。'
+            },
+
+            {
+                char: '跟',
+                pinyin: 'gēn',
+                meaning: 'A: 你的朋友高吗？ B: 我的朋友___我一样高。'
+            },
+
+            {
+                char: '到底',
+                pinyin: 'dàodǐ',
+                meaning: 'A: 你要去哪儿？ B: 我还没想好。 A: 你___要去哪儿？'
+            },
+
+            {
+                char: '谁都',
+                pinyin: 'shéi dōu',
+                meaning: 'A: 有人认识他吗？ B: ___认识他。'
+            },
+
+            // Mixed pattern practice
+            {
+                char: '看起来',
+                pinyin: 'kàn qǐlái',
+                meaning: 'Context: Weekend plans. A: 周末我们去爬山吧！ B: 可是你___很累，没问题吗？'
+            },
+
+            {
+                char: '只要/就',
+                pinyin: 'zhǐyào/jiù',
+                meaning: 'Context: Weekend plans. A: ___你来，我___高兴。'
+            },
+
+            {
+                char: '才',
+                pinyin: 'cái',
+                meaning: 'Context: Weekend plans. B: 好吧。但是我昨天晚上十二点___睡觉，有点儿累。'
+            },
+
+            {
+                char: '到底',
+                pinyin: 'dàodǐ',
+                meaning: 'Context: Choosing restaurant. A: 你___想去哪个饭馆儿？'
+            },
+
+            {
+                char: '看起来',
+                pinyin: 'kàn qǐlái',
+                meaning: 'Context: Choosing restaurant. A: 那个新开的川菜馆___很好吃。'
+            }
+        ];
+
+        // Initialize the quiz with the dialogue data
+        initQuiz(dialogues, {
+            defaultMode: 'meaning-to-char',
+            enablePreviewQueue: false
+        });
+    </script>
+</body>
+</html>

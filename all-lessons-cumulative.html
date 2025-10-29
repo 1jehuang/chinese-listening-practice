@@ -38,14 +38,14 @@
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
         </div>
 
-        <!-- Upcoming Preview -->
-        <div id="upcomingCharacters" class="hidden text-center mb-4">
-            <div class="text-xs uppercase tracking-widest text-gray-400">Upcoming</div>
-            <div class="preview-list flex justify-center gap-4 mt-2 text-4xl text-gray-300"></div>
-        </div>
-
         <!-- Question Display -->
         <div id="questionDisplay" class="text-center"></div>
+
+        <!-- Upcoming Preview (below question) -->
+        <div id="upcomingCharacters" class="hidden text-center mt-4">
+            <div class="preview-list flex justify-center gap-4 text-4xl text-gray-300"></div>
+            <div class="text-xs uppercase tracking-widest text-gray-400 mt-2">Upcoming</div>
+        </div>
 
         <!-- Hint -->
         <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
@@ -277,7 +277,7 @@
         // Initialize the quiz with the modular engine
         initQuiz(characters, {
             enablePreviewQueue: true,
-            previewQueueSize: 4,
+            previewQueueSize: 1,
             previewElementId: 'upcomingCharacters',
             previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
         });

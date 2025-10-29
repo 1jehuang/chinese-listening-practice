@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Test 2 - Translation Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="test2-practice.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Back to Test 2</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Translation Practice</h1>
+        <p class="text-center text-gray-600 mb-6">Written Test 2 - Section 3</p>
+
+        <!-- Mode Selector -->
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500" data-mode="char-to-meaning-type">Chinese → English</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">English → Chinese</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → English</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <!-- Question Display -->
+        <div id="questionDisplay" class="text-center mb-4"></div>
+
+        <!-- Hint -->
+        <div id="hint" class="text-center text-sm my-4"></div>
+
+        <!-- Audio Section -->
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+        </div>
+
+        <!-- Type Mode -->
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <!-- Choice Mode -->
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Fuzzy Mode -->
+        <div id="fuzzyMode" class="hidden space-y-4">
+            <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Study Mode -->
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Study all translations</div>
+            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <!-- Stats -->
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span id="timerDisplay" style="display: none;"></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+
+        <!-- Pattern Guide -->
+        <div class="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+            <h3 class="font-bold mb-2">📚 Grammar Patterns Reference</h3>
+            <div class="text-xs space-y-1 text-gray-700">
+                <div><span class="font-semibold">1.</span> A跟B一样 / A比B + adj - Comparison</div>
+                <div><span class="font-semibold">2.</span> V1着V2 - Simultaneous actions</div>
+                <div><span class="font-semibold">3.</span> 时间+才 - Late occurrence</div>
+                <div><span class="font-semibold">4.</span> (A不V), B才V - Contrastive emphasis</div>
+                <div><span class="font-semibold">5.</span> 到底 - Emphatic questions</div>
+                <div><span class="font-semibold">6.</span> 看起来/看出来 - Appearance vs perception</div>
+                <div><span class="font-semibold">7.</span> QW+都 - Universal quantifier</div>
+                <div><span class="font-semibold">8.</span> 只要...就... - Conditional</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = [
+            // Chinese → English (Pattern 1: Comparison)
+            { char: '我的房间跟你的房间一样大。', pinyin: 'wǒ de fángjiān gēn nǐ de fángjiān yīyàng dà', meaning: 'My room is as big as your room.' },
+
+            // Pattern 2: V1着V2
+            { char: '她坐着看电视。', pinyin: 'tā zuòzhe kàn diànshì', meaning: 'She sits while watching TV.' },
+
+            // Pattern 3: 时间+才
+            { char: '他昨天晚上十一点才回家。', pinyin: 'tā zuótiān wǎnshang shíyīdiǎn cái huíjiā', meaning: "He didn't come home until 11 PM last night." },
+
+            // Pattern 4: (A不V), B才V
+            { char: '你不去，我才不去呢。', pinyin: 'nǐ bù qù, wǒ cái bù qù ne', meaning: "If you don't go, then I won't go." },
+
+            // Pattern 5: 到底
+            { char: '你到底住在哪儿？', pinyin: 'nǐ dàodǐ zhù zài nǎr', meaning: 'Where do you actually live?' },
+
+            // Pattern 6: 看起来
+            { char: '这个菜看起来很好吃。', pinyin: 'zhège cài kàn qǐlái hěn hǎochī', meaning: 'This dish looks delicious.' },
+
+            // Pattern 7: QW+都
+            { char: '我什么都喜欢吃。', pinyin: 'wǒ shénme dōu xǐhuan chī', meaning: 'I like to eat everything.' },
+
+            // Pattern 8: 只要...就...
+            { char: '只要你努力学习，就会成功。', pinyin: 'zhǐyào nǐ nǔlì xuéxí, jiù huì chénggōng', meaning: 'As long as you study hard, you will succeed.' },
+
+            // Pattern 6b: 看出来
+            { char: '我看出来他很累。', pinyin: 'wǒ kàn chūlái tā hěn lèi', meaning: 'I can tell he is tired.' },
+
+            // Pattern 1b: A比B
+            { char: '我的宿舍比你的宿舍小。', pinyin: 'wǒ de sùshè bǐ nǐ de sùshè xiǎo', meaning: 'My dorm is smaller than yours.' },
+
+            // Additional practice sentences
+            { char: '他站着说话。', pinyin: 'tā zhànzhe shuōhuà', meaning: 'He stands while talking.' },
+            { char: '她九点才到。', pinyin: 'tā jiǔdiǎn cái dào', meaning: "She didn't arrive until 9 o'clock." },
+            { char: '你到底想吃什么？', pinyin: 'nǐ dàodǐ xiǎng chī shénme', meaning: 'What do you really want to eat?' },
+            { char: '谁都认识他。', pinyin: 'shéi dōu rènshi tā', meaning: 'Everyone knows him.' },
+            { char: '只要你有时间，我就高兴。', pinyin: 'zhǐyào nǐ yǒu shíjiān, wǒ jiù gāoxìng', meaning: 'As long as you have time, I will be happy.' },
+            { char: '我弟弟比我高。', pinyin: 'wǒ dìdi bǐ wǒ gāo', meaning: 'My younger brother is taller than me.' },
+            { char: '你不帮，我才不做呢。', pinyin: 'nǐ bù bāng, wǒ cái bù zuò ne', meaning: "If you don't help, I won't do it." },
+            { char: '我看出来她不高兴。', pinyin: 'wǒ kàn chūlái tā bù gāoxìng', meaning: 'I can tell she is not happy.' },
+            { char: '这本书看起来很有意思。', pinyin: 'zhè běn shū kàn qǐlái hěn yǒuyìsi', meaning: 'This book looks interesting.' },
+            { char: '我的朋友跟我一样高。', pinyin: 'wǒ de péngyou gēn wǒ yīyàng gāo', meaning: 'My friend is as tall as me.' }
+        ];
+
+        // Initialize the quiz with the translation data
+        initQuiz(translations, {
+            defaultMode: 'char-to-meaning-type',
+            enablePreviewQueue: false
+        });
+    </script>
+</body>
+</html>
