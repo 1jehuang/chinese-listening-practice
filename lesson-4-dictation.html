@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 4 (美国人学中文)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 4 美国人学中文</h1>
+        <p class="text-center text-gray-600 mb-6">Listen to the sentence, then type the pinyin (tone marks or numbers). Study mode lists every line with quick audio playback.</p>
+
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <div id="questionDisplay" class="text-center"></div>
+        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
+        </div>
+
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" class="hidden"></div>
+        <div id="fuzzyMode" class="hidden"></div>
+        <div id="strokeOrderMode" class="hidden"></div>
+        <div id="handwritingMode" class="hidden"></div>
+        <div id="drawCharMode" class="hidden"></div>
+
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+        </div>
+
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '妈，今天注册，我选了一门中文课。', pinyin: 'mā, jīn.tiān zhù.cè, wǒ xuǎn.le yī.mén Zhōng.wén kè', meaning: 'Mom, I registered today and chose a Chinese class.' },
+            { char: '什么？你选了一门中文课？', pinyin: 'shén.me?! nǐ xuǎn.le yī.mén Zhōng.wén kè', meaning: 'What?! You chose a Chinese class?' },
+            { char: '对，我选了一门中文课。', pinyin: 'duì, wǒ xuǎn.le yī.mén Zhōng.wén kè', meaning: 'Yes, I chose a Chinese class.' },
+            { char: '你不是从小就讨厌学中文吗？怎么现在倒学起中文来了？', pinyin: 'nǐ bú.shì cóng.xiǎo jiù tǎo.yàn xué Zhōng.wén .ma? zěn.me xiàn.zài dào xué.qǐ Zhōng.wén .lai .le', meaning: 'Haven\'t you disliked learning Chinese since childhood? How come you\'re learning Chinese now?' },
+            { char: '其实我小时候并不讨厌中文，只是不习惯你们逼得太紧。', pinyin: 'qí.shí wǒ xiǎo.shí.hou bìng.bu tǎo.yàn Zhōng.wén, zhǐ.shi bù xí.guàn nǐ.men bī.de tài jǐn', meaning: 'Actually I didn\'t dislike Chinese as a child, I just wasn\'t used to you pushing me so hard.' },
+            { char: '现在没人逼我，我倒想学中文了。', pinyin: 'xiàn.zài méi rén bī wǒ, wǒ dào xiǎng xué Zhōng.wén .le', meaning: 'Now no one is forcing me, so I want to learn Chinese.' },
+            { char: '那好极了。', pinyin: 'nà hǎo.jí .le', meaning: 'That\'s wonderful!' },
+            { char: '你爸爸听到这个消息一定很高兴。', pinyin: 'nǐ bà.ba tīng.dào zhèi.ge xiāo.xi yī.dìng hěn gāo.xìng', meaning: 'Your father will definitely be very happy to hear this news.' },
+            { char: '从小他就告诉你：我们都是中国人，中国人就得学中文。', pinyin: 'cóng.xiǎo tā jiù gào.sù nǐ: wǒ.men dōu.shì Zhōng.guó rén, Zhōng.guó rén jiù děi xué Zhōng.wén', meaning: 'Since you were little he\'s told you: We are all Chinese, and Chinese people must learn Chinese.' },
+            { char: '妈，你又来了！', pinyin: 'mā, nǐ yòu lái.le', meaning: 'Mom, there you go again!' },
+            { char: '你们是中国人，可我是美国人。', pinyin: 'nǐ.men shì Zhōng.guó rén, kě wǒ shì Měi.guó rén', meaning: 'You are Chinese, but I am American.' },
+            { char: '美国人也可以学中文，你知道吗？', pinyin: 'Měi.guó rén yě kě.yǐ xué Zhōng.wén, nǐ zhī.dao .ma', meaning: 'Americans can also learn Chinese, you know?' },
+            { char: '"美国人学中文"可是……可是……美国人为什么要学中文呢？', pinyin: '"Měi.guó rén xué Zhōng.wén" kě.shì... kě.shì... Měi.guó rén wèi.shen.me yào xué Zhōng.wén ne', meaning: '"Americans learning Chinese" but... but... why would Americans learn Chinese?' },
+            { char: '现在世界各地都有人学中文，不但美国有人学，英国，法国，日本……都有人学中文。', pinyin: 'xiàn.zài shì.jiè gè.dì dōu yǒu rén zài xué Zhōng.wén, bú.dàn Měi.guó yǒu rén xué, Yīng.guó, Fǎ.guó, Rì.běn... dōu yǒu rén xué Zhōng.wén', meaning: 'Now people all over the world are learning Chinese, not just in America, but in England, France, Japan... everyone is learning Chinese.' },
+            { char: '哦！是吗？', pinyin: 'ō! shì .ma', meaning: 'Oh! Is that so?' },
+            { char: '中国人口很多，经济，贸易很发达，跟中国人做生意的国家越来越多，所以学中文的人也就一天比一天多了。', pinyin: 'Zhōng.guó rén.kǒu hěn duō, jīng.jì, mào.yì hěn fā.dá, gēn Zhōng.guó rén zuò shēng.yi .de guó.jiā yuè.lai.yuè duō, suǒ.yǐ xué Zhōng.wén .de rén yě jiù yī.tiān bǐ yī.tiān duō .le', meaning: 'China has a large population, the economy and trade are very developed, more and more countries do business with Chinese people, so more and more people are learning Chinese every day.' },
+            { char: '那你是为了要去中国做买卖才学中文的吗？', pinyin: 'nà nǐ shì wèi.le yào qù Zhōng.guó zuò mǎi.mai cái xué Zhōng.wén .de .lo', meaning: 'So are you learning Chinese in order to go to China to do business?' },
+            { char: '那倒不见得，我也很想学一点中国的历史和文学。', pinyin: 'nà dào bú.jiàn.dé, wǒ yě hěn xiǎng xué yī.diǎnr Zhōng.guó .de lì.shǐ hé wén.xué', meaning: 'Not necessarily, I also really want to learn a bit about Chinese history and literature.' },
+            { char: '你真是长大了，知道自己是中国人了。', pinyin: 'nǐ zhēn.shi zhǎng dà .le, zhī.dao zì.jǐ shì Zhōng.guó rén .le', meaning: 'You\'ve really grown up, you know you\'re Chinese now.' },
+            { char: '妈，我不是才跟您说，我是美国人吗？美国人学中文才更有意思呢！', pinyin: 'mā, wǒ bú.shì cái gēn nín shuō, wǒ shì Měi.guó rén .ma? Měi.guó rén xué Zhōng.wén cái gèng yǒu.yi.si .ne', meaning: 'Mom, didn\'t I just tell you, I\'m American? Americans learning Chinese is even more interesting!' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-pinyin',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>

@@ -99,16 +99,36 @@
 
         <!-- Draw Character Mode -->
         <div id="drawCharMode" class="hidden">
-            <div id="drawCharCanvasContainer" class="bg-gray-100 border border-gray-300 rounded-lg mx-auto" style="max-width: 360px;">
-                <canvas id="drawCharCanvas" width="320" height="320" class="bg-white rounded-lg"></canvas>
+            <div class="text-center mb-4">
+                <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
+                <div class="text-sm text-gray-500">Real-time recognition</div>
             </div>
-            <div class="flex flex-wrap gap-3 justify-center mt-4">
-                <button id="drawCheckBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition">Check Drawing</button>
-                <button id="drawClearBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg transition">Clear</button>
-                <button id="drawShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition">Show Character</button>
+            <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
+            <div class="flex gap-3 justify-center mt-4">
+                <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
+                <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+                <button id="fullscreenDrawBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">⛶ Fullscreen</button>
             </div>
-            <div id="drawFeedback" class="text-center text-xl font-semibold my-4 min-h-[24px]"></div>
-            <div id="ocrResult" class="text-center text-gray-600"></div>
+        </div>
+
+        <!-- Fullscreen Drawing Mode -->
+        <div id="fullscreenDrawContainer" class="hidden fixed inset-0 bg-gray-100 z-50 flex flex-col">
+            <div class="flex justify-between items-center p-4 bg-white shadow">
+                <div class="text-2xl font-bold text-gray-700" id="fullscreenPrompt">Draw: </div>
+                <div class="flex gap-3">
+                    <button id="fullscreenClearBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
+                    <button id="fullscreenSubmitBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+                    <button id="fullscreenShowAnswerBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">💡 Show Answer</button>
+                    <button id="fullscreenNextBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg transition">→ Next</button>
+                    <button id="exitFullscreenBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">✕ Exit</button>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center justify-center p-8">
+                <div class="text-center w-full">
+                    <div id="fullscreenOcrResult" class="text-8xl min-h-[120px] text-blue-600 font-bold mb-4"></div>
+                    <canvas id="fullscreenDrawCanvas" class="border-4 border-gray-400 rounded-lg cursor-crosshair bg-white shadow-lg" style="width: 90vmin; height: 90vmin; max-width: 800px; max-height: 800px;"></canvas>
+                </div>
+            </div>
         </div>
 
         <!-- Study Mode -->

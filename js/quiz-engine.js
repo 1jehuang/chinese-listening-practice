@@ -2588,6 +2588,11 @@ function initCanvas() {
         showAnswerBtn.onclick = revealDrawingAnswer;
     }
 
+    const fullscreenBtn = document.getElementById('fullscreenDrawBtn');
+    if (fullscreenBtn) {
+        fullscreenBtn.onclick = enterFullscreenDrawing;
+    }
+
     updateOcrCandidates();
     updateUndoRedoButtons();
 }
@@ -3048,6 +3053,293 @@ function hideDrawNextButton() {
     const nextBtn = document.getElementById('drawNextBtn');
     if (nextBtn) {
         nextBtn.style.display = 'none';
+    }
+}
+
+// Fullscreen drawing mode
+let fullscreenCanvas, fullscreenCtx;
+let isFullscreenMode = false;
+
+function enterFullscreenDrawing() {
+    const container = document.getElementById('fullscreenDrawContainer');
+    if (!container) return;
+
+    isFullscreenMode = true;
+    container.classList.remove('hidden');
+
+    // Update prompt
+    const prompt = document.getElementById('fullscreenPrompt');
+    if (prompt && currentQuestion) {
+        prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
+    }
+
+    // Initialize fullscreen canvas
+    fullscreenCanvas = document.getElementById('fullscreenDrawCanvas');
+    if (!fullscreenCanvas) return;
+
+    // Set canvas size to match display size
+    const canvasSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.9, 800);
+    fullscreenCanvas.width = canvasSize;
+    fullscreenCanvas.height = canvasSize;
+
+    fullscreenCtx = fullscreenCanvas.getContext('2d');
+    fullscreenCtx.lineWidth = 12;
+    fullscreenCtx.lineCap = 'round';
+    fullscreenCtx.lineJoin = 'round';
+    fullscreenCtx.strokeStyle = '#000';
+
+    // Add event listeners
+    fullscreenCanvas.addEventListener('mousedown', startFullscreenDrawing);
+    fullscreenCanvas.addEventListener('mousemove', drawFullscreen);
+    fullscreenCanvas.addEventListener('mouseup', stopFullscreenDrawing);
+    fullscreenCanvas.addEventListener('mouseout', stopFullscreenDrawing);
+
+    fullscreenCanvas.addEventListener('touchstart', handleFullscreenTouchStart);
+    fullscreenCanvas.addEventListener('touchmove', handleFullscreenTouchMove);
+    fullscreenCanvas.addEventListener('touchend', stopFullscreenDrawing);
+
+    // Setup buttons
+    const clearBtn = document.getElementById('fullscreenClearBtn');
+    const submitBtn = document.getElementById('fullscreenSubmitBtn');
+    const showAnswerBtn = document.getElementById('fullscreenShowAnswerBtn');
+    const nextBtn = document.getElementById('fullscreenNextBtn');
+    const exitBtn = document.getElementById('exitFullscreenBtn');
+
+    if (clearBtn) clearBtn.onclick = clearFullscreenCanvas;
+    if (submitBtn) submitBtn.onclick = submitFullscreenDrawing;
+    if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
+    if (nextBtn) nextBtn.onclick = nextFullscreenQuestion;
+    if (exitBtn) exitBtn.onclick = exitFullscreenDrawing;
+
+    // Reset drawing state
+    strokes = [];
+    currentStroke = null;
+    drawStartTime = null;
+}
+
+function exitFullscreenDrawing() {
+    const container = document.getElementById('fullscreenDrawContainer');
+    if (container) {
+        container.classList.add('hidden');
+    }
+    isFullscreenMode = false;
+
+    // Clear fullscreen canvas
+    if (fullscreenCanvas && fullscreenCtx) {
+        fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+    }
+}
+
+function getFullscreenCanvasCoords(e) {
+    const rect = fullscreenCanvas.getBoundingClientRect();
+    const scaleX = fullscreenCanvas.width / rect.width;
+    const scaleY = fullscreenCanvas.height / rect.height;
+
+    if (e.touches && e.touches[0]) {
+        return {
+            x: (e.touches[0].clientX - rect.left) * scaleX,
+            y: (e.touches[0].clientY - rect.top) * scaleY
+        };
+    }
+    return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+    };
+}
+
+function startFullscreenDrawing(e) {
+    isDrawing = true;
+    const coords = getFullscreenCanvasCoords(e);
+    lastX = coords.x;
+    lastY = coords.y;
+    const initialTimestamp = getRelativeTimestamp();
+    currentStroke = {
+        x: [Math.round(coords.x)],
+        y: [Math.round(coords.y)],
+        t: [initialTimestamp]
+    };
+}
+
+function drawFullscreen(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+
+    const coords = getFullscreenCanvasCoords(e);
+    fullscreenCtx.beginPath();
+    fullscreenCtx.moveTo(lastX, lastY);
+    fullscreenCtx.lineTo(coords.x, coords.y);
+    fullscreenCtx.stroke();
+
+    if (currentStroke) {
+        currentStroke.x.push(Math.round(coords.x));
+        currentStroke.y.push(Math.round(coords.y));
+        currentStroke.t.push(getRelativeTimestamp());
+    }
+    lastX = coords.x;
+    lastY = coords.y;
+}
+
+function stopFullscreenDrawing() {
+    if (isDrawing && currentStroke && currentStroke.x.length > 0) {
+        strokes.push(currentStroke);
+        currentStroke = null;
+
+        if (ocrTimeout) clearTimeout(ocrTimeout);
+        ocrTimeout = setTimeout(runFullscreenOCR, 400);
+    }
+    isDrawing = false;
+}
+
+function handleFullscreenTouchStart(e) {
+    e.preventDefault();
+    startFullscreenDrawing(e);
+}
+
+function handleFullscreenTouchMove(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+    drawFullscreen(e);
+}
+
+async function runFullscreenOCR() {
+    if (strokes.length === 0) {
+        const ocrResult = document.getElementById('fullscreenOcrResult');
+        if (ocrResult) ocrResult.textContent = '';
+        return;
+    }
+
+    try {
+        const response = await fetch('https://www.google.com/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                input_type: 0,
+                requests: [{
+                    language: 'zh',
+                    writing_guide: {
+                        width: fullscreenCanvas.width,
+                        height: fullscreenCanvas.height
+                    },
+                    ink: strokes.map(stroke => [stroke.x, stroke.y, stroke.t])
+                }]
+            })
+        });
+
+        const data = await response.json();
+        if (data && data[1] && data[1][0] && data[1][0][1]) {
+            const candidates = data[1][0][1];
+            const ocrResult = document.getElementById('fullscreenOcrResult');
+            if (ocrResult && candidates.length > 0) {
+                ocrResult.textContent = candidates[0];
+            }
+        }
+    } catch (error) {
+        console.error('OCR Error:', error);
+    }
+}
+
+function clearFullscreenCanvas() {
+    if (!fullscreenCtx || !fullscreenCanvas) return;
+    fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+    strokes = [];
+    currentStroke = null;
+    drawStartTime = null;
+    if (ocrTimeout) {
+        clearTimeout(ocrTimeout);
+        ocrTimeout = null;
+    }
+    const ocrResult = document.getElementById('fullscreenOcrResult');
+    if (ocrResult) {
+        ocrResult.textContent = '';
+    }
+}
+
+function submitFullscreenDrawing() {
+    const ocrResult = document.getElementById('fullscreenOcrResult');
+    if (!ocrResult) return;
+
+    if (answered) return;
+
+    const recognized = ocrResult.textContent.trim();
+    if (!recognized) {
+        alert('Please draw a character first!');
+        return;
+    }
+
+    answered = true;
+    total++;
+    const correct = recognized === currentQuestion.char;
+
+    // Show feedback in fullscreen
+    const prompt = document.getElementById('fullscreenPrompt');
+    if (prompt) {
+        if (correct) {
+            playCorrectSound();
+            score++;
+            prompt.innerHTML = `<span class="text-green-600">✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})</span>`;
+        } else {
+            playWrongSound();
+            prompt.innerHTML = `<span class="text-red-600">✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})</span>`;
+        }
+    }
+
+    // Also update main feedback for when user exits fullscreen
+    if (correct) {
+        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+    } else {
+        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+    }
+
+    updateStats();
+
+    // Stay in fullscreen and auto-advance after 1.5 seconds
+    setTimeout(() => {
+        clearFullscreenCanvas();
+        generateQuestion();
+        // Update prompt for new question
+        const prompt = document.getElementById('fullscreenPrompt');
+        if (prompt && currentQuestion) {
+            prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
+        }
+    }, 1500);
+}
+
+function showFullscreenAnswer() {
+    if (!currentQuestion) return;
+
+    const ocrResult = document.getElementById('fullscreenOcrResult');
+    if (ocrResult) {
+        ocrResult.textContent = currentQuestion.char;
+    }
+
+    const prompt = document.getElementById('fullscreenPrompt');
+    if (prompt) {
+        const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
+        prompt.innerHTML = `<span class="text-blue-600">ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}</span>`;
+    }
+
+    if (!answered) {
+        answered = true;
+        total++;
+        updateStats();
+
+        // Also update main feedback
+        const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
+        feedback.textContent = `ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
+    }
+}
+
+function nextFullscreenQuestion() {
+    clearFullscreenCanvas();
+    generateQuestion();
+
+    // Update prompt for new question
+    const prompt = document.getElementById('fullscreenPrompt');
+    if (prompt && currentQuestion) {
+        prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
     }
 }
 
