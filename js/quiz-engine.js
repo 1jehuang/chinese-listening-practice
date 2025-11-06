@@ -765,6 +765,61 @@ function showSRBanner() {
     }
 }
 
+function showSRCardInfo(char) {
+    // Remove any existing SR card info
+    const existing = document.getElementById('srCardInfo');
+    if (existing) {
+        existing.remove();
+    }
+
+    if (!srEnabled || !char) {
+        return;
+    }
+
+    const card = getSRCardData(char);
+    const stateNames = ['New', 'Learning', 'Review', 'Relearning'];
+    const stateName = stateNames[card.state] || 'Unknown';
+
+    // Calculate days until due
+    const now = Date.now();
+    const daysUntilDue = card.due > now ? ((card.due - now) / (24 * 60 * 60 * 1000)).toFixed(1) : 0;
+
+    // Color coding for state
+    const stateColors = {
+        0: 'text-blue-600 bg-blue-50 border-blue-200',  // New
+        1: 'text-yellow-600 bg-yellow-50 border-yellow-200',  // Learning
+        2: 'text-green-600 bg-green-50 border-green-200',  // Review
+        3: 'text-orange-600 bg-orange-50 border-orange-200'   // Relearning
+    };
+    const stateClass = stateColors[card.state] || 'text-gray-600 bg-gray-50 border-gray-200';
+
+    const infoBox = document.createElement('div');
+    infoBox.id = 'srCardInfo';
+    infoBox.className = `${stateClass} border-l-4 px-4 py-2 mb-4 rounded text-sm`;
+    infoBox.innerHTML = `
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="flex items-center gap-4">
+                <span class="font-semibold">📊 ${stateName}</span>
+                <span class="text-xs opacity-75">Stability: ${card.stability.toFixed(1)}d</span>
+                <span class="text-xs opacity-75">Difficulty: ${card.difficulty.toFixed(1)}/10</span>
+                ${card.reps > 0 ? `<span class="text-xs opacity-75">Reviews: ${card.reps}</span>` : ''}
+                ${card.lapses > 0 ? `<span class="text-xs opacity-75">Lapses: ${card.lapses}</span>` : ''}
+                ${daysUntilDue > 0 ? `<span class="text-xs opacity-75">Next: ${daysUntilDue}d</span>` : ''}
+            </div>
+        </div>
+    `;
+
+    // Insert after SR banner or at top of container
+    const srBanner = document.getElementById('srBanner');
+    const container = document.querySelector('.max-w-3xl');
+
+    if (srBanner && srBanner.parentNode) {
+        srBanner.parentNode.insertBefore(infoBox, srBanner.nextSibling);
+    } else if (container && container.firstChild) {
+        container.insertBefore(infoBox, container.firstChild);
+    }
+}
+
 function getRandomQuestion() {
     if (!Array.isArray(quizCharacters) || quizCharacters.length === 0) return null;
     const index = Math.floor(Math.random() * quizCharacters.length);
@@ -1379,6 +1434,11 @@ function generateQuestion() {
     // Start timer for the new question
     if (timerEnabled) {
         startTimer();
+    }
+
+    // Show SR card info if enabled
+    if (srEnabled && currentQuestion) {
+        showSRCardInfo(currentQuestion.char);
     }
 
     // Track response time for FSRS
