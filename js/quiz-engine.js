@@ -3286,20 +3286,21 @@ function submitFullscreenDrawing() {
 
     // Show feedback in fullscreen
     const prompt = document.getElementById('fullscreenPrompt');
+    const meaningText = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
     if (prompt) {
         if (correct) {
-            prompt.innerHTML = `<span class="text-green-600">✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})</span>`;
+            prompt.innerHTML = `<span class="text-green-600">✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
         } else {
-            prompt.innerHTML = `<span class="text-red-600">✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})</span>`;
+            prompt.innerHTML = `<span class="text-red-600">✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
         }
     }
 
     // Also update main feedback for when user exits fullscreen
     if (correct) {
-        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     } else {
-        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     }
 
