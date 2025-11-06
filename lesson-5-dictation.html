@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 5 (我是四川人？)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 5 我是四川人？</h1>
+        <p class="text-center text-gray-600 mb-6">Listen to the sentence, then type the pinyin (tone marks or numbers). Study mode lists every line with quick audio playback.</p>
+
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <div id="questionDisplay" class="text-center"></div>
+        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
+        </div>
+
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+        <div id="fuzzyMode" class="hidden"></div>
+        <div id="strokeOrderMode" class="hidden"></div>
+        <div id="handwritingMode" class="hidden"></div>
+        <div id="drawCharMode" class="hidden"></div>
+
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+        </div>
+
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '妈，今天上中文课，老师问我有没有中文名字，我说我的中文名字叫陈美生。', pinyin: 'mā, jīntiān shàng Zhōngwén kè, lǎoshī wèn wǒ yǒu méiyǒu Zhōngwén míng.zi, wǒ shuō wǒ.de Zhōngwén míng.zi jiào Chén Měishēng', meaning: 'Mom, today in Chinese class, the teacher asked me if I have a Chinese name. I said my Chinese name is Chen Meisheng.' },
+            { char: '是啊！你的中文名字是叫陈美生啊。', pinyin: 'shì .a! nǐ.de Zhōngwén míng.zi shì jiào Chén Měishēng .a', meaning: 'That\'s right! Your Chinese name is Chen Meisheng.' },
+            { char: '老师又问我，"美生"是哪两个字，怎么写的，我就回答不出来了，真不好意思。', pinyin: 'lǎoshī yòu wèn wǒ, "Měishēng" shì nǎ liǎng.ge zì, zěn.me xiě.de, wǒ jiù huídá.bu.chū.lái .le, zhēn bùhǎoyì.si', meaning: 'The teacher asked me again, what are the two characters for "Meisheng" and how to write them. I couldn\'t answer, so embarrassing.' },
+            { char: '唉，"美"就是"美国"的美，"生"就是"出生"的生。', pinyin: 'āi, "měi" jiù.shì "Měiguó" .de měi, "shēng" jiù.shì "chūshēng" .de shēng', meaning: 'Oh, "mei" is the "mei" from "America", "sheng" is the "sheng" from "be born".' },
+            { char: '因为你是在美国出生的，所以我们给你起了这个名字。', pinyin: 'yīn.wèi nǐ shì zài Měiguó chūshēng .de, suǒ.yǐ wǒ.men gěi nǐ qǐ.le zhè.ge míng.zi', meaning: 'Because you were born in America, so we gave you this name.' },
+            { char: '妈，我们是哪儿人呢？', pinyin: 'mā, wǒ.men shì nǎr rén .ne', meaning: 'Mom, where are we from?' },
+            { char: '你爸爸是四川人，妈是广东人。', pinyin: 'nǐ bà.ba shì Sìchuān rén, mā shì Guǎngdōng rén', meaning: 'Your dad is from Sichuan, mom is from Guangdong.' },
+            { char: '那么，照中国人的说法，我是哪儿人呢？', pinyin: 'nà.me, zhào Zhōngguó rén .de shuō.fa, wǒ shì nǎr rén .ne', meaning: 'So, according to Chinese custom, where am I from?' },
+            { char: '照我们中国人的说法，爸爸是哪儿人，孩子就是哪儿人。', pinyin: 'zhào wǒ.men Zhōngguó rén .de shuō.fa, bà.ba shì nǎr rén, hái.zi jiù.shì nǎr rén', meaning: 'According to Chinese custom, wherever the father is from, that\'s where the child is from.' },
+            { char: '所以你也是四川人。', pinyin: 'suǒ.yǐ nǐ yě shì Sìchuān rén', meaning: 'So you are also from Sichuan.' },
+            { char: '妈，我连四川在哪儿都不知道，我怎么能算是四川人呢？', pinyin: 'mā, wǒ lián Sìchuān zài nǎr dōu bù zhīdào, wǒ zěn.me néng suàn.shì Sìchuān rén .ne', meaning: 'Mom, I don\'t even know where Sichuan is, how can I be considered from Sichuan?' },
+            { char: '其实，我也没去过广东，也不会说广东话，不过我还是说我是广东人。', pinyin: 'qíshí, wǒ yě méi qù.guò Guǎngdōng, yě bù huì shuō Guǎngdōng huà, búguò wǒ háishi shuō wǒ shì Guǎngdōng rén', meaning: 'Actually, I\'ve never been to Guangdong either, and I can\'t speak Cantonese, but I still say I\'m from Guangdong.' },
+            { char: '妈，不能跟您多说了，还有一个电话要进来，我明天再给您打电话吧。', pinyin: 'mā, bù néng gēn nín duō shuō .le, hái.yǒu yī.ge diànhuà yào jìn.lái, wǒ míngtiān zài gěi nín dǎ diànhuà .ba', meaning: 'Mom, I can\'t talk much longer, I have another call coming in. I\'ll call you again tomorrow.' },
+            { char: '好吧，好吧，你的电话真多。', pinyin: 'hǎo.ba, hǎo.ba, nǐ.de diànhuà zhēn duō', meaning: 'Okay, okay, you really have a lot of calls.' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-pinyin',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>
