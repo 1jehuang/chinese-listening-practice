@@ -3115,6 +3115,12 @@ function enterFullscreenDrawing() {
     strokes = [];
     currentStroke = null;
     drawStartTime = null;
+
+    // Play character pronunciation audio
+    if (currentQuestion && currentQuestion.pinyin) {
+        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+    }
 }
 
 function exitFullscreenDrawing() {
@@ -3274,10 +3280,6 @@ function submitFullscreenDrawing() {
     if (correct) {
         playCorrectSound();
         score++;
-
-        // Play character pronunciation audio
-        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-        playPinyinAudio(firstPinyin, currentQuestion.char);
     } else {
         playWrongSound();
     }
@@ -3311,6 +3313,12 @@ function submitFullscreenDrawing() {
         const prompt = document.getElementById('fullscreenPrompt');
         if (prompt && currentQuestion) {
             prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
+        }
+
+        // Play character pronunciation audio for new question
+        if (currentQuestion && currentQuestion.pinyin) {
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
         }
     }, 1500);
 }
@@ -3349,6 +3357,12 @@ function nextFullscreenQuestion() {
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
         prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
+    }
+
+    // Play character pronunciation audio
+    if (currentQuestion && currentQuestion.pinyin) {
+        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        playPinyinAudio(firstPinyin, currentQuestion.char);
     }
 }
 
