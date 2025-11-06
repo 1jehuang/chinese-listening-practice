@@ -3270,15 +3270,20 @@ function submitFullscreenDrawing() {
     total++;
     const correct = recognized === currentQuestion.char;
 
+    // Play sounds and update score
+    if (correct) {
+        playCorrectSound();
+        score++;
+    } else {
+        playWrongSound();
+    }
+
     // Show feedback in fullscreen
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt) {
         if (correct) {
-            playCorrectSound();
-            score++;
             prompt.innerHTML = `<span class="text-green-600">✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})</span>`;
         } else {
-            playWrongSound();
             prompt.innerHTML = `<span class="text-red-600">✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})</span>`;
         }
     }
