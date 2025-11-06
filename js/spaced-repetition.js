@@ -3,16 +3,7 @@
 // =============================================================================
 // This module provides spaced repetition functionality using the FSRS-4.5 algorithm.
 // All functions use global variables from quiz-engine.js for compatibility.
-
-// FSRS-4.5 default parameters (optimized weights)
-const FSRS_PARAMS = {
-    w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
-    requestRetention: 0.9,  // Target 90% recall probability
-    maximumInterval: 36500, // 100 years in days (effectively unlimited)
-    decay: -0.5            // Power law decay constant
-};
-
-const SR_ENABLED_KEY = 'sr_enabled';
+// Constants (FSRS_PARAMS, SR_ENABLED_KEY) are defined in quiz-engine.js
 
 // =============================================================================
 // SPACED REPETITION STATE MANAGEMENT
