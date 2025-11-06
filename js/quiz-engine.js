@@ -48,6 +48,15 @@ let timerRemainingSeconds = 0;
 const TIMER_ENABLED_KEY = 'quizTimerEnabled';
 const TIMER_SECONDS_KEY = 'quizTimerSeconds';
 
+// Spaced Repetition state
+let srEnabled = false;
+let srData = {};
+let srPageKey = '';
+let srDueCount = 0;
+const SR_ENABLED_KEY = 'sr_enabled';
+const SR_INTERVALS = [1, 2, 4, 8, 16]; // days
+const SR_MAX_INTERVAL_DAYS = 16;
+
 // Hanzi Writer
 let writer = null;
 
@@ -458,6 +467,174 @@ function showToneCyclerStatus() {
         }
         toneCyclerStatusTimeout = null;
     }, 1600);
+}
+
+// =============================================================================
+// SPACED REPETITION FUNCTIONS
+// =============================================================================
+
+function getSRPageKey() {
+    const path = window.location.pathname;
+    const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
+    return `sr_${filename}`;
+}
+
+function loadSRData() {
+    try {
+        srEnabled = localStorage.getItem(SR_ENABLED_KEY) === 'true';
+        srPageKey = getSRPageKey();
+        const data = localStorage.getItem(srPageKey);
+        srData = data ? JSON.parse(data) : {};
+    } catch (e) {
+        console.warn('Failed to load SR data', e);
+        srData = {};
+    }
+}
+
+function saveSRData() {
+    try {
+        localStorage.setItem(srPageKey, JSON.stringify(srData));
+    } catch (e) {
+        console.warn('Failed to save SR data', e);
+    }
+}
+
+function toggleSREnabled() {
+    srEnabled = !srEnabled;
+    try {
+        localStorage.setItem(SR_ENABLED_KEY, srEnabled.toString());
+    } catch (e) {
+        console.warn('Failed to save SR enabled state', e);
+    }
+
+    // Reload page to apply SR filtering
+    window.location.reload();
+}
+
+// Expose to window for banner button
+window.toggleSREnabled = toggleSREnabled;
+
+function resetSRData() {
+    if (!confirm('Reset all spaced repetition data for this page? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        localStorage.removeItem(srPageKey);
+        srData = {};
+        window.location.reload();
+    } catch (e) {
+        console.warn('Failed to reset SR data', e);
+    }
+}
+
+function getSRCardData(char) {
+    if (!srData[char]) {
+        srData[char] = {
+            lastSeen: 0,
+            interval: 1
+        };
+    }
+    return srData[char];
+}
+
+function isCardDue(char) {
+    const card = getSRCardData(char);
+    const now = Date.now();
+    const intervalMs = card.interval * 24 * 60 * 60 * 1000;
+    return now >= card.lastSeen + intervalMs;
+}
+
+function updateSRCard(char, correct) {
+    const card = getSRCardData(char);
+    card.lastSeen = Date.now();
+
+    if (correct) {
+        // Double interval (cap at max)
+        const currentIndex = SR_INTERVALS.indexOf(card.interval);
+        if (currentIndex >= 0 && currentIndex < SR_INTERVALS.length - 1) {
+            card.interval = SR_INTERVALS[currentIndex + 1];
+        } else {
+            card.interval = SR_MAX_INTERVAL_DAYS;
+        }
+    } else {
+        // Reset to 1 day
+        card.interval = 1;
+    }
+
+    saveSRData();
+}
+
+function applySRFiltering(characters) {
+    if (!srEnabled || !Array.isArray(characters)) {
+        return characters;
+    }
+
+    const dueCards = [];
+    const notDueCards = [];
+
+    characters.forEach(char => {
+        if (isCardDue(char.char)) {
+            dueCards.push(char);
+        } else {
+            notDueCards.push(char);
+        }
+    });
+
+    srDueCount = dueCards.length;
+
+    // Shuffle due cards and put them first
+    const shuffledDue = dueCards.sort(() => Math.random() - 0.5);
+    const shuffledNotDue = notDueCards.sort(() => Math.random() - 0.5);
+
+    return [...shuffledDue, ...shuffledNotDue];
+}
+
+function getSRStats() {
+    if (!srEnabled) {
+        return { enabled: false };
+    }
+
+    let dueToday = 0;
+    let total = 0;
+
+    quizCharacters.forEach(char => {
+        total++;
+        if (isCardDue(char.char)) {
+            dueToday++;
+        }
+    });
+
+    return {
+        enabled: true,
+        dueToday,
+        total,
+        reviewed: Object.keys(srData).length
+    };
+}
+
+function showSRBanner() {
+    if (!srEnabled || srDueCount === 0) {
+        return;
+    }
+
+    const banner = document.createElement('div');
+    banner.id = 'srBanner';
+    banner.className = 'bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4 rounded';
+    banner.innerHTML = `
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="font-semibold">📅 Spaced Repetition Active</span>
+                <span class="ml-2">${srDueCount} card${srDueCount !== 1 ? 's' : ''} due for review</span>
+            </div>
+            <button onclick="toggleSREnabled()" class="text-sm underline hover:no-underline">Disable</button>
+        </div>
+    `;
+
+    const container = document.querySelector('.max-w-3xl');
+    if (container && container.firstChild) {
+        container.insertBefore(banner, container.firstChild);
+    }
 }
 
 function getRandomQuestion() {
@@ -1214,6 +1391,11 @@ function checkAnswer() {
             }
             lastAnswerCorrect = true;
 
+            // Update SR data on correct answer
+            if (srEnabled && currentQuestion && currentQuestion.char) {
+                updateSRCard(currentQuestion.char, true);
+            }
+
             feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin} (${expectedTones})`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
@@ -1234,6 +1416,11 @@ function checkAnswer() {
                 total++;
             }
             lastAnswerCorrect = false;
+
+            // Update SR data on wrong answer
+            if (srEnabled && currentQuestion && currentQuestion.char) {
+                updateSRCard(currentQuestion.char, false);
+            }
 
             feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${currentQuestion.pinyin})`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
@@ -1298,6 +1485,11 @@ function handleCorrectFullAnswer() {
         score++;
     }
     lastAnswerCorrect = true;
+
+    // Update SR data on correct answer
+    if (srEnabled && currentQuestion && currentQuestion.char) {
+        updateSRCard(currentQuestion.char, true);
+    }
 
     if (mode === 'audio-to-pinyin') {
         feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
@@ -3926,6 +4118,42 @@ function initQuizCommandPalette() {
             }
         });
 
+        // Spaced Repetition actions
+        actions.push({
+            name: srEnabled ? 'Disable Spaced Repetition' : 'Enable Spaced Repetition',
+            type: 'action',
+            description: srEnabled
+                ? 'Turn off spaced repetition and show all cards'
+                : 'Show only cards that are due for review based on your performance',
+            keywords: 'spaced repetition sr review memory schedule toggle enable disable',
+            action: () => {
+                toggleSREnabled();
+            }
+        });
+
+        if (srEnabled) {
+            actions.push({
+                name: 'View SR Stats',
+                type: 'action',
+                description: `${srDueCount} cards due today`,
+                keywords: 'spaced repetition sr stats review due cards',
+                action: () => {
+                    const stats = getSRStats();
+                    alert(`Spaced Repetition Stats:\n\nDue today: ${stats.dueToday}\nTotal cards: ${stats.total}\nReviewed: ${stats.reviewed}`);
+                }
+            });
+
+            actions.push({
+                name: 'Reset SR Data',
+                type: 'action',
+                description: 'Clear all spaced repetition progress for this page',
+                keywords: 'spaced repetition sr reset clear delete data',
+                action: () => {
+                    resetSRData();
+                }
+            });
+        }
+
         return actions;
     }
 
@@ -3953,6 +4181,10 @@ function initQuiz(charactersData, userConfig = {}) {
 
     loadComponentPreference();
     loadTimerSettings();
+    loadSRData();
+
+    // Apply SR filtering to characters
+    quizCharacters = applySRFiltering(quizCharacters);
 
     if (config.defaultMode) {
         mode = config.defaultMode;
@@ -4099,6 +4331,9 @@ function initQuiz(charactersData, userConfig = {}) {
 
     // Initialize command palette
     initQuizCommandPalette();
+
+    // Show SR banner if enabled
+    showSRBanner();
 
     // Start first question
     generateQuestion();
