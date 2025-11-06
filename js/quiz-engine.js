@@ -817,10 +817,17 @@ function renderDictationSentence(question) {
         return `<span class="${classes.join(' ')}" data-part-index="${part.index}" data-syllables="${part.syllables.length}">${escapeHtml(part.text)}</span>`;
     }).join('');
 
+    const meaningHtml = question.meaning ? `
+        <div class="text-center text-2xl text-gray-600 mb-4">
+            ${escapeHtml(question.meaning)}
+        </div>
+    ` : '';
+
     questionDisplay.innerHTML = `
         <div class="dictation-sentence text-center text-5xl md:text-6xl my-8 font-normal text-gray-800 leading-snug">
             ${sentenceHtml}
         </div>
+        ${meaningHtml}
         <div class="dictation-controls text-center text-sm text-gray-500 -mt-4 mb-4">
             Type with tone marks (mǎ) or numbers (ma3). Click any segment to replay it. Space = play current part · Ctrl+Space = play full sentence · Shift+Space inserts a space.
         </div>
@@ -3099,12 +3106,14 @@ function enterFullscreenDrawing() {
     fullscreenCanvas.addEventListener('touchend', stopFullscreenDrawing);
 
     // Setup buttons
+    const undoBtn = document.getElementById('fullscreenUndoBtn');
     const clearBtn = document.getElementById('fullscreenClearBtn');
     const submitBtn = document.getElementById('fullscreenSubmitBtn');
     const showAnswerBtn = document.getElementById('fullscreenShowAnswerBtn');
     const nextBtn = document.getElementById('fullscreenNextBtn');
     const exitBtn = document.getElementById('exitFullscreenBtn');
 
+    if (undoBtn) undoBtn.onclick = undoFullscreenStroke;
     if (clearBtn) clearBtn.onclick = clearFullscreenCanvas;
     if (submitBtn) submitBtn.onclick = submitFullscreenDrawing;
     if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
@@ -3115,6 +3124,9 @@ function enterFullscreenDrawing() {
     strokes = [];
     currentStroke = null;
     drawStartTime = null;
+
+    // Update undo button state
+    updateFullscreenUndoButton();
 
     // Play character pronunciation audio
     if (currentQuestion && currentQuestion.pinyin) {
@@ -3192,6 +3204,8 @@ function stopFullscreenDrawing() {
 
         if (ocrTimeout) clearTimeout(ocrTimeout);
         ocrTimeout = setTimeout(runFullscreenOCR, 400);
+
+        updateFullscreenUndoButton();
     }
     isDrawing = false;
 }
@@ -3257,6 +3271,47 @@ function clearFullscreenCanvas() {
     const ocrResult = document.getElementById('fullscreenOcrResult');
     if (ocrResult) {
         ocrResult.textContent = '';
+    }
+    updateFullscreenUndoButton();
+}
+
+function undoFullscreenStroke() {
+    if (strokes.length === 0) return;
+
+    strokes.pop();
+    redrawFullscreenCanvas();
+    updateFullscreenUndoButton();
+
+    if (ocrTimeout) clearTimeout(ocrTimeout);
+    ocrTimeout = setTimeout(runFullscreenOCR, 400);
+}
+
+function redrawFullscreenCanvas() {
+    if (!fullscreenCtx || !fullscreenCanvas) return;
+
+    fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+
+    strokes.forEach(stroke => {
+        if (stroke.x.length === 0) return;
+
+        fullscreenCtx.beginPath();
+        fullscreenCtx.moveTo(stroke.x[0], stroke.y[0]);
+
+        for (let i = 1; i < stroke.x.length; i++) {
+            fullscreenCtx.lineTo(stroke.x[i], stroke.y[i]);
+        }
+        fullscreenCtx.stroke();
+    });
+}
+
+function updateFullscreenUndoButton() {
+    const undoBtn = document.getElementById('fullscreenUndoBtn');
+
+    if (undoBtn) {
+        undoBtn.disabled = strokes.length === 0;
+        undoBtn.className = strokes.length === 0
+            ? 'bg-gray-300 text-gray-500 px-6 py-2 rounded-lg transition cursor-not-allowed'
+            : 'bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition';
     }
 }
 
