@@ -322,7 +322,7 @@ function initCommandPalette(config = []) {
             return;
         }
 
-        if (!paletteVisible && !inTypingContext && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === ':') {
+        if (!paletteVisible && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === ':') {
             e.preventDefault();
             openPalette();
         }
