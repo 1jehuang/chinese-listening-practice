@@ -48,14 +48,21 @@ let timerRemainingSeconds = 0;
 const TIMER_ENABLED_KEY = 'quizTimerEnabled';
 const TIMER_SECONDS_KEY = 'quizTimerSeconds';
 
-// Spaced Repetition state
+// Spaced Repetition state (FSRS-based)
 let srEnabled = false;
 let srData = {};
 let srPageKey = '';
 let srDueCount = 0;
+let srQuestionStartTime = 0;
 const SR_ENABLED_KEY = 'sr_enabled';
-const SR_INTERVALS = [1, 2, 4, 8, 16]; // days
-const SR_MAX_INTERVAL_DAYS = 16;
+
+// FSRS-4.5 default parameters (optimized weights)
+const FSRS_PARAMS = {
+    w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
+    requestRetention: 0.9,  // Target 90% recall probability
+    maximumInterval: 36500, // 100 years in days (effectively unlimited)
+    decay: -0.5            // Power law decay constant
+};
 
 // Hanzi Writer
 let writer = null;
@@ -481,7 +488,9 @@ function getSRPageKey() {
 
 function loadSRData() {
     try {
-        srEnabled = localStorage.getItem(SR_ENABLED_KEY) === 'true';
+        const stored = localStorage.getItem(SR_ENABLED_KEY);
+        // Default to enabled if not set
+        srEnabled = stored === null ? true : stored === 'true';
         srPageKey = getSRPageKey();
         const data = localStorage.getItem(srPageKey);
         srData = data ? JSON.parse(data) : {};
@@ -528,11 +537,90 @@ function resetSRData() {
     }
 }
 
+// =============================================================================
+// FSRS ALGORITHM IMPLEMENTATION
+// =============================================================================
+
+function initStability(grade) {
+    const w = FSRS_PARAMS.w;
+    return Math.max(w[grade - 1], 0.1);
+}
+
+function initDifficulty(grade) {
+    const w = FSRS_PARAMS.w;
+    return Math.min(Math.max(w[4] - (grade - 3) * w[5], 1), 10);
+}
+
+function forgettingCurve(elapsedDays, stability) {
+    return Math.pow(1 + elapsedDays / (9 * stability), FSRS_PARAMS.decay);
+}
+
+function nextInterval(stability) {
+    const newInterval = stability / FSRS_PARAMS.decay * (Math.pow(FSRS_PARAMS.requestRetention, 1 / FSRS_PARAMS.decay) - 1);
+    return Math.min(Math.max(Math.round(newInterval), 1), FSRS_PARAMS.maximumInterval);
+}
+
+function nextDifficulty(difficulty, grade) {
+    const w = FSRS_PARAMS.w;
+    const nextD = difficulty - w[6] * (grade - 3);
+    return Math.min(Math.max(nextD, 1), 10);
+}
+
+function nextStability(difficulty, stability, retrievability, grade) {
+    const w = FSRS_PARAMS.w;
+    let hardPenalty = 1;
+    let easyBonus = 1;
+
+    if (grade === 2) hardPenalty = w[15];
+    if (grade === 4) easyBonus = w[16];
+
+    return stability * (
+        1 +
+        Math.exp(w[8]) *
+        (11 - difficulty) *
+        Math.pow(stability, -w[9]) *
+        (Math.exp(w[10] * (1 - retrievability)) - 1) *
+        hardPenalty *
+        easyBonus
+    );
+}
+
+function nextForgetStability(difficulty, stability, retrievability) {
+    const w = FSRS_PARAMS.w;
+    return Math.max(
+        w[11] *
+        Math.pow(difficulty, -w[12]) *
+        (Math.pow(stability + 1, w[13]) - 1) *
+        Math.exp(w[14] * (1 - retrievability)),
+        0.1
+    );
+}
+
+function getResponseTimeGrade(responseTimeMs, correct) {
+    if (!correct) return 1; // Again
+
+    // Map response time to grade (2=Hard, 3=Good, 4=Easy)
+    if (responseTimeMs < 3000) return 4;  // Fast = Easy
+    if (responseTimeMs < 8000) return 3;  // Medium = Good
+    return 2;                              // Slow = Hard
+}
+
+// =============================================================================
+// SR CARD MANAGEMENT (FSRS-based)
+// =============================================================================
+
 function getSRCardData(char) {
     if (!srData[char]) {
         srData[char] = {
-            lastSeen: 0,
-            interval: 1
+            due: Date.now(),
+            stability: 0,
+            difficulty: 0,
+            elapsedDays: 0,
+            scheduledDays: 0,
+            reps: 0,
+            lapses: 0,
+            state: 0, // 0=new, 1=learning, 2=review, 3=relearning
+            lastReview: null
         };
     }
     return srData[char];
@@ -540,28 +628,68 @@ function getSRCardData(char) {
 
 function isCardDue(char) {
     const card = getSRCardData(char);
-    const now = Date.now();
-    const intervalMs = card.interval * 24 * 60 * 60 * 1000;
-    return now >= card.lastSeen + intervalMs;
+    return Date.now() >= card.due;
 }
 
-function updateSRCard(char, correct) {
+function updateSRCard(char, correct, responseTimeMs = 3000) {
     const card = getSRCardData(char);
-    card.lastSeen = Date.now();
+    const now = Date.now();
+    const grade = getResponseTimeGrade(responseTimeMs, correct);
 
-    if (correct) {
-        // Double interval (cap at max)
-        const currentIndex = SR_INTERVALS.indexOf(card.interval);
-        if (currentIndex >= 0 && currentIndex < SR_INTERVALS.length - 1) {
-            card.interval = SR_INTERVALS[currentIndex + 1];
-        } else {
-            card.interval = SR_MAX_INTERVAL_DAYS;
-        }
-    } else {
-        // Reset to 1 day
-        card.interval = 1;
+    // Calculate elapsed time since last review
+    let elapsedDays = 0;
+    if (card.lastReview) {
+        elapsedDays = (now - card.lastReview) / (24 * 60 * 60 * 1000);
+    }
+    card.elapsedDays = elapsedDays;
+
+    // Calculate retrievability if card has been reviewed before
+    let retrievability = 1;
+    if (card.state >= 2 && card.stability > 0) {
+        retrievability = forgettingCurve(elapsedDays, card.stability);
     }
 
+    // Update based on grade
+    if (grade === 1) {
+        // Failed review
+        card.lapses++;
+        card.state = card.state === 0 ? 1 : 3; // new->learning, review->relearning
+        card.stability = card.state === 1
+            ? initStability(grade)
+            : nextForgetStability(card.difficulty, card.stability, retrievability);
+        card.difficulty = card.state === 1
+            ? initDifficulty(grade)
+            : nextDifficulty(card.difficulty, grade);
+        card.scheduledDays = 0;
+        card.due = now + 10 * 60 * 1000; // Review in 10 minutes
+    } else {
+        // Successful review
+        card.reps++;
+
+        if (card.state === 0) {
+            // New card
+            card.stability = initStability(grade);
+            card.difficulty = initDifficulty(grade);
+            card.state = 1; // -> learning
+        } else {
+            // Update existing card
+            card.stability = nextStability(card.difficulty, card.stability, retrievability, grade);
+            card.difficulty = nextDifficulty(card.difficulty, grade);
+        }
+
+        // Transition to review state if stability is high enough
+        if (card.state === 1 && card.stability >= 1) {
+            card.state = 2; // learning -> review
+        } else if (card.state === 3 && card.stability >= 1) {
+            card.state = 2; // relearning -> review
+        }
+
+        // Calculate next review
+        card.scheduledDays = nextInterval(card.stability);
+        card.due = now + card.scheduledDays * 24 * 60 * 60 * 1000;
+    }
+
+    card.lastReview = now;
     saveSRData();
 }
 
@@ -1252,6 +1380,9 @@ function generateQuestion() {
     if (timerEnabled) {
         startTimer();
     }
+
+    // Track response time for FSRS
+    srQuestionStartTime = Date.now();
 }
 
 function ensureTtsSpeedControl() {
@@ -1393,7 +1524,8 @@ function checkAnswer() {
 
             // Update SR data on correct answer
             if (srEnabled && currentQuestion && currentQuestion.char) {
-                updateSRCard(currentQuestion.char, true);
+                const responseTime = Date.now() - srQuestionStartTime;
+                updateSRCard(currentQuestion.char, true, responseTime);
             }
 
             feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin} (${expectedTones})`;
@@ -1419,7 +1551,8 @@ function checkAnswer() {
 
             // Update SR data on wrong answer
             if (srEnabled && currentQuestion && currentQuestion.char) {
-                updateSRCard(currentQuestion.char, false);
+                const responseTime = Date.now() - srQuestionStartTime;
+                updateSRCard(currentQuestion.char, false, responseTime);
             }
 
             feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${currentQuestion.pinyin})`;
@@ -1488,7 +1621,8 @@ function handleCorrectFullAnswer() {
 
     // Update SR data on correct answer
     if (srEnabled && currentQuestion && currentQuestion.char) {
-        updateSRCard(currentQuestion.char, true);
+        const responseTime = Date.now() - srQuestionStartTime;
+        updateSRCard(currentQuestion.char, true, responseTime);
     }
 
     if (mode === 'audio-to-pinyin') {
@@ -1935,7 +2069,10 @@ function loadTimerSettings() {
 
     try {
         const storedEnabled = window.localStorage.getItem(TIMER_ENABLED_KEY);
-        if (storedEnabled === '1') {
+        // Default to enabled if not set
+        if (storedEnabled === null) {
+            timerEnabled = true;
+        } else if (storedEnabled === '1') {
             timerEnabled = true;
         } else if (storedEnabled === '0') {
             timerEnabled = false;
