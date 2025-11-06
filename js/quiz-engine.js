@@ -3274,6 +3274,10 @@ function submitFullscreenDrawing() {
     if (correct) {
         playCorrectSound();
         score++;
+
+        // Play character pronunciation audio
+        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        playPinyinAudio(firstPinyin, currentQuestion.char);
     } else {
         playWrongSound();
     }
