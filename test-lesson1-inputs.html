@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Lesson 1 Input Test</title>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/spaced-repetition.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .pass { color: green; }
+        .fail { color: red; background: #fee; }
+        .test-group { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Lesson 1 Pinyin Input Tests</h1>
+    <div id="results"></div>
+
+    <script>
+        const characters = [
+            { char: '第', pinyin: 'dì', meaning: 'ordinal prefix (-st, -nd, -rd, -th)' },
+            { char: '课', pinyin: 'kè', meaning: 'lesson' },
+            { char: '两', pinyin: 'liǎng', meaning: 'two (used with AN)' },
+            { char: '张', pinyin: 'zhāng', meaning: 'measure word for flat things' },
+            { char: '地图', pinyin: 'dìtú', meaning: 'map' },
+            { char: '甲', pinyin: 'jiǎ', meaning: 'person A' },
+            { char: '这', pinyin: 'zhè', meaning: 'this; these' },
+            { char: '是', pinyin: 'shì', meaning: 'is; am; are' },
+            { char: '什么', pinyin: 'shém.me', meaning: 'what' },
+            { char: '比', pinyin: 'bǐ', meaning: 'compare' },
+            { char: '大', pinyin: 'dà', meaning: 'big' },
+            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little' },
+            { char: '年', pinyin: 'nián', meaning: 'year' },
+            { char: '以前', pinyin: 'yǐqián', meaning: 'before' },
+            { char: '那时', pinyin: 'nàshí', meaning: 'that time' },
+            { char: '还', pinyin: 'hái', meaning: 'still; also' },
+            { char: '包括', pinyin: 'bāokuò', meaning: 'include' },
+            { char: '现在', pinyin: 'xiànzài', meaning: 'now' },
+            { char: '蒙古国', pinyin: 'Měnggǔguó', meaning: 'Mongolia' },
+            { char: '哦', pinyin: 'ò', meaning: 'oh; I see' },
+            { char: '我', pinyin: 'wǒ', meaning: 'I; me' },
+            { char: '懂', pinyin: 'dǒng', meaning: 'understand' },
+            { char: '了', pinyin: 'le', meaning: 'particle for new situation' },
+            { char: '历史', pinyin: 'lì.shi', meaning: 'history' },
+            { char: '上', pinyin: 'shàng', meaning: 'in; on' },
+            { char: '对了', pinyin: 'duì.le', meaning: "that's right" },
+            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but' },
+            { char: '完全', pinyin: 'wánquán', meaning: 'completely; entirely' },
+            { char: '他们', pinyin: 'tā.men', meaning: 'they' },
+            { char: '搬', pinyin: 'bān', meaning: 'move' },
+            { char: '到…去', pinyin: 'dào...qù', meaning: 'go to...' },
+            { char: '台湾', pinyin: 'Táiwān', meaning: 'Taiwan' },
+            { char: '就是', pinyin: 'jiù.shì', meaning: 'be exactly' },
+            { char: '和', pinyin: 'hé', meaning: 'and' },
+            { char: '政府', pinyin: 'zhèng.fǔ', meaning: 'government' },
+            { char: '都', pinyin: 'dōu', meaning: 'in all cases' },
+            { char: '说', pinyin: 'shuō', meaning: 'speak; say; talk' },
+            { char: '只有', pinyin: 'zhǐyǒu', meaning: "there's only" },
+            { char: '个', pinyin: 'gè', meaning: 'general measure word' },
+            { char: '而', pinyin: 'ér', meaning: 'and; yet' },
+            { char: '部分', pinyin: 'bù.fèn', meaning: 'part' },
+            { char: '国家', pinyin: 'guójiā', meaning: 'country' },
+            { char: '对不对', pinyin: 'duì.bu.duì', meaning: 'Is it correct?' },
+            { char: '很难说', pinyin: 'hěnnánshuō', meaning: "It's hard to say" },
+            { char: '乙', pinyin: 'yǐ', meaning: 'person B' },
+            { char: '中国', pinyin: 'Zhōng.guo', meaning: 'China' },
+            { char: '那么', pinyin: 'nà.me', meaning: 'well then; then' },
+            { char: '那', pinyin: 'nà', meaning: 'that; those' },
+            { char: '呢', pinyin: 'ne', meaning: 'particle for follow-up questions' },
+            { char: '也', pinyin: 'yě', meaning: 'also; too' },
+            { char: '为什么', pinyin: 'wèishém.me', meaning: 'why' },
+            { char: '不', pinyin: 'bù', meaning: 'no; not' },
+            { char: '一样', pinyin: 'yīyàng', meaning: 'same' },
+            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because; since' },
+            { char: '中华', pinyin: 'Zhōnghuá', meaning: 'China' },
+            { char: '民国', pinyin: 'mínguó', meaning: 'republic' },
+            { char: '人民', pinyin: 'rénmín', meaning: 'the people' },
+            { char: '共和国', pinyin: 'gònghéguó', meaning: 'republic' },
+            { char: '的', pinyin: 'de', meaning: 'particle for modification' }
+        ];
+
+        function generateTestInputs(pinyin) {
+            const inputs = [];
+
+            // Original with tone marks
+            inputs.push(pinyin);
+            inputs.push(pinyin.toLowerCase());
+            inputs.push(pinyin.toUpperCase());
+
+            // With tone numbers
+            const withNumbers = convertPinyinToToneNumbers(pinyin);
+            inputs.push(withNumbers);
+
+            // Without dots
+            inputs.push(pinyin.replace(/\./g, ''));
+            inputs.push(withNumbers.replace(/\./g, ''));
+
+            // With spaces instead of dots
+            inputs.push(pinyin.replace(/\./g, ' '));
+            inputs.push(withNumbers.replace(/\./g, ' '));
+
+            // Remove ... from patterns like dào...qù
+            const cleaned = pinyin.replace(/\.\.\./g, '');
+            if (cleaned !== pinyin) {
+                inputs.push(cleaned);
+                inputs.push(cleaned.replace(/\./g, ''));
+                inputs.push(cleaned.replace(/\./g, ' '));
+            }
+
+            return [...new Set(inputs)]; // Remove duplicates
+        }
+
+        function runTests() {
+            const results = document.getElementById('results');
+            let totalTests = 0;
+            let passedTests = 0;
+            let failedChars = [];
+
+            characters.forEach(char => {
+                const testInputs = generateTestInputs(char.pinyin);
+                const charResults = [];
+                let charPassed = true;
+
+                testInputs.forEach(input => {
+                    totalTests++;
+                    const passed = checkPinyinMatch(input, char.pinyin);
+                    if (passed) {
+                        passedTests++;
+                    } else {
+                        charPassed = false;
+                    }
+                    charResults.push({
+                        input,
+                        passed,
+                        expected: char.pinyin
+                    });
+                });
+
+                if (!charPassed) {
+                    failedChars.push({
+                        char: char.char,
+                        pinyin: char.pinyin,
+                        results: charResults
+                    });
+                }
+
+                // Display results for this character
+                const div = document.createElement('div');
+                div.className = 'test-group';
+                div.innerHTML = `
+                    <h3>${char.char} (${char.pinyin}) ${charPassed ? '✓' : '✗'}</h3>
+                    ${charResults.map(r => `
+                        <div class="${r.passed ? 'pass' : 'fail'}">
+                            ${r.passed ? '✓' : '✗'} "${r.input}" → ${r.passed ? 'PASS' : 'FAIL'}
+                        </div>
+                    `).join('')}
+                `;
+                results.appendChild(div);
+            });
+
+            // Summary
+            const summary = document.createElement('div');
+            summary.style.cssText = 'position: fixed; top: 0; right: 0; background: white; border: 2px solid black; padding: 20px; margin: 20px;';
+            summary.innerHTML = `
+                <h2>Summary</h2>
+                <p><strong>Total Tests:</strong> ${totalTests}</p>
+                <p><strong>Passed:</strong> ${passedTests}</p>
+                <p><strong>Failed:</strong> ${totalTests - passedTests}</p>
+                <p><strong>Pass Rate:</strong> ${((passedTests/totalTests)*100).toFixed(1)}%</p>
+                ${failedChars.length > 0 ? `
+                    <h3>Characters with Failures:</h3>
+                    <ul>
+                        ${failedChars.map(f => `<li>${f.char} (${f.pinyin})</li>`).join('')}
+                    </ul>
+                ` : '<p style="color: green;">All tests passed!</p>'}
+            `;
+            document.body.appendChild(summary);
+        }
+
+        // Wait for quiz-engine.js to load
+        if (typeof checkPinyinMatch === 'function' && typeof convertPinyinToToneNumbers === 'function') {
+            runTests();
+        } else {
+            window.addEventListener('load', () => {
+                setTimeout(runTests, 100);
+            });
+        }
+    </script>
+</body>
+</html>

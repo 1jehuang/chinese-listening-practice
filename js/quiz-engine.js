@@ -2852,13 +2852,16 @@ function enterFullscreenDrawing() {
     fullscreenCanvas = document.getElementById('fullscreenDrawCanvas');
     if (!fullscreenCanvas) return;
 
-    // Set canvas size to match display size
-    const canvasSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.9, 800);
+    // Set canvas size to better utilize screen space
+    // Account for toolbar (80px) and padding, aim for square canvas
+    const availableHeight = window.innerHeight - 200; // Reserve space for toolbar and margins
+    const availableWidth = window.innerWidth - 100; // Reserve space for margins
+    const canvasSize = Math.min(availableHeight, availableWidth, 1000); // Increased max size to 1000px
     fullscreenCanvas.width = canvasSize;
     fullscreenCanvas.height = canvasSize;
 
     fullscreenCtx = fullscreenCanvas.getContext('2d');
-    fullscreenCtx.lineWidth = 12;
+    fullscreenCtx.lineWidth = Math.max(8, canvasSize / 80); // Scale stroke width with canvas size
     fullscreenCtx.lineCap = 'round';
     fullscreenCtx.lineJoin = 'round';
     fullscreenCtx.strokeStyle = '#000';
@@ -2875,6 +2878,7 @@ function enterFullscreenDrawing() {
 
     // Setup buttons
     const undoBtn = document.getElementById('fullscreenUndoBtn');
+    const redoBtn = document.getElementById('fullscreenRedoBtn');
     const clearBtn = document.getElementById('fullscreenClearBtn');
     const submitBtn = document.getElementById('fullscreenSubmitBtn');
     const showAnswerBtn = document.getElementById('fullscreenShowAnswerBtn');
@@ -2882,6 +2886,7 @@ function enterFullscreenDrawing() {
     const exitBtn = document.getElementById('exitFullscreenBtn');
 
     if (undoBtn) undoBtn.onclick = undoFullscreenStroke;
+    if (redoBtn) redoBtn.onclick = redoFullscreenStroke;
     if (clearBtn) clearBtn.onclick = clearFullscreenCanvas;
     if (submitBtn) submitBtn.onclick = submitFullscreenDrawing;
     if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
@@ -2890,11 +2895,12 @@ function enterFullscreenDrawing() {
 
     // Reset drawing state
     strokes = [];
+    undoneStrokes = [];
     currentStroke = null;
     drawStartTime = null;
 
-    // Update undo button state
-    updateFullscreenUndoButton();
+    // Update undo/redo button state
+    updateFullscreenUndoRedoButtons();
 
     // Play character pronunciation audio
     if (currentQuestion && currentQuestion.pinyin) {
@@ -2968,12 +2974,13 @@ function drawFullscreen(e) {
 function stopFullscreenDrawing() {
     if (isDrawing && currentStroke && currentStroke.x.length > 0) {
         strokes.push(currentStroke);
+        undoneStrokes = []; // Clear redo history when new stroke is added
         currentStroke = null;
 
         if (ocrTimeout) clearTimeout(ocrTimeout);
         ocrTimeout = setTimeout(runFullscreenOCR, 400);
 
-        updateFullscreenUndoButton();
+        updateFullscreenUndoRedoButtons();
     }
     isDrawing = false;
 }
@@ -3030,6 +3037,7 @@ function clearFullscreenCanvas() {
     if (!fullscreenCtx || !fullscreenCanvas) return;
     fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
     strokes = [];
+    undoneStrokes = [];
     currentStroke = null;
     drawStartTime = null;
     if (ocrTimeout) {
@@ -3040,15 +3048,30 @@ function clearFullscreenCanvas() {
     if (ocrResult) {
         ocrResult.textContent = '';
     }
-    updateFullscreenUndoButton();
+    updateFullscreenUndoRedoButtons();
 }
 
 function undoFullscreenStroke() {
     if (strokes.length === 0) return;
 
-    strokes.pop();
+    const lastStroke = strokes.pop();
+    undoneStrokes.push(lastStroke);
+
     redrawFullscreenCanvas();
-    updateFullscreenUndoButton();
+    updateFullscreenUndoRedoButtons();
+
+    if (ocrTimeout) clearTimeout(ocrTimeout);
+    ocrTimeout = setTimeout(runFullscreenOCR, 400);
+}
+
+function redoFullscreenStroke() {
+    if (undoneStrokes.length === 0) return;
+
+    const stroke = undoneStrokes.pop();
+    strokes.push(stroke);
+
+    redrawFullscreenCanvas();
+    updateFullscreenUndoRedoButtons();
 
     if (ocrTimeout) clearTimeout(ocrTimeout);
     ocrTimeout = setTimeout(runFullscreenOCR, 400);
@@ -3072,14 +3095,22 @@ function redrawFullscreenCanvas() {
     });
 }
 
-function updateFullscreenUndoButton() {
+function updateFullscreenUndoRedoButtons() {
     const undoBtn = document.getElementById('fullscreenUndoBtn');
+    const redoBtn = document.getElementById('fullscreenRedoBtn');
 
     if (undoBtn) {
         undoBtn.disabled = strokes.length === 0;
         undoBtn.className = strokes.length === 0
             ? 'bg-gray-300 text-gray-500 px-6 py-2 rounded-lg transition cursor-not-allowed'
             : 'bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition';
+    }
+
+    if (redoBtn) {
+        redoBtn.disabled = undoneStrokes.length === 0;
+        redoBtn.className = undoneStrokes.length === 0
+            ? 'bg-gray-300 text-gray-500 px-6 py-2 rounded-lg transition cursor-not-allowed'
+            : 'bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg transition';
     }
 }
 

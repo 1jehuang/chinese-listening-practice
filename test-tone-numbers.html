@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Lesson 1 Tone Number Test</title>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/spaced-repetition.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .pass { color: green; }
+        .fail { color: red; background: #fee; padding: 2px 5px; }
+        .test-row { margin: 5px 0; padding: 5px; border-bottom: 1px solid #eee; }
+        .summary { position: fixed; top: 20px; right: 20px; background: white; border: 2px solid black; padding: 20px; max-width: 300px; }
+        h1 { margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Lesson 1 Tone Number Input Tests</h1>
+    <div id="results"></div>
+
+    <script>
+        const characters = [
+            { char: '第', pinyin: 'dì', toneNumber: 'di4' },
+            { char: '课', pinyin: 'kè', toneNumber: 'ke4' },
+            { char: '两', pinyin: 'liǎng', toneNumber: 'liang3' },
+            { char: '张', pinyin: 'zhāng', toneNumber: 'zhang1' },
+            { char: '地图', pinyin: 'dìtú', toneNumber: 'di4tu2' },
+            { char: '甲', pinyin: 'jiǎ', toneNumber: 'jia3' },
+            { char: '这', pinyin: 'zhè', toneNumber: 'zhe4' },
+            { char: '是', pinyin: 'shì', toneNumber: 'shi4' },
+            { char: '什么', pinyin: 'shém.me', toneNumber: 'shen2me5' },
+            { char: '比', pinyin: 'bǐ', toneNumber: 'bi3' },
+            { char: '大', pinyin: 'dà', toneNumber: 'da4' },
+            { char: '一点儿', pinyin: 'yìdiǎnr', toneNumber: 'yi4dian3r5' },
+            { char: '年', pinyin: 'nián', toneNumber: 'nian2' },
+            { char: '以前', pinyin: 'yǐqián', toneNumber: 'yi3qian2' },
+            { char: '那时', pinyin: 'nàshí', toneNumber: 'na4shi2' },
+            { char: '还', pinyin: 'hái', toneNumber: 'hai2' },
+            { char: '包括', pinyin: 'bāokuò', toneNumber: 'bao1kuo4' },
+            { char: '现在', pinyin: 'xiànzài', toneNumber: 'xian4zai4' },
+            { char: '蒙古国', pinyin: 'Měnggǔguó', toneNumber: 'meng3gu3guo2' },
+            { char: '哦', pinyin: 'ò', toneNumber: 'o4' },
+            { char: '我', pinyin: 'wǒ', toneNumber: 'wo3' },
+            { char: '懂', pinyin: 'dǒng', toneNumber: 'dong3' },
+            { char: '了', pinyin: 'le', toneNumber: 'le5' },
+            { char: '历史', pinyin: 'lì.shi', toneNumber: 'li4shi5' },
+            { char: '上', pinyin: 'shàng', toneNumber: 'shang4' },
+            { char: '对了', pinyin: 'duì.le', toneNumber: 'dui4le5' },
+            { char: '可是', pinyin: 'kě.shì', toneNumber: 'ke3shi4' },
+            { char: '完全', pinyin: 'wánquán', toneNumber: 'wan2quan2' },
+            { char: '他们', pinyin: 'tā.men', toneNumber: 'ta1men5' },
+            { char: '搬', pinyin: 'bān', toneNumber: 'ban1' },
+            { char: '到…去', pinyin: 'dào...qù', toneNumber: 'dao4qu4' },
+            { char: '台湾', pinyin: 'Táiwān', toneNumber: 'tai2wan1' },
+            { char: '就是', pinyin: 'jiù.shì', toneNumber: 'jiu4shi4' },
+            { char: '和', pinyin: 'hé', toneNumber: 'he2' },
+            { char: '政府', pinyin: 'zhèng.fǔ', toneNumber: 'zheng4fu3' },
+            { char: '都', pinyin: 'dōu', toneNumber: 'dou1' },
+            { char: '说', pinyin: 'shuō', toneNumber: 'shuo1' },
+            { char: '只有', pinyin: 'zhǐyǒu', toneNumber: 'zhi3you3' },
+            { char: '个', pinyin: 'gè', toneNumber: 'ge4' },
+            { char: '而', pinyin: 'ér', toneNumber: 'er2' },
+            { char: '部分', pinyin: 'bù.fèn', toneNumber: 'bu4fen4' },
+            { char: '国家', pinyin: 'guójiā', toneNumber: 'guo2jia1' },
+            { char: '对不对', pinyin: 'duì.bu.duì', toneNumber: 'dui4bu5dui4' },
+            { char: '很难说', pinyin: 'hěnnánshuō', toneNumber: 'hen3nan2shuo1' },
+            { char: '乙', pinyin: 'yǐ', toneNumber: 'yi3' },
+            { char: '中国', pinyin: 'Zhōng.guo', toneNumber: 'zhong1guo2' },
+            { char: '那么', pinyin: 'nà.me', toneNumber: 'na4me5' },
+            { char: '那', pinyin: 'nà', toneNumber: 'na4' },
+            { char: '呢', pinyin: 'ne', toneNumber: 'ne5' },
+            { char: '也', pinyin: 'yě', toneNumber: 'ye3' },
+            { char: '为什么', pinyin: 'wèishém.me', toneNumber: 'wei4shen2me5' },
+            { char: '不', pinyin: 'bù', toneNumber: 'bu4' },
+            { char: '一样', pinyin: 'yīyàng', toneNumber: 'yi1yang4' },
+            { char: '因为', pinyin: 'yīn.wèi', toneNumber: 'yin1wei4' },
+            { char: '中华', pinyin: 'Zhōnghuá', toneNumber: 'zhong1hua2' },
+            { char: '民国', pinyin: 'mínguó', toneNumber: 'min2guo2' },
+            { char: '人民', pinyin: 'rénmín', toneNumber: 'ren2min2' },
+            { char: '共和国', pinyin: 'gònghéguó', toneNumber: 'gong4he2guo2' },
+            { char: '的', pinyin: 'de', toneNumber: 'de5' }
+        ];
+
+        function runTests() {
+            const results = document.getElementById('results');
+            let passed = 0;
+            let failed = 0;
+            let failedWords = [];
+
+            characters.forEach(item => {
+                const result = checkPinyinMatch(item.toneNumber, item.pinyin);
+
+                const div = document.createElement('div');
+                div.className = 'test-row';
+
+                if (result) {
+                    passed++;
+                    div.innerHTML = `<span class="pass">✓</span> ${item.char} → "${item.toneNumber}" matches "${item.pinyin}"`;
+                } else {
+                    failed++;
+                    failedWords.push(item);
+                    div.innerHTML = `<span class="fail">✗ FAILED</span> ${item.char} → "${item.toneNumber}" does NOT match "${item.pinyin}"`;
+                }
+
+                results.appendChild(div);
+            });
+
+            // Summary
+            const summary = document.createElement('div');
+            summary.className = 'summary';
+            summary.innerHTML = `
+                <h2>Test Summary</h2>
+                <p><strong>Total:</strong> ${characters.length}</p>
+                <p><strong>Passed:</strong> <span class="pass">${passed}</span></p>
+                <p><strong>Failed:</strong> <span class="${failed > 0 ? 'fail' : 'pass'}">${failed}</span></p>
+                <p><strong>Pass Rate:</strong> ${((passed/characters.length)*100).toFixed(1)}%</p>
+                ${failed > 0 ? `
+                    <hr>
+                    <h3>Failed Words:</h3>
+                    <ul style="padding-left: 20px; margin: 0;">
+                        ${failedWords.map(w => `<li>${w.char} (${w.toneNumber})</li>`).join('')}
+                    </ul>
+                ` : '<p style="color: green; font-weight: bold;">✓ All tests passed!</p>'}
+            `;
+            document.body.appendChild(summary);
+        }
+
+        // Wait for quiz-engine.js to load
+        if (typeof checkPinyinMatch === 'function') {
+            runTests();
+        } else {
+            window.addEventListener('load', () => {
+                setTimeout(runTests, 100);
+            });
+        }
+    </script>
+</body>
+</html>

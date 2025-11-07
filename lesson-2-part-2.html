@@ -96,6 +96,29 @@
             <div class="flex gap-3 justify-center mt-4">
                 <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
                 <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+                <button id="fullscreenDrawBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">⛶ Fullscreen</button>
+            </div>
+        </div>
+
+        <!-- Fullscreen Drawing Mode -->
+        <div id="fullscreenDrawContainer" class="hidden fixed inset-0 bg-gray-100 z-50 flex flex-col">
+            <div class="flex justify-between items-center p-4 bg-white shadow">
+                <div class="text-2xl font-bold text-gray-700" id="fullscreenPrompt">Draw: </div>
+                <div class="flex gap-2">
+                    <button id="fullscreenUndoBtn" class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed" disabled>↶ Undo</button>
+                    <button id="fullscreenRedoBtn" class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed" disabled>↷ Redo</button>
+                    <button id="fullscreenClearBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">🗑️ Clear</button>
+                    <button id="fullscreenSubmitBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">✓ Submit</button>
+                    <button id="fullscreenShowAnswerBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">💡 Answer</button>
+                    <button id="fullscreenNextBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">→ Next</button>
+                    <button id="exitFullscreenBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">✕ Exit</button>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center justify-center p-4">
+                <div class="text-center w-full h-full flex flex-col items-center justify-center">
+                    <div id="fullscreenOcrResult" class="text-7xl sm:text-8xl min-h-[100px] text-blue-600 font-bold mb-4"></div>
+                    <canvas id="fullscreenDrawCanvas" class="border-4 border-gray-400 rounded-lg cursor-crosshair bg-white shadow-lg max-w-full max-h-full" style="aspect-ratio: 1/1;"></canvas>
+                </div>
             </div>
         </div>
 
