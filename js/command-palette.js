@@ -139,6 +139,13 @@ function attachCommandableBadges(items) {
 
         candidates.forEach(el => {
             if (el.getAttribute(COMMAND_HINT_ATTR) === 'true') return;
+            
+            // Skip badges for home.html links
+            const href = el.getAttribute('href');
+            if (href && normalizeLinkTarget(href) === 'home.html') {
+                return;
+            }
+            
             el.setAttribute(COMMAND_HINT_ATTR, 'true');
             el.classList.add('commandable-hinted');
 

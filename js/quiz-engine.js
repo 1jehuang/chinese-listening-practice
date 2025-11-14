@@ -715,6 +715,14 @@ function generateQuestion() {
     updatePreviewDisplay();
     window.currentQuestion = currentQuestion;
 
+    // Clear input fields to prevent autofilled values (e.g., "yi dian er ling" from TTS speed)
+    if (answerInput) {
+        answerInput.value = '';
+    }
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+    }
+
     // Hide all mode containers
     typeMode.style.display = 'none';
     if (choiceMode) choiceMode.style.display = 'none';
@@ -839,10 +847,16 @@ function ensureTtsSpeedControl() {
         label.textContent = 'Speech speed';
         label.className = 'font-medium text-gray-600';
         label.htmlFor = 'ttsSpeedSelect';
+        // Prevent speech recognition from picking up the speed value
+        label.setAttribute('aria-hidden', 'false');
+        label.setAttribute('data-speech-ignore', 'true');
 
         const select = document.createElement('select');
         select.id = 'ttsSpeedSelect';
         select.className = 'border-2 border-gray-300 rounded-lg px-3 py-1 bg-white text-sm focus:border-blue-500 focus:outline-none';
+        // Prevent speech recognition from picking up the speed value
+        select.setAttribute('data-speech-ignore', 'true');
+        select.setAttribute('aria-label', 'Speech speed selector');
 
         wrapper.appendChild(label);
         wrapper.appendChild(select);
@@ -3891,6 +3905,21 @@ function initQuiz(charactersData, userConfig = {}) {
     studyMode = document.getElementById('studyMode');
     radicalPracticeMode = document.getElementById('radicalPracticeMode');
     audioSection = document.getElementById('audioSection');
+
+    // Disable autocomplete and speech input to prevent browser from auto-filling values
+    // (e.g., TTS speed "1.20" being transcribed as "yi dian er ling")
+    if (answerInput) {
+        answerInput.setAttribute('autocomplete', 'off');
+        answerInput.setAttribute('autocorrect', 'off');
+        answerInput.setAttribute('autocapitalize', 'off');
+        answerInput.setAttribute('spellcheck', 'false');
+    }
+    if (fuzzyInput) {
+        fuzzyInput.setAttribute('autocomplete', 'off');
+        fuzzyInput.setAttribute('autocorrect', 'off');
+        fuzzyInput.setAttribute('autocapitalize', 'off');
+        fuzzyInput.setAttribute('spellcheck', 'false');
+    }
 
     previewQueue = [];
     const requestedPreviewSize = Number(config.previewQueueSize);
