@@ -6,13 +6,27 @@ const globalScope = typeof window !== 'undefined' ? window : globalThis;
 
 const TTS_RATE_STORAGE_KEY = 'quizTtsRate';
 const DEFAULT_TTS_RATE = 0.85;
-const MIN_TTS_RATE = 0.6;
-const MAX_TTS_RATE = 1.25;
+const MIN_TTS_RATE = 0.5;
+const MAX_TTS_RATE = 2.5;
 const TTS_SPEED_OPTIONS = [
+    { value: 0.5, label: 'Very Slow · 0.5×' },
+    { value: 0.6, label: 'Slow · 0.6×' },
     { value: 0.7, label: 'Slow · 0.7×' },
+    { value: 0.75, label: 'Slow-Medium · 0.75×' },
     { value: 0.85, label: 'Learning · 0.85×' },
+    { value: 0.9, label: 'Learning-Quick · 0.9×' },
     { value: 1.0, label: 'Normal · 1.0×' },
-    { value: 1.15, label: 'Quick · 1.15×' }
+    { value: 1.1, label: 'Quick · 1.1×' },
+    { value: 1.15, label: 'Quick · 1.15×' },
+    { value: 1.2, label: 'Fast · 1.2×' },
+    { value: 1.3, label: 'Fast · 1.3×' },
+    { value: 1.4, label: 'Faster · 1.4×' },
+    { value: 1.5, label: 'Faster · 1.5×' },
+    { value: 1.6, label: 'Very Fast · 1.6×' },
+    { value: 1.75, label: 'Very Fast · 1.75×' },
+    { value: 2.0, label: 'Ultra Fast · 2.0×' },
+    { value: 2.25, label: 'Ultra Fast · 2.25×' },
+    { value: 2.5, label: 'Maximum · 2.5×' }
 ];
 
 function clampTtsRate(rate) {

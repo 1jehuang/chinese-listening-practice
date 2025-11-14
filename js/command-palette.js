@@ -41,6 +41,119 @@ const DEFAULT_PAGES = [
 ];
 
 const PALETTE_INPUT_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+const COMMAND_PALETTE_TOAST_KEY = 'commandPaletteIntroShown';
+const COMMAND_HINT_ATTR = 'data-command-hint-applied';
+
+function isMacLike() {
+    if (typeof navigator === 'undefined') return false;
+    return /mac|iphone|ipad|ipod/i.test(navigator.platform || '');
+}
+
+function getShortcutLabel() {
+    return isMacLike() ? '⌘K' : 'Ctrl+K';
+}
+
+function whenDocumentReady(fn) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fn, { once: true });
+    } else {
+        fn();
+    }
+}
+
+function normalizeLinkTarget(href) {
+    if (!href) return '';
+    const cleaned = href.split('#')[0].split('?')[0];
+    if (/^https?:\/\//i.test(cleaned)) {
+        try {
+            const url = new URL(cleaned);
+            return url.pathname.replace(/^\/+/, '');
+        } catch {
+            return cleaned;
+        }
+    }
+    return cleaned.replace(/^\.?\//, '');
+}
+
+function maybeShowCommandPaletteToast() {
+    if (window.__commandPaletteToastScheduled) return;
+    let shouldShow = true;
+    try {
+        if (localStorage.getItem(COMMAND_PALETTE_TOAST_KEY)) {
+            shouldShow = false;
+        }
+    } catch {
+        shouldShow = false;
+    }
+
+    if (!shouldShow) return;
+    window.__commandPaletteToastScheduled = true;
+
+    whenDocumentReady(() => {
+        try {
+            localStorage.setItem(COMMAND_PALETTE_TOAST_KEY, '1');
+        } catch {
+            // ignore storage issues
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'command-palette-toast';
+        toast.innerHTML = `
+            <div>
+                <strong>Tip:</strong>
+                Press <span class="command-palette-shortcut">${getShortcutLabel()}</span>
+                or <span class="command-palette-shortcut">:</span> to open the command palette.
+            </div>
+            <button type="button" aria-label="Dismiss command palette tip">Got it</button>
+        `;
+
+        const dismiss = () => {
+            toast.classList.remove('command-palette-toast-show');
+            setTimeout(() => toast.remove(), 350);
+        };
+
+        toast.querySelector('button')?.addEventListener('click', dismiss);
+        setTimeout(dismiss, 6000);
+
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('command-palette-toast-show'));
+    });
+}
+
+function attachCommandableBadges(items) {
+    whenDocumentReady(() => {
+        const pageUrls = new Set(
+            items
+                .filter(item => item && item.type === 'page' && item.url)
+                .map(item => normalizeLinkTarget(item.url))
+        );
+
+        const candidates = new Set();
+        document.querySelectorAll('[data-commandable]').forEach(el => candidates.add(el));
+        document.querySelectorAll('a[href]').forEach(link => {
+            const normalized = normalizeLinkTarget(link.getAttribute('href'));
+            if (pageUrls.has(normalized)) {
+                candidates.add(link);
+            }
+        });
+
+        candidates.forEach(el => {
+            if (el.getAttribute(COMMAND_HINT_ATTR) === 'true') return;
+            el.setAttribute(COMMAND_HINT_ATTR, 'true');
+            el.classList.add('commandable-hinted');
+
+            const badge = document.createElement('span');
+            badge.className = 'commandable-badge';
+            badge.textContent = `${getShortcutLabel()} · palette`;
+            badge.setAttribute('aria-hidden', 'true');
+            el.appendChild(badge);
+
+            if (!el.hasAttribute('title')) {
+                el.setAttribute('title', 'Also in the command palette');
+            }
+        });
+    });
+}
 
 function initCommandPalette(config = []) {
     const normalizedConfig = normalizeConfig(config);
@@ -51,11 +164,13 @@ function initCommandPalette(config = []) {
     }
 
     const paletteHTML = `
-        <div id="commandPalette" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
-            <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4">
-                <input type="text" id="paletteSearch"
-                       class="w-full px-6 py-4 text-lg border-b border-gray-200 focus:outline-none"
-                       placeholder="${normalizedConfig.searchPlaceholder}">
+        <div id="commandPalette" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-opacity duration-200" style="display: none;">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden border border-gray-100">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <input type="text" id="paletteSearch"
+                           class="w-full px-4 py-3 text-lg bg-transparent border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-400"
+                           placeholder="${normalizedConfig.searchPlaceholder}">
+                </div>
                 <div id="paletteResults" class="max-h-96 overflow-y-auto"></div>
             </div>
         </div>
@@ -190,6 +305,16 @@ function initCommandPalette(config = []) {
         }
     }
 
+    function getTypeBadge(item) {
+        const badges = {
+            'mode': { text: 'Mode', class: 'bg-blue-100 text-blue-700 border-blue-200' },
+            'page': { text: 'Page', class: 'bg-green-100 text-green-700 border-green-200' },
+            'action': { text: 'Action', class: 'bg-purple-100 text-purple-700 border-purple-200' }
+        };
+        const badge = badges[item.type] || { text: 'Command', class: 'bg-gray-100 text-gray-700 border-gray-200' };
+        return `<span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded border ${badge.class}">${badge.text}</span>`;
+    }
+
     function renderResults(items) {
         filteredItems = items;
         if (!filteredItems.length) {
@@ -207,19 +332,23 @@ function initCommandPalette(config = []) {
             const description = item.description || getDefaultDescription(item);
             const hasShortcut = Boolean(item.shortcut);
             const shortcutBadge = hasShortcut
-                ? `<span class="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 border border-gray-200 rounded px-2 py-0.5 ml-2">${item.shortcut}</span>`
+                ? `<span class="inline-flex items-center gap-1 text-xs font-mono font-semibold text-gray-600 bg-gray-100 border border-gray-300 rounded px-2 py-1 ml-2">${item.shortcut}</span>`
                 : '';
-            const actionLabelClass = hasShortcut ? 'ml-3' : '';
+            const typeBadge = getTypeBadge(item);
+            const isSelected = index === 0;
             return `
-                <div class="palette-item px-6 py-3 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${index === 0 ? 'bg-blue-100' : ''}"
+                <div class="palette-item px-5 py-3.5 cursor-pointer transition-all duration-150 flex items-start gap-3 border-l-4 ${isSelected ? 'bg-blue-50 border-blue-500' : 'border-transparent hover:bg-gray-50 hover:border-gray-300'}"
                      data-index="${index}">
-                    <div>
-                        <div class="font-semibold">${item.name}</div>
-                        <div class="text-sm text-gray-500">${description}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="font-semibold text-gray-900 text-base">${item.name}</div>
+                            ${typeBadge}
+                        </div>
+                        <div class="text-sm text-gray-600 leading-relaxed">${description}</div>
                     </div>
-                    <div class="flex items-center text-sm text-gray-400">
+                    <div class="flex items-center gap-2 flex-shrink-0">
                         ${shortcutBadge}
-                        <span class="${actionLabelClass}">${getActionLabel(item)}</span>
+                        <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">${getActionLabel(item)}</span>
                     </div>
                 </div>
             `;
@@ -239,12 +368,14 @@ function initCommandPalette(config = []) {
         if (!filteredItems.length) return;
         const itemEls = results.querySelectorAll('.palette-item');
         if (itemEls[selectedIndex]) {
-            itemEls[selectedIndex].classList.remove('bg-blue-100');
+            itemEls[selectedIndex].classList.remove('bg-blue-50', 'border-blue-500');
+            itemEls[selectedIndex].classList.add('border-transparent');
         }
         selectedIndex = Math.max(0, Math.min(newIndex, filteredItems.length - 1));
         if (itemEls[selectedIndex]) {
-            itemEls[selectedIndex].classList.add('bg-blue-100');
-            itemEls[selectedIndex].scrollIntoView({ block: 'nearest' });
+            itemEls[selectedIndex].classList.remove('border-transparent', 'hover:bg-gray-50', 'hover:border-gray-300');
+            itemEls[selectedIndex].classList.add('bg-blue-50', 'border-blue-500');
+            itemEls[selectedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
     }
 
@@ -341,6 +472,24 @@ function initCommandPalette(config = []) {
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             updateSelection(selectedIndex - 1);
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            if (!filteredItems.length) return;
+            if (e.shiftKey) {
+                // Shift+Tab: go to previous option (or wrap to last)
+                if (selectedIndex <= 0) {
+                    updateSelection(filteredItems.length - 1);
+                } else {
+                    updateSelection(selectedIndex - 1);
+                }
+            } else {
+                // Tab: go to next option (or wrap to first)
+                if (selectedIndex >= filteredItems.length - 1) {
+                    updateSelection(0);
+                } else {
+                    updateSelection(selectedIndex + 1);
+                }
+            }
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (selectedIndex >= 0 && filteredItems[selectedIndex]) {
@@ -366,6 +515,7 @@ function initCommandPalette(config = []) {
             }
 
             availableItems = computeAvailableItems();
+            attachCommandableBadges(baseItems);
 
             if (palette.style.display !== 'none') {
                 const items = filterItems(search.value, availableItems);
@@ -375,6 +525,9 @@ function initCommandPalette(config = []) {
         open: openPalette,
         close: closePalette
     };
+
+    attachCommandableBadges(baseItems);
+    maybeShowCommandPaletteToast();
 
     function normalizeItem(rawItem) {
         if (!rawItem || typeof rawItem !== 'object') return null;

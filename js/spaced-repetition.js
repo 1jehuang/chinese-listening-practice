@@ -45,8 +45,30 @@ function toggleSREnabled() {
         console.warn('Failed to save SR enabled state', e);
     }
 
-    // Reload page to apply SR filtering
-    window.location.reload();
+    // Re-apply SR filtering without reloading
+    // Access variables from quiz-engine.js (same global scope)
+    if (typeof originalQuizCharacters !== 'undefined' && originalQuizCharacters.length > 0) {
+        quizCharacters = applySRFiltering(originalQuizCharacters);
+        
+        // Update banner
+        showSRBanner();
+        
+        // Refresh preview queue if it exists
+        if (typeof ensurePreviewQueue === 'function') {
+            ensurePreviewQueue();
+            if (typeof updatePreviewDisplay === 'function') {
+                updatePreviewDisplay();
+            }
+        }
+        
+        // Refresh current question if quiz is initialized
+        if (typeof generateQuestion === 'function' && typeof questionDisplay !== 'undefined') {
+            generateQuestion();
+        }
+    } else {
+        // Fallback: reload if originalQuizCharacters not available
+        window.location.reload();
+    }
 }
 
 // Expose to window for banner button
@@ -271,6 +293,12 @@ function getSRStats() {
 }
 
 function showSRBanner() {
+    // Remove existing banner first
+    const existingBanner = document.getElementById('srBanner');
+    if (existingBanner) {
+        existingBanner.remove();
+    }
+    
     if (!srEnabled || srDueCount === 0) {
         return;
     }

@@ -11,6 +11,7 @@ let total = 0;
 let enteredSyllables = [];
 let enteredTones = '';
 let quizCharacters = [];
+let originalQuizCharacters = []; // Store original characters before SR filtering
 let config = {};
 
 // DOM elements (initialized in initQuiz)
@@ -39,6 +40,7 @@ let dictationPartElements = [];
 let dictationTotalSyllables = 0;
 let dictationMatchedSyllables = 0;
 let dictationPrimaryPinyin = '';
+let handwritingAnswerShown = false;
 
 // Timer state
 let timerEnabled = false;
@@ -684,6 +686,7 @@ function generateQuestion() {
     hint.className = 'text-center text-2xl font-semibold my-4';
     answerInput.value = '';
     questionAttemptRecorded = false;
+    handwritingAnswerShown = false; // Reset handwriting answer shown state
     lastAnswerCorrect = false;
     clearComponentBreakdown();
     hideDrawNextButton();
@@ -2192,19 +2195,44 @@ function initHandwriting() {
     if (!writerDiv || typeof HanziWriter === 'undefined') return;
 
     writerDiv.innerHTML = '';
+    handwritingAnswerShown = false; // Reset answer shown state for new question
 
     // Create HanziWriter instances for all characters
     const chars = currentQuestion.char.split('');
     const writers = [];
 
-    // Adjust size based on number of characters
-    const charWidth = chars.length > 1 ? 250 : 300;
-    const charHeight = chars.length > 1 ? 250 : 300;
+    // Calculate available width dynamically to ensure characters fit on screen
+    // Get the container's available width, accounting for padding and margins
+    const container = writerDiv.parentElement;
+    const containerRect = container ? container.getBoundingClientRect() : null;
+    
+    // Use the smaller of: container width or viewport width (with safety margin)
+    // Account for sidebar (if present), padding, and margins
+    const viewportWidth = window.innerWidth;
+    const containerWidth = containerRect ? containerRect.width : viewportWidth;
+    const availableWidth = Math.min(containerWidth - 40, viewportWidth - 300); // Reserve 300px for sidebar/padding
+    
+    // Calculate character size to fit all characters on screen
+    // Using flexbox with gap (10px between items, set in CSS)
+    const gapPerChar = 10; // Gap between characters (from CSS)
+    const numChars = chars.length;
+    
+    // Calculate max character width that fits
+    // Total width needed = (charWidth * numChars) + (gapPerChar * (numChars - 1))
+    // availableWidth >= (charWidth * numChars) + (gapPerChar * (numChars - 1))
+    // charWidth <= (availableWidth - gapPerChar * (numChars - 1)) / numChars
+    const totalGapWidth = gapPerChar * (numChars - 1);
+    const maxCharWidth = Math.floor((availableWidth - totalGapWidth) / numChars);
+    
+    // Set reasonable min/max bounds for readability
+    const minSize = 120; // Minimum size for readability
+    const maxSize = numChars === 1 ? 400 : (numChars === 2 ? 300 : 250); // Larger for fewer chars
+    const charWidth = Math.max(minSize, Math.min(maxSize, maxCharWidth));
+    const charHeight = charWidth; // Keep square aspect ratio
 
     chars.forEach(char => {
         const charDiv = document.createElement('div');
-        charDiv.style.display = 'inline-block';
-        charDiv.style.margin = '0 10px';
+        // No need for margin since we're using flexbox gap
         writerDiv.appendChild(charDiv);
 
         const charWriter = HanziWriter.create(charDiv, char, {
@@ -2223,20 +2251,48 @@ function initHandwriting() {
     const hwShowBtn = document.getElementById('hwShowBtn');
     const hwNextBtn = document.getElementById('hwNextBtn');
 
-    if (hwShowBtn) {
-        hwShowBtn.onclick = () => {
-            // Show and animate all characters
-            writers.forEach((w, index) => {
-                setTimeout(() => {
-                    w.showCharacter();
-                    w.showOutline();
-                    w.animateCharacter();
-                }, index * 1000); // Stagger animations by 1 second
-            });
+    // Split pinyin into individual syllables for each character
+    // Handle formats like "shàngkè", "shàng kè", "shàng.kè", etc.
+    const fullPinyin = currentQuestion.pinyin.split('/')[0].trim(); // Get first pinyin variant
+    const pinyinSyllables = typeof splitPinyinSyllables === 'function' 
+        ? splitPinyinSyllables(fullPinyin)
+        : fullPinyin.split(/[.\s]+/).filter(p => p);
+    
+    // Ensure we have the right number of pinyin syllables (pad or truncate if needed)
+    const charPinyins = [];
+    for (let i = 0; i < chars.length; i++) {
+        if (i < pinyinSyllables.length) {
+            charPinyins.push(pinyinSyllables[i]);
+        } else {
+            // If we run out of pinyin syllables, use the last one or the full pinyin
+            charPinyins.push(pinyinSyllables[pinyinSyllables.length - 1] || fullPinyin);
+        }
+    }
 
-            feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-            feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
-        };
+    const showAnswer = () => {
+        // Show and animate all characters at once, playing audio for each
+        writers.forEach((w, index) => {
+            w.showCharacter();
+            w.showOutline();
+            w.animateCharacter();
+            
+            // Play audio for this character with a small delay to avoid overlap
+            const char = chars[index];
+            const charPinyin = charPinyins[index];
+            if (charPinyin && typeof playPinyinAudio === 'function') {
+                setTimeout(() => {
+                    playPinyinAudio(charPinyin, char);
+                }, index * 300); // Small delay between audio clips to avoid overlap
+            }
+        });
+
+        feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
+        handwritingAnswerShown = true;
+    };
+
+    if (hwShowBtn) {
+        hwShowBtn.onclick = showAnswer;
     }
 
     if (hwNextBtn) {
@@ -2244,6 +2300,9 @@ function initHandwriting() {
             generateQuestion();
         };
     }
+
+    // Store showAnswer function for space key handler
+    window.handwritingShowAnswer = showAnswer;
 }
 
 function initCanvas() {
@@ -3517,6 +3576,23 @@ function handleQuizHotkeys(e) {
     const target = e.target;
     const copyComboActive = e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
 
+    // Space key handling for handwriting mode
+    if (mode === 'handwriting' && e.key === ' ' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        // Don't interfere if user is typing in an input or textarea
+        if (isTypingTarget(target)) return;
+        e.preventDefault();
+        if (handwritingAnswerShown) {
+            // Answer is already shown, go to next question
+            generateQuestion();
+        } else {
+            // Answer not shown, show it
+            if (window.handwritingShowAnswer) {
+                window.handwritingShowAnswer();
+            }
+        }
+        return;
+    }
+
     if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === 'Enter' && answered && lastAnswerCorrect) {
         if (target === answerInput || target === fuzzyInput) {
             // Input handlers will manage this case
@@ -3783,6 +3859,7 @@ function initQuizCommandPalette() {
 // =============================================================================
 
 function initQuiz(charactersData, userConfig = {}) {
+    originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};
 
