@@ -303,12 +303,13 @@ function sentenceTtsUrl(sentence, rate) {
 function playSentenceAudio(sentence) {
     if (!sentence || !sentence.trim()) return;
 
+    const trimmedSentence = sentence.trim();
     const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
-    const cacheKey = `${sentence.trim()}|${rate.toFixed(2)}`;
+    const cacheKey = `${trimmedSentence}|${rate.toFixed(2)}`;
     if (typeof Audio === 'undefined') {
         console.warn('Audio element not available, using SpeechSynthesis fallback for sentence.');
         stopActiveAudio();
-        playTTS(cacheKey);
+        playTTS(trimmedSentence);
         return;
     }
 
@@ -318,7 +319,7 @@ function playSentenceAudio(sentence) {
 
     let audio = globalScope.__sentenceAudioCache.get(cacheKey);
     if (!audio) {
-        audio = new Audio(sentenceTtsUrl(sentence, rate));
+        audio = new Audio(sentenceTtsUrl(trimmedSentence, rate));
         audio.preload = 'auto';
         globalScope.__sentenceAudioCache.set(cacheKey, audio);
     } else {
@@ -328,7 +329,7 @@ function playSentenceAudio(sentence) {
         } catch (err) {
             console.warn('Resetting cached audio failed, rebuilding instance', err);
             globalScope.__sentenceAudioCache.delete(cacheKey);
-            audio = new Audio(sentenceTtsUrl(sentence, rate));
+            audio = new Audio(sentenceTtsUrl(trimmedSentence, rate));
             audio.preload = 'auto';
             globalScope.__sentenceAudioCache.set(cacheKey, audio);
         }
@@ -341,7 +342,7 @@ function playSentenceAudio(sentence) {
         audio.removeEventListener('error', onError);
         detachActiveAudio(audio);
         globalScope.__sentenceAudioCache.delete(cacheKey);
-        playTTS(cacheKey);
+        playTTS(trimmedSentence);
     };
 
     audio.addEventListener('error', onError, { once: true });
@@ -357,7 +358,7 @@ function playSentenceAudio(sentence) {
                 detachActiveAudio(audio);
             }
             globalScope.__sentenceAudioCache.delete(cacheKey);
-            playTTS(cacheKey);
+            playTTS(trimmedSentence);
         });
     }
 }

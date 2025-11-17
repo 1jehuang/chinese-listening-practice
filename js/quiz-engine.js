@@ -41,6 +41,13 @@ let dictationTotalSyllables = 0;
 let dictationMatchedSyllables = 0;
 let dictationPrimaryPinyin = '';
 let handwritingAnswerShown = false;
+let studyModeInitialized = false;
+const studyModeState = {
+    searchRaw: '',
+    searchQuery: '',
+    sortBy: 'original',
+    shuffleOrder: null
+};
 
 // Timer state
 let timerEnabled = false;
@@ -3295,30 +3302,239 @@ function nextFullscreenQuestion() {
 }
 
 function populateStudyList() {
+    if (!studyMode) return;
+    if (!ensureStudyModeLayout()) return;
+    renderStudyListContents();
+}
+
+function ensureStudyModeLayout() {
+    if (!studyMode) return false;
+    if (studyModeInitialized) return true;
+
+    studyMode.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <h2 class="text-2xl font-semibold text-gray-900">Study Mode Reference</h2>
+                    <p class="text-sm text-gray-600">Quick list of this lesson’s vocab. Use search or sorting as needed.</p>
+                </div>
+                <div id="studyStatsFiltered" class="text-sm text-gray-500">Showing 0 / 0 terms</div>
+            </div>
+            <div class="flex flex-col gap-3 md:flex-row md:items-center">
+                <div class="relative flex-1 w-full">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">⌕</span>
+                    <input
+                        id="studySearchInput"
+                        type="search"
+                        class="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-white shadow-sm text-gray-800"
+                        placeholder="Search character, pinyin, or meaning"
+                        autocomplete="off"
+                    >
+                </div>
+                <div class="flex flex-wrap gap-3 items-center text-sm">
+                    <label for="studySortSelect" class="font-semibold text-gray-600">Sort:</label>
+                    <select id="studySortSelect" class="px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-700 bg-white">
+                        <option value="original">Original order</option>
+                        <option value="char">Character (A-Z)</option>
+                        <option value="pinyin">Pinyin (A-Z)</option>
+                        <option value="meaning">Meaning (A-Z)</option>
+                    </select>
+                    <button id="studyShuffleBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 transition bg-white">Shuffle</button>
+                    <button id="studyResetBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 transition bg-white">Reset</button>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-semibold tracking-wide text-gray-500 uppercase bg-gray-50 rounded-t-2xl">
+                    <span class="md:col-span-2">Character</span>
+                    <span class="md:col-span-3">Pinyin</span>
+                    <span class="md:col-span-6">Meaning</span>
+                    <span class="md:col-span-1 text-right">Audio</span>
+                </div>
+                <div id="studyList" class="max-h-[65vh] overflow-y-auto divide-y divide-gray-100"></div>
+            </div>
+        </div>
+    `;
+
+    studyModeInitialized = true;
+
+    const searchInput = document.getElementById('studySearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (event) => {
+            const value = event.target.value || '';
+            studyModeState.searchRaw = value;
+            studyModeState.searchQuery = value.trim().toLowerCase();
+            renderStudyListContents();
+        });
+    }
+
+    const sortSelect = document.getElementById('studySortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (event) => {
+            studyModeState.sortBy = event.target.value || 'original';
+            studyModeState.shuffleOrder = null;
+            renderStudyListContents();
+        });
+    }
+
+    const shuffleBtn = document.getElementById('studyShuffleBtn');
+    if (shuffleBtn) {
+        shuffleBtn.addEventListener('click', () => {
+            if (!quizCharacters.length) return;
+            studyModeState.sortBy = 'original';
+            studyModeState.shuffleOrder = getShuffledIndices(quizCharacters.length);
+            const selectEl = document.getElementById('studySortSelect');
+            if (selectEl) {
+                selectEl.value = 'original';
+            }
+            renderStudyListContents();
+        });
+    }
+
+    const resetBtn = document.getElementById('studyResetBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            studyModeState.searchRaw = '';
+            studyModeState.searchQuery = '';
+            studyModeState.sortBy = 'original';
+            studyModeState.shuffleOrder = null;
+
+            const searchEl = document.getElementById('studySearchInput');
+            if (searchEl) {
+                searchEl.value = '';
+                searchEl.focus();
+            }
+            const selectEl = document.getElementById('studySortSelect');
+            if (selectEl) {
+                selectEl.value = 'original';
+            }
+            renderStudyListContents();
+        });
+    }
+
+    return true;
+}
+
+function renderStudyListContents() {
     const studyList = document.getElementById('studyList');
     if (!studyList) return;
 
+    const totalCount = quizCharacters.length;
+    const statsFiltered = document.getElementById('studyStatsFiltered');
+
+    if (studyModeState.shuffleOrder && studyModeState.shuffleOrder.length !== totalCount) {
+        studyModeState.shuffleOrder = null;
+    }
+
+    let orderedCharacters = quizCharacters.slice();
+
+    if (studyModeState.sortBy === 'char') {
+        orderedCharacters.sort((a, b) => compareStudyStrings(a?.char, b?.char));
+    } else if (studyModeState.sortBy === 'pinyin') {
+        orderedCharacters.sort((a, b) => compareStudyStrings(a?.pinyin, b?.pinyin));
+    } else if (studyModeState.sortBy === 'meaning') {
+        orderedCharacters.sort((a, b) => compareStudyStrings(a?.meaning, b?.meaning));
+    } else if (studyModeState.shuffleOrder && studyModeState.shuffleOrder.length === orderedCharacters.length) {
+        orderedCharacters = studyModeState.shuffleOrder
+            .map(index => orderedCharacters[index])
+            .filter(Boolean);
+    }
+
+    const rawQuery = studyModeState.searchRaw.trim();
+    const loweredQuery = studyModeState.searchQuery;
+
+    let filteredCharacters = orderedCharacters;
+    if (rawQuery) {
+        filteredCharacters = orderedCharacters.filter(item => {
+            const charMatch = (item.char || '').includes(rawQuery);
+            const pinyinMatch = (item.pinyin || '').toLowerCase().includes(loweredQuery);
+            const meaningMatch = (item.meaning || '').toLowerCase().includes(loweredQuery);
+            return charMatch || pinyinMatch || meaningMatch;
+        });
+    }
+
     studyList.innerHTML = '';
+    studyList.scrollTop = 0;
 
-    quizCharacters.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition';
-
-        const firstPinyin = item.pinyin.split('/')[0].trim();
-        div.innerHTML = `
-            <button class="flex-shrink-0 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition"
-                    onclick="playPinyinAudio('${firstPinyin}', '${item.char}')">
-                🔊
-            </button>
-            <div class="flex-grow grid grid-cols-3 gap-4 items-center">
-                <div class="text-4xl font-bold">${item.char}</div>
-                <div class="text-xl text-gray-700">${item.pinyin}</div>
-                <div class="text-lg text-gray-600">${item.meaning}</div>
-            </div>
+    if (!filteredCharacters.length) {
+        const empty = document.createElement('div');
+        empty.className = 'p-10 text-center text-gray-500';
+        empty.innerHTML = `
+            <div class="text-xl font-semibold mb-2">No matches found</div>
+            <div class="text-sm">Try a different search or reset filters.</div>
         `;
+        studyList.appendChild(empty);
+        if (statsFiltered) {
+            statsFiltered.textContent = `Showing 0 / ${totalCount} terms`;
+        }
+        return;
+    }
 
-        studyList.appendChild(div);
+    filteredCharacters.forEach((item, displayIndex) => {
+        studyList.appendChild(createStudyRow(item, displayIndex));
     });
+
+    if (statsFiltered) {
+        statsFiltered.textContent = `Showing ${filteredCharacters.length} / ${totalCount} terms`;
+    }
+}
+
+function createStudyRow(item, displayIndex) {
+    const row = document.createElement('div');
+    row.className = 'study-row flex flex-col gap-2 p-4 md:grid md:grid-cols-12 md:items-center md:gap-4 hover:bg-gray-50 transition';
+
+    const charCell = document.createElement('div');
+    charCell.className = 'text-4xl font-bold text-gray-900 tracking-tight md:col-span-2';
+    charCell.textContent = item.char || '—';
+
+    const pinyinCell = document.createElement('div');
+    pinyinCell.className = 'text-base font-semibold text-gray-900 md:col-span-3';
+    const displayPinyin = (item.pinyin || '')
+        .split('/')
+        .map(part => part.trim())
+        .filter(Boolean)
+        .join(' · ');
+    pinyinCell.textContent = displayPinyin || '—';
+
+    const meaningCell = document.createElement('div');
+    meaningCell.className = 'text-sm text-gray-600 leading-snug md:col-span-6';
+    meaningCell.textContent = item.meaning || '—';
+
+    const actionsCell = document.createElement('div');
+    actionsCell.className = 'flex items-center justify-start md:justify-end md:col-span-1';
+
+    const audioButton = document.createElement('button');
+    audioButton.type = 'button';
+    audioButton.className = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-400 hover:text-blue-600 transition bg-white';
+    audioButton.innerHTML = '<span class="text-lg leading-none">🔊</span><span class="hidden lg:inline">Play</span>';
+    const firstPinyin = (item.pinyin || '').split('/')[0]?.trim() || '';
+    audioButton.addEventListener('click', () => {
+        const fallback = firstPinyin || item.pinyin || item.char || '';
+        playPinyinAudio(fallback, item.char);
+    });
+
+    actionsCell.appendChild(audioButton);
+
+    row.appendChild(charCell);
+    row.appendChild(pinyinCell);
+    row.appendChild(meaningCell);
+    row.appendChild(actionsCell);
+
+    return row;
+}
+
+function getShuffledIndices(length) {
+    const indices = Array.from({ length }, (_, idx) => idx);
+    for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices;
+}
+
+function compareStudyStrings(a = '', b = '') {
+    const first = (a || '').toString();
+    const second = (b || '').toString();
+    return first.localeCompare(second, 'zh-Hans', { sensitivity: 'base' });
 }
 
 // =============================================================================
@@ -3903,6 +4119,11 @@ function initQuiz(charactersData, userConfig = {}) {
     handwritingMode = document.getElementById('handwritingMode');
     drawCharMode = document.getElementById('drawCharMode');
     studyMode = document.getElementById('studyMode');
+    studyModeInitialized = false;
+    studyModeState.searchRaw = '';
+    studyModeState.searchQuery = '';
+    studyModeState.sortBy = 'original';
+    studyModeState.shuffleOrder = null;
     radicalPracticeMode = document.getElementById('radicalPracticeMode');
     audioSection = document.getElementById('audioSection');
 
