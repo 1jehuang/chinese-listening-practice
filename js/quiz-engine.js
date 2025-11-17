@@ -42,6 +42,8 @@ let dictationMatchedSyllables = 0;
 let dictationPrimaryPinyin = '';
 let handwritingAnswerShown = false;
 let studyModeInitialized = false;
+let drawModeInitialized = false;
+let fullscreenDrawInitialized = false;
 const studyModeState = {
     searchRaw: '',
     searchQuery: '',
@@ -2355,105 +2357,37 @@ function initCanvas() {
 
     const clearBtn = document.getElementById('clearCanvasBtn');
     const submitBtn = document.getElementById('submitDrawBtn');
-    let showAnswerBtn = document.getElementById('showDrawAnswerBtn');
-    const recognitionContainer = drawCharMode
-        ? drawCharMode.querySelector('.text-center.mb-4')
-        : null;
-
-    if (recognitionContainer && !document.getElementById('ocrCandidates')) {
-        const candidateContainer = document.createElement('div');
-        candidateContainer.id = 'ocrCandidates';
-        candidateContainer.className = 'flex flex-wrap justify-center gap-2 mt-2';
-        candidateContainer.style.minHeight = '64px';
-        candidateContainer.style.maxHeight = '96px';
-        candidateContainer.style.overflowY = 'auto';
-        recognitionContainer.appendChild(candidateContainer);
-    }
-
-    if (!showAnswerBtn && clearBtn && clearBtn.parentElement) {
-        showAnswerBtn = document.createElement('button');
-        showAnswerBtn.id = 'showDrawAnswerBtn';
-        showAnswerBtn.className = 'bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg transition';
-        showAnswerBtn.textContent = '🤔 Show Answer';
-        clearBtn.parentElement.appendChild(showAnswerBtn);
-    }
-
-    // Add control buttons (undo/redo/zoom/reset)
-    if (clearBtn && clearBtn.parentElement && !document.getElementById('undoBtn')) {
-        const undoBtn = document.createElement('button');
-        undoBtn.id = 'undoBtn';
-        undoBtn.className = 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed';
-        undoBtn.textContent = '↶ Undo';
-        undoBtn.disabled = true;
-        undoBtn.onclick = undoStroke;
-        clearBtn.parentElement.insertBefore(undoBtn, clearBtn);
-
-        const redoBtn = document.createElement('button');
-        redoBtn.id = 'redoBtn';
-        redoBtn.className = 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed';
-        redoBtn.textContent = '↷ Redo';
-        redoBtn.disabled = true;
-        redoBtn.onclick = redoStroke;
-        clearBtn.parentElement.insertBefore(redoBtn, clearBtn);
-    }
-
-    // Add zoom/reset buttons in a separate row
-    if (drawCharMode && !document.getElementById('zoomControls')) {
-        const zoomContainer = document.createElement('div');
-        zoomContainer.id = 'zoomControls';
-        zoomContainer.className = 'flex gap-2 justify-center mt-2';
-
-        const zoomInBtn = document.createElement('button');
-        zoomInBtn.className = 'bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded text-sm transition';
-        zoomInBtn.textContent = '🔍+ Zoom In';
-        zoomInBtn.onclick = zoomIn;
-
-        const zoomOutBtn = document.createElement('button');
-        zoomOutBtn.className = 'bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded text-sm transition';
-        zoomOutBtn.textContent = '🔍- Zoom Out';
-        zoomOutBtn.onclick = zoomOut;
-
-        const resetBtn = document.createElement('button');
-        resetBtn.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm transition';
-        resetBtn.textContent = '⟲ Reset View';
-        resetBtn.onclick = resetView;
-
-        const helpText = document.createElement('div');
-        helpText.className = 'text-xs text-gray-500 mt-1';
-        helpText.textContent = 'Tip: Hold Space + drag to pan, or scroll to zoom';
-
-        zoomContainer.appendChild(zoomInBtn);
-        zoomContainer.appendChild(zoomOutBtn);
-        zoomContainer.appendChild(resetBtn);
-
-        const canvasParent = canvas.parentElement;
-        canvasParent.insertBefore(zoomContainer, canvas);
-        canvasParent.insertBefore(helpText, canvas);
-    }
-
-    if (clearBtn) {
-        clearBtn.onclick = clearCanvas;
-    }
-
-    if (submitBtn) {
-        submitBtn.onclick = submitDrawing;
-    }
-
-    if (showAnswerBtn) {
-        showAnswerBtn.onclick = revealDrawingAnswer;
-    }
-
+    const showAnswerBtn = document.getElementById('showDrawAnswerBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const resetBtn = document.getElementById('resetViewBtn');
     const fullscreenBtn = document.getElementById('fullscreenDrawBtn');
-    if (fullscreenBtn) {
-        fullscreenBtn.onclick = enterFullscreenDrawing;
-    }
+
+    if (clearBtn) clearBtn.onclick = clearCanvas;
+    if (submitBtn) submitBtn.onclick = submitDrawing;
+    if (showAnswerBtn) showAnswerBtn.onclick = revealDrawingAnswer;
+    if (undoBtn) undoBtn.onclick = undoStroke;
+    if (redoBtn) redoBtn.onclick = redoStroke;
+    if (zoomInBtn) zoomInBtn.onclick = zoomIn;
+    if (zoomOutBtn) zoomOutBtn.onclick = zoomOut;
+    if (resetBtn) resetBtn.onclick = resetView;
+    if (fullscreenBtn) fullscreenBtn.onclick = enterFullscreenDrawing;
 
     updateOcrCandidates();
     updateUndoRedoButtons();
 }
 
-function getCanvasCoords(e) {
+function getCanvasScaleFactors() {
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { rect, scaleX, scaleY };
+}
+
+function getCanvasCoords(e) {
+    const { rect, scaleX, scaleY } = getCanvasScaleFactors();
     let clientX, clientY;
 
     if (e.touches && e.touches[0]) {
@@ -2464,9 +2398,12 @@ function getCanvasCoords(e) {
         clientY = e.clientY;
     }
 
+    const rawX = (clientX - rect.left) * scaleX;
+    const rawY = (clientY - rect.top) * scaleY;
+
     // Transform coordinates based on zoom and pan
-    const x = (clientX - rect.left - canvasOffsetX) / canvasScale;
-    const y = (clientY - rect.top - canvasOffsetY) / canvasScale;
+    const x = (rawX - canvasOffsetX) / canvasScale;
+    const y = (rawY - canvasOffsetY) / canvasScale;
 
     return { x, y };
 }
@@ -2542,9 +2479,11 @@ function handleCanvasMouseDown(e) {
         // Middle mouse or Shift + left mouse = pan
         e.preventDefault();
         isPanning = true;
-        const rect = canvas.getBoundingClientRect();
-        panStartX = e.clientX - canvasOffsetX;
-        panStartY = e.clientY - canvasOffsetY;
+        const { rect, scaleX, scaleY } = getCanvasScaleFactors();
+        const pointerX = (e.clientX - rect.left) * scaleX;
+        const pointerY = (e.clientY - rect.top) * scaleY;
+        panStartX = pointerX - canvasOffsetX;
+        panStartY = pointerY - canvasOffsetY;
         canvas.style.cursor = 'grabbing';
     } else if (e.button === 0) {
         // Left mouse = draw
@@ -2555,8 +2494,11 @@ function handleCanvasMouseDown(e) {
 function handleCanvasMouseMove(e) {
     if (isPanning) {
         e.preventDefault();
-        canvasOffsetX = e.clientX - panStartX;
-        canvasOffsetY = e.clientY - panStartY;
+        const { rect, scaleX, scaleY } = getCanvasScaleFactors();
+        const pointerX = (e.clientX - rect.left) * scaleX;
+        const pointerY = (e.clientY - rect.top) * scaleY;
+        canvasOffsetX = pointerX - panStartX;
+        canvasOffsetY = pointerY - panStartY;
         redrawCanvas();
     } else {
         draw(e);
@@ -2577,9 +2519,9 @@ function handleCanvasWheel(e) {
     const newScale = Math.max(0.5, Math.min(3, canvasScale * delta));
 
     // Zoom toward mouse position
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const { rect, scaleX, scaleY } = getCanvasScaleFactors();
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
 
     const scaleChange = newScale / canvasScale;
     canvasOffsetX = mouseX - (mouseX - canvasOffsetX) * scaleChange;
@@ -2751,19 +2693,17 @@ function redrawCanvas() {
 function updateUndoRedoButtons() {
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
+    const disabledClass = 'px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed transition';
+    const activeClass = 'px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-800 font-semibold shadow-sm hover:border-blue-400 hover:text-blue-600 transition';
 
     if (undoBtn) {
         undoBtn.disabled = strokes.length === 0;
-        undoBtn.className = strokes.length === 0
-            ? 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed'
-            : 'bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition';
+        undoBtn.className = strokes.length === 0 ? disabledClass : activeClass;
     }
 
     if (redoBtn) {
         redoBtn.disabled = undoneStrokes.length === 0;
-        redoBtn.className = undoneStrokes.length === 0
-            ? 'bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed'
-            : 'bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition';
+        redoBtn.className = undoneStrokes.length === 0 ? disabledClass : activeClass;
     }
 }
 
@@ -2781,7 +2721,7 @@ function updateOcrCandidates(candidates = []) {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = candidate;
-        button.className = 'px-3 py-1 text-xl rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition';
+        button.className = 'px-3 py-1.5 text-lg rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-400 hover:text-blue-600 transition';
         button.onclick = () => {
             const ocrResult = document.getElementById('ocrResult');
             if (ocrResult) {
@@ -2879,35 +2819,23 @@ function revealDrawingAnswer() {
 }
 
 function showDrawNextButton() {
-    const drawCharMode = document.getElementById('drawCharMode');
-    if (!drawCharMode) return;
-
-    let nextBtn = document.getElementById('drawNextBtn');
-    if (!nextBtn) {
-        const buttonContainer = drawCharMode.querySelector('.flex.gap-3.justify-center.mt-4') ||
-                               drawCharMode.querySelector('.text-center.mb-4');
-        if (buttonContainer) {
-            nextBtn = document.createElement('button');
-            nextBtn.id = 'drawNextBtn';
-            nextBtn.className = 'bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition font-semibold';
-            nextBtn.textContent = '→ Next';
-            nextBtn.onclick = () => {
-                clearCanvas();
-                generateQuestion();
-                nextBtn.style.display = 'none';
-            };
-            buttonContainer.appendChild(nextBtn);
-        }
+    const nextBtn = document.getElementById('drawNextBtn');
+    if (!nextBtn) return;
+    if (!nextBtn.dataset.bound) {
+        nextBtn.dataset.bound = 'true';
+        nextBtn.addEventListener('click', () => {
+            clearCanvas();
+            generateQuestion();
+            nextBtn.classList.add('hidden');
+        });
     }
-    if (nextBtn) {
-        nextBtn.style.display = 'inline-block';
-    }
+    nextBtn.classList.remove('hidden');
 }
 
 function hideDrawNextButton() {
     const nextBtn = document.getElementById('drawNextBtn');
     if (nextBtn) {
-        nextBtn.style.display = 'none';
+        nextBtn.classList.add('hidden');
     }
 }
 
@@ -3537,6 +3465,91 @@ function compareStudyStrings(a = '', b = '') {
     return first.localeCompare(second, 'zh-Hans', { sensitivity: 'base' });
 }
 
+function ensureDrawModeLayout() {
+    if (!drawCharMode || drawModeInitialized) return;
+
+    drawCharMode.innerHTML = `
+        <div class="space-y-4">
+            <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col lg:flex-row gap-4">
+                <div class="flex flex-col gap-3 text-center lg:text-left w-full lg:w-[220px]">
+                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
+                    <div id="ocrResult" class="text-5xl font-semibold text-blue-600 min-h-[72px]">&nbsp;</div>
+                    <div id="ocrCandidates" class="flex flex-wrap gap-2 justify-center lg:justify-start"></div>
+                </div>
+                <div class="flex-1 flex flex-col gap-3">
+                    <canvas id="drawCanvas" width="400" height="400" class="w-full aspect-square bg-white border border-gray-200 rounded-2xl shadow-inner touch-none select-none"></canvas>
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                        <span>Hold Space to pan · Scroll to zoom</span>
+                        <button id="fullscreenDrawBtn" type="button" class="px-3 py-1.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">⛶ Fullscreen</button>
+                    </div>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap gap-2">
+                    <button id="undoBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed transition">↶ Undo</button>
+                    <button id="redoBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed transition">↷ Redo</button>
+                    <button id="zoomInBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Zoom In</button>
+                    <button id="zoomOutBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Zoom Out</button>
+                    <button id="resetViewBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Reset</button>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="clearCanvasBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Clear</button>
+                    <button id="showDrawAnswerBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Show Answer</button>
+                    <button id="submitDrawBtn" type="button" class="px-4 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition">Submit</button>
+                    <button id="drawNextBtn" type="button" class="hidden px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-400 transition">Next</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    drawModeInitialized = true;
+}
+
+function ensureFullscreenDrawLayout() {
+    if (fullscreenDrawInitialized) return;
+    const container = document.getElementById('fullscreenDrawContainer');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="flex flex-col h-full bg-white overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 p-4">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Fullscreen Drawing</div>
+                    <div id="fullscreenPrompt" class="text-2xl font-semibold text-gray-900 mt-1">Draw:</div>
+                </div>
+                <button id="exitFullscreenBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Exit</button>
+            </div>
+            <div class="flex flex-1 flex-col lg:flex-row min-h-0 overflow-auto">
+                <div class="border-b border-gray-200 bg-white p-4 lg:w-72 lg:border-b-0 lg:border-r flex flex-col gap-3 flex-shrink-0">
+                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
+                    <div id="fullscreenOcrResult" class="text-7xl font-bold text-blue-600 min-h-[100px]">&nbsp;</div>
+                    <p class="text-xs text-gray-500">Top guess updates automatically while you draw.</p>
+                </div>
+                <div class="flex-1 flex flex-col items-center justify-center bg-gray-100 p-4 gap-3 min-h-0">
+                    <div class="w-full max-w-4xl flex-1 flex items-center justify-center min-h-0">
+                        <canvas id="fullscreenDrawCanvas" width="600" height="600" class="bg-white border-4 border-gray-200 rounded-3xl shadow-xl touch-none select-none max-w-full max-h-full"></canvas>
+                    </div>
+                    <div class="text-xs text-gray-500 text-center">Hold Space to pan · Scroll to zoom</div>
+                </div>
+            </div>
+            <div class="border-t border-gray-200 bg-white p-4 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+                <div class="flex flex-wrap gap-2">
+                    <button id="fullscreenUndoBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Undo</button>
+                    <button id="fullscreenRedoBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Redo</button>
+                    <button id="fullscreenClearBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Clear</button>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="fullscreenShowAnswerBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Show Answer</button>
+                    <button id="fullscreenSubmitBtn" type="button" class="px-4 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition">Submit</button>
+                    <button id="fullscreenNextBtn" type="button" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-500 transition">Next</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    fullscreenDrawInitialized = true;
+}
+
 // =============================================================================
 // RADICAL PRACTICE MODE
 // =============================================================================
@@ -4118,6 +4131,8 @@ function initQuiz(charactersData, userConfig = {}) {
     strokeOrderMode = document.getElementById('strokeOrderMode');
     handwritingMode = document.getElementById('handwritingMode');
     drawCharMode = document.getElementById('drawCharMode');
+    drawModeInitialized = false;
+    ensureDrawModeLayout();
     studyMode = document.getElementById('studyMode');
     studyModeInitialized = false;
     studyModeState.searchRaw = '';
@@ -4126,6 +4141,8 @@ function initQuiz(charactersData, userConfig = {}) {
     studyModeState.shuffleOrder = null;
     radicalPracticeMode = document.getElementById('radicalPracticeMode');
     audioSection = document.getElementById('audioSection');
+    fullscreenDrawInitialized = false;
+    ensureFullscreenDrawLayout();
 
     // Disable autocomplete and speech input to prevent browser from auto-filling values
     // (e.g., TTS speed "1.20" being transcribed as "yi dian er ling")
