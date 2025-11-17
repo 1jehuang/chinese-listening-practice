@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 6 (别担心)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/spaced-repetition.js"></script>
+    <script src="js/quiz-engine.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 6 别担心</h1>
+        <p class="text-center text-gray-600 mb-6">Review the Lesson 6 (别担心) dialogue from Pages 76-79. Listen first, then type the pinyin or switch to Study Mode to preview every sentence.</p>
+
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <div id="questionDisplay" class="text-center"></div>
+        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
+        </div>
+
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+        <div id="fuzzyMode" class="hidden"></div>
+        <div id="strokeOrderMode" class="hidden"></div>
+        <div id="handwritingMode" class="hidden"></div>
+        <div id="drawCharMode" class="hidden"></div>
+
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+        </div>
+
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+        </div>
+    </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '（电话铃声，电话录音…"我是陈美生，现在不在屋子里，没法接您的电话，请您留下姓名和电话号码，我一回来就给您回电话。"）', pinyin: '(diànhuà língshēng, diànhuà lùyīn…"wǒ shì Chén Měishēng, xiànzài bù zài wū.zi lǐ, méi fǎ jiē nín.de diànhuà, qǐng nín liú.xià xìngmíng hé diànhuà hàomǎ, wǒ yí huílái jiù gěi nín huí diànhuà.")', meaning: 'Phone rings and the voicemail says, "This is Chen Meisheng... please leave your name and number, I will call back as soon as I return."' },
+            { char: '妈：你看，都快十二点了，美生还不在屋子里，不知道整天在忙些什么。', pinyin: 'mā: nǐ kàn, dōu kuài shí\'èr diǎn .le, Měishēng hái bú zài wū.zi lǐ, bù zhīdao zhěngtiān zài máng xiē shén.me', meaning: 'Mom: Look, it\'s almost midnight and Meisheng still isn\'t home; I don\'t know what she\'s busy with all day.' },
+            { char: '父：下次你问问她是不是有男朋友了。', pinyin: 'fù: xià.ci nǐ wèn.wen tā shì.bu.shì yǒu nánpéng.you .le', meaning: 'Dad: Next time ask her whether she has a boyfriend.' },
+            { char: '母：我问过她几次了，她都说没有。', pinyin: 'mǔ: wǒ wèn.guò tā jǐ.ci .le, tā dōu shuō méi.yǒu', meaning: 'Mom: I\'ve asked her several times, she always says no.' },
+            { char: '父：我才不信呢！上次回家住了两天，有个男的一天打了好几次电话给她。', pinyin: 'fù: wǒ cái bù xìn ne! shàng.ci huíjiā zhù .le liǎng tiān, yǒu .ge nán.de yì tiān dǎ.le hǎo jǐ.ci diànhuà gěi tā', meaning: 'Dad: I don\'t believe it! Last time she was home for two days, some guy called her many times in a single day.' },
+            { char: '母：我知道。她说只是同学，不是男朋友。', pinyin: 'mǔ: wǒ zhīdao. tā shuō zhǐ.shì tóngxué, bú.shì nánpéng.you', meaning: 'Mom: I know. She said he\'s just a classmate, not a boyfriend.' },
+            { char: '父：男同学也好，男朋友也好，都是她自己的事，何必为她操心呢？', pinyin: 'fù: nán tóngxué yě hǎo, nánpéng.you yě hǎo, dōu shì tā zìjǐ .de shì, hébì wéi tā cāoxīn .ne', meaning: 'Dad: Classmate or boyfriend, it\'s her own business—why worry about it for her?' },
+            { char: '母：别的我倒不担心，就是担心她怀孕，怀了孕还怎么念书呢？', pinyin: 'mǔ: bié.de wǒ dào bù dānxīn, jiù.shì dānxīn tā huáiyùn, huái .le yùn hái zěn.me niànshū .ne', meaning: 'Mom: I\'m not worried about other things, just that she might get pregnant—how would she keep studying then?' },
+            { char: '父：放心吧！他们懂的比我们多多了。现在连中学生都会避孕，难道他们还不会吗？', pinyin: 'fù: fàngxīn .ba! tā.men dǒng .de bǐ wǒ.men duōduō .le. xiànzài lián Zhōngxuéshēng dōu huì bìyùn, nándào tā.men hái bù huì .ma', meaning: 'Dad: Relax! They understand way more than we do. Even high-schoolers know how to use birth control—do you mean they still wouldn\'t?' },
+            { char: '母：我还担心她要是嫁个外国人，那可怎么办啊？', pinyin: 'mǔ: wǒ hái dānxīn tā yàoshi jià .ge wài.guórén, nà kě zěn.me bàn a', meaning: 'Mom: I still worry that if she marries a foreigner, what will we do?' },
+            { char: '父："嫁个外国人？"在美国，谁是外国人啊！别——担——心——。', pinyin: 'fù: "jià .ge wài.guórén?" zài Měiguó, shéi .shi wài.guórén .a! bié---dān---xīn---', meaning: 'Dad: "Marry a foreigner?" In America, who counts as a foreigner? Don\'t—worry—about—it.' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-pinyin',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>
