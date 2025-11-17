@@ -2743,6 +2743,9 @@ function submitDrawing() {
         return;
     }
 
+    // Play submit sound
+    playSubmitSound();
+
     const correct = recognized === currentQuestion.char;
     const isFirstAttempt = !answered;
 
@@ -3133,6 +3136,9 @@ function submitFullscreenDrawing() {
         alert('Please draw a character first!');
         return;
     }
+
+    // Play submit sound
+    playSubmitSound();
 
     answered = true;
     total++;
