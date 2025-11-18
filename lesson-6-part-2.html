@@ -130,9 +130,26 @@
         </div>
 
         <!-- Study Mode -->
-        <div id="studyMode" class="hidden">
-            <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
-            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        <div id="studyMode" class="hidden space-y-6">
+            <div>
+                <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 78</div>
+                        <img src="images/l6-page78.jpg" alt="Textbook page 78 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                        <a href="images/l6-page78.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                    </div>
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 79</div>
+                        <img src="images/l6-page79.jpg" alt="Textbook page 79 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                        <a href="images/l6-page79.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="text-center text-gray-600 mb-4">Quick list of this lesson’s vocab. Use search or sorting as needed.</div>
+                <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+            </div>
         </div>
 
         <!-- Feedback -->

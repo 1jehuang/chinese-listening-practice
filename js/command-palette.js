@@ -39,6 +39,7 @@ const DEFAULT_PAGES = [
     { name: 'Lesson 6 Part 2', url: 'lesson-6-part-2.html', type: 'page', keywords: 'lesson 6 part2 quiz vocabulary pages 78 79 bie danxin' },
     { name: 'Lesson 6 Cumulative', url: 'lesson-6-cumulative.html', type: 'page', keywords: 'lesson 6 cumulative quiz vocabulary set bie danxin' },
     { name: 'Lesson 6 Dictation', url: 'lesson-6-dictation.html', type: 'page', keywords: 'lesson 6 dictation dialogue bie danxin listening' },
+    { name: 'Textbook Reference', url: 'textbook-reference.html', type: 'page', keywords: 'textbook reference scans lesson 6 pages 76 77 78 79' },
     { name: 'Dialogue Practice', url: 'dialogue-practice.html', type: 'page', keywords: 'dialogue speaking practice jeremy lines summer vacation 暑假' },
     { name: 'Test 1 Practice', url: 'test1-practice.html', type: 'page', keywords: 'test 1 practice review' },
     { name: 'Test 1 Review', url: 'test1-review.html', type: 'page', keywords: 'test 1 review analysis' },

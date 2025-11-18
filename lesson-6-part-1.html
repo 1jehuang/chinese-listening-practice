@@ -130,9 +130,26 @@
         </div>
 
         <!-- Study Mode -->
-        <div id="studyMode" class="hidden">
-            <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
-            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        <div id="studyMode" class="hidden space-y-6">
+            <div>
+                <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 76</div>
+                        <img src="images/l6-page76.jpg" alt="Textbook page 76 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                        <a href="images/l6-page76.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                    </div>
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 77</div>
+                        <img src="images/l6-page77.jpg" alt="Textbook page 77 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                        <a href="images/l6-page77.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="text-center text-gray-600 mb-4">Quick list of this lesson’s vocab. Use search or sorting as needed.</div>
+                <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+            </div>
         </div>
 
         <!-- Feedback -->
@@ -147,12 +164,22 @@
     </div>
     <script>
         const characters = [
-            // Pages 76-77 vocabulary
-            { char: '姓名', pinyin: 'xìngmíng', meaning: 'full name' },
+            // Page 76 vocabulary
+            { char: '别', pinyin: 'bié', meaning: 'don\'t' },
+            { char: '担心', pinyin: 'dānxīn', meaning: 'worry' },
+            { char: '铃', pinyin: 'líng', meaning: 'bell' },
+            { char: '声(音)', pinyin: 'shēng(yīn)', meaning: 'sound' },
+            { char: '录音', pinyin: 'lùyīn', meaning: '(telephone) recording; record (sound)' },
+            { char: '屋子', pinyin: 'wū.zi', meaning: 'room' },
+            { char: '没法', pinyin: 'méi.fǎ', meaning: 'no way; can\'t' },
+            { char: '接电话', pinyin: 'jiē diànhuà', meaning: 'answer phone calls' },
+            { char: '请', pinyin: 'qǐng', meaning: 'please; request' },
+            { char: '留下', pinyin: 'liúxià', meaning: 'leave (message, etc.); stay (behind)' },
+            // Page 77 vocabulary
             { char: '号码', pinyin: 'hàomǎ', meaning: 'number' },
             { char: '回来', pinyin: 'huílái', meaning: 'come back; return' },
             { char: '回电话', pinyin: 'huí diànhuà', meaning: 'call back' },
-            { char: '点', pinyin: 'diǎn', meaning: 'o\'clock; AN for hours' },
+            { char: '点', pinyin: 'diǎn', meaning: 'AN for counting hours on the clock' },
             { char: '整天', pinyin: 'zhěngtiān', meaning: 'all day long; always' },
             { char: '忙', pinyin: 'máng', meaning: 'busy' },
             { char: '些', pinyin: 'xiē', meaning: '"plural" measure word' },
