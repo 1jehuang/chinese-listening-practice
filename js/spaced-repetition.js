@@ -121,6 +121,12 @@ function nextInterval(stability) {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const AGGRESSIVE_INTERVALS_MS = {
+    fail: 20000,   // 20s
+    hard: 45000,   // 45s
+    good: 90000,   // 90s
+    easy: 180000   // 3m
+};
 
 function nextDifficulty(difficulty, grade) {
     const w = FSRS_PARAMS.w;
@@ -254,14 +260,17 @@ function updateSRCard(char, correct, responseTimeMs = 3000) {
     card.lastReview = now;
 
     if (srAggressiveMode) {
-        if (!correct) {
-            card.scheduledDays = Math.min(card.scheduledDays || 0, 0.03); // ~45 minutes
-            card.due = now + 60 * 1000; // try again quickly
-        } else {
-            const cappedDays = Math.max(0.02, Math.min(card.scheduledDays, 2)); // cap to 2 days
-            card.scheduledDays = cappedDays;
-            card.due = now + cappedDays * DAY_MS;
-        }
+        const grade = correct ? getResponseTimeGrade(responseTimeMs, correct) : 1;
+        const scheduleMs = grade === 1
+            ? AGGRESSIVE_INTERVALS_MS.fail
+            : grade === 2
+                ? AGGRESSIVE_INTERVALS_MS.hard
+                : grade === 3
+                    ? AGGRESSIVE_INTERVALS_MS.good
+                    : AGGRESSIVE_INTERVALS_MS.easy;
+
+        card.scheduledDays = scheduleMs / DAY_MS;
+        card.due = now + scheduleMs;
     }
 
     saveSRData();
