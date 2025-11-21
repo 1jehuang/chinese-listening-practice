@@ -70,6 +70,17 @@ let srAggressiveMode = false;
 const SR_AGGRESSIVE_KEY = 'sr_aggressive_mode';
 const SR_STATE_NAMES = ['New', 'Learning', 'Review', 'Relearning'];
 
+// Scheduler state (session-level ordering)
+const SCHEDULER_MODE_KEY = 'quiz_scheduler_mode';
+const SCHEDULER_MODES = {
+    RANDOM: 'random',
+    FAST_LOOP: 'fast-loop',
+    WEIGHTED: 'weighted'
+};
+let schedulerMode = SCHEDULER_MODES.FAST_LOOP;
+let schedulerStats = {}; // per-char session data
+let schedulerOutcomeRecordedChar = null;
+
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
     w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
@@ -234,6 +245,97 @@ function summarizeSRCard(card) {
     return `${stateName} • ${dueText}`;
 }
 
+function loadSchedulerMode() {
+    const stored = localStorage.getItem(SCHEDULER_MODE_KEY);
+    if (stored && Object.values(SCHEDULER_MODES).includes(stored)) {
+        schedulerMode = stored;
+    } else {
+        schedulerMode = SCHEDULER_MODES.FAST_LOOP;
+    }
+}
+
+function saveSchedulerMode(mode) {
+    try {
+        localStorage.setItem(SCHEDULER_MODE_KEY, mode);
+    } catch (e) {
+        console.warn('Failed to save scheduler mode', e);
+    }
+}
+
+function getSchedulerModeLabel(mode = schedulerMode) {
+    switch (mode) {
+        case SCHEDULER_MODES.FAST_LOOP:
+            return 'Fast loop (errors → unseen → oldest)';
+        case SCHEDULER_MODES.WEIGHTED:
+            return 'Confidence-weighted (recency + errors)';
+        case SCHEDULER_MODES.RANDOM:
+        default:
+            return 'Random shuffle';
+    }
+}
+
+function getSchedulerModeDescription(mode = schedulerMode) {
+    switch (mode) {
+        case SCHEDULER_MODES.FAST_LOOP:
+            return 'Surfaces recent errors first, then unseen, then least-recently seen.';
+        case SCHEDULER_MODES.WEIGHTED:
+            return 'Scores cards by recency + mistakes; picks proportionally to need.';
+        case SCHEDULER_MODES.RANDOM:
+        default:
+            return 'Pure shuffle from the current pool.';
+    }
+}
+
+function getSchedulerStats(char) {
+    if (!schedulerStats[char]) {
+        schedulerStats[char] = {
+            served: 0,
+            correct: 0,
+            wrong: 0,
+            lastServed: 0,
+            lastCorrect: 0,
+            lastWrong: 0
+        };
+    }
+    return schedulerStats[char];
+}
+
+function markSchedulerServed(question) {
+    if (!question || !question.char) return;
+    const stats = getSchedulerStats(question.char);
+    stats.served += 1;
+    stats.lastServed = Date.now();
+    schedulerOutcomeRecordedChar = null;
+}
+
+function markSchedulerOutcome(correct) {
+    if (!currentQuestion || !currentQuestion.char) return;
+    const char = currentQuestion.char;
+    if (schedulerOutcomeRecordedChar === char) return;
+    schedulerOutcomeRecordedChar = char;
+    const stats = getSchedulerStats(char);
+    const now = Date.now();
+    if (correct) {
+        stats.correct += 1;
+        stats.lastCorrect = now;
+    } else {
+        stats.wrong += 1;
+        stats.lastWrong = now;
+    }
+}
+
+function setSchedulerMode(mode) {
+    if (!Object.values(SCHEDULER_MODES).includes(mode)) return;
+    schedulerMode = mode;
+    saveSchedulerMode(mode);
+    updateSchedulerToolbar();
+    // Refresh queues to reflect new ordering
+    previewQueue = [];
+    ensurePreviewQueue();
+    updatePreviewDisplay();
+    updateFullscreenQueueDisplay();
+}
+
 function getFullscreenQueueCandidates() {
     // Prefer the preview queue if it is active (closest to the actual next set)
     if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
@@ -274,6 +376,73 @@ function updateFullscreenQueueDisplay() {
     }).join('');
 
     queueEl.innerHTML = items;
+}
+
+function ensureSchedulerToolbar() {
+    const container = document.querySelector('.max-w-3xl');
+    const question = document.getElementById('questionDisplay');
+    if (!container || !question) return;
+
+    let bar = document.getElementById('schedulerToolbar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'schedulerToolbar';
+        bar.className = 'mb-4 rounded-xl border border-gray-200 bg-white shadow-sm p-3 flex flex-wrap items-center justify-between gap-3';
+        bar.innerHTML = `
+            <div>
+                <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Selection Strategy</div>
+                <div id="schedulerModeLabel" class="text-sm font-semibold text-gray-900"></div>
+                <div id="schedulerModeDescription" class="text-xs text-gray-600"></div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
+                <button id="schedulerFastBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Fast Loop</button>
+                <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+            </div>
+        `;
+        container.insertBefore(bar, question);
+    }
+
+    const randomBtn = document.getElementById('schedulerRandomBtn');
+    const fastBtn = document.getElementById('schedulerFastBtn');
+    const weightedBtn = document.getElementById('schedulerWeightedBtn');
+
+    if (randomBtn && !randomBtn.dataset.bound) {
+        randomBtn.dataset.bound = 'true';
+        randomBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.RANDOM);
+    }
+    if (fastBtn && !fastBtn.dataset.bound) {
+        fastBtn.dataset.bound = 'true';
+        fastBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.FAST_LOOP);
+    }
+    if (weightedBtn && !weightedBtn.dataset.bound) {
+        weightedBtn.dataset.bound = 'true';
+        weightedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED);
+    }
+
+    updateSchedulerToolbar();
+}
+
+function updateSchedulerToolbar() {
+    const labelEl = document.getElementById('schedulerModeLabel');
+    const descEl = document.getElementById('schedulerModeDescription');
+
+    if (labelEl) labelEl.textContent = `Next item: ${getSchedulerModeLabel()}`;
+    if (descEl) descEl.textContent = getSchedulerModeDescription();
+
+    const btns = [
+        { id: 'schedulerRandomBtn', mode: SCHEDULER_MODES.RANDOM },
+        { id: 'schedulerFastBtn', mode: SCHEDULER_MODES.FAST_LOOP },
+        { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED }
+    ];
+    btns.forEach(({ id, mode }) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        const active = schedulerMode === mode;
+        btn.className = active
+            ? 'px-3 py-2 rounded-lg border border-blue-500 text-white font-semibold bg-blue-500 shadow-sm'
+            : 'px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition';
+    });
 }
 
 function refreshSrQueue(regenerateQuestion = false) {
@@ -468,6 +637,98 @@ function getRandomQuestion() {
     return quizCharacters[index];
 }
 
+function selectRandom(pool) {
+    if (!pool.length) return null;
+    const idx = Math.floor(Math.random() * pool.length);
+    return pool[idx];
+}
+
+function selectFastLoop(pool) {
+    const now = Date.now();
+    const jitter = () => (Math.random() - 0.5) * 10; // small tie breaker
+
+    const prioritized = pool.map(item => {
+        const stats = getSchedulerStats(item.char);
+        const lastServed = stats.lastServed || 0;
+        const served = stats.served || 0;
+        const lastWrong = stats.lastWrong || 0;
+        const ageMs = now - lastServed;
+        const recentWrong = lastWrong > 0 && (now - lastWrong) < 180000; // 3 minutes
+
+        let bucket = 3;
+        if (recentWrong) {
+            bucket = 0;
+        } else if (served === 0) {
+            bucket = 1;
+        } else if (served < 2) {
+            bucket = 2;
+        }
+
+        let score = 0;
+        if (bucket === 0) {
+            score = 100000 - (now - lastWrong); // more recent wrong = higher
+        } else if (bucket === 1) {
+            score = 80000;
+        } else if (bucket === 2) {
+            score = 50000 + ageMs / 1000;
+        } else {
+            score = ageMs / 500; // least recently seen rise to top
+        }
+
+        return { item, bucket, score: score + jitter() };
+    });
+
+    prioritized.sort((a, b) => {
+        if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+        return b.score - a.score;
+    });
+
+    return prioritized[0]?.item || null;
+}
+
+function selectWeighted(pool) {
+    const now = Date.now();
+    const weights = pool.map(item => {
+        const stats = getSchedulerStats(item.char);
+        const lastServed = stats.lastServed || 0;
+        const served = stats.served || 0;
+        const lastWrong = stats.lastWrong || 0;
+        const ageSec = Math.max(5, (now - lastServed) / 1000);
+        const wrongBonus = lastWrong > 0 && (now - lastWrong) < 300000 ? 2.5 : (stats.wrong > 0 ? 1.4 : 1.0);
+        const exposureFactor = 1 / (0.7 + 0.3 * Math.max(1, served));
+        const weight = Math.pow(ageSec + 15, 1.3) * wrongBonus * exposureFactor;
+        return { item, weight };
+    }).filter(entry => entry.weight > 0);
+
+    const totalWeight = weights.reduce((sum, entry) => sum + entry.weight, 0);
+    if (totalWeight <= 0) return selectRandom(pool);
+
+    let r = Math.random() * totalWeight;
+    for (const entry of weights) {
+        r -= entry.weight;
+        if (r <= 0) {
+            return entry.item;
+        }
+    }
+    return weights[weights.length - 1]?.item || selectRandom(pool);
+}
+
+function selectNextQuestion(exclusions = []) {
+    const exclusionSet = new Set(exclusions || []);
+    const pool = (Array.isArray(quizCharacters) ? quizCharacters : []).filter(item => item && !exclusionSet.has(item.char));
+    if (!pool.length) return null;
+
+    switch (schedulerMode) {
+        case SCHEDULER_MODES.FAST_LOOP:
+            return selectFastLoop(pool) || selectRandom(pool);
+        case SCHEDULER_MODES.WEIGHTED:
+            return selectWeighted(pool) || selectRandom(pool);
+        case SCHEDULER_MODES.RANDOM:
+        default:
+            return selectRandom(pool);
+    }
+}
+
 function isPreviewModeActive() {
     if (!previewQueueEnabled || !previewElement) return false;
     if (!Array.isArray(quizCharacters) || quizCharacters.length === 0) return false;
@@ -483,7 +744,8 @@ function ensurePreviewQueue() {
         previewQueue = [];
     }
     while (previewQueue.length < previewQueueSize) {
-        const candidate = getRandomQuestion();
+        const excludeChars = previewQueue.map(item => item?.char).filter(Boolean);
+        const candidate = selectNextQuestion(excludeChars);
         if (!candidate) break;
         previewQueue.push(candidate);
         if (quizCharacters.length <= 1) break;
@@ -967,7 +1229,7 @@ function generateQuestion() {
     }
 
     if (!nextQuestion) {
-        nextQuestion = getRandomQuestion();
+        nextQuestion = selectNextQuestion();
     }
 
     if (!nextQuestion) {
@@ -978,6 +1240,7 @@ function generateQuestion() {
     currentQuestion = nextQuestion;
     updatePreviewDisplay();
     window.currentQuestion = currentQuestion;
+    markSchedulerServed(currentQuestion);
 
     // Clear input fields to prevent autofilled values (e.g., "yi dian er ling" from TTS speed)
     if (answerInput) {
@@ -1343,6 +1606,7 @@ function handleCorrectFullAnswer() {
         score++;
     }
     lastAnswerCorrect = true;
+    markSchedulerOutcome(true);
 
     // Update SR data on correct answer
     if (srEnabled && currentQuestion && currentQuestion.char) {
@@ -1387,6 +1651,7 @@ function handleCorrectSyllable(syllables, fullPinyin) {
             score++;
         }
         lastAnswerCorrect = true;
+        markSchedulerOutcome(true);
 
         if (mode === 'audio-to-pinyin') {
             feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
@@ -1417,6 +1682,7 @@ function handleWrongAnswer() {
         answered = true;
         total++;
     }
+    markSchedulerOutcome(false);
 
     if (mode === 'audio-to-pinyin') {
         feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin} (${currentQuestion.char})`;
@@ -1636,6 +1902,9 @@ function checkFuzzyAnswer(answer) {
             score++;
         }
         lastAnswerCorrect = true;
+        if (isFirstAttempt) {
+            markSchedulerOutcome(true);
+        }
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         renderMeaningHint(currentQuestion, 'correct');
@@ -1649,6 +1918,9 @@ function checkFuzzyAnswer(answer) {
         answered = false;
         playWrongSound();
         lastAnswerCorrect = false;
+        if (isFirstAttempt) {
+            markSchedulerOutcome(false);
+        }
         feedback.textContent = `✗ Wrong! Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         renderMeaningHint(currentQuestion, 'incorrect');
@@ -1688,6 +1960,7 @@ function checkMultipleChoice(answer) {
         feedback.textContent = `✓ Correct!`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         lastAnswerCorrect = true;
+        markSchedulerOutcome(true);
         if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
             renderMeaningHint(currentQuestion, 'correct');
         } else {
@@ -1708,6 +1981,7 @@ function checkMultipleChoice(answer) {
         feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         lastAnswerCorrect = false;
+        markSchedulerOutcome(false);
         if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
             renderMeaningHint(currentQuestion, 'incorrect');
         } else {
@@ -3040,13 +3314,13 @@ function submitDrawing() {
         if (correct) {
             score++;
         }
-    }
-
-    if (srEnabled && isFirstAttempt && currentQuestion && currentQuestion.char) {
-        const responseTime = Date.now() - srQuestionStartTime;
-        updateSRCard(currentQuestion.char, correct, responseTime);
-        updateDrawingSrUI();
-        updateFullscreenSrUI();
+        markSchedulerOutcome(correct);
+        if (srEnabled && currentQuestion && currentQuestion.char) {
+            const responseTime = Date.now() - srQuestionStartTime;
+            updateSRCard(currentQuestion.char, correct, responseTime);
+            updateDrawingSrUI();
+            updateFullscreenSrUI();
+        }
     }
 
     if (correct) {
@@ -3105,6 +3379,7 @@ function revealDrawingAnswer() {
             updateDrawingSrUI();
             updateFullscreenSrUI();
         }
+        markSchedulerOutcome(false);
     }
 
     const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
@@ -3490,6 +3765,9 @@ function submitFullscreenDrawing() {
         updateDrawingSrUI();
         updateFullscreenSrUI();
     }
+    if (isFirstAttempt) {
+        markSchedulerOutcome(correct);
+    }
 
     // Show feedback in fullscreen
     const prompt = document.getElementById('fullscreenPrompt');
@@ -3555,6 +3833,7 @@ function showFullscreenAnswer() {
             updateDrawingSrUI();
             updateFullscreenSrUI();
         }
+        markSchedulerOutcome(false);
 
         updateStats();
 
@@ -4050,6 +4329,8 @@ function checkRadicalAnswer() {
         hint.className = 'text-center text-xl font-semibold my-4 text-red-600';
     }
 
+    markSchedulerOutcome(allCorrect);
+
     // Play audio
     const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
     playPinyinAudio(firstPinyin, currentQuestion.char);
@@ -4423,6 +4704,29 @@ function initQuizCommandPalette() {
             }
         });
 
+        // Scheduler actions
+        actions.push({
+            name: 'Next Item: Random',
+            type: 'action',
+            description: 'Use pure shuffle ordering for upcoming questions',
+            keywords: 'random order shuffle next item scheduler',
+            action: () => setSchedulerMode(SCHEDULER_MODES.RANDOM)
+        });
+        actions.push({
+            name: 'Next Item: Fast Loop',
+            type: 'action',
+            description: 'Errors first, then unseen, then least-recently seen',
+            keywords: 'fast loop quick learning errors first scheduler',
+            action: () => setSchedulerMode(SCHEDULER_MODES.FAST_LOOP)
+        });
+        actions.push({
+            name: 'Next Item: Confidence-weighted',
+            type: 'action',
+            description: 'Recency + mistakes weighting for adaptive selection',
+            keywords: 'confidence weighted sampler adaptive scheduler',
+            action: () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED)
+        });
+
         // Spaced Repetition actions
         actions.push({
             name: srEnabled ? 'Disable Spaced Repetition' : 'Enable Spaced Repetition',
@@ -4499,6 +4803,7 @@ function initQuiz(charactersData, userConfig = {}) {
     loadComponentPreference();
     loadTimerSettings();
     loadSRData();
+    loadSchedulerMode();
 
     // Apply SR filtering to characters
     quizCharacters = applySRFiltering(quizCharacters);
@@ -4566,6 +4871,7 @@ function initQuiz(charactersData, userConfig = {}) {
         ? (previewElement.querySelector('.preview-list') || previewElement)
         : null;
     setPreviewQueueEnabled(config.enablePreviewQueue && previewElement);
+    ensureSchedulerToolbar();
 
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
