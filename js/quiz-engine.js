@@ -235,15 +235,15 @@ function summarizeSRCard(card) {
 }
 
 function getFullscreenQueueCandidates() {
-    // Prefer the preview queue if it is active (closest to the actual order used)
+    // Prefer the preview queue if it is active (closest to the actual next set)
     if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
-        return previewQueue.slice();
+        const previewChars = previewQueue.map(item => item && item.char);
+        const remainder = (Array.isArray(quizCharacters) ? quizCharacters : []).filter(item => !previewChars.includes(item?.char));
+        return [...previewQueue, ...remainder];
     }
 
-    // Fallback: show a slice of the current quiz pool, skipping the active card
-    const source = Array.isArray(quizCharacters) ? quizCharacters : [];
-    const filtered = source.filter(item => item && (!currentQuestion || item.char !== currentQuestion.char));
-    return filtered.slice(0, 5);
+    // Fallback: show the full current quiz pool in order
+    return Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
 }
 
 function updateFullscreenQueueDisplay() {
@@ -257,17 +257,18 @@ function updateFullscreenQueueDisplay() {
         return;
     }
 
-    const items = queue.slice(0, 5).map((item, idx) => {
+    const items = queue.map((item, idx) => {
         const label = srEnabled ? summarizeSRCard(getSRCardData(item.char)) : 'SR off';
         const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+        const isCurrent = currentQuestion && currentQuestion.char === item.char;
         return `
-            <li class="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+            <li class="flex items-center justify-between gap-3 bg-white border ${isCurrent ? 'border-blue-300' : 'border-gray-200'} rounded-xl px-3 py-2 shadow-sm ${isCurrent ? 'ring-2 ring-blue-100' : ''}">
                 <div class="flex items-center gap-3">
                     <span class="text-xs font-semibold text-gray-500">#${idx + 1}</span>
                     <span class="text-2xl font-bold text-gray-900">${escapeHtml(item.char || '?')}</span>
                     <span class="text-sm text-gray-500">${escapeHtml(pinyin)}</span>
                 </div>
-                <span class="text-xs text-blue-700">${label}</span>
+                <span class="text-xs ${isCurrent ? 'text-blue-700' : 'text-gray-600'}">${label}</span>
             </li>
         `;
     }).join('');
@@ -3898,8 +3899,8 @@ function ensureFullscreenDrawLayout() {
                             <button id="fullscreenSrStatsBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">SR Stats</button>
                         </div>
                         <div class="mt-2">
-                            <div class="text-[10px] uppercase tracking-[0.35em] text-blue-500 mb-1">Upcoming (SR Queue)</div>
-                            <ul id="fullscreenSrQueue" class="space-y-1"></ul>
+                            <div class="text-[10px] uppercase tracking-[0.35em] text-blue-500 mb-1">All Items (SR Queue Order)</div>
+                            <ul id="fullscreenSrQueue" class="space-y-1 max-h-72 overflow-auto pr-1"></ul>
                         </div>
                     </div>
                 </div>
