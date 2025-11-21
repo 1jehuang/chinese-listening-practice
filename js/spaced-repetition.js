@@ -20,6 +20,8 @@ function loadSRData() {
         const stored = localStorage.getItem(SR_ENABLED_KEY);
         // Default to enabled if not set
         srEnabled = stored === null ? true : stored === 'true';
+        const aggressiveStored = localStorage.getItem(SR_AGGRESSIVE_KEY);
+        srAggressiveMode = aggressiveStored === 'true';
         srPageKey = getSRPageKey();
         const data = localStorage.getItem(srPageKey);
         srData = data ? JSON.parse(data) : {};
@@ -47,28 +49,35 @@ function toggleSREnabled() {
 
     // Re-apply SR filtering without reloading
     // Access variables from quiz-engine.js (same global scope)
-    if (typeof originalQuizCharacters !== 'undefined' && originalQuizCharacters.length > 0) {
-        quizCharacters = applySRFiltering(originalQuizCharacters);
-        
-        // Update banner
-        showSRBanner();
-        
-        // Refresh preview queue if it exists
-        if (typeof ensurePreviewQueue === 'function') {
-            ensurePreviewQueue();
-            if (typeof updatePreviewDisplay === 'function') {
-                updatePreviewDisplay();
-            }
-        }
-        
-        // Refresh current question if quiz is initialized
-        if (typeof generateQuestion === 'function' && typeof questionDisplay !== 'undefined') {
-            generateQuestion();
-        }
+    if (typeof refreshSrQueue === 'function') {
+        refreshSrQueue(true);
     } else {
-        // Fallback: reload if originalQuizCharacters not available
-        window.location.reload();
+        if (typeof originalQuizCharacters !== 'undefined' && originalQuizCharacters.length > 0) {
+            quizCharacters = applySRFiltering(originalQuizCharacters);
+            
+            // Update banner
+            showSRBanner();
+            
+            // Refresh preview queue if it exists
+            if (typeof ensurePreviewQueue === 'function') {
+                ensurePreviewQueue();
+                if (typeof updatePreviewDisplay === 'function') {
+                    updatePreviewDisplay();
+                }
+            }
+            
+            // Refresh current question if quiz is initialized
+            if (typeof generateQuestion === 'function' && typeof questionDisplay !== 'undefined') {
+                generateQuestion();
+            }
+        } else {
+            // Fallback: reload if originalQuizCharacters not available
+            window.location.reload();
+        }
     }
+
+    if (typeof updateDrawingSrUI === 'function') updateDrawingSrUI();
+    if (typeof updateFullscreenSrUI === 'function') updateFullscreenSrUI();
 }
 
 // Expose to window for banner button
@@ -110,6 +119,8 @@ function nextInterval(stability) {
     const newInterval = stability / FSRS_PARAMS.decay * (Math.pow(FSRS_PARAMS.requestRetention, 1 / FSRS_PARAMS.decay) - 1);
     return Math.min(Math.max(Math.round(newInterval), 1), FSRS_PARAMS.maximumInterval);
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function nextDifficulty(difficulty, grade) {
     const w = FSRS_PARAMS.w;
@@ -237,15 +248,32 @@ function updateSRCard(char, correct, responseTimeMs = 3000) {
 
         // Calculate next review
         card.scheduledDays = nextInterval(card.stability);
-        card.due = now + card.scheduledDays * 24 * 60 * 60 * 1000;
+        card.due = now + card.scheduledDays * DAY_MS;
     }
 
     card.lastReview = now;
+
+    if (srAggressiveMode) {
+        if (!correct) {
+            card.scheduledDays = Math.min(card.scheduledDays || 0, 0.03); // ~45 minutes
+            card.due = now + 60 * 1000; // try again quickly
+        } else {
+            const cappedDays = Math.max(0.02, Math.min(card.scheduledDays, 2)); // cap to 2 days
+            card.scheduledDays = cappedDays;
+            card.due = now + cappedDays * DAY_MS;
+        }
+    }
+
     saveSRData();
+
+    if (typeof refreshSrQueue === 'function') {
+        refreshSrQueue(false);
+    }
 }
 
 function applySRFiltering(characters) {
     if (!srEnabled || !Array.isArray(characters)) {
+        srDueCount = 0;
         return characters;
     }
 
@@ -262,27 +290,52 @@ function applySRFiltering(characters) {
 
     srDueCount = dueCards.length;
 
-    // Shuffle due cards and put them first
+    // Shuffle due cards
     const shuffledDue = dueCards.sort(() => Math.random() - 0.5);
     const shuffledNotDue = notDueCards.sort(() => Math.random() - 0.5);
+
+    // Aggressive mode: only serve due cards; if none, show the soonest upcoming cards
+    if (srAggressiveMode) {
+        if (shuffledDue.length > 0) {
+            return [...shuffledDue];
+        }
+        if (notDueCards.length > 0) {
+            const ranked = notDueCards
+                .map(item => {
+                    const card = getSRCardData(item.char);
+                    return { item, due: card.due || Date.now() + Number.MAX_SAFE_INTEGER };
+                })
+                .sort((a, b) => a.due - b.due)
+                .slice(0, 3)
+                .map(entry => entry.item);
+            return ranked;
+        }
+    }
 
     return [...shuffledDue, ...shuffledNotDue];
 }
 
 function getSRStats() {
     if (!srEnabled) {
+        srDueCount = 0;
         return { enabled: false };
     }
 
     let dueToday = 0;
     let total = 0;
 
-    quizCharacters.forEach(char => {
+    const statsSource = Array.isArray(originalQuizCharacters) && originalQuizCharacters.length
+        ? originalQuizCharacters
+        : quizCharacters;
+
+    statsSource.forEach(char => {
         total++;
         if (isCardDue(char.char)) {
             dueToday++;
         }
     });
+
+    srDueCount = dueToday;
 
     return {
         enabled: true,

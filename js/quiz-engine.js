@@ -66,6 +66,9 @@ let srPageKey = '';
 let srDueCount = 0;
 let srQuestionStartTime = 0;
 const SR_ENABLED_KEY = 'sr_enabled';
+let srAggressiveMode = false;
+const SR_AGGRESSIVE_KEY = 'sr_aggressive_mode';
+const SR_STATE_NAMES = ['New', 'Learning', 'Review', 'Relearning'];
 
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
@@ -167,8 +170,7 @@ function showSRCardInfo(char) {
     }
 
     const card = getSRCardData(char);
-    const stateNames = ['New', 'Learning', 'Review', 'Relearning'];
-    const stateName = stateNames[card.state] || 'Unknown';
+    const stateName = SR_STATE_NAMES[card.state] || 'Unknown';
 
     // Calculate days until due
     const now = Date.now();
@@ -208,6 +210,210 @@ function showSRCardInfo(char) {
     } else if (container && container.firstChild) {
         container.insertBefore(infoBox, container.firstChild);
     }
+}
+
+function formatSRDueText(dueTimestamp) {
+    const now = Date.now();
+    const delta = (dueTimestamp || 0) - now;
+    if (!dueTimestamp || delta <= 0) return 'due now';
+
+    const minutes = Math.round(delta / 60000);
+    if (minutes < 90) return `due in ${minutes}m`;
+
+    const hours = delta / 3600000;
+    if (hours < 48) return `due in ${hours.toFixed(1)}h`;
+
+    const days = delta / 86400000;
+    return `due in ${days.toFixed(1)}d`;
+}
+
+function summarizeSRCard(card) {
+    if (!card) return '';
+    const stateName = SR_STATE_NAMES[card.state] || 'New';
+    const dueText = formatSRDueText(card.due);
+    return `${stateName} • ${dueText}`;
+}
+
+function refreshSrQueue(regenerateQuestion = false) {
+    if (!Array.isArray(originalQuizCharacters) || !originalQuizCharacters.length) return;
+
+    quizCharacters = applySRFiltering(originalQuizCharacters);
+
+    if (previewQueueEnabled) {
+        previewQueue = [];
+        ensurePreviewQueue();
+        updatePreviewDisplay();
+    }
+
+    showSRBanner();
+
+    if (regenerateQuestion && typeof generateQuestion === 'function') {
+        generateQuestion();
+    }
+}
+
+function setSRAggressiveMode(enabled, options = {}) {
+    srAggressiveMode = Boolean(enabled);
+    try {
+        localStorage.setItem(SR_AGGRESSIVE_KEY, srAggressiveMode.toString());
+    } catch (e) {
+        console.warn('Failed to save aggressive SR state', e);
+    }
+
+    if (options.refreshQueue !== false) {
+        refreshSrQueue(options.regenerateQuestion);
+    }
+
+    updateDrawingSrUI();
+    updateFullscreenSrUI();
+}
+
+function toggleSRAggressiveMode() {
+    setSRAggressiveMode(!srAggressiveMode, { regenerateQuestion: true });
+}
+
+function updateDrawingSrUI() {
+    const statusEl = document.getElementById('drawSrStatus');
+    const cardEl = document.getElementById('drawSrCardState');
+    const panelEl = document.getElementById('drawSrPanel');
+    const toggleBtn = document.getElementById('drawSrToggleBtn');
+    const statsBtn = document.getElementById('drawSrStatsBtn');
+    const aggressiveBtn = document.getElementById('drawAggressiveBtn');
+
+    if (!statusEl && !cardEl && !panelEl) return;
+
+    const stats = getSRStats();
+    const srActive = stats.enabled;
+
+    if (panelEl) {
+        panelEl.className = srActive
+            ? 'rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3'
+            : 'rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3';
+    }
+
+    if (statusEl) {
+        statusEl.textContent = srActive
+            ? `${stats.dueToday} due · ${stats.total} total • ${Object.keys(srData || {}).length} tracked`
+            : 'Spaced repetition is off (showing all cards)';
+        statusEl.className = srActive
+            ? 'text-sm font-semibold text-blue-900'
+            : 'text-sm font-semibold text-gray-700';
+    }
+
+    if (cardEl) {
+        if (srActive && currentQuestion && currentQuestion.char) {
+            const card = getSRCardData(currentQuestion.char);
+            cardEl.textContent = summarizeSRCard(card);
+            cardEl.className = 'text-xs text-blue-800';
+        } else if (srActive) {
+            cardEl.textContent = 'Waiting to schedule the current card…';
+            cardEl.className = 'text-xs text-blue-800';
+        } else {
+            cardEl.textContent = 'Enable SR to see when drawing reviews are due.';
+            cardEl.className = 'text-xs text-gray-600';
+        }
+    }
+
+    if (toggleBtn) {
+        toggleBtn.textContent = srActive ? 'Disable SR' : 'Enable SR';
+        toggleBtn.className = srActive
+            ? 'px-3 py-2 rounded-lg border border-blue-300 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition'
+            : 'px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition';
+    }
+
+    const statsDisabled = !srEnabled;
+    if (statsBtn) {
+        statsBtn.disabled = statsDisabled;
+        statsBtn.className = statsDisabled
+            ? 'px-3 py-2 rounded-lg border border-gray-200 text-gray-400 font-semibold cursor-not-allowed transition'
+            : 'px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition';
+    }
+
+    if (aggressiveBtn) {
+        aggressiveBtn.disabled = !srEnabled;
+        aggressiveBtn.textContent = srAggressiveMode ? 'Aggressive SR: On' : 'Aggressive SR: Off';
+        aggressiveBtn.className = srAggressiveMode && srEnabled
+            ? 'px-3 py-2 rounded-lg border border-red-300 text-red-700 font-semibold bg-red-50 hover:border-red-400 hover:text-red-800 transition'
+            : srEnabled
+                ? 'px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition'
+                : 'px-3 py-2 rounded-lg border border-gray-200 text-gray-400 font-semibold cursor-not-allowed transition';
+    }
+}
+
+function updateFullscreenSrUI() {
+    const statusEl = document.getElementById('fullscreenSrStatus');
+    const cardEl = document.getElementById('fullscreenSrCardState');
+    const toggleBtn = document.getElementById('fullscreenSrToggleBtn');
+    const statsBtn = document.getElementById('fullscreenSrStatsBtn');
+    const aggressiveBtn = document.getElementById('fullscreenAggressiveBtn');
+
+    if (!statusEl && !cardEl) return;
+
+    const stats = getSRStats();
+    const srActive = stats.enabled;
+
+    if (statusEl) {
+        statusEl.textContent = srActive
+            ? `${stats.dueToday} due · ${stats.total} total`
+            : 'SR off';
+        statusEl.className = srActive
+            ? 'text-sm font-semibold text-blue-900'
+            : 'text-sm font-semibold text-gray-700';
+    }
+
+    if (cardEl) {
+        if (srActive && currentQuestion && currentQuestion.char) {
+            const card = getSRCardData(currentQuestion.char);
+            cardEl.textContent = summarizeSRCard(card);
+            cardEl.className = 'text-xs text-blue-800';
+        } else if (srActive) {
+            cardEl.textContent = 'Waiting to track this card…';
+            cardEl.className = 'text-xs text-blue-800';
+        } else {
+            cardEl.textContent = 'Enable SR to see schedule details.';
+            cardEl.className = 'text-xs text-gray-600';
+        }
+    }
+
+    if (toggleBtn) {
+        toggleBtn.textContent = srActive ? 'Disable SR' : 'Enable SR';
+        toggleBtn.className = srActive
+            ? 'px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition'
+            : 'px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition';
+    }
+
+    const statsDisabled = !srEnabled;
+    if (statsBtn) {
+        statsBtn.disabled = statsDisabled;
+        statsBtn.className = statsDisabled
+            ? 'px-3 py-1.5 rounded-lg border border-gray-200 text-gray-400 font-semibold cursor-not-allowed transition'
+            : 'px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition';
+    }
+
+    if (aggressiveBtn) {
+        aggressiveBtn.disabled = !srEnabled;
+        aggressiveBtn.textContent = srAggressiveMode ? 'Aggressive SR: On' : 'Aggressive SR: Off';
+        aggressiveBtn.className = srAggressiveMode && srEnabled
+            ? 'px-3 py-1.5 rounded-lg border border-red-200 text-red-700 font-semibold bg-red-50 hover:border-red-400 hover:text-red-800 transition'
+            : srEnabled
+                ? 'px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition'
+                : 'px-3 py-1.5 rounded-lg border border-gray-200 text-gray-400 font-semibold cursor-not-allowed transition';
+    }
+}
+
+function showSrStatsAlert() {
+    const stats = getSRStats();
+    if (!stats.enabled) {
+        alert('Spaced repetition is currently off.');
+        return;
+    }
+
+    alert(
+        `Spaced Repetition Stats:\n\n` +
+        `Due today: ${stats.dueToday}\n` +
+        `Total cards: ${stats.total}\n` +
+        `Tracked cards: ${stats.reviewed}`
+    );
 }
 
 function getRandomQuestion() {
@@ -839,6 +1045,10 @@ function generateQuestion() {
     if (srEnabled && currentQuestion) {
         showSRCardInfo(currentQuestion.char);
     }
+
+    // Update SR UI for drawing surfaces
+    updateDrawingSrUI();
+    updateFullscreenSrUI();
 
     // Track response time for FSRS
     srQuestionStartTime = Date.now();
@@ -2364,6 +2574,9 @@ function initCanvas() {
     const zoomOutBtn = document.getElementById('zoomOutBtn');
     const resetBtn = document.getElementById('resetViewBtn');
     const fullscreenBtn = document.getElementById('fullscreenDrawBtn');
+    const srToggleBtn = document.getElementById('drawSrToggleBtn');
+    const srStatsBtn = document.getElementById('drawSrStatsBtn');
+    const aggressiveBtn = document.getElementById('drawAggressiveBtn');
 
     if (clearBtn) clearBtn.onclick = clearCanvas;
     if (submitBtn) submitBtn.onclick = submitDrawing;
@@ -2374,6 +2587,28 @@ function initCanvas() {
     if (zoomOutBtn) zoomOutBtn.onclick = zoomOut;
     if (resetBtn) resetBtn.onclick = resetView;
     if (fullscreenBtn) fullscreenBtn.onclick = enterFullscreenDrawing;
+    if (srToggleBtn && !srToggleBtn.dataset.bound) {
+        srToggleBtn.dataset.bound = 'true';
+        srToggleBtn.onclick = () => {
+            toggleSREnabled();
+            updateDrawingSrUI();
+            updateFullscreenSrUI();
+        };
+    }
+    if (srStatsBtn && !srStatsBtn.dataset.bound) {
+        srStatsBtn.dataset.bound = 'true';
+        srStatsBtn.onclick = () => {
+            showSrStatsAlert();
+        };
+    }
+    if (aggressiveBtn && !aggressiveBtn.dataset.bound) {
+        aggressiveBtn.dataset.bound = 'true';
+        aggressiveBtn.onclick = () => {
+            toggleSRAggressiveMode();
+            updateDrawingSrUI();
+            updateFullscreenSrUI();
+        };
+    }
 
     updateOcrCandidates();
     updateUndoRedoButtons();
@@ -2757,6 +2992,13 @@ function submitDrawing() {
         }
     }
 
+    if (srEnabled && isFirstAttempt && currentQuestion && currentQuestion.char) {
+        const responseTime = Date.now() - srQuestionStartTime;
+        updateSRCard(currentQuestion.char, correct, responseTime);
+        updateDrawingSrUI();
+        updateFullscreenSrUI();
+    }
+
     if (correct) {
         playCorrectSound();
         const tryAgainText = isFirstAttempt ? '' : ' (practice attempt)';
@@ -2806,6 +3048,13 @@ function revealDrawingAnswer() {
     if (isFirstReveal) {
         answered = true;
         total++;
+
+        if (srEnabled && currentQuestion && currentQuestion.char) {
+            const responseTime = Date.now() - srQuestionStartTime;
+            updateSRCard(currentQuestion.char, false, responseTime);
+            updateDrawingSrUI();
+            updateFullscreenSrUI();
+        }
     }
 
     const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
@@ -2853,6 +3102,9 @@ function enterFullscreenDrawing() {
     isFullscreenMode = true;
     container.classList.remove('hidden');
 
+    // Keep SR indicators in sync inside fullscreen
+    updateFullscreenSrUI();
+
     // Update prompt
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
@@ -2895,6 +3147,9 @@ function enterFullscreenDrawing() {
     const showAnswerBtn = document.getElementById('fullscreenShowAnswerBtn');
     const nextBtn = document.getElementById('fullscreenNextBtn');
     const exitBtn = document.getElementById('exitFullscreenBtn');
+    const srToggleBtn = document.getElementById('fullscreenSrToggleBtn');
+    const srStatsBtn = document.getElementById('fullscreenSrStatsBtn');
+    const aggressiveBtn = document.getElementById('fullscreenAggressiveBtn');
 
     if (undoBtn) undoBtn.onclick = undoFullscreenStroke;
     if (redoBtn) redoBtn.onclick = redoFullscreenStroke;
@@ -2903,6 +3158,28 @@ function enterFullscreenDrawing() {
     if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
     if (nextBtn) nextBtn.onclick = nextFullscreenQuestion;
     if (exitBtn) exitBtn.onclick = exitFullscreenDrawing;
+    if (srToggleBtn && !srToggleBtn.dataset.bound) {
+        srToggleBtn.dataset.bound = 'true';
+        srToggleBtn.onclick = () => {
+            toggleSREnabled();
+            updateFullscreenSrUI();
+            updateDrawingSrUI();
+        };
+    }
+    if (srStatsBtn && !srStatsBtn.dataset.bound) {
+        srStatsBtn.dataset.bound = 'true';
+        srStatsBtn.onclick = () => {
+            showSrStatsAlert();
+        };
+    }
+    if (aggressiveBtn && !aggressiveBtn.dataset.bound) {
+        aggressiveBtn.dataset.bound = 'true';
+        aggressiveBtn.onclick = () => {
+            toggleSRAggressiveMode();
+            updateFullscreenSrUI();
+            updateDrawingSrUI();
+        };
+    }
 
     // Reset drawing state
     strokes = [];
@@ -3129,7 +3406,7 @@ function submitFullscreenDrawing() {
     const ocrResult = document.getElementById('fullscreenOcrResult');
     if (!ocrResult) return;
 
-    if (answered) return;
+    const isFirstAttempt = !answered;
 
     const recognized = ocrResult.textContent.trim();
     if (!recognized) {
@@ -3140,16 +3417,28 @@ function submitFullscreenDrawing() {
     // Play submit sound
     playSubmitSound();
 
-    answered = true;
-    total++;
+    if (isFirstAttempt) {
+        answered = true;
+        total++;
+    }
+
     const correct = recognized === currentQuestion.char;
 
     // Play sounds and update score
     if (correct) {
         playCorrectSound();
-        score++;
+        if (isFirstAttempt) {
+            score++;
+        }
     } else {
         playWrongSound();
+    }
+
+    if (isFirstAttempt && srEnabled && currentQuestion && currentQuestion.char) {
+        const responseTime = Date.now() - srQuestionStartTime;
+        updateSRCard(currentQuestion.char, correct, responseTime);
+        updateDrawingSrUI();
+        updateFullscreenSrUI();
     }
 
     // Show feedback in fullscreen
@@ -3209,6 +3498,14 @@ function showFullscreenAnswer() {
     if (!answered) {
         answered = true;
         total++;
+
+        if (srEnabled && currentQuestion && currentQuestion.char) {
+            const responseTime = Date.now() - srQuestionStartTime;
+            updateSRCard(currentQuestion.char, false, responseTime);
+            updateDrawingSrUI();
+            updateFullscreenSrUI();
+        }
+
         updateStats();
 
         // Also update main feedback
@@ -3476,6 +3773,18 @@ function ensureDrawModeLayout() {
 
     drawCharMode.innerHTML = `
         <div class="space-y-4">
+            <div id="drawSrPanel" class="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Spaced Repetition</div>
+                    <div id="drawSrStatus" class="text-sm font-semibold text-gray-700">Spaced repetition is off (showing all cards)</div>
+                    <div id="drawSrCardState" class="text-xs text-gray-600">Enable SR to see drawing card scheduling.</div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="drawSrToggleBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Toggle SR</button>
+                    <button id="drawAggressiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Aggressive SR</button>
+                    <button id="drawSrStatsBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">SR Stats</button>
+                </div>
+            </div>
             <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col lg:flex-row gap-4">
                 <div class="flex flex-col gap-3 text-center lg:text-left w-full lg:w-[220px]">
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
@@ -3530,6 +3839,16 @@ function ensureFullscreenDrawLayout() {
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
                     <div id="fullscreenOcrResult" class="text-7xl font-bold text-blue-600 min-h-[100px]">&nbsp;</div>
                     <p class="text-xs text-gray-500">Top guess updates automatically while you draw.</p>
+                    <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 space-y-2">
+                        <div class="text-xs uppercase tracking-[0.35em] text-blue-700">Spaced Repetition</div>
+                        <div id="fullscreenSrStatus" class="text-sm font-semibold text-blue-900">SR off</div>
+                        <div id="fullscreenSrCardState" class="text-xs text-blue-800">Enable SR to see schedule.</div>
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            <button id="fullscreenSrToggleBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">Toggle SR</button>
+                            <button id="fullscreenAggressiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-red-400 hover:text-red-700 transition">Aggressive SR</button>
+                            <button id="fullscreenSrStatsBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">SR Stats</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex-1 flex flex-col items-center justify-center bg-gray-100 p-4 gap-3 min-h-0">
                     <div class="w-full max-w-4xl flex-1 flex items-center justify-center min-h-0">
@@ -4070,8 +4389,7 @@ function initQuizCommandPalette() {
                 description: `${srDueCount} cards due today`,
                 keywords: 'spaced repetition sr stats review due cards',
                 action: () => {
-                    const stats = getSRStats();
-                    alert(`Spaced Repetition Stats:\n\nDue today: ${stats.dueToday}\nTotal cards: ${stats.total}\nReviewed: ${stats.reviewed}`);
+                    showSrStatsAlert();
                 }
             });
 
@@ -4082,6 +4400,18 @@ function initQuizCommandPalette() {
                 keywords: 'spaced repetition sr reset clear delete data',
                 action: () => {
                     resetSRData();
+                }
+            });
+
+            actions.push({
+                name: srAggressiveMode ? 'Disable Aggressive SR (Drawing)' : 'Enable Aggressive SR (Drawing)',
+                type: 'action',
+                description: srAggressiveMode
+                    ? 'Return to normal scheduling for drawing'
+                    : 'Clamp intervals and focus on due cards while drawing',
+                keywords: 'spaced repetition sr aggressive fast drawing due clamp',
+                action: () => {
+                    toggleSRAggressiveMode();
                 }
             });
         }
