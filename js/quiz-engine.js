@@ -234,6 +234,47 @@ function summarizeSRCard(card) {
     return `${stateName} • ${dueText}`;
 }
 
+function getFullscreenQueueCandidates() {
+    // Prefer the preview queue if it is active (closest to the actual order used)
+    if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
+        return previewQueue.slice();
+    }
+
+    // Fallback: show a slice of the current quiz pool, skipping the active card
+    const source = Array.isArray(quizCharacters) ? quizCharacters : [];
+    const filtered = source.filter(item => item && (!currentQuestion || item.char !== currentQuestion.char));
+    return filtered.slice(0, 5);
+}
+
+function updateFullscreenQueueDisplay() {
+    const queueEl = document.getElementById('fullscreenSrQueue');
+    if (!queueEl) return;
+
+    const queue = getFullscreenQueueCandidates();
+
+    if (!queue.length) {
+        queueEl.innerHTML = `<li class="text-sm text-gray-500">Queue will appear once characters load.</li>`;
+        return;
+    }
+
+    const items = queue.slice(0, 5).map((item, idx) => {
+        const label = srEnabled ? summarizeSRCard(getSRCardData(item.char)) : 'SR off';
+        const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+        return `
+            <li class="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold text-gray-500">#${idx + 1}</span>
+                    <span class="text-2xl font-bold text-gray-900">${escapeHtml(item.char || '?')}</span>
+                    <span class="text-sm text-gray-500">${escapeHtml(pinyin)}</span>
+                </div>
+                <span class="text-xs text-blue-700">${label}</span>
+            </li>
+        `;
+    }).join('');
+
+    queueEl.innerHTML = items;
+}
+
 function refreshSrQueue(regenerateQuestion = false) {
     if (!Array.isArray(originalQuizCharacters) || !originalQuizCharacters.length) return;
 
@@ -250,6 +291,8 @@ function refreshSrQueue(regenerateQuestion = false) {
     if (regenerateQuestion && typeof generateQuestion === 'function') {
         generateQuestion();
     }
+
+    updateFullscreenQueueDisplay();
 }
 
 function setSRAggressiveMode(enabled, options = {}) {
@@ -399,6 +442,8 @@ function updateFullscreenSrUI() {
                 ? 'px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition'
                 : 'px-3 py-1.5 rounded-lg border border-gray-200 text-gray-400 font-semibold cursor-not-allowed transition';
     }
+
+    updateFullscreenQueueDisplay();
 }
 
 function showSrStatsAlert() {
@@ -452,6 +497,7 @@ function updatePreviewDisplay() {
         if (previewListElement) {
             previewListElement.innerHTML = '';
         }
+        updateFullscreenQueueDisplay();
         return;
     }
 
@@ -472,6 +518,8 @@ function updatePreviewDisplay() {
                     ${rank}
                 </div>`;
     }).join('');
+
+    updateFullscreenQueueDisplay();
 }
 
 function setPreviewQueueEnabled(enabled) {
@@ -1049,6 +1097,7 @@ function generateQuestion() {
     // Update SR UI for drawing surfaces
     updateDrawingSrUI();
     updateFullscreenSrUI();
+    updateFullscreenQueueDisplay();
 
     // Track response time for FSRS
     srQuestionStartTime = Date.now();
@@ -3847,6 +3896,10 @@ function ensureFullscreenDrawLayout() {
                             <button id="fullscreenSrToggleBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">Toggle SR</button>
                             <button id="fullscreenAggressiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-red-400 hover:text-red-700 transition">Aggressive SR</button>
                             <button id="fullscreenSrStatsBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">SR Stats</button>
+                        </div>
+                        <div class="mt-2">
+                            <div class="text-[10px] uppercase tracking-[0.35em] text-blue-500 mb-1">Upcoming (SR Queue)</div>
+                            <ul id="fullscreenSrQueue" class="space-y-1"></ul>
                         </div>
                     </div>
                 </div>
