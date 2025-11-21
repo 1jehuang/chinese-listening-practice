@@ -3,84 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Textbook Reference</title>
+    <title>Textbook Page Archive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/textbook.css">
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-slate-50">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
-    <div class="max-w-5xl mx-auto py-12 px-4 md:px-6 space-y-10">
-        <header class="text-center">
-            <p class="text-sm uppercase tracking-widest text-gray-500 mb-2">Reference</p>
-            <h1 class="text-4xl font-bold text-gray-900">Textbook Page Archive</h1>
-            <p class="text-gray-600 mt-3">Full-resolution scans for quick checking while you study. Click any image to open it in a new tab.</p>
-        </header>
 
-        <section class="bg-white rounded-2xl shadow p-6 space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm font-semibold text-rose-500 uppercase tracking-wide">Lesson 6 · 别担心</p>
-                    <h2 class="text-2xl font-bold text-gray-900">Pages 76-79</h2>
-                    <p class="text-gray-600">Vocabulary plus dialogue snapshots used in Lesson 6 Part 1 & Part 2.</p>
-                </div>
-                <a href="lesson-6-part-1.html" class="text-blue-600 text-sm font-semibold hover:underline">Go to Lesson 6 Part 1 →</a>
+    <header class="textbook-hero py-12 px-4 md:px-8">
+        <div class="max-w-5xl mx-auto space-y-4">
+            <p class="text-sm uppercase tracking-[0.25em] text-slate-200">Archive</p>
+            <h1 class="text-4xl md:text-5xl font-black">Textbook Page Archive</h1>
+            <p class="text-slate-200 max-w-3xl">Pick a lesson to see all scanned pages. Each lesson has its own page with full-size images.</p>
+            <div class="flex flex-wrap gap-2 text-slate-100 text-sm">
+                <span class="textbook-pill bg-white/10 text-white">Vocabulary pages</span>
+                <span class="textbook-pill bg-white/10 text-white">Dialogue snippets</span>
+                <span class="textbook-pill bg-white/10 text-white">Exercises</span>
             </div>
-            <div class="grid gap-6 md:grid-cols-2">
-                <div class="space-y-3">
-                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                        <img src="images/l6-page76-text.jpg" alt="Lesson 6 Page 76 dialogue" class="w-full">
-                    </div>
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Page 76 – Dialogue intro</span>
-                        <a href="images/l6-page76-text.jpg" target="_blank" class="text-blue-600">Open full size ↗</a>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                        <img src="images/l6-page76.jpg" alt="Lesson 6 Page 76 vocabulary" class="w-full">
-                    </div>
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Page 76 – Vocabulary</span>
-                        <a href="images/l6-page76.jpg" target="_blank" class="text-blue-600">Open full size ↗</a>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                        <img src="images/l6-page77.jpg" alt="Lesson 6 Page 77 vocabulary" class="w-full">
-                    </div>
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Page 77 – Vocabulary</span>
-                        <a href="images/l6-page77.jpg" target="_blank" class="text-blue-600">Open full size ↗</a>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                        <img src="images/l6-page78.jpg" alt="Lesson 6 Page 78 vocabulary" class="w-full">
-                    </div>
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Page 78 – Vocabulary</span>
-                        <a href="images/l6-page78.jpg" target="_blank" class="text-blue-600">Open full size ↗</a>
-                    </div>
-                </div>
-                <div class="space-y-3">
-                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                        <img src="images/l6-page79.jpg" alt="Lesson 6 Page 79 vocabulary" class="w-full">
-                    </div>
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Page 79 – Vocabulary</span>
-                        <a href="images/l6-page79.jpg" target="_blank" class="text-blue-600">Open full size ↗</a>
-                    </div>
-                </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 md:px-6 -mt-8 space-y-6 pb-12">
+        <section class="bg-white rounded-2xl shadow-lg p-6 md:p-8 textbook-card">
+            <div class="section-header">
+                <h2 class="text-2xl font-bold text-slate-900">All Lessons</h2>
+                <p>Open any lesson to view its scanned pages.</p>
             </div>
-            <div class="flex flex-wrap gap-4">
-                <a href="lesson-6-part-2.html" class="text-blue-600 text-sm font-semibold hover:underline">Go to Lesson 6 Part 2 →</a>
-                <a href="lesson-6-cumulative.html" class="text-blue-600 text-sm font-semibold hover:underline">Cumulative Quiz →</a>
+            <div class="textbook-grid mt-6">
+                <a href="textbook-lesson1.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 1 · 两张地图</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 14–17</div>
+                    <div class="text-sm text-slate-600">Dialogue + vocab</div>
+                </a>
+                <a href="textbook-lesson2.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 2 · 我的家在哪儿?</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 18–21</div>
+                    <div class="text-sm text-slate-600">Dialogue + vocab</div>
+                </a>
+                <a href="textbook-lesson3.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 3 · 我们都是美国人</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 32–35</div>
+                    <div class="text-sm text-slate-600">Dialogue + vocab</div>
+                </a>
+                <a href="textbook-lesson4.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 4 · 美国人学中文</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 44–56</div>
+                    <div class="text-sm text-slate-600">Dialogue, vocab, grammar, exercises</div>
+                </a>
+                <a href="textbook-lesson5.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 5 · 我是不是黑人?</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 62–68</div>
+                    <div class="text-sm text-slate-600">Dialogue, vocab, drills</div>
+                </a>
+                <a href="textbook-lesson6.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 6 · 别担心</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 76–79</div>
+                    <div class="text-sm text-slate-600">Dialogue + vocab</div>
+                </a>
+                <a href="textbook-lesson7.html" class="block p-4 rounded-xl border border-slate-200 hover:border-slate-300 textbook-card">
+                    <div class="textbook-pill">Lesson 7 · 男女性别/男女性别住?</div>
+                    <div class="mt-3 text-lg font-semibold text-slate-900">Pages 87–90</div>
+                    <div class="text-sm text-slate-600">Dialogue + vocab</div>
+                </a>
             </div>
         </section>
-
-        <section class="bg-white rounded-2xl shadow p-6 text-center text-gray-600">
-            <p>More lessons coming soon. Let me know which pages you want scanned next!</p>
-        </section>
-    </div>
+    </main>
 </body>
 </html>
