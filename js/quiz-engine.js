@@ -79,11 +79,13 @@ const SCHEDULER_MODES = {
     RANDOM: 'random',
     FAST_LOOP: 'fast-loop',
     WEIGHTED: 'weighted',
-    BATCH_5: 'batch-5'
+    BATCH_5: 'batch-5',
+    ORDERED: 'ordered'
 };
 let schedulerMode = SCHEDULER_MODES.FAST_LOOP;
 let schedulerStats = {}; // per-char session data
 let schedulerOutcomeRecordedChar = null;
+let schedulerOrderedIndex = 0;
 const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
 const BATCH_SIZE = 5;
 const BATCH_MASTER_MIN_STREAK = 2;
@@ -307,6 +309,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
             return 'Confidence-weighted (recency + errors)';
         case SCHEDULER_MODES.BATCH_5:
             return '5-card batches (master then rotate)';
+        case SCHEDULER_MODES.ORDERED:
+            return 'In order (top-to-bottom)';
         case SCHEDULER_MODES.RANDOM:
         default:
             return 'Random shuffle';
@@ -321,6 +325,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
             return 'Scores cards by recency + mistakes; picks proportionally to need.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Work a random set of 5 until mastered, then move to a fresh unused set.';
+        case SCHEDULER_MODES.ORDERED:
+            return 'Walk through the list in defined order and wrap.';
         case SCHEDULER_MODES.RANDOM:
         default:
             return 'Pure shuffle from the current pool.';
@@ -600,6 +606,9 @@ function setSchedulerMode(mode) {
     } else {
         updateBatchStatusDisplay();
     }
+    if (schedulerMode === SCHEDULER_MODES.ORDERED) {
+        schedulerOrderedIndex = 0;
+    }
     // Refresh queues to reflect new ordering
     previewQueue = [];
     ensurePreviewQueue();
@@ -616,6 +625,10 @@ function getFullscreenQueueCandidates() {
             return [...previewQueue, ...remainder];
         }
         return Array.isArray(batchPool) ? batchPool.slice() : [];
+    }
+    if (schedulerMode === SCHEDULER_MODES.ORDERED) {
+        // Ordered uses current pool order directly
+        return Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
     }
 
     // Prefer the preview queue if it is active (closest to the actual next set)
@@ -681,6 +694,7 @@ function ensureSchedulerToolbar() {
                 <button id="schedulerFastBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Fast Loop</button>
                 <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
                 <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
+                <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             </div>
         `;
         container.insertBefore(bar, question);
@@ -690,6 +704,7 @@ function ensureSchedulerToolbar() {
     const fastBtn = document.getElementById('schedulerFastBtn');
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
+    const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
     if (randomBtn && !randomBtn.dataset.bound) {
         randomBtn.dataset.bound = 'true';
@@ -707,6 +722,10 @@ function ensureSchedulerToolbar() {
         batchBtn.dataset.bound = 'true';
         batchBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_5);
     }
+    if (orderedBtn && !orderedBtn.dataset.bound) {
+        orderedBtn.dataset.bound = 'true';
+        orderedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.ORDERED);
+    }
 
     updateSchedulerToolbar();
 }
@@ -722,7 +741,8 @@ function updateSchedulerToolbar() {
         { id: 'schedulerRandomBtn', mode: SCHEDULER_MODES.RANDOM },
         { id: 'schedulerFastBtn', mode: SCHEDULER_MODES.FAST_LOOP },
         { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED },
-        { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 }
+        { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
+        { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
     ];
     btns.forEach(({ id, mode }) => {
         const btn = document.getElementById(id);
@@ -938,6 +958,24 @@ function selectRandom(pool) {
     return pool[idx];
 }
 
+function selectOrdered(pool, exclusionSet = new Set()) {
+    if (!pool.length) return null;
+    if (!Number.isFinite(schedulerOrderedIndex)) {
+        schedulerOrderedIndex = 0;
+    }
+    const n = pool.length;
+    schedulerOrderedIndex = ((schedulerOrderedIndex % n) + n) % n;
+    for (let i = 0; i < n; i++) {
+        const idx = (schedulerOrderedIndex + i) % n;
+        const candidate = pool[idx];
+        if (candidate && !exclusionSet.has(candidate.char)) {
+            schedulerOrderedIndex = (idx + 1) % n;
+            return candidate;
+        }
+    }
+    return null;
+}
+
 function selectFastLoop(pool) {
     const now = Date.now();
     const jitter = () => (Math.random() - 0.5) * 10; // small tie breaker
@@ -1017,6 +1055,8 @@ function selectNextQuestion(exclusions = []) {
     if (!pool.length) return null;
 
     switch (schedulerMode) {
+        case SCHEDULER_MODES.ORDERED:
+            return selectOrdered(pool, exclusionSet) || selectRandom(pool);
         case SCHEDULER_MODES.BATCH_5:
             return selectFastLoop(pool) || selectRandom(pool);
         case SCHEDULER_MODES.FAST_LOOP:
@@ -5110,6 +5150,13 @@ function initQuizCommandPalette() {
             description: 'Work one random batch of 5 until mastered, then auto-rotate',
             keywords: 'batch mode five cards grouped rotation mastery subset',
             action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5)
+        });
+        actions.push({
+            name: 'Next Item: In Order',
+            type: 'action',
+            description: 'Cycle through the current pool in order and wrap',
+            keywords: 'in order sequential fixed order list scheduler',
+            action: () => setSchedulerMode(SCHEDULER_MODES.ORDERED)
         });
 
         // Spaced Repetition actions
