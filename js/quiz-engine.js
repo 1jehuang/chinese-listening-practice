@@ -78,11 +78,24 @@ const SCHEDULER_MODE_KEY = 'quiz_scheduler_mode';
 const SCHEDULER_MODES = {
     RANDOM: 'random',
     FAST_LOOP: 'fast-loop',
-    WEIGHTED: 'weighted'
+    WEIGHTED: 'weighted',
+    BATCH_5: 'batch-5'
 };
 let schedulerMode = SCHEDULER_MODES.FAST_LOOP;
 let schedulerStats = {}; // per-char session data
 let schedulerOutcomeRecordedChar = null;
+const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
+const BATCH_SIZE = 5;
+const BATCH_MASTER_MIN_STREAK = 2;
+const BATCH_MASTER_MIN_ACCURACY = 0.72;
+const BATCH_MASTER_MIN_SEEN = 3;
+let batchStateKey = '';
+let batchModeState = {
+    activeBatch: [],
+    usedChars: [],
+    batchIndex: 0,
+    cycleCount: 0
+};
 
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
@@ -292,6 +305,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
             return 'Fast loop (errors → unseen → oldest)';
         case SCHEDULER_MODES.WEIGHTED:
             return 'Confidence-weighted (recency + errors)';
+        case SCHEDULER_MODES.BATCH_5:
+            return '5-card batches (master then rotate)';
         case SCHEDULER_MODES.RANDOM:
         default:
             return 'Random shuffle';
@@ -304,6 +319,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
             return 'Surfaces recent errors first, then unseen, then least-recently seen.';
         case SCHEDULER_MODES.WEIGHTED:
             return 'Scores cards by recency + mistakes; picks proportionally to need.';
+        case SCHEDULER_MODES.BATCH_5:
+            return 'Work a random set of 5 until mastered, then move to a fresh unused set.';
         case SCHEDULER_MODES.RANDOM:
         default:
             return 'Pure shuffle from the current pool.';
@@ -318,7 +335,8 @@ function getSchedulerStats(char) {
             wrong: 0,
             lastServed: 0,
             lastCorrect: 0,
-            lastWrong: 0
+            lastWrong: 0,
+            streak: 0
         };
     }
     return schedulerStats[char];
@@ -342,10 +360,233 @@ function markSchedulerOutcome(correct) {
     if (correct) {
         stats.correct += 1;
         stats.lastCorrect = now;
+        stats.streak = (stats.streak || 0) + 1;
     } else {
         stats.wrong += 1;
         stats.lastWrong = now;
+        stats.streak = 0;
     }
+
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        maybeAdvanceBatchAfterAnswer();
+    }
+}
+
+function getBatchPageKey() {
+    const path = window.location.pathname || '';
+    const filename = path.substring(path.lastIndexOf('/') + 1) || '';
+    const base = filename.replace('.html', '') || 'default';
+    return base;
+}
+
+function getBatchStorageKey() {
+    if (batchStateKey) return batchStateKey;
+    batchStateKey = `${BATCH_STATE_KEY_PREFIX}${getBatchPageKey()}`;
+    return batchStateKey;
+}
+
+function loadBatchState() {
+    const defaults = { activeBatch: [], usedChars: [], batchIndex: 0, cycleCount: 0 };
+    batchModeState = { ...defaults };
+    const key = getBatchStorageKey();
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                batchModeState.activeBatch = Array.isArray(parsed.activeBatch) ? parsed.activeBatch.filter(Boolean) : [];
+                batchModeState.usedChars = Array.isArray(parsed.usedChars) ? parsed.usedChars.filter(Boolean) : [];
+                batchModeState.batchIndex = Number.isFinite(parsed.batchIndex) ? parsed.batchIndex : 0;
+                batchModeState.cycleCount = Number.isFinite(parsed.cycleCount) ? parsed.cycleCount : 0;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load batch mode state', e);
+    }
+
+    batchModeState.activeBatch = Array.from(new Set(batchModeState.activeBatch));
+    batchModeState.usedChars = Array.from(new Set(batchModeState.usedChars));
+}
+
+function saveBatchState() {
+    const key = getBatchStorageKey();
+    try {
+        localStorage.setItem(key, JSON.stringify(batchModeState));
+    } catch (e) {
+        console.warn('Failed to save batch mode state', e);
+    }
+}
+
+function getActiveBatchQuestions() {
+    if (!Array.isArray(batchModeState.activeBatch)) {
+        batchModeState.activeBatch = [];
+    }
+
+    const availableMap = new Map((Array.isArray(quizCharacters) ? quizCharacters : []).map(item => [item.char, item]));
+    const resolved = batchModeState.activeBatch.map(char => availableMap.get(char)).filter(Boolean);
+
+    if (resolved.length !== batchModeState.activeBatch.length) {
+        batchModeState.activeBatch = resolved.map(item => item.char);
+        saveBatchState();
+    }
+
+    return resolved;
+}
+
+function reconcileBatchStateWithQueue() {
+    const knownSource = Array.isArray(originalQuizCharacters) && originalQuizCharacters.length
+        ? originalQuizCharacters
+        : quizCharacters;
+    const knownChars = new Set((knownSource || []).map(item => item.char));
+
+    const activeBefore = Array.isArray(batchModeState.activeBatch) ? batchModeState.activeBatch.length : 0;
+    batchModeState.activeBatch = (batchModeState.activeBatch || []).filter(char => knownChars.has(char));
+    batchModeState.usedChars = (batchModeState.usedChars || []).filter(char => knownChars.has(char));
+
+    if (batchModeState.activeBatch.length !== activeBefore) {
+        saveBatchState();
+    }
+}
+
+function isBatchCharMastered(char) {
+    const stats = getSchedulerStats(char);
+    if (!stats) return false;
+
+    const accuracy = stats.served > 0 ? (stats.correct / stats.served) : 0;
+    const streak = stats.streak || 0;
+    const seenEnough = stats.served >= BATCH_MASTER_MIN_SEEN;
+
+    return seenEnough && streak >= BATCH_MASTER_MIN_STREAK && accuracy >= BATCH_MASTER_MIN_ACCURACY;
+}
+
+function getBatchMasteryProgress() {
+    const active = getActiveBatchQuestions();
+    const mastered = active.filter(item => isBatchCharMastered(item.char));
+    return {
+        active,
+        masteredCount: mastered.length,
+        total: active.length
+    };
+}
+
+function selectBatchFromPool(pool, size = BATCH_SIZE) {
+    if (!Array.isArray(pool) || !pool.length) return [];
+    const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(size, shuffled.length));
+}
+
+function startNewBatch() {
+    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
+
+    const available = Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
+    if (!available.length) {
+        batchModeState.activeBatch = [];
+        updateBatchStatusDisplay();
+        return;
+    }
+
+    const usedSet = new Set(Array.isArray(batchModeState.usedChars) ? batchModeState.usedChars : []);
+    let pool = available.filter(item => !usedSet.has(item.char));
+
+    if (!pool.length) {
+        usedSet.clear();
+        batchModeState.usedChars = [];
+        batchModeState.cycleCount = (batchModeState.cycleCount || 0) + 1;
+        pool = available.slice();
+    }
+
+    const nextBatch = selectBatchFromPool(pool);
+    if (!nextBatch.length) return;
+
+    batchModeState.activeBatch = nextBatch.map(item => item.char);
+    nextBatch.forEach(item => usedSet.add(item.char));
+    batchModeState.usedChars = Array.from(usedSet);
+    batchModeState.batchIndex = Math.max(1, (batchModeState.batchIndex || 0) + 1);
+    saveBatchState();
+
+    previewQueue = [];
+    ensurePreviewQueue();
+    updatePreviewDisplay();
+    updateBatchStatusDisplay();
+}
+
+function getBatchQuestionPool() {
+    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+        return Array.isArray(quizCharacters) ? quizCharacters : [];
+    }
+
+    const active = getActiveBatchQuestions();
+    if (active.length) {
+        return active;
+    }
+
+    startNewBatch();
+    return getActiveBatchQuestions();
+}
+
+function prepareBatchForNextQuestion() {
+    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
+    reconcileBatchStateWithQueue();
+    const progress = getBatchMasteryProgress();
+
+    if (!progress.total || progress.masteredCount === progress.total) {
+        startNewBatch();
+    } else {
+        updateBatchStatusDisplay();
+    }
+}
+
+function maybeAdvanceBatchAfterAnswer() {
+    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
+    const progress = getBatchMasteryProgress();
+    if (!progress.total) {
+        startNewBatch();
+        return;
+    }
+    if (progress.masteredCount === progress.total) {
+        startNewBatch();
+    } else {
+        updateBatchStatusDisplay();
+    }
+}
+
+function updateBatchStatusDisplay() {
+    const statusEl = document.getElementById('batchModeStatus');
+    if (!statusEl) return;
+
+    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+        statusEl.innerHTML = '';
+        statusEl.className = 'hidden';
+        return;
+    }
+
+    const progress = getBatchMasteryProgress();
+    const active = progress.active;
+    const masteredCount = progress.masteredCount;
+    const totalAvailable = Array.isArray(quizCharacters) ? quizCharacters.length : active.length;
+    const usedCount = Array.isArray(batchModeState.usedChars) ? batchModeState.usedChars.length : 0;
+    const remaining = Math.max(0, totalAvailable - usedCount);
+    const cycleText = batchModeState.cycleCount > 0 ? ` · cycle ${batchModeState.cycleCount + 1}` : '';
+    const setLabel = Math.max(1, batchModeState.batchIndex || 1);
+
+    statusEl.className = 'mt-1 text-xs text-blue-800';
+
+    if (!active.length) {
+        statusEl.textContent = '5-card batches active: preparing a new set.';
+        return;
+    }
+
+    const charBadges = active.map(item => {
+        const mastered = isBatchCharMastered(item.char);
+        const cls = mastered ? 'text-green-700 font-semibold' : 'text-gray-900';
+        return `<span class="${cls}">${escapeHtml(item.char)}</span>`;
+    }).join(' ');
+
+    statusEl.innerHTML = `
+        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-500">Batch Mode</div>
+        <div class="text-sm text-blue-900">Set ${setLabel}${cycleText}: ${charBadges}</div>
+        <div class="text-[11px] text-blue-800">${masteredCount}/${active.length} mastered · ${remaining} unused left</div>
+    `;
 }
 
 function setSchedulerMode(mode) {
@@ -353,6 +594,12 @@ function setSchedulerMode(mode) {
     schedulerMode = mode;
     saveSchedulerMode(mode);
     updateSchedulerToolbar();
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        batchModeState.activeBatch = [];
+        prepareBatchForNextQuestion();
+    } else {
+        updateBatchStatusDisplay();
+    }
     // Refresh queues to reflect new ordering
     previewQueue = [];
     ensurePreviewQueue();
@@ -361,6 +608,16 @@ function setSchedulerMode(mode) {
 }
 
 function getFullscreenQueueCandidates() {
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        const batchPool = getBatchQuestionPool();
+        if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
+            const previewChars = previewQueue.map(item => item && item.char);
+            const remainder = (Array.isArray(batchPool) ? batchPool : []).filter(item => !previewChars.includes(item?.char));
+            return [...previewQueue, ...remainder];
+        }
+        return Array.isArray(batchPool) ? batchPool.slice() : [];
+    }
+
     // Prefer the preview queue if it is active (closest to the actual next set)
     if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
         const previewChars = previewQueue.map(item => item && item.char);
@@ -417,11 +674,13 @@ function ensureSchedulerToolbar() {
                 <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Selection Strategy</div>
                 <div id="schedulerModeLabel" class="text-sm font-semibold text-gray-900"></div>
                 <div id="schedulerModeDescription" class="text-xs text-gray-600"></div>
+                <div id="batchModeStatus" class="hidden"></div>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
                 <button id="schedulerFastBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Fast Loop</button>
                 <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+                <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
             </div>
         `;
         container.insertBefore(bar, question);
@@ -430,6 +689,7 @@ function ensureSchedulerToolbar() {
     const randomBtn = document.getElementById('schedulerRandomBtn');
     const fastBtn = document.getElementById('schedulerFastBtn');
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
+    const batchBtn = document.getElementById('schedulerBatchBtn');
 
     if (randomBtn && !randomBtn.dataset.bound) {
         randomBtn.dataset.bound = 'true';
@@ -442,6 +702,10 @@ function ensureSchedulerToolbar() {
     if (weightedBtn && !weightedBtn.dataset.bound) {
         weightedBtn.dataset.bound = 'true';
         weightedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED);
+    }
+    if (batchBtn && !batchBtn.dataset.bound) {
+        batchBtn.dataset.bound = 'true';
+        batchBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_5);
     }
 
     updateSchedulerToolbar();
@@ -457,7 +721,8 @@ function updateSchedulerToolbar() {
     const btns = [
         { id: 'schedulerRandomBtn', mode: SCHEDULER_MODES.RANDOM },
         { id: 'schedulerFastBtn', mode: SCHEDULER_MODES.FAST_LOOP },
-        { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED }
+        { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED },
+        { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 }
     ];
     btns.forEach(({ id, mode }) => {
         const btn = document.getElementById(id);
@@ -467,12 +732,18 @@ function updateSchedulerToolbar() {
             ? 'px-3 py-2 rounded-lg border border-blue-500 text-white font-semibold bg-blue-500 shadow-sm'
             : 'px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition';
     });
+
+    updateBatchStatusDisplay();
 }
 
 function refreshSrQueue(regenerateQuestion = false) {
     if (!Array.isArray(originalQuizCharacters) || !originalQuizCharacters.length) return;
 
     quizCharacters = applySRFiltering(originalQuizCharacters);
+    reconcileBatchStateWithQueue();
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        prepareBatchForNextQuestion();
+    }
 
     if (previewQueueEnabled) {
         previewQueue = [];
@@ -739,10 +1010,15 @@ function selectWeighted(pool) {
 
 function selectNextQuestion(exclusions = []) {
     const exclusionSet = new Set(exclusions || []);
-    const pool = (Array.isArray(quizCharacters) ? quizCharacters : []).filter(item => item && !exclusionSet.has(item.char));
+    const sourcePool = schedulerMode === SCHEDULER_MODES.BATCH_5
+        ? getBatchQuestionPool()
+        : quizCharacters;
+    const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
     if (!pool.length) return null;
 
     switch (schedulerMode) {
+        case SCHEDULER_MODES.BATCH_5:
+            return selectFastLoop(pool) || selectRandom(pool);
         case SCHEDULER_MODES.FAST_LOOP:
             return selectFastLoop(pool) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
@@ -1288,6 +1564,10 @@ function generateQuestion() {
     lastAnswerCorrect = false;
     clearComponentBreakdown();
     hideDrawNextButton();
+
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        prepareBatchForNextQuestion();
+    }
 
     const previewActive = isPreviewModeActive();
     let nextQuestion = null;
@@ -4824,6 +5104,13 @@ function initQuizCommandPalette() {
             keywords: 'confidence weighted sampler adaptive scheduler',
             action: () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED)
         });
+        actions.push({
+            name: 'Next Item: 5-Card Batches',
+            type: 'action',
+            description: 'Work one random batch of 5 until mastered, then auto-rotate',
+            keywords: 'batch mode five cards grouped rotation mastery subset',
+            action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5)
+        });
 
         // Spaced Repetition actions
         actions.push({
@@ -4903,9 +5190,11 @@ function initQuiz(charactersData, userConfig = {}) {
     loadSRData();
     loadSchedulerMode();
     ensureCharGlossesLoaded();
+    loadBatchState();
 
     // Apply SR filtering to characters
     quizCharacters = applySRFiltering(quizCharacters);
+    reconcileBatchStateWithQueue();
 
     if (config.defaultMode) {
         mode = config.defaultMode;
@@ -5080,6 +5369,10 @@ function initQuiz(charactersData, userConfig = {}) {
 
     // Show SR banner if enabled
     showSRBanner();
+
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        prepareBatchForNextQuestion();
+    }
 
     // Start first question
     generateQuestion();
