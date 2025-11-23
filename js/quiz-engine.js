@@ -69,6 +69,9 @@ const SR_ENABLED_KEY = 'sr_enabled';
 let srAggressiveMode = false;
 const SR_AGGRESSIVE_KEY = 'sr_aggressive_mode';
 const SR_STATE_NAMES = ['New', 'Learning', 'Review', 'Relearning'];
+let charGlossMap = null;
+let charGlossLoaded = false;
+let charGlossPromise = null;
 
 // Scheduler state (session-level ordering)
 const SCHEDULER_MODE_KEY = 'quiz_scheduler_mode';
@@ -243,6 +246,23 @@ function summarizeSRCard(card) {
     const stateName = SR_STATE_NAMES[card.state] || 'New';
     const dueText = formatSRDueText(card.due);
     return `${stateName} • ${dueText}`;
+}
+
+function ensureCharGlossesLoaded() {
+    if (charGlossLoaded) return Promise.resolve(charGlossMap);
+    if (charGlossPromise) return charGlossPromise;
+    charGlossPromise = fetch('data/common-2500-etymology.json')
+        .then(res => res.json())
+        .then(data => {
+            charGlossMap = data || {};
+            charGlossLoaded = true;
+            return charGlossMap;
+        })
+        .catch(err => {
+            console.warn('Failed to load char gloss data', err);
+            return {};
+        });
+    return charGlossPromise;
 }
 
 function loadSchedulerMode() {
@@ -783,6 +803,50 @@ function updatePreviewDisplay() {
     }).join('');
 
     updateFullscreenQueueDisplay();
+}
+
+function renderCharBreakdown() {
+    if (!questionDisplay) return;
+    const existing = document.getElementById('charBreakdown');
+    if (existing) existing.remove();
+
+    if (!currentQuestion || !currentQuestion.char || currentQuestion.char.length <= 1) {
+        return;
+    }
+
+    const chars = Array.from(currentQuestion.char);
+    let pinyinSyllables = [];
+    if (typeof splitPinyinSyllables === 'function') {
+        pinyinSyllables = splitPinyinSyllables((currentQuestion.pinyin || '').replace(/\//g, ' '));
+    }
+
+    const parts = chars.map((c, idx) => {
+        const py = pinyinSyllables[idx] || '';
+        const gloss = (charGlossMap && charGlossMap[c]) ? charGlossMap[c] : '';
+        const glossText = gloss ? gloss : '<span class="text-gray-400">No gloss yet</span>';
+        return `
+            <div class="flex items-start gap-3 py-1 border-t border-gray-100 first:border-t-0">
+                <div class="text-3xl font-bold text-gray-800 leading-none">${c}</div>
+                <div class="flex-1 leading-snug">
+                    ${py ? `<div class="text-xs uppercase tracking-wide text-gray-500">${py}</div>` : ''}
+                    <div class="text-sm text-gray-700">${glossText}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const block = `
+        <div id="charBreakdown" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Character glosses</div>
+            ${parts}
+        </div>
+    `;
+
+    questionDisplay.insertAdjacentHTML('beforeend', block);
+}
+
+function renderCharBreakdownSoon() {
+    ensureCharGlossesLoaded().then(() => renderCharBreakdown());
 }
 
 function setPreviewQueueEnabled(enabled) {
@@ -1357,6 +1421,9 @@ function generateQuestion() {
     if (srEnabled && currentQuestion) {
         showSRCardInfo(currentQuestion.char);
     }
+
+    // Show per-character glosses for multi-character words
+    renderCharBreakdownSoon();
 
     // Update SR UI for drawing surfaces
     updateDrawingSrUI();
@@ -4804,6 +4871,7 @@ function initQuiz(charactersData, userConfig = {}) {
     loadTimerSettings();
     loadSRData();
     loadSchedulerMode();
+    ensureCharGlossesLoaded();
 
     // Apply SR filtering to characters
     quizCharacters = applySRFiltering(quizCharacters);
