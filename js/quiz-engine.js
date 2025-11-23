@@ -820,20 +820,24 @@ function renderCharBreakdown() {
         pinyinSyllables = splitPinyinSyllables((currentQuestion.pinyin || '').replace(/\//g, ' '));
     }
 
+    let hasGloss = false;
     const parts = chars.map((c, idx) => {
         const py = pinyinSyllables[idx] || '';
         const gloss = (charGlossMap && charGlossMap[c]) ? charGlossMap[c] : '';
-        const glossText = gloss ? gloss : '<span class="text-gray-400">No gloss yet</span>';
+        if (gloss) hasGloss = true;
+        const glossText = gloss ? gloss : '';
         return `
             <div class="flex items-start gap-3 py-1 border-t border-gray-100 first:border-t-0">
                 <div class="text-3xl font-bold text-gray-800 leading-none">${c}</div>
                 <div class="flex-1 leading-snug">
                     ${py ? `<div class="text-xs uppercase tracking-wide text-gray-500">${py}</div>` : ''}
-                    <div class="text-sm text-gray-700">${glossText}</div>
+                    ${glossText ? `<div class="text-sm text-gray-700">${glossText}</div>` : ''}
                 </div>
             </div>
         `;
     }).join('');
+
+    if (!hasGloss) return;
 
     const block = `
         <div id="charBreakdown" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -1306,6 +1310,10 @@ function generateQuestion() {
     window.currentQuestion = currentQuestion;
     markSchedulerServed(currentQuestion);
 
+    // Clear any previous per-character breakdown
+    const prevBreakdown = document.getElementById('charBreakdown');
+    if (prevBreakdown) prevBreakdown.remove();
+
     // Clear input fields to prevent autofilled values (e.g., "yi dian er ling" from TTS speed)
     if (answerInput) {
         answerInput.value = '';
@@ -1421,9 +1429,6 @@ function generateQuestion() {
     if (srEnabled && currentQuestion) {
         showSRCardInfo(currentQuestion.char);
     }
-
-    // Show per-character glosses for multi-character words
-    renderCharBreakdownSoon();
 
     // Update SR UI for drawing surfaces
     updateDrawingSrUI();
@@ -1588,6 +1593,7 @@ function checkAnswer() {
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             renderCharacterComponents(currentQuestion);
+            renderCharBreakdownSoon();
 
             // Play audio
             const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
@@ -1615,6 +1621,7 @@ function checkAnswer() {
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
             renderCharacterComponents(currentQuestion);
+            renderCharBreakdownSoon();
 
             updateStats();
             scheduleNextQuestion(2000);
@@ -1690,6 +1697,7 @@ function handleCorrectFullAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     renderCharacterComponents(currentQuestion);
+    renderCharBreakdownSoon();
     if (mode === 'char-to-pinyin') {
         updateDictationProgress(dictationTotalSyllables || 0);
     }
@@ -1760,6 +1768,7 @@ function handleWrongAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     renderCharacterComponents(currentQuestion);
+    renderCharBreakdownSoon();
     if (mode === 'char-to-pinyin') {
         updateDictationProgress(dictationTotalSyllables || 0);
     }
@@ -1976,6 +1985,7 @@ function checkFuzzyAnswer(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         renderMeaningHint(currentQuestion, 'correct');
         renderCharacterComponents(currentQuestion);
+        renderCharBreakdownSoon();
         updateStats();
         if (fuzzyInput) {
             fuzzyInput.value = '';
@@ -1992,6 +2002,7 @@ function checkFuzzyAnswer(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         renderMeaningHint(currentQuestion, 'incorrect');
         renderCharacterComponents(currentQuestion);
+        renderCharBreakdownSoon();
         updateStats();
         if (fuzzyInput) {
             fuzzyInput.value = '';
@@ -2035,6 +2046,7 @@ function checkMultipleChoice(answer) {
             hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         }
         renderCharacterComponents(currentQuestion);
+        renderCharBreakdownSoon();
 
         // Play audio for char-to-pinyin-mc mode
         if (mode === 'char-to-pinyin-mc') {
@@ -2056,6 +2068,7 @@ function checkMultipleChoice(answer) {
             hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         }
         renderCharacterComponents(currentQuestion);
+        renderCharBreakdownSoon();
 
         // Play audio for char-to-pinyin-mc mode
         if (mode === 'char-to-pinyin-mc') {
