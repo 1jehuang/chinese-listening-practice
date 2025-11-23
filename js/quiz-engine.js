@@ -251,10 +251,14 @@ function summarizeSRCard(card) {
 function ensureCharGlossesLoaded() {
     if (charGlossLoaded) return Promise.resolve(charGlossMap);
     if (charGlossPromise) return charGlossPromise;
-    charGlossPromise = fetch('data/common-2500-etymology.json')
-        .then(res => res.json())
-        .then(data => {
-            charGlossMap = data || {};
+    charGlossPromise = Promise.all([
+        fetch('data/common-2500-etymology.json').then(res => res.ok ? res.json() : {}).catch(() => ({})),
+        fetch('data/lesson1-2-etymology.json').then(res => res.ok ? res.json() : {}).catch(() => ({})),
+        fetch('data/lesson3-etymology.json').then(res => res.ok ? res.json() : {}).catch(() => ({})),
+        fetch('data/lesson7-etymology.json').then(res => res.ok ? res.json() : {}).catch(() => ({}))
+    ])
+        .then(([common, l12, l3, l7]) => {
+            charGlossMap = { ...(common || {}), ...(l12 || {}), ...(l3 || {}), ...(l7 || {}) };
             charGlossLoaded = true;
             return charGlossMap;
         })
