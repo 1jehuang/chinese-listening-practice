@@ -1593,7 +1593,9 @@ function checkAnswer() {
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             renderCharacterComponents(currentQuestion);
-            renderCharBreakdownSoon();
+            if (mode === 'char-to-meaning') {
+                renderCharBreakdownSoon();
+            }
 
             // Play audio
             const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
@@ -1697,7 +1699,9 @@ function handleCorrectFullAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     renderCharacterComponents(currentQuestion);
-    renderCharBreakdownSoon();
+    if (mode === 'char-to-meaning') {
+        renderCharBreakdownSoon();
+    }
     if (mode === 'char-to-pinyin') {
         updateDictationProgress(dictationTotalSyllables || 0);
     }
@@ -1768,7 +1772,9 @@ function handleWrongAnswer() {
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
     hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     renderCharacterComponents(currentQuestion);
-    renderCharBreakdownSoon();
+    if (mode === 'char-to-meaning') {
+        renderCharBreakdownSoon();
+    }
     if (mode === 'char-to-pinyin') {
         updateDictationProgress(dictationTotalSyllables || 0);
     }
@@ -1985,7 +1991,9 @@ function checkFuzzyAnswer(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         renderMeaningHint(currentQuestion, 'correct');
         renderCharacterComponents(currentQuestion);
-        renderCharBreakdownSoon();
+        if (mode === 'char-to-meaning') {
+            renderCharBreakdownSoon();
+        }
         updateStats();
         if (fuzzyInput) {
             fuzzyInput.value = '';
@@ -2002,7 +2010,9 @@ function checkFuzzyAnswer(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         renderMeaningHint(currentQuestion, 'incorrect');
         renderCharacterComponents(currentQuestion);
-        renderCharBreakdownSoon();
+        if (mode === 'char-to-meaning') {
+            renderCharBreakdownSoon();
+        }
         updateStats();
         if (fuzzyInput) {
             fuzzyInput.value = '';
@@ -2046,7 +2056,9 @@ function checkMultipleChoice(answer) {
             hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         }
         renderCharacterComponents(currentQuestion);
-        renderCharBreakdownSoon();
+        if (mode === 'char-to-meaning') {
+            renderCharBreakdownSoon();
+        }
 
         // Play audio for char-to-pinyin-mc mode
         if (mode === 'char-to-pinyin-mc') {
@@ -2068,7 +2080,9 @@ function checkMultipleChoice(answer) {
             hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         }
         renderCharacterComponents(currentQuestion);
-        renderCharBreakdownSoon();
+        if (mode === 'char-to-meaning') {
+            renderCharBreakdownSoon();
+        }
 
         // Play audio for char-to-pinyin-mc mode
         if (mode === 'char-to-pinyin-mc') {
