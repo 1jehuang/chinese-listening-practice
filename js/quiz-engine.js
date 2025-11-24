@@ -103,10 +103,12 @@ let batchModeState = {
 
 // Confidence sidebar state
 const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
+const HIDE_MEANING_CHOICES_KEY = 'quiz_hide_meaning_choices';
 let confidencePanel = null;
 let confidenceListElement = null;
 let confidenceSummaryElement = null;
 let confidencePanelVisible = true;
+let hideMeaningChoices = false;
 
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
@@ -522,6 +524,23 @@ function loadConfidencePanelVisibility() {
     }
 }
 
+function loadHideMeaningChoices() {
+    try {
+        const stored = localStorage.getItem(HIDE_MEANING_CHOICES_KEY);
+        hideMeaningChoices = stored === 'true';
+    } catch (e) {
+        console.warn('Failed to load meaning choice visibility', e);
+    }
+}
+
+function saveHideMeaningChoices() {
+    try {
+        localStorage.setItem(HIDE_MEANING_CHOICES_KEY, hideMeaningChoices.toString());
+    } catch (e) {
+        console.warn('Failed to save meaning choice visibility', e);
+    }
+}
+
 function saveConfidencePanelVisibility() {
     try {
         localStorage.setItem(CONFIDENCE_PANEL_KEY, confidencePanelVisible.toString());
@@ -545,6 +564,18 @@ function setConfidencePanelVisible(visible) {
 
 function toggleConfidencePanel() {
     setConfidencePanelVisible(!confidencePanelVisible);
+}
+
+function setHideMeaningChoices(value, options = {}) {
+    hideMeaningChoices = Boolean(value);
+    saveHideMeaningChoices();
+    if (options.refresh !== false) {
+        updateMeaningChoicesVisibility();
+    }
+}
+
+function toggleHideMeaningChoices() {
+    setHideMeaningChoices(!hideMeaningChoices);
 }
 
 function ensureConfidencePanel() {
@@ -1958,6 +1989,7 @@ function generateQuestion() {
         renderMeaningQuestionLayout();
         generateMeaningOptions();
         choiceMode.style.display = 'block';
+        updateMeaningChoicesVisibility();
     } else if (mode === 'char-to-meaning-type' && fuzzyMode) {
         renderMeaningQuestionLayout();
         generateFuzzyMeaningOptions();
@@ -3256,6 +3288,48 @@ function renderMeaningQuestionLayout() {
     applyComponentPanelVisibility();
     applyComponentColoring();
     renderEtymologyNote(null);
+}
+
+function updateMeaningChoicesVisibility() {
+    if (typeof document === 'undefined') return;
+    const noticeId = 'meaningChoicesNotice';
+    const existingNotice = document.getElementById(noticeId);
+
+    if (mode !== 'char-to-meaning') {
+        if (existingNotice) existingNotice.remove();
+        return;
+    }
+
+    if (!choiceMode) return;
+
+    if (hideMeaningChoices) {
+        choiceMode.style.display = 'none';
+
+        let notice = existingNotice;
+        if (!notice) {
+            notice = document.createElement('div');
+            notice.id = noticeId;
+            notice.className = 'mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 flex items-center justify-between gap-3';
+            notice.innerHTML = `
+                <div class="text-sm text-amber-900">Multiple-choice answers are hidden.</div>
+                <div class="flex items-center gap-2">
+                    <button id="meaningRevealBtn" type="button" class="px-3 py-1 text-sm font-semibold text-amber-800 bg-white/80 border border-amber-200 rounded-lg hover:bg-white">
+                        Show choices
+                    </button>
+                </div>
+            `;
+            choiceMode.parentNode.insertBefore(notice, choiceMode.nextSibling);
+        }
+
+        const btn = document.getElementById('meaningRevealBtn');
+        if (btn && !btn.dataset.bound) {
+            btn.dataset.bound = 'true';
+            btn.addEventListener('click', () => setHideMeaningChoices(false));
+        }
+    } else {
+        choiceMode.style.display = 'block';
+        if (existingNotice) existingNotice.remove();
+    }
 }
 
 function resetMeaningAnswerSummary() {
@@ -5405,6 +5479,17 @@ function initQuizCommandPalette() {
             }
         });
 
+        actions.push({
+            name: hideMeaningChoices ? 'Show Char → Meaning Choices' : 'Hide Char → Meaning Choices',
+            type: 'action',
+            description: hideMeaningChoices
+                ? 'Reveal multiple-choice answers for Char → Meaning questions'
+                : 'Hide the multiple-choice answers so you have to recall without options',
+            keywords: 'meaning choices hide show toggle multiple choice answers conceal options',
+            action: () => toggleHideMeaningChoices(),
+            available: () => true
+        });
+
         // Scheduler actions
         actions.push({
             name: 'Next Item: Random',
@@ -5520,6 +5605,7 @@ function initQuiz(charactersData, userConfig = {}) {
     config = userConfig || {};
 
     loadConfidencePanelVisibility();
+    loadHideMeaningChoices();
     loadComponentPreference();
     loadTimerSettings();
     loadSRData();
@@ -5596,6 +5682,7 @@ function initQuiz(charactersData, userConfig = {}) {
     setPreviewQueueEnabled(config.enablePreviewQueue && previewElement);
     ensureSchedulerToolbar();
     renderConfidenceList();
+    updateMeaningChoicesVisibility();
 
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
