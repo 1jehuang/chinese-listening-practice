@@ -500,6 +500,29 @@ function showBatchCompletionToast(setLabel, cycleNumber, setSize) {
     }, 2600);
 }
 
+function showBatchSwapToast(setLabel, cycleNumber, setSize) {
+    if (typeof document === 'undefined') return;
+    const existing = document.getElementById(BATCH_TOAST_ID);
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = BATCH_TOAST_ID;
+    toast.className = 'command-palette-toast';
+    const cycleText = cycleNumber > 1 ? ` · cycle ${cycleNumber}` : '';
+    toast.innerHTML = `
+        <span class="font-semibold text-blue-900">New set loaded</span>
+        <span class="text-gray-700 text-sm">Set ${setLabel}${cycleText} · ${setSize}-card set ready.</span>
+    `;
+
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('command-palette-toast-show'));
+
+    setTimeout(() => {
+        toast.classList.remove('command-palette-toast-show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
 function getCurrentBatchSize() {
     const cycle = Number.isFinite(batchModeState?.cycleCount) ? batchModeState.cycleCount : 0;
     return cycle > 0 ? BATCH_COMBINED_SIZE : BATCH_INITIAL_SIZE;
@@ -546,6 +569,26 @@ function startNewBatch() {
     ensurePreviewQueue();
     updatePreviewDisplay();
     updateBatchStatusDisplay();
+}
+
+function advanceBatchSetNow() {
+    // Force-load the next batch set (used by command palette)
+    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+        setSchedulerMode(SCHEDULER_MODES.BATCH_5);
+    }
+
+    // Clear current active batch so a fresh set is selected
+    batchModeState.activeBatch = [];
+    saveBatchState();
+
+    startNewBatch();
+    const setLabel = Math.max(1, batchModeState.batchIndex || 1);
+    const cycleNumber = Math.max(1, (batchModeState.cycleCount || 0) + 1);
+    const setSize = getCurrentBatchSize();
+    showBatchSwapToast(setLabel, cycleNumber, setSize);
+
+    // Move to a question from the new set immediately
+    generateQuestion();
 }
 
 function getBatchQuestionPool() {
@@ -5187,6 +5230,14 @@ function initQuizCommandPalette() {
             description: 'Work one random batch of 5 until mastered, then auto-rotate',
             keywords: 'batch mode five cards grouped rotation mastery subset',
             action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5)
+        });
+        actions.push({
+            name: 'Next Set (5-Card Mode)',
+            type: 'action',
+            description: 'Skip the current batch and load a fresh set immediately',
+            keywords: 'batch next set new five cards skip group rotate',
+            action: () => advanceBatchSetNow(),
+            available: () => schedulerMode === SCHEDULER_MODES.BATCH_5
         });
         actions.push({
             name: 'Next Item: In Order',
