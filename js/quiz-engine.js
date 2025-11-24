@@ -78,6 +78,7 @@ const SCHEDULER_MODE_KEY = 'quiz_scheduler_mode';
 const SCHEDULER_MODES = {
     RANDOM: 'random',
     WEIGHTED: 'weighted',
+    ADAPTIVE_5: 'adaptive-5',
     BATCH_5: 'batch-5',
     ORDERED: 'ordered'
 };
@@ -101,6 +102,20 @@ let batchModeState = {
     batchIndex: 0,
     cycleCount: 0,
     seenInBatch: [] // chars served at least once in the current batch
+};
+
+// Adaptive rolling 5-card deck state
+const ADAPTIVE_STATE_KEY_PREFIX = 'quiz_adaptive_state_';
+const ADAPTIVE_DECK_SIZE = 5;
+const ADAPTIVE_GRAD_CONFIDENCE = 4.2;
+const ADAPTIVE_GRAD_MIN_SERVED = 3;
+const ADAPTIVE_GRAD_MIN_STREAK = 2;
+const ADAPTIVE_RECENT_WRONG_COOLDOWN = 90; // seconds to keep a recently-missed card around
+let adaptiveStateKey = '';
+let adaptiveDeckState = {
+    deck: [],
+    mastered: [],
+    cycleCount: 0
 };
 
 // Confidence sidebar state
@@ -321,6 +336,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
     switch (mode) {
         case SCHEDULER_MODES.WEIGHTED:
             return 'Confidence-weighted (recency + errors)';
+        case SCHEDULER_MODES.ADAPTIVE_5:
+            return 'Adaptive 5-card lane';
         case SCHEDULER_MODES.BATCH_5:
             return 'Batch sets (5 → 10 after full pass)';
         case SCHEDULER_MODES.ORDERED:
@@ -335,6 +352,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
     switch (mode) {
         case SCHEDULER_MODES.WEIGHTED:
             return 'Scores cards by recency + mistakes; picks proportionally to need.';
+        case SCHEDULER_MODES.ADAPTIVE_5:
+            return 'Rolling 5-card lane; graduate confident cards while sticky ones stay until solid.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
@@ -386,6 +405,9 @@ function markSchedulerServed(question) {
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         markBatchSeen(question.char);
     }
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        updateAdaptiveStatusDisplay();
+    }
 }
 
 function markSchedulerOutcome(correct) {
@@ -410,6 +432,10 @@ function markSchedulerOutcome(correct) {
     }
 
     renderConfidenceList();
+
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        prepareAdaptiveForNextQuestion();
+    }
 }
 
 function markBatchSeen(char) {
@@ -524,6 +550,173 @@ function getBatchMasteryProgress() {
         seenCount,
         total: active.length
     };
+}
+
+// Adaptive rolling 5-card deck helpers
+function getAdaptivePageKey() {
+    const path = window.location.pathname || '';
+    const filename = path.substring(path.lastIndexOf('/') + 1) || '';
+    const base = filename.replace('.html', '') || 'default';
+    return base;
+}
+
+function getAdaptiveStorageKey() {
+    if (adaptiveStateKey) return adaptiveStateKey;
+    adaptiveStateKey = `${ADAPTIVE_STATE_KEY_PREFIX}${getAdaptivePageKey()}`;
+    return adaptiveStateKey;
+}
+
+function loadAdaptiveState() {
+    const defaults = { deck: [], mastered: [], cycleCount: 0 };
+    adaptiveDeckState = { ...defaults };
+    const key = getAdaptiveStorageKey();
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                adaptiveDeckState.deck = Array.isArray(parsed.deck) ? parsed.deck.filter(Boolean) : [];
+                adaptiveDeckState.mastered = Array.isArray(parsed.mastered) ? parsed.mastered.filter(Boolean) : [];
+                adaptiveDeckState.cycleCount = Number.isFinite(parsed.cycleCount) ? parsed.cycleCount : 0;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load adaptive deck state', e);
+    }
+
+    adaptiveDeckState.deck = Array.from(new Set(adaptiveDeckState.deck));
+    adaptiveDeckState.mastered = Array.from(new Set(adaptiveDeckState.mastered));
+    if (!Number.isFinite(adaptiveDeckState.cycleCount)) {
+        adaptiveDeckState.cycleCount = 0;
+    }
+}
+
+function saveAdaptiveState() {
+    const key = getAdaptiveStorageKey();
+    try {
+        localStorage.setItem(key, JSON.stringify(adaptiveDeckState));
+    } catch (e) {
+        console.warn('Failed to save adaptive deck state', e);
+    }
+}
+
+function reconcileAdaptiveStateWithPool(source = quizCharacters) {
+    const knownChars = new Set((Array.isArray(source) ? source : []).map(item => item.char));
+    const beforeDeck = Array.isArray(adaptiveDeckState.deck) ? adaptiveDeckState.deck.length : 0;
+    adaptiveDeckState.deck = (adaptiveDeckState.deck || []).filter(char => knownChars.has(char));
+    adaptiveDeckState.mastered = (adaptiveDeckState.mastered || []).filter(char => knownChars.has(char));
+    if (!Number.isFinite(adaptiveDeckState.cycleCount)) {
+        adaptiveDeckState.cycleCount = 0;
+    }
+    if (adaptiveDeckState.deck.length !== beforeDeck) {
+        saveAdaptiveState();
+    }
+}
+
+function shouldGraduateAdaptiveChar(char) {
+    if (!char) return false;
+    const stats = getSchedulerStats(char);
+    if (!stats.served || stats.served < ADAPTIVE_GRAD_MIN_SERVED) return false;
+    if ((stats.streak || 0) < ADAPTIVE_GRAD_MIN_STREAK) return false;
+    const confidence = getConfidenceScore(char);
+    if (confidence < ADAPTIVE_GRAD_CONFIDENCE) return false;
+    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
+    if (lastWrongAgo < ADAPTIVE_RECENT_WRONG_COOLDOWN) return false;
+    return true;
+}
+
+function maybeGraduateAdaptiveDeck() {
+    if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) return false;
+    let changed = false;
+    const deck = Array.isArray(adaptiveDeckState.deck) ? adaptiveDeckState.deck.slice() : [];
+    const masteredSet = new Set(adaptiveDeckState.mastered || []);
+
+    deck.forEach(char => {
+        if (shouldGraduateAdaptiveChar(char)) {
+            masteredSet.add(char);
+            adaptiveDeckState.deck = adaptiveDeckState.deck.filter(c => c !== char);
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        adaptiveDeckState.mastered = Array.from(masteredSet);
+        saveAdaptiveState();
+    }
+    return changed;
+}
+
+function getAdaptiveSourcePool() {
+    const masteredSet = new Set(adaptiveDeckState.mastered || []);
+    return (Array.isArray(quizCharacters) ? quizCharacters : []).filter(item => item && !masteredSet.has(item.char));
+}
+
+function ensureAdaptiveDeck() {
+    if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) return;
+    reconcileAdaptiveStateWithPool();
+
+    const fullPool = Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
+    if (!fullPool.length) {
+        adaptiveDeckState.deck = [];
+        saveAdaptiveState();
+        return;
+    }
+
+    let masteredSet = new Set(adaptiveDeckState.mastered || []);
+    let pool = fullPool.filter(item => !masteredSet.has(item.char));
+
+    if (!pool.length) {
+        adaptiveDeckState.mastered = [];
+        masteredSet = new Set();
+        adaptiveDeckState.cycleCount = Math.max(0, (adaptiveDeckState.cycleCount || 0)) + 1;
+        pool = fullPool.slice();
+    }
+
+    const availableSet = new Set(pool.map(item => item.char));
+    adaptiveDeckState.deck = (adaptiveDeckState.deck || []).filter(char => availableSet.has(char));
+
+    while (adaptiveDeckState.deck.length < ADAPTIVE_DECK_SIZE && pool.length) {
+        const candidates = pool.filter(item => !adaptiveDeckState.deck.includes(item.char));
+        if (!candidates.length) break;
+        const chosen = (selectLeastConfident(candidates, 1)[0]) || selectRandom(candidates);
+        if (!chosen) break;
+        adaptiveDeckState.deck.push(chosen.char);
+    }
+
+    adaptiveDeckState.deck = Array.from(new Set(adaptiveDeckState.deck));
+    saveAdaptiveState();
+}
+
+function getAdaptiveQuestionPool() {
+    if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) {
+        return Array.isArray(quizCharacters) ? quizCharacters : [];
+    }
+    ensureAdaptiveDeck();
+    const availableMap = new Map((Array.isArray(quizCharacters) ? quizCharacters : []).map(item => [item.char, item]));
+    return (adaptiveDeckState.deck || []).map(char => availableMap.get(char)).filter(Boolean);
+}
+
+function prepareAdaptiveForNextQuestion() {
+    if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) return;
+    reconcileAdaptiveStateWithPool();
+    maybeGraduateAdaptiveDeck();
+    ensureAdaptiveDeck();
+    updateAdaptiveStatusDisplay();
+    if (previewQueueEnabled) {
+        previewQueue = [];
+        ensurePreviewQueue();
+        updatePreviewDisplay();
+    }
+}
+
+function refreshAdaptiveDeckNow(regenerate = false) {
+    if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) {
+        setSchedulerMode(SCHEDULER_MODES.ADAPTIVE_5);
+    }
+    prepareAdaptiveForNextQuestion();
+    if (regenerate && typeof generateQuestion === 'function') {
+        generateQuestion();
+    }
 }
 
 function getConfidenceScore(char) {
@@ -995,6 +1188,38 @@ function updateBatchStatusDisplay() {
     `;
 }
 
+function updateAdaptiveStatusDisplay() {
+    const statusEl = document.getElementById('adaptiveModeStatus');
+    if (!statusEl) return;
+
+    if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) {
+        statusEl.innerHTML = '';
+        statusEl.className = 'hidden';
+        return;
+    }
+
+    const deckItems = getAdaptiveQuestionPool();
+    const masteredCount = Array.isArray(adaptiveDeckState.mastered) ? adaptiveDeckState.mastered.length : 0;
+    const totalAvailable = Array.isArray(quizCharacters) ? quizCharacters.length : deckItems.length;
+    const remaining = getAdaptiveSourcePool().length;
+    const cycleNumber = Math.max(1, (adaptiveDeckState.cycleCount || 0) + 1);
+
+    const deckBadges = deckItems.length
+        ? deckItems.map(item => {
+            const ready = shouldGraduateAdaptiveChar(item.char);
+            const cls = ready ? 'text-emerald-700 font-semibold' : 'text-gray-900';
+            return `<span class="${cls}">${escapeHtml(item.char)}</span>`;
+        }).join(' ')
+        : '—';
+
+    statusEl.className = 'mt-1 text-xs text-indigo-800';
+    statusEl.innerHTML = `
+        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-indigo-500">Adaptive 5</div>
+        <div class="text-sm text-indigo-900">Deck (${deckItems.length}/${ADAPTIVE_DECK_SIZE}): ${deckBadges}</div>
+        <div class="text-[11px] text-indigo-700">${masteredCount} graduated · ${remaining} remaining · cycle ${cycleNumber}</div>
+    `;
+}
+
 function setSchedulerMode(mode) {
     if (!Object.values(SCHEDULER_MODES).includes(mode)) return;
     schedulerMode = mode;
@@ -1005,6 +1230,11 @@ function setSchedulerMode(mode) {
         prepareBatchForNextQuestion();
     } else {
         updateBatchStatusDisplay();
+    }
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        prepareAdaptiveForNextQuestion();
+    } else {
+        updateAdaptiveStatusDisplay();
     }
     if (schedulerMode === SCHEDULER_MODES.ORDERED) {
         schedulerOrderedIndex = 0;
@@ -1017,6 +1247,15 @@ function setSchedulerMode(mode) {
 }
 
 function getFullscreenQueueCandidates() {
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        const deckPool = getAdaptiveQuestionPool();
+        if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
+            const previewChars = previewQueue.map(item => item && item.char);
+            const remainder = (Array.isArray(deckPool) ? deckPool : []).filter(item => !previewChars.includes(item?.char));
+            return [...previewQueue, ...remainder];
+        }
+        return Array.isArray(deckPool) ? deckPool.slice() : [];
+    }
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         const batchPool = getBatchQuestionPool();
         if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
@@ -1088,10 +1327,12 @@ function ensureSchedulerToolbar() {
                 <div id="schedulerModeLabel" class="text-sm font-semibold text-gray-900"></div>
                 <div id="schedulerModeDescription" class="text-xs text-gray-600"></div>
                 <div id="batchModeStatus" class="hidden"></div>
+                <div id="adaptiveModeStatus" class="hidden"></div>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
                 <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+                <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
                 <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
                 <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             </div>
@@ -1101,6 +1342,7 @@ function ensureSchedulerToolbar() {
 
     const randomBtn = document.getElementById('schedulerRandomBtn');
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
+    const adaptiveBtn = document.getElementById('schedulerAdaptiveBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
@@ -1111,6 +1353,10 @@ function ensureSchedulerToolbar() {
     if (weightedBtn && !weightedBtn.dataset.bound) {
         weightedBtn.dataset.bound = 'true';
         weightedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED);
+    }
+    if (adaptiveBtn && !adaptiveBtn.dataset.bound) {
+        adaptiveBtn.dataset.bound = 'true';
+        adaptiveBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.ADAPTIVE_5);
     }
     if (batchBtn && !batchBtn.dataset.bound) {
         batchBtn.dataset.bound = 'true';
@@ -1134,6 +1380,7 @@ function updateSchedulerToolbar() {
     const btns = [
         { id: 'schedulerRandomBtn', mode: SCHEDULER_MODES.RANDOM },
         { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED },
+        { id: 'schedulerAdaptiveBtn', mode: SCHEDULER_MODES.ADAPTIVE_5 },
         { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
         { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
     ];
@@ -1147,6 +1394,7 @@ function updateSchedulerToolbar() {
     });
 
     updateBatchStatusDisplay();
+    updateAdaptiveStatusDisplay();
 }
 
 function refreshSrQueue(regenerateQuestion = false) {
@@ -1154,8 +1402,12 @@ function refreshSrQueue(regenerateQuestion = false) {
 
     quizCharacters = applySRFiltering(originalQuizCharacters);
     reconcileBatchStateWithQueue();
+    reconcileAdaptiveStateWithPool();
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         prepareBatchForNextQuestion();
+    }
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        prepareAdaptiveForNextQuestion();
     }
 
     if (previewQueueEnabled) {
@@ -1402,9 +1654,12 @@ function selectWeighted(pool) {
 
 function selectNextQuestion(exclusions = []) {
     const exclusionSet = new Set(exclusions || []);
-    const sourcePool = schedulerMode === SCHEDULER_MODES.BATCH_5
-        ? getBatchQuestionPool()
-        : quizCharacters;
+    let sourcePool = quizCharacters;
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        sourcePool = getBatchQuestionPool();
+    } else if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        sourcePool = getAdaptiveQuestionPool();
+    }
     const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
     if (!pool.length) return null;
 
@@ -1413,6 +1668,8 @@ function selectNextQuestion(exclusions = []) {
             return selectOrdered(pool, exclusionSet) || selectRandom(pool);
         case SCHEDULER_MODES.BATCH_5:
             return selectRandom(pool);
+        case SCHEDULER_MODES.ADAPTIVE_5:
+            return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.RANDOM:
@@ -1959,6 +2216,9 @@ function generateQuestion() {
 
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         prepareBatchForNextQuestion();
+    }
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        prepareAdaptiveForNextQuestion();
     }
 
     const previewActive = isPreviewModeActive();
@@ -5560,6 +5820,13 @@ function initQuizCommandPalette() {
             action: () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED)
         });
         actions.push({
+            name: 'Next Item: Adaptive 5-Card Flow',
+            type: 'action',
+            description: 'Rolling 5-card lane; graduate strong cards, keep strugglers in place.',
+            keywords: 'adaptive five card rolling sticky graduate confidence lane',
+            action: () => setSchedulerMode(SCHEDULER_MODES.ADAPTIVE_5)
+        });
+        actions.push({
             name: 'Next Item: 5-Card Batches',
             type: 'action',
             description: 'Work one random batch of 5 until mastered, then auto-rotate',
@@ -5573,6 +5840,14 @@ function initQuizCommandPalette() {
             keywords: 'batch next set new five cards skip group rotate',
             action: () => advanceBatchSetNow(),
             available: () => schedulerMode === SCHEDULER_MODES.BATCH_5
+        });
+        actions.push({
+            name: 'Refresh Adaptive Deck (5-card)',
+            type: 'action',
+            description: 'Re-evaluate graduation, refill the 5-card lane now.',
+            keywords: 'adaptive refresh five card lane swap graduate',
+            action: () => refreshAdaptiveDeckNow(true),
+            available: () => schedulerMode === SCHEDULER_MODES.ADAPTIVE_5
         });
         actions.push({
             name: 'Next Item: In Order',
@@ -5666,10 +5941,12 @@ function initQuiz(charactersData, userConfig = {}) {
     loadSchedulerMode();
     ensureCharGlossesLoaded();
     loadBatchState();
+    loadAdaptiveState();
 
     // Apply SR filtering to characters
     quizCharacters = applySRFiltering(quizCharacters);
     reconcileBatchStateWithQueue();
+    reconcileAdaptiveStateWithPool();
 
     if (config.defaultMode) {
         mode = config.defaultMode;
@@ -5735,6 +6012,9 @@ function initQuiz(charactersData, userConfig = {}) {
         : null;
     setPreviewQueueEnabled(config.enablePreviewQueue && previewElement);
     ensureSchedulerToolbar();
+    if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
+        prepareAdaptiveForNextQuestion();
+    }
     renderConfidenceList();
     updateMeaningChoicesVisibility();
 
