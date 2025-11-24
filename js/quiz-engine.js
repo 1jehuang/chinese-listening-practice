@@ -4976,6 +4976,16 @@ function handleQuizHotkeys(e) {
 
     const target = e.target;
     const copyComboActive = e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
+    const focusInputCombo = !e.shiftKey && !e.altKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
+
+    if (focusInputCombo) {
+        e.preventDefault();
+        const input = getActiveInputField();
+        if (input) {
+            focusInputElement(input);
+        }
+        return;
+    }
 
     // Space key handling for handwriting mode
     if (mode === 'handwriting' && e.key === ' ' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
@@ -5322,6 +5332,9 @@ function initQuizCommandPalette() {
 // =============================================================================
 
 function initQuiz(charactersData, userConfig = {}) {
+    // Reserve Ctrl/Cmd+K for focusing the quiz input instead of the command palette
+    window.__preferCtrlKForQuiz = true;
+
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};

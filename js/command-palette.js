@@ -475,6 +475,7 @@ function initCommandPalette(config = []) {
 
         const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
         if (isCtrlK) {
+            if (window && window.__preferCtrlKForQuiz) return;
             e.preventDefault();
             togglePalette(true);
             return;
