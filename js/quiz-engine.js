@@ -82,7 +82,7 @@ const SCHEDULER_MODES = {
     ORDERED: 'ordered'
 };
 let schedulerMode = SCHEDULER_MODES.WEIGHTED;
-let schedulerStats = {}; // per-char session data
+let schedulerStats = {}; // per-char-per-skill session data
 let schedulerOutcomeRecordedChar = null;
 let schedulerOrderedIndex = 0;
 const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
@@ -345,9 +345,24 @@ function getSchedulerModeDescription(mode = schedulerMode) {
     }
 }
 
-function getSchedulerStats(char) {
-    if (!schedulerStats[char]) {
-        schedulerStats[char] = {
+function getCurrentSkillKey(customMode = mode) {
+    const m = customMode;
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning') {
+        return 'meaning';
+    }
+    if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
+        return 'pinyin';
+    }
+    if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char') {
+        return 'writing';
+    }
+    return 'general';
+}
+
+function getSchedulerStats(char, skillKey = getCurrentSkillKey()) {
+    const key = `${char}::${skillKey}`;
+    if (!schedulerStats[key]) {
+        schedulerStats[key] = {
             served: 0,
             correct: 0,
             wrong: 0,
@@ -357,7 +372,7 @@ function getSchedulerStats(char) {
             streak: 0
         };
     }
-    return schedulerStats[char];
+    return schedulerStats[key];
 }
 
 function markSchedulerServed(question) {
@@ -680,6 +695,7 @@ function renderConfidenceList() {
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const span = Math.max(0.0001, maxScore - minScore);
+    const skillLabel = getCurrentSkillKey();
     const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= CONFIDENCE_GOAL);
 
     const rows = scored.map(entry => {
@@ -714,7 +730,7 @@ function renderConfidenceList() {
     confidenceListElement.innerHTML = rows;
     if (confidenceSummaryElement) {
         const goalText = allAboveGoal ? ` · all ≥ ${CONFIDENCE_GOAL} 🎉` : '';
-        confidenceSummaryElement.textContent = `${scored.length} words · lowest confidence at the top${goalText}`;
+        confidenceSummaryElement.textContent = `${scored.length} words · lowest confidence at the top${goalText} · skill: ${skillLabel}`;
     }
 
     const goalBadge = document.getElementById('confidenceGoalBadge');
