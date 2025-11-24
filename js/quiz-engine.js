@@ -5047,13 +5047,19 @@ function initQuizCommandPalette() {
         { name: 'Study Mode', mode: 'study', type: 'mode' }
     ];
 
-    const paletteItems = Array.isArray(config?.commandPaletteItems) && config.commandPaletteItems.length
+    const availableModeButtons = Array.from(document.querySelectorAll('.mode-btn[data-mode]'));
+    const availableModes = new Set(availableModeButtons.map(btn => btn.dataset.mode));
+
+    const filteredDefaults = defaultModes.filter(item => availableModes.has(item.mode));
+    const rawItems = Array.isArray(config?.commandPaletteItems) && config.commandPaletteItems.length
         ? config.commandPaletteItems
-        : defaultModes;
+        : filteredDefaults;
+    const paletteItems = rawItems.filter(item => !item.mode || availableModes.has(item.mode));
+    const finalModes = paletteItems.length ? paletteItems : filteredDefaults;
 
     if (typeof initCommandPalette === 'function') {
         initCommandPalette({
-            modes: paletteItems,
+            modes: finalModes,
             actions: getQuizPaletteActions(),
             searchPlaceholder: 'Search quiz modes, commands, or pages…'
         });
