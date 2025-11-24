@@ -476,6 +476,31 @@ function getBatchMasteryProgress() {
     };
 }
 
+function getConfidenceScore(char) {
+    const stats = getSchedulerStats(char);
+    const served = stats.served || 0;
+    const correct = stats.correct || 0;
+    const wrong = stats.wrong || 0;
+    const accuracy = served > 0 ? correct / served : 0;
+    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
+    const streak = stats.streak || 0;
+
+    // Higher score = more confident
+    const recencyBonus = Math.min(1.5, lastWrongAgo / 300); // cap after 5 minutes without wrong
+    const volumeBonus = Math.log10(1 + served) * 0.4;
+    const streakBonus = Math.min(1.5, streak * 0.15);
+    return accuracy * 2.5 + recencyBonus + volumeBonus + streakBonus - wrong * 0.05;
+}
+
+function selectLeastConfident(pool, size) {
+    if (!Array.isArray(pool) || !pool.length) return [];
+    const scored = pool.map(item => ({ item, score: getConfidenceScore(item.char) }));
+    scored.sort((a, b) => a.score - b.score); // lowest confidence first
+    const chosen = scored.slice(0, Math.min(size, scored.length)).map(entry => entry.item);
+    // Shuffle within the chosen set so order stays unpredictable
+    return chosen.sort(() => Math.random() - 0.5);
+}
+
 function ensureConfettiStyles() {
     if (confettiStyleInjected || typeof document === 'undefined') return;
     const style = document.createElement('style');
@@ -605,7 +630,9 @@ function startNewBatch() {
     }
 
     const batchSize = getCurrentBatchSize();
-    const nextBatch = selectBatchFromPool(pool, batchSize);
+    const nextBatch = (batchModeState.cycleCount > 0)
+        ? selectLeastConfident(pool, batchSize)
+        : selectBatchFromPool(pool, batchSize);
     if (!nextBatch.length) return;
 
     batchModeState.activeBatch = nextBatch.map(item => item.char);
