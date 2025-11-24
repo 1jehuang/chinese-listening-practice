@@ -98,7 +98,8 @@ let batchModeState = {
     activeBatch: [],
     usedChars: [],
     batchIndex: 0,
-    cycleCount: 0
+    cycleCount: 0,
+    seenInBatch: [] // chars served at least once in the current batch
 };
 
 // Confidence sidebar state
@@ -365,6 +366,10 @@ function markSchedulerServed(question) {
     stats.lastServed = Date.now();
     schedulerOutcomeRecordedChar = null;
     renderConfidenceList();
+
+    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+        markBatchSeen(question.char);
+    }
 }
 
 function markSchedulerOutcome(correct) {
@@ -391,6 +396,17 @@ function markSchedulerOutcome(correct) {
     renderConfidenceList();
 }
 
+function markBatchSeen(char) {
+    if (!char) return;
+    if (!Array.isArray(batchModeState.seenInBatch)) {
+        batchModeState.seenInBatch = [];
+    }
+    if (!batchModeState.seenInBatch.includes(char)) {
+        batchModeState.seenInBatch.push(char);
+        saveBatchState();
+    }
+}
+
 function getBatchPageKey() {
     const path = window.location.pathname || '';
     const filename = path.substring(path.lastIndexOf('/') + 1) || '';
@@ -405,7 +421,7 @@ function getBatchStorageKey() {
 }
 
 function loadBatchState() {
-    const defaults = { activeBatch: [], usedChars: [], batchIndex: 0, cycleCount: 0 };
+    const defaults = { activeBatch: [], usedChars: [], batchIndex: 0, cycleCount: 0, seenInBatch: [] };
     batchModeState = { ...defaults };
     const key = getBatchStorageKey();
     try {
@@ -417,6 +433,7 @@ function loadBatchState() {
                 batchModeState.usedChars = Array.isArray(parsed.usedChars) ? parsed.usedChars.filter(Boolean) : [];
                 batchModeState.batchIndex = Number.isFinite(parsed.batchIndex) ? parsed.batchIndex : 0;
                 batchModeState.cycleCount = Number.isFinite(parsed.cycleCount) ? parsed.cycleCount : 0;
+                batchModeState.seenInBatch = Array.isArray(parsed.seenInBatch) ? parsed.seenInBatch.filter(Boolean) : [];
             }
         }
     } catch (e) {
@@ -425,6 +442,7 @@ function loadBatchState() {
 
     batchModeState.activeBatch = Array.from(new Set(batchModeState.activeBatch));
     batchModeState.usedChars = Array.from(new Set(batchModeState.usedChars));
+    batchModeState.seenInBatch = Array.from(new Set(batchModeState.seenInBatch));
 }
 
 function saveBatchState() {
@@ -461,6 +479,7 @@ function reconcileBatchStateWithQueue() {
     const activeBefore = Array.isArray(batchModeState.activeBatch) ? batchModeState.activeBatch.length : 0;
     batchModeState.activeBatch = (batchModeState.activeBatch || []).filter(char => knownChars.has(char));
     batchModeState.usedChars = (batchModeState.usedChars || []).filter(char => knownChars.has(char));
+    batchModeState.seenInBatch = (batchModeState.seenInBatch || []).filter(char => knownChars.has(char));
 
     if (batchModeState.activeBatch.length !== activeBefore) {
         saveBatchState();
@@ -480,10 +499,13 @@ function isBatchCharMastered(char) {
 
 function getBatchMasteryProgress() {
     const active = getActiveBatchQuestions();
-    const mastered = active.filter(item => isBatchCharMastered(item.char));
+    const seenSet = new Set(Array.isArray(batchModeState.seenInBatch) ? batchModeState.seenInBatch : []);
+    const mastered = active.filter(item => seenSet.has(item.char) && isBatchCharMastered(item.char));
+    const seenCount = active.filter(item => seenSet.has(item.char)).length;
     return {
         active,
         masteredCount: mastered.length,
+        seenCount,
         total: active.length
     };
 }
@@ -830,6 +852,7 @@ function startNewBatch() {
     nextBatch.forEach(item => usedSet.add(item.char));
     batchModeState.usedChars = Array.from(usedSet);
     batchModeState.batchIndex = Math.max(1, (batchModeState.batchIndex || 0) + 1);
+    batchModeState.seenInBatch = [];
     saveBatchState();
 
     previewQueue = [];
@@ -878,7 +901,9 @@ function prepareBatchForNextQuestion() {
     reconcileBatchStateWithQueue();
     const progress = getBatchMasteryProgress();
 
-    if (!progress.total || progress.masteredCount === progress.total) {
+    const allSeen = progress.seenCount === progress.total;
+
+    if (!progress.total || (allSeen && progress.masteredCount === progress.total)) {
         startNewBatch();
     } else {
         updateBatchStatusDisplay();
@@ -888,11 +913,12 @@ function prepareBatchForNextQuestion() {
 function maybeAdvanceBatchAfterAnswer() {
     if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
     const progress = getBatchMasteryProgress();
+    const allSeen = progress.seenCount === progress.total;
     if (!progress.total) {
         startNewBatch();
         return;
     }
-    if (progress.masteredCount === progress.total) {
+    if (allSeen && progress.masteredCount === progress.total) {
         const setLabel = Math.max(1, batchModeState.batchIndex || 1);
         const cycleNumber = Math.max(1, (batchModeState.cycleCount || 0) + 1);
         showBatchCompletionToast(setLabel, cycleNumber, progress.total);
