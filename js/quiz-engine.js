@@ -93,6 +93,7 @@ let confettiStyleInjected = false;
 const BATCH_MASTER_MIN_STREAK = 2;
 const BATCH_MASTER_MIN_ACCURACY = 0.72;
 const BATCH_MASTER_MIN_SEEN = 3;
+const CONFIDENCE_GOAL = 5; // target confidence to celebrate across all words
 let batchStateKey = '';
 let batchModeState = {
     activeBatch: [],
@@ -621,6 +622,7 @@ function ensureConfidencePanel() {
                 <div>
                     <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
                     <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
+                    <div id="confidenceGoalBadge" class="hidden inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">All ≥ ${CONFIDENCE_GOAL}</div>
                 </div>
                 <div class="flex items-center gap-1">
                     <span class="text-[11px] text-gray-500">live</span>
@@ -678,6 +680,7 @@ function renderConfidenceList() {
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const span = Math.max(0.0001, maxScore - minScore);
+    const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= CONFIDENCE_GOAL);
 
     const rows = scored.map(entry => {
         const { item, stats, score } = entry;
@@ -710,7 +713,13 @@ function renderConfidenceList() {
 
     confidenceListElement.innerHTML = rows;
     if (confidenceSummaryElement) {
-        confidenceSummaryElement.textContent = `${scored.length} words · lowest confidence at the top`;
+        const goalText = allAboveGoal ? ` · all ≥ ${CONFIDENCE_GOAL} 🎉` : '';
+        confidenceSummaryElement.textContent = `${scored.length} words · lowest confidence at the top${goalText}`;
+    }
+
+    const goalBadge = document.getElementById('confidenceGoalBadge');
+    if (goalBadge) {
+        goalBadge.classList.toggle('hidden', !allAboveGoal);
     }
 }
 
