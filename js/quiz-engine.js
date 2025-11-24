@@ -77,12 +77,11 @@ let charGlossPromise = null;
 const SCHEDULER_MODE_KEY = 'quiz_scheduler_mode';
 const SCHEDULER_MODES = {
     RANDOM: 'random',
-    FAST_LOOP: 'fast-loop',
     WEIGHTED: 'weighted',
     BATCH_5: 'batch-5',
     ORDERED: 'ordered'
 };
-let schedulerMode = SCHEDULER_MODES.FAST_LOOP;
+let schedulerMode = SCHEDULER_MODES.WEIGHTED;
 let schedulerStats = {}; // per-char session data
 let schedulerOutcomeRecordedChar = null;
 let schedulerOrderedIndex = 0;
@@ -291,8 +290,11 @@ function loadSchedulerMode() {
     const stored = localStorage.getItem(SCHEDULER_MODE_KEY);
     if (stored && Object.values(SCHEDULER_MODES).includes(stored)) {
         schedulerMode = stored;
+    } else if (stored === 'fast-loop') {
+        // Legacy mode: map old Fast Loop to weighted scheduler
+        schedulerMode = SCHEDULER_MODES.WEIGHTED;
     } else {
-        schedulerMode = SCHEDULER_MODES.FAST_LOOP;
+        schedulerMode = SCHEDULER_MODES.WEIGHTED;
     }
 }
 
@@ -306,8 +308,6 @@ function saveSchedulerMode(mode) {
 
 function getSchedulerModeLabel(mode = schedulerMode) {
     switch (mode) {
-        case SCHEDULER_MODES.FAST_LOOP:
-            return 'Fast loop (errors → unseen → oldest)';
         case SCHEDULER_MODES.WEIGHTED:
             return 'Confidence-weighted (recency + errors)';
         case SCHEDULER_MODES.BATCH_5:
@@ -322,8 +322,6 @@ function getSchedulerModeLabel(mode = schedulerMode) {
 
 function getSchedulerModeDescription(mode = schedulerMode) {
     switch (mode) {
-        case SCHEDULER_MODES.FAST_LOOP:
-            return 'Surfaces recent errors first, then unseen, then least-recently seen.';
         case SCHEDULER_MODES.WEIGHTED:
             return 'Scores cards by recency + mistakes; picks proportionally to need.';
         case SCHEDULER_MODES.BATCH_5:
@@ -823,7 +821,6 @@ function ensureSchedulerToolbar() {
             </div>
             <div class="flex flex-wrap gap-2">
                 <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
-                <button id="schedulerFastBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Fast Loop</button>
                 <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
                 <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
                 <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
@@ -833,7 +830,6 @@ function ensureSchedulerToolbar() {
     }
 
     const randomBtn = document.getElementById('schedulerRandomBtn');
-    const fastBtn = document.getElementById('schedulerFastBtn');
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
@@ -841,10 +837,6 @@ function ensureSchedulerToolbar() {
     if (randomBtn && !randomBtn.dataset.bound) {
         randomBtn.dataset.bound = 'true';
         randomBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.RANDOM);
-    }
-    if (fastBtn && !fastBtn.dataset.bound) {
-        fastBtn.dataset.bound = 'true';
-        fastBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.FAST_LOOP);
     }
     if (weightedBtn && !weightedBtn.dataset.bound) {
         weightedBtn.dataset.bound = 'true';
@@ -871,7 +863,6 @@ function updateSchedulerToolbar() {
 
     const btns = [
         { id: 'schedulerRandomBtn', mode: SCHEDULER_MODES.RANDOM },
-        { id: 'schedulerFastBtn', mode: SCHEDULER_MODES.FAST_LOOP },
         { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED },
         { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
         { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
@@ -1108,49 +1099,6 @@ function selectOrdered(pool, exclusionSet = new Set()) {
     return null;
 }
 
-function selectFastLoop(pool) {
-    const now = Date.now();
-    const jitter = () => (Math.random() - 0.5) * 10; // small tie breaker
-
-    const prioritized = pool.map(item => {
-        const stats = getSchedulerStats(item.char);
-        const lastServed = stats.lastServed || 0;
-        const served = stats.served || 0;
-        const lastWrong = stats.lastWrong || 0;
-        const ageMs = now - lastServed;
-        const recentWrong = lastWrong > 0 && (now - lastWrong) < 180000; // 3 minutes
-
-        let bucket = 3;
-        if (recentWrong) {
-            bucket = 0;
-        } else if (served === 0) {
-            bucket = 1;
-        } else if (served < 2) {
-            bucket = 2;
-        }
-
-        let score = 0;
-        if (bucket === 0) {
-            score = 100000 - (now - lastWrong); // more recent wrong = higher
-        } else if (bucket === 1) {
-            score = 80000;
-        } else if (bucket === 2) {
-            score = 50000 + ageMs / 1000;
-        } else {
-            score = ageMs / 500; // least recently seen rise to top
-        }
-
-        return { item, bucket, score: score + jitter() };
-    });
-
-    prioritized.sort((a, b) => {
-        if (a.bucket !== b.bucket) return a.bucket - b.bucket;
-        return b.score - a.score;
-    });
-
-    return prioritized[0]?.item || null;
-}
-
 function selectWeighted(pool) {
     const now = Date.now();
     const weights = pool.map(item => {
@@ -1191,8 +1139,6 @@ function selectNextQuestion(exclusions = []) {
             return selectOrdered(pool, exclusionSet) || selectRandom(pool);
         case SCHEDULER_MODES.BATCH_5:
             return selectRandom(pool);
-        case SCHEDULER_MODES.FAST_LOOP:
-            return selectFastLoop(pool) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.RANDOM:
@@ -5277,13 +5223,6 @@ function initQuizCommandPalette() {
             description: 'Use pure shuffle ordering for upcoming questions',
             keywords: 'random order shuffle next item scheduler',
             action: () => setSchedulerMode(SCHEDULER_MODES.RANDOM)
-        });
-        actions.push({
-            name: 'Next Item: Fast Loop',
-            type: 'action',
-            description: 'Errors first, then unseen, then least-recently seen',
-            keywords: 'fast loop quick learning errors first scheduler',
-            action: () => setSchedulerMode(SCHEDULER_MODES.FAST_LOOP)
         });
         actions.push({
             name: 'Next Item: Confidence-weighted',
