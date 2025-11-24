@@ -1058,7 +1058,7 @@ function selectNextQuestion(exclusions = []) {
         case SCHEDULER_MODES.ORDERED:
             return selectOrdered(pool, exclusionSet) || selectRandom(pool);
         case SCHEDULER_MODES.BATCH_5:
-            return selectFastLoop(pool) || selectRandom(pool);
+            return selectRandom(pool);
         case SCHEDULER_MODES.FAST_LOOP:
             return selectFastLoop(pool) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
