@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>All Lessons Cumulative - Quiz</title>
+    <title>All Lessons Cumulative (1–7) - Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/common.css">
     <script src="js/utils.js"></script>
     <script src="js/command-palette.js"></script>
@@ -18,266 +15,145 @@
     <script src="js/spaced-repetition.js"></script>
     <script src="js/quiz-engine.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8">
-    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+<body class="bg-gray-100 min-h-screen">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
 
-    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
-        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">All Lessons Cumulative (Lessons 1-3)</h1>
-
-        <!-- Mode Selector -->
-        <div class="flex flex-wrap gap-2 justify-center mb-6">
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500" data-mode="char-to-pinyin">Char → Pinyin</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-tones">Char → Tones</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="pinyin-to-char">Pinyin → Char</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-meaning-type">Char → Meaning</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="meaning-to-char">Meaning → Char</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="stroke-order">Stroke Order</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="handwriting">Handwriting</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="draw-char">Draw Character</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
-        </div>
-
-        <!-- Question Display -->
-        <div id="questionDisplay" class="text-center"></div>
-
-        <!-- Upcoming Preview (below question) -->
-        <div id="upcomingCharacters" class="hidden text-center mt-4">
-            <div class="preview-list flex justify-center gap-4 text-4xl text-gray-300"></div>
-            <div class="text-xs uppercase tracking-widest text-gray-400 mt-2">Upcoming</div>
-        </div>
-
-        <!-- Hint -->
-        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
-
-        <!-- Audio Section -->
-        <div id="audioSection" class="text-center my-4 hidden">
-            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
-        </div>
-
-        <!-- Type Mode -->
-        <div id="typeMode" class="space-y-4">
-            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
-            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
-        </div>
-
-        <!-- Choice Mode -->
-        <div id="choiceMode" class="hidden">
-            <div id="options" class="grid grid-cols-2 gap-3"></div>
-        </div>
-
-        <!-- Fuzzy Mode -->
-        <div id="fuzzyMode" class="hidden space-y-4">
-            <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
-            <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
-        </div>
-
-        <!-- Stroke Order Mode -->
-        <div id="strokeOrderMode" class="hidden">
-            <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
-        </div>
-
-        <!-- Handwriting Mode -->
-        <div id="handwritingMode" class="hidden">
-            <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
-            <div class="text-center text-sm text-gray-500 mb-2">💡 Audio will play for each character as it appears</div>
-            <div id="handwritingWriter" class="flex justify-center my-8"></div>
-            <div class="flex justify-center gap-3">
-                <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer / Replay</button>
-                <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+    <div class="flex min-h-screen">
+        <!-- Mode Selector Sidebar -->
+        <div class="w-64 bg-white shadow-lg p-4 overflow-y-auto">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
+            <div class="flex flex-col gap-2">
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500 text-left text-sm" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="study">Study Mode</button>
             </div>
         </div>
 
-        <!-- Draw Character Mode -->
-        <div id="drawCharMode" class="hidden">
-            <div class="text-center mb-4">
-                <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold" style="font-family: 'Noto Sans SC', sans-serif; font-weight: 700;"></div>
-                <div class="text-sm text-gray-500">Real-time recognition</div>
+        <!-- Main Content -->
+        <div class="flex-1 p-4 md:p-8">
+            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">All Lessons Cumulative · Lessons 1–7</h1>
+                <p class="text-center text-gray-600 mb-6">Full vocabulary set combined from Lesson 1 through Lesson 7.</p>
+
+                <!-- Question Display -->
+                <div id="questionDisplay" class="text-center"></div>
+
+                <!-- Upcoming Preview (below question) -->
+                <div id="upcomingCharacters" class="hidden text-center mt-4">
+                    <div class="preview-list flex justify-center gap-4 text-4xl text-gray-300"></div>
+                    <div class="text-xs uppercase tracking-widest text-gray-400 mt-2">Upcoming</div>
+                </div>
+
+                <!-- Hint -->
+                <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+                <!-- Audio Section -->
+                <div id="audioSection" class="text-center my-4 hidden">
+                    <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+                </div>
+
+                <!-- Type Mode -->
+                <div id="typeMode" class="space-y-4">
+                    <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+                    <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+                </div>
+
+                <!-- Choice Mode -->
+                <div id="choiceMode" class="hidden">
+                    <div id="options" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Fuzzy Mode -->
+                <div id="fuzzyMode" class="hidden space-y-4">
+                    <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Stroke Order Mode -->
+                <div id="strokeOrderMode" class="hidden">
+                    <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
+                </div>
+
+                <!-- Handwriting Mode -->
+                <div id="handwritingMode" class="hidden">
+                    <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
+                    <div class="text-center text-sm text-gray-500 mb-2">💡 Audio will play for each character as it appears</div>
+                    <div id="handwritingWriter" class="flex justify-center my-8"></div>
+                    <div class="flex justify-center gap-3">
+                        <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer / Replay</button>
+                        <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+                    </div>
+                </div>
+
+                <!-- Draw Character Mode -->
+                <div id="drawCharMode" class="hidden">
+                    <div class="text-center mb-4">
+                        <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
+                        <div class="text-sm text-gray-500">Real-time recognition</div>
+                    </div>
+                    <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
+                    <div class="flex gap-3 justify-center mt-4">
+                        <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
+                        <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+                        <button id="fullscreenDrawBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">⛶ Fullscreen</button>
+                    </div>
+                </div>
+
+                <!-- Fullscreen Drawing Mode -->
+                <div id="fullscreenDrawContainer" class="hidden fixed inset-0 bg-gray-100 z-50 flex flex-col">
+                    <div class="flex justify-between items-center p-4 bg-white shadow">
+                        <div class="text-2xl font-bold text-gray-700" id="fullscreenPrompt">Draw: </div>
+                        <div class="flex gap-2">
+                            <button id="fullscreenUndoBtn" class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed" disabled>↶ Undo</button>
+                            <button id="fullscreenRedoBtn" class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed" disabled>↷ Redo</button>
+                            <button id="fullscreenClearBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">🗑️ Clear</button>
+                            <button id="fullscreenSubmitBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">✓ Submit</button>
+                            <button id="fullscreenShowAnswerBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">💡 Answer</button>
+                            <button id="fullscreenNextBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">→ Next</button>
+                            <button id="exitFullscreenBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">✕ Exit</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center p-4">
+                        <div class="text-center w-full h-full flex flex-col items-center justify-center">
+                            <div id="fullscreenOcrResult" class="text-7xl sm:text-8xl min-h-[100px] text-blue-600 font-bold mb-4"></div>
+                            <canvas id="fullscreenDrawCanvas" class="border-4 border-gray-400 rounded-lg cursor-crosshair bg-white shadow-lg max-w-full max-h-full" style="aspect-ratio: 1/1;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Study Mode -->
+                <div id="studyMode" class="hidden space-y-6">
+                    <div>
+                        <div class="text-center text-gray-600 mb-4">Quick list of all vocab (Lessons 1–7).</div>
+                        <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- Feedback -->
+                <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+                <!-- Stats -->
+                <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+                    <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+                    <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+                </div>
             </div>
-            <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
-            <div class="flex gap-3 justify-center mt-4">
-                <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
-                <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
-            </div>
-        </div>
-
-        <!-- Study Mode -->
-        <div id="studyMode" class="hidden">
-            <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
-            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
-        </div>
-
-        <!-- Feedback -->
-        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
-
-        <!-- Stats -->
-        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
-            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
-            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
         </div>
     </div>
+
     <script>
-        const characters = [
-            // Lesson 1 vocabulary
-            { char: '第', pinyin: 'dì', meaning: 'ordinal prefix (-st, -nd, -rd, -th)' },
-            { char: '课', pinyin: 'kè', meaning: 'lesson' },
-            { char: '两', pinyin: 'liǎng', meaning: 'two (used with AN)' },
-            { char: '张', pinyin: 'zhāng', meaning: 'measure word for flat things' },
-            { char: '地图', pinyin: 'dìtú', meaning: 'map' },
-            { char: '甲', pinyin: 'jiǎ', meaning: 'person A' },
-            { char: '这', pinyin: 'zhè', meaning: 'this; these' },
-            { char: '是', pinyin: 'shì', meaning: 'is; am; are' },
-            { char: '什么', pinyin: 'shén.me', meaning: 'what' },
-            { char: '比', pinyin: 'bǐ', meaning: 'compare' },
-            { char: '大', pinyin: 'dà', meaning: 'big' },
-            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little' },
-            { char: '年', pinyin: 'nián', meaning: 'year' },
-            { char: '以前', pinyin: 'yǐqián', meaning: 'before' },
-            { char: '那时', pinyin: 'nàshí', meaning: 'that time' },
-            { char: '还', pinyin: 'hái', meaning: 'still; also' },
-            { char: '包括', pinyin: 'bāokuò', meaning: 'include' },
-            { char: '现在', pinyin: 'xiànzài', meaning: 'now' },
-            { char: '蒙古国', pinyin: 'Měnggǔguó', meaning: 'Mongolia' },
-            { char: '哦', pinyin: 'ò', meaning: 'oh; I see' },
-            { char: '我', pinyin: 'wǒ', meaning: 'I; me' },
-            { char: '懂', pinyin: 'dǒng', meaning: 'understand' },
-            { char: '了', pinyin: 'le', meaning: 'particle for new situation' },
-            { char: '历史', pinyin: 'lì.shǐ', meaning: 'history' },
-            { char: '上', pinyin: 'shàng', meaning: 'in; on' },
-            { char: '对了', pinyin: 'duì.le', meaning: "that's right" },
-            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but' },
-            { char: '完全', pinyin: 'wánquán', meaning: 'completely; entirely' },
-            { char: '他们', pinyin: 'tā.men', meaning: 'they' },
-            { char: '搬', pinyin: 'bān', meaning: 'move' },
-            { char: '到…去', pinyin: 'dào...qù', meaning: 'go to...' },
-            { char: '台湾', pinyin: 'Táiwān', meaning: 'Taiwan' },
-            { char: '就是', pinyin: 'jiù.shì', meaning: 'be exactly' },
-            { char: '和', pinyin: 'hé', meaning: 'and' },
-            { char: '政府', pinyin: 'zhèng.fǔ', meaning: 'government' },
-            { char: '都', pinyin: 'dōu', meaning: 'in all cases' },
-            { char: '说', pinyin: 'shuō', meaning: 'speak; say; talk' },
-            { char: '只有', pinyin: 'zhǐyǒu', meaning: "there's only" },
-            { char: '个', pinyin: 'gè', meaning: 'general measure word' },
-            { char: '而', pinyin: 'ér', meaning: 'and; yet' },
-            { char: '部分', pinyin: 'bù.fèn', meaning: 'part' },
-            { char: '国家', pinyin: 'guójiā', meaning: 'country' },
-            { char: '对不对', pinyin: 'duì.bu.duì', meaning: 'Is it correct?' },
-            { char: '很难说', pinyin: 'hěnnánshuō', meaning: "It's hard to say" },
-            { char: '乙', pinyin: 'yǐ', meaning: 'person B' },
-            { char: '中国', pinyin: 'Zhōng.guó', meaning: 'China' },
-            { char: '那么', pinyin: 'nà.me', meaning: 'well then; then' },
-            { char: '那', pinyin: 'nà', meaning: 'that; those' },
-            { char: '呢', pinyin: 'ne', meaning: 'particle for follow-up questions' },
-            { char: '也', pinyin: 'yě', meaning: 'also; too' },
-            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why' },
-            { char: '不', pinyin: 'bù', meaning: 'no; not' },
-            { char: '一样', pinyin: 'yīyàng', meaning: 'same' },
-            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because; since' },
-            { char: '中华', pinyin: 'Zhōnghuá', meaning: 'China' },
-            { char: '民国', pinyin: 'mínguó', meaning: 'republic' },
-            { char: '人民', pinyin: 'rénmín', meaning: 'the people' },
-            { char: '共和国', pinyin: 'gònghéguó', meaning: 'republic' },
-            { char: '的', pinyin: 'de', meaning: 'particle for modification' },
+        // Combined vocabulary from Lessons 1–7 (deduplicated)
+        const characters = ;
 
-            // Lesson 2 vocabulary
-            { char: '我的', pinyin: 'wǒ.de', meaning: 'my' },
-            { char: '家', pinyin: 'jiā', meaning: 'home' },
-            { char: '在', pinyin: 'zài', meaning: 'be located in; at; on' },
-            { char: '哪儿', pinyin: 'nǎr', meaning: 'where' },
-            { char: '父亲', pinyin: 'fù.qin', meaning: 'father' },
-            { char: '书', pinyin: 'shū', meaning: 'book' },
-            { char: '书房', pinyin: 'shūfáng', meaning: 'a study' },
-            { char: '里', pinyin: 'lǐ', meaning: 'inside' },
-            { char: '挂', pinyin: 'guà', meaning: 'hang' },
-            { char: 'V着', pinyin: 'V.zhe', meaning: 'keep on V-ing' },
-            { char: '小', pinyin: 'xiǎo', meaning: 'young; small' },
-            { char: '时候', pinyin: 'shí.hou', meaning: 'time' },
-            { char: '他', pinyin: 'tā', meaning: 'he' },
-            { char: '常', pinyin: 'cháng', meaning: 'often' },
-            { char: '指', pinyin: 'zhǐ', meaning: 'point' },
-            { char: '西南', pinyin: 'xīnán', meaning: 'southwest' },
-            { char: '边', pinyin: 'biān', meaning: 'side' },
-            { char: '黑', pinyin: 'hēi', meaning: 'black; dark' },
-            { char: '点', pinyin: 'diǎn', meaning: 'spot; dot' },
-            { char: '我们的', pinyin: 'wǒ.men.de', meaning: 'our; ours' },
-            { char: '老家', pinyin: 'lǎojiā', meaning: 'hometown' },
-            { char: '觉得', pinyin: 'jué.de', meaning: 'think; feel' },
-            { char: '很', pinyin: 'hěn', meaning: 'very' },
-            { char: '奇怪', pinyin: 'qíguài', meaning: 'strange' },
-            { char: '纽约', pinyin: 'Niǔyuē', meaning: 'New York' },
-            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
-            { char: '会', pinyin: 'huì', meaning: 'could; would; can' },
-            { char: '后来', pinyin: 'hòulái', meaning: 'later' },
-            { char: '才', pinyin: 'cái', meaning: 'later than expected' },
-            { char: '知道', pinyin: 'zhīdao', meaning: 'know' },
-            { char: '成都', pinyin: 'Chéngdū', meaning: 'name of a city' },
-            { char: '虽然', pinyin: 'suīrán', meaning: 'although' },
-            { char: '来', pinyin: 'lái', meaning: 'come' },
-            { char: '美国', pinyin: 'Měiguó', meaning: 'The United States of America' },
-            { char: '快…了', pinyin: 'kuài... .le', meaning: 'almost, about to' },
-            { char: '总', pinyin: 'zǒng', meaning: 'always' },
-            { char: '还是', pinyin: 'hái.shì', meaning: 'still' },
-            { char: '四川', pinyin: 'Sìchuān', meaning: 'a province in southwest China' },
-            { char: '生', pinyin: 'shēng', meaning: 'be born' },
-            { char: '长', pinyin: 'zhǎng', meaning: 'grow up' },
-            { char: '从小', pinyin: 'cóngxiǎo', meaning: 'from one\'s childhood' },
-            { char: '就', pinyin: 'jiù', meaning: 'sooner than expected; as early as' },
-            { char: '跟', pinyin: 'gēn', meaning: 'with; to' },
-            { char: '中文', pinyin: 'Zhōngwén', meaning: 'the Chinese language' },
-            { char: '吃', pinyin: 'chī', meaning: 'eat' },
-            { char: '菜', pinyin: 'cài', meaning: 'food; vegetables' },
-            { char: '有时', pinyin: 'yǒushí', meaning: 'sometimes' },
-            { char: '看', pinyin: 'kàn', meaning: 'see; look' },
-            { char: '电视', pinyin: 'diànshì', meaning: 'television' },
-            { char: '节目', pinyin: 'jiémù', meaning: 'program' },
-            { char: '星期', pinyin: 'xīngqī', meaning: 'week' },
-            { char: '星期六', pinyin: 'xīngqīliù', meaning: 'Saturday' },
-            { char: '去', pinyin: 'qù', meaning: 'go' },
-            { char: '附近', pinyin: 'fùjìn', meaning: 'nearby; vicinity' },
-            { char: '学校', pinyin: 'xuéxiào', meaning: 'school' },
-            { char: '学', pinyin: 'xué', meaning: 'study; learn' },
-            { char: '同学', pinyin: 'tóngxué', meaning: 'classmates; schoolmates' },
-            { char: '到底', pinyin: 'dàodǐ', meaning: 'after all (emphatic use)' },
-            { char: '还是', pinyin: 'háishì', meaning: 'or' },
-            { char: '意思', pinyin: 'yìsi', meaning: 'meaning' },
-
-            // Lesson 3 vocabulary
-            { char: '你', pinyin: 'nǐ', meaning: 'you' },
-            { char: '从…来', pinyin: 'cóng...lái', meaning: 'come from' },
-            { char: '德州', pinyin: 'Dézhōu', meaning: 'Texas' },
-            { char: '看起来', pinyin: 'kàn.qi.lái', meaning: 'look like, seem' },
-            { char: '像', pinyin: 'xiàng', meaning: 'resemble' },
-            { char: '啊', pinyin: '.a', meaning: 'particle showing obviousness' },
-            { char: '真', pinyin: 'zhēn', meaning: 'really' },
-            { char: '看不出来', pinyin: 'kàn.bù.chū.lái', meaning: "can't figure out by looking; can't tell" },
-            { char: '样', pinyin: 'yàng', meaning: 'kind; sort' },
-            { char: '想', pinyin: 'xiǎng', meaning: 'think' },
-            { char: '黄', pinyin: 'huáng', meaning: 'yellow; brown' },
-            { char: '头发', pinyin: 'tóu.fà', meaning: 'hair (on the human head)' },
-            { char: '蓝', pinyin: 'lán', meaning: 'blue' },
-            { char: '眼睛', pinyin: 'yǎnjīng', meaning: 'eyes' },
-            { char: '吗', pinyin: '.ma', meaning: 'particle for simple questions' },
-            { char: '不一定', pinyin: 'bùyīdìng', meaning: 'not necessarily' },
-            { char: '但是', pinyin: 'dàn.shì', meaning: 'but' },
-            { char: '有', pinyin: 'yǒu', meaning: 'have; there be' },
-            { char: '却', pinyin: 'què', meaning: 'but' },
-            { char: '日本人', pinyin: 'Rì.běn.rén', meaning: 'Japanese people' },
-            { char: '可以', pinyin: 'kěyǐ', meaning: 'can; may' },
-            { char: '所以', pinyin: 'suǒ.yǐ', meaning: 'therefore' },
-            { char: '有的', pinyin: 'yǒu.de', meaning: 'some' },
-            { char: '白人', pinyin: 'bái.rén', meaning: 'Caucasian American' },
-            { char: '黑人', pinyin: 'hēi.rén', meaning: 'African American' },
-            { char: '黄种人', pinyin: 'huángzhǒng.rén', meaning: 'Asian American' },
-            { char: '欧洲', pinyin: 'Ōuzhōu', meaning: 'Europe' },
-            { char: '非洲', pinyin: 'Fēizhōu', meaning: 'Africa' },
-            { char: '亚洲', pinyin: 'Yàzhōu', meaning: 'Asia' },
-            { char: '只要', pinyin: 'zhǐyào', meaning: 'as long as; provided that' },
-            { char: '得', pinyin: 'děi', meaning: 'have to' }
-        ];
-
-        // Initialize the quiz with the modular engine
         initQuiz(characters, {
             enablePreviewQueue: true,
             previewQueueSize: 1,
