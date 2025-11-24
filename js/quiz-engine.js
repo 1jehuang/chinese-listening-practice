@@ -653,7 +653,7 @@ function advanceBatchSetNow() {
         setSchedulerMode(SCHEDULER_MODES.BATCH_5);
     }
 
-    // Clear current active batch so a fresh set is selected
+    // Mark current set as completed and clear it
     batchModeState.activeBatch = [];
     saveBatchState();
 
@@ -661,6 +661,7 @@ function advanceBatchSetNow() {
     const setLabel = Math.max(1, batchModeState.batchIndex || 1);
     const cycleNumber = Math.max(1, (batchModeState.cycleCount || 0) + 1);
     const setSize = getCurrentBatchSize();
+    showBatchCompletionToast(setLabel - 1, cycleNumber, setSize);
     showBatchSwapToast(setLabel, cycleNumber, setSize);
 
     // Move to a question from the new set immediately
