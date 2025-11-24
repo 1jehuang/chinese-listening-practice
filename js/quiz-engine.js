@@ -90,6 +90,7 @@ const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
 const BATCH_INITIAL_SIZE = 5;
 const BATCH_COMBINED_SIZE = 10;
 const BATCH_TOAST_ID = 'batchModeToast';
+let confettiStyleInjected = false;
 const BATCH_MASTER_MIN_STREAK = 2;
 const BATCH_MASTER_MIN_ACCURACY = 0.72;
 const BATCH_MASTER_MIN_SEEN = 3;
@@ -477,6 +478,56 @@ function getBatchMasteryProgress() {
     };
 }
 
+function ensureConfettiStyles() {
+    if (confettiStyleInjected || typeof document === 'undefined') return;
+    const style = document.createElement('style');
+    style.id = 'quizConfettiStyles';
+    style.textContent = `
+        @keyframes quiz-confetti-fall {
+            0%   { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+            100% { transform: translate3d(0, 80vh, 0) rotate(360deg); opacity: 0; }
+        }
+        .quiz-confetti-piece {
+            position: fixed;
+            top: 0;
+            width: 10px;
+            height: 14px;
+            border-radius: 2px;
+            will-change: transform, opacity;
+            pointer-events: none;
+            z-index: 70;
+            opacity: 0;
+        }
+    `;
+    document.head.appendChild(style);
+    confettiStyleInjected = true;
+}
+
+function fireConfettiBurst(pieces = 60) {
+    if (typeof document === 'undefined') return;
+    ensureConfettiStyles();
+    const colors = ['#22d3ee', '#10b981', '#f97316', '#eab308', '#3b82f6', '#a855f7', '#ef4444'];
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < pieces; i++) {
+        const div = document.createElement('div');
+        div.className = 'quiz-confetti-piece';
+        const left = Math.random() * 100;
+        const delay = Math.random() * 0.2;
+        const duration = 1 + Math.random() * 0.9;
+        const rotate = (Math.random() * 720 - 360).toFixed(1);
+        const size = 8 + Math.random() * 6;
+        div.style.left = `${left}vw`;
+        div.style.background = colors[Math.floor(Math.random() * colors.length)];
+        div.style.animation = `quiz-confetti-fall ${duration}s ease-out ${delay}s forwards`;
+        div.style.transform = `rotate(${rotate}deg)`;
+        div.style.width = `${size}px`;
+        div.style.height = `${size + 4}px`;
+        div.addEventListener('animationend', () => div.remove());
+        frag.appendChild(div);
+    }
+    document.body.appendChild(frag);
+}
+
 function showBatchCompletionToast(setLabel, cycleNumber, setSize) {
     if (typeof document === 'undefined') return;
     const existing = document.getElementById(BATCH_TOAST_ID);
@@ -628,6 +679,7 @@ function maybeAdvanceBatchAfterAnswer() {
         const setLabel = Math.max(1, batchModeState.batchIndex || 1);
         const cycleNumber = Math.max(1, (batchModeState.cycleCount || 0) + 1);
         showBatchCompletionToast(setLabel, cycleNumber, progress.total);
+        fireConfettiBurst();
         startNewBatch();
     } else {
         updateBatchStatusDisplay();
