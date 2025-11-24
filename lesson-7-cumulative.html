@@ -3,64 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lesson 7 Cumulative: 男女同住</title>
+    <meta name="google" content="notranslate">
+    <title>Lesson 7 Cumulative: 男女同住 - Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/textbook.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/spaced-repetition.js"></script>
+    <script src="js/quiz-engine.js"></script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-gray-100 min-h-screen">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
 
-    <header class="textbook-hero py-12 px-4 md:px-8">
-        <div class="max-w-4xl mx-auto space-y-3">
-            <div class="textbook-pill bg-white/10 text-white">Lesson 7 · 男女同住</div>
-            <h1 class="text-4xl font-black text-white">Cumulative · Pages 87–92</h1>
-            <p class="text-slate-200">All lesson scans together for quick review.</p>
-            <div class="flex flex-wrap gap-3 text-sm text-slate-100">
-                <a href="textbook-lesson7.html" class="underline">Textbook pages</a>
+    <div class="flex min-h-screen">
+        <!-- Mode Selector Sidebar -->
+        <div class="w-64 bg-white shadow-lg p-4 overflow-y-auto">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
+            <div class="flex flex-col gap-2">
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500 text-left text-sm" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="study">Study Mode</button>
             </div>
         </div>
-    </header>
 
-    <main class="max-w-4xl mx-auto px-4 md:px-6 -mt-6 pb-12">
-        <div class="space-y-8">
-            <article class="bg-white rounded-2xl shadow-lg p-4 md:p-6 textbook-card">
-                <h2 class="text-xl font-bold text-slate-900 mb-3">Page 87</h2>
-                <a href="images/lesson7/page87.jpg" target="_blank" class="block overflow-hidden rounded-xl border border-gray-200">
-                    <img src="images/lesson7/page87.jpg" alt="Lesson 7 Page 87" class="textbook-img">
-                </a>
-            </article>
-            <article class="bg-white rounded-2xl shadow-lg p-4 md:p-6 textbook-card">
-                <h2 class="text-xl font-bold text-slate-900 mb-3">Page 88</h2>
-                <a href="images/lesson7/page88.jpg" target="_blank" class="block overflow-hidden rounded-xl border border-gray-200">
-                    <img src="images/lesson7/page88.jpg" alt="Lesson 7 Page 88" class="textbook-img">
-                </a>
-            </article>
-            <article class="bg-white rounded-2xl shadow-lg p-4 md:p-6 textbook-card">
-                <h2 class="text-xl font-bold text-slate-900 mb-3">Page 89</h2>
-                <a href="images/lesson7/page89.jpg" target="_blank" class="block overflow-hidden rounded-xl border border-gray-200">
-                    <img src="images/lesson7/page89.jpg" alt="Lesson 7 Page 89" class="textbook-img">
-                </a>
-            </article>
-            <article class="bg-white rounded-2xl shadow-lg p-4 md:p-6 textbook-card">
-                <h2 class="text-xl font-bold text-slate-900 mb-3">Page 90</h2>
-                <a href="images/lesson7/page90.jpg" target="_blank" class="block overflow-hidden rounded-xl border border-gray-200">
-                    <img src="images/lesson7/page90.jpg" alt="Lesson 7 Page 90" class="textbook-img">
-                </a>
-            </article>
-            <article class="bg-white rounded-2xl shadow-lg p-4 md:p-6 textbook-card">
-                <h2 class="text-xl font-bold text-slate-900 mb-3">Page 91</h2>
-                <a href="images/lesson7/page91.jpg" target="_blank" class="block overflow-hidden rounded-xl border border-gray-200">
-                    <img src="images/lesson7/page91.jpg" alt="Lesson 7 Page 91" class="textbook-img">
-                </a>
-            </article>
-            <article class="bg-white rounded-2xl shadow-lg p-4 md:p-6 textbook-card">
-                <h2 class="text-xl font-bold text-slate-900 mb-3">Page 92</h2>
-                <a href="images/lesson7/page92.jpg" target="_blank" class="block overflow-hidden rounded-xl border border-gray-200">
-                    <img src="images/lesson7/page92.jpg" alt="Lesson 7 Page 92" class="textbook-img">
-                </a>
-            </article>
+        <!-- Main Content -->
+        <div class="flex-1 p-4 md:p-8">
+            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Lesson 7 Cumulative: 男女同住 (Pages 88–92)</h1>
+
+                <!-- Question Display -->
+                <div id="questionDisplay" class="text-center"></div>
+
+                <!-- Upcoming Preview (below question) -->
+                <div id="upcomingCharacters" class="hidden text-center mt-4">
+                    <div class="preview-list flex justify-center gap-4 text-4xl text-gray-300"></div>
+                    <div class="text-xs uppercase tracking-widest text-gray-400 mt-2">Upcoming</div>
+                </div>
+
+                <!-- Hint -->
+                <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+                <!-- Audio Section -->
+                <div id="audioSection" class="text-center my-4 hidden">
+                    <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+                </div>
+
+                <!-- Type Mode -->
+                <div id="typeMode" class="space-y-4">
+                    <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+                    <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+                </div>
+
+                <!-- Choice Mode -->
+                <div id="choiceMode" class="hidden">
+                    <div id="options" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Fuzzy Mode -->
+                <div id="fuzzyMode" class="hidden space-y-4">
+                    <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Stroke Order Mode -->
+                <div id="strokeOrderMode" class="hidden">
+                    <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
+                </div>
+
+                <!-- Handwriting Mode -->
+                <div id="handwritingMode" class="hidden">
+                    <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
+                    <div class="text-center text-sm text-gray-500 mb-2">💡 Audio will play for each character as it appears</div>
+                    <div id="handwritingWriter" class="flex justify-center my-8"></div>
+                    <div class="flex justify-center gap-3">
+                        <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer / Replay</button>
+                        <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+                    </div>
+                </div>
+
+                <!-- Draw Character Mode -->
+                <div id="drawCharMode" class="hidden">
+                    <div class="text-center mb-4">
+                        <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
+                        <div class="text-sm text-gray-500">Real-time recognition</div>
+                    </div>
+                    <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
+                    <div class="flex gap-3 justify-center mt-4">
+                        <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
+                        <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+                        <button id="fullscreenDrawBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">⛶ Fullscreen</button>
+                    </div>
+                </div>
+
+                <!-- Fullscreen Drawing Mode -->
+                <div id="fullscreenDrawContainer" class="hidden fixed inset-0 bg-gray-100 z-50 flex flex-col">
+                    <div class="flex justify-between items-center p-4 bg-white shadow">
+                        <div class="text-2xl font-bold text-gray-700" id="fullscreenPrompt">Draw: </div>
+                        <div class="flex gap-2">
+                            <button id="fullscreenUndoBtn" class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed" disabled>↶ Undo</button>
+                            <button id="fullscreenRedoBtn" class="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg transition cursor-not-allowed" disabled>↷ Redo</button>
+                            <button id="fullscreenClearBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">🗑️ Clear</button>
+                            <button id="fullscreenSubmitBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">✓ Submit</button>
+                            <button id="fullscreenShowAnswerBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">💡 Answer</button>
+                            <button id="fullscreenNextBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">→ Next</button>
+                            <button id="exitFullscreenBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">✕ Exit</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center p-4">
+                        <div class="text-center w-full h-full flex flex-col items-center justify-center">
+                            <div id="fullscreenOcrResult" class="text-7xl sm:text-8xl min-h-[100px] text-blue-600 font-bold mb-4"></div>
+                            <canvas id="fullscreenDrawCanvas" class="border-4 border-gray-400 rounded-lg cursor-crosshair bg-white shadow-lg max-w-full max-h-full" style="aspect-ratio: 1/1;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Study Mode -->
+                <div id="studyMode" class="hidden space-y-6">
+                    <div>
+                        <div class="text-center text-gray-600 mb-4">All Lesson 7 vocab at a glance (pages 87–92).</div>
+                        <div class="grid gap-4 md:grid-cols-3">
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 87</div>
+                                <img src="images/lesson7/page87.jpg" alt="Lesson 7 Page 87 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                                <a href="images/lesson7/page87.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 88</div>
+                                <img src="images/lesson7/page88.jpg" alt="Lesson 7 Page 88 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                                <a href="images/lesson7/page88.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 89</div>
+                                <img src="images/lesson7/page89.jpg" alt="Lesson 7 Page 89 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                                <a href="images/lesson7/page89.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 90</div>
+                                <img src="images/lesson7/page90.jpg" alt="Lesson 7 Page 90 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                                <a href="images/lesson7/page90.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 91</div>
+                                <img src="images/lesson7/page91.jpg" alt="Lesson 7 Page 91 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                                <a href="images/lesson7/page91.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
+                                <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">Page 92</div>
+                                <img src="images/lesson7/page92.jpg" alt="Lesson 7 Page 92 vocabulary" class="rounded-lg border border-gray-200 shadow-sm">
+                                <a href="images/lesson7/page92.jpg" target="_blank" class="text-blue-600 text-sm mt-2 inline-flex items-center gap-1">Open full size ↗</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-center text-gray-600 mb-4">Quick list of all vocab. Use search or sorting as needed.</div>
+                        <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- Feedback -->
+                <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+                <!-- Stats -->
+                <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+                    <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+                    <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+                </div>
+            </div>
         </div>
-    </main>
+    </div>
+
+    <script>
+        const part1 = [
+            { char: '同住', pinyin: 'tóngzhù', meaning: 'live together' },
+            { char: '从…起', pinyin: 'cóng...qǐ', meaning: 'starting from' },
+            { char: '学期', pinyin: 'xuéqī', meaning: 'semester' },
+            { char: '公寓', pinyin: 'gōngyù', meaning: 'apartment' },
+            { char: '宿舍', pinyin: 'sùshè', meaning: 'dormitory' },
+            { char: '方便', pinyin: 'fāngbiàn', meaning: 'convenient' },
+            { char: '搬出去', pinyin: 'bān chū.qù', meaning: 'move out' },
+            { char: '吃饭', pinyin: 'chīfàn', meaning: 'eat' },
+            { char: '问题', pinyin: 'wèntí', meaning: 'problem; question' },
+            { char: '厨房', pinyin: 'chúfáng', meaning: 'kitchen' },
+            { char: '一定', pinyin: 'yídìng', meaning: 'must; surely' },
+            { char: '食堂', pinyin: 'shítáng', meaning: 'cafeteria; canteen' },
+            { char: '贵', pinyin: 'guì', meaning: 'expensive' },
+            { char: '好吃', pinyin: 'hǎochī', meaning: 'tasty; delicious' },
+            { char: '每天', pinyin: 'měitiān', meaning: 'every day' },
+            { char: '受不了', pinyin: 'shòu.bu.liǎo', meaning: "can't stand; intolerable" },
+            { char: '挑剔', pinyin: 'tiāo.ti', meaning: 'nitpicky; fastidious' },
+            { char: '功课', pinyin: 'gōngkè', meaning: 'schoolwork; homework' },
+            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
+            { char: '时间', pinyin: 'shíjiān', meaning: 'time' },
+            { char: '买', pinyin: 'mǎi', meaning: 'buy' },
+            { char: '菜', pinyin: 'cài', meaning: 'groceries; vegetables' },
+            { char: '轮流', pinyin: 'lúnliú', meaning: 'take turns' },
+            { char: '晚饭', pinyin: 'wǎnfàn', meaning: 'dinner' },
+            { char: '早饭', pinyin: 'zǎofàn', meaning: 'breakfast' },
+            { char: '中饭', pinyin: 'zhōngfàn', meaning: 'lunch' },
+            { char: '三明治', pinyin: 'sānmíngzhì', meaning: 'sandwich' },
+            { char: '简单', pinyin: 'jiǎndān', meaning: 'simple' }
+        ];
+
+        const part2 = [
+            { char: '容易', pinyin: 'róngyì', meaning: 'easy' },
+            { char: '可', pinyin: 'kě', meaning: 'indeed; (for emphasis)' },
+            { char: '决定', pinyin: 'juédìng', meaning: 'decide' },
+            { char: '带', pinyin: 'dài', meaning: 'bring; take' },
+            { char: '一样', pinyin: 'yíyàng', meaning: 'the same; identical' },
+            { char: '用具', pinyin: 'yòngjù', meaning: 'utensil; appliance' },
+            { char: '微波炉', pinyin: 'wēibōlú', meaning: 'microwave oven' },
+            { char: '行', pinyin: 'xíng', meaning: 'all right; OK; no problem' },
+            { char: '好久', pinyin: 'hǎojiǔ', meaning: 'for a long time' },
+            { char: '用', pinyin: 'yòng', meaning: 'use' },
+            { char: '坏了', pinyin: 'huài.le', meaning: 'be broken' },
+            { char: '家具', pinyin: 'jiājù', meaning: 'furniture' },
+            { char: '床', pinyin: 'chuáng', meaning: 'bed' },
+            { char: '桌子', pinyin: 'zhuō.zi', meaning: 'table' },
+            { char: '书架', pinyin: 'shūjià', meaning: 'bookshelf' },
+            { char: '把', pinyin: 'bǎ', meaning: 'AN for things with a handle' },
+            { char: '椅子', pinyin: 'yǐ.zi', meaning: 'chair' },
+            { char: '台灯', pinyin: 'táidēng', meaning: 'desk lamp' },
+            { char: '地毯', pinyin: 'dìtǎn', meaning: 'rug; carpet' },
+            { char: '要紧', pinyin: 'yàojǐn', meaning: 'important; serious' },
+            { char: '对了', pinyin: 'duì.le', meaning: 'by the way' },
+            { char: '合住', pinyin: 'hézhù', meaning: 'share living space' },
+            { char: '认识', pinyin: 'rèn.shi', meaning: 'know (a person); recognize' },
+            { char: '年级', pinyin: 'niánjí', meaning: 'school grade; year' },
+            { char: '一起', pinyin: 'yìqǐ', meaning: 'together' },
+            { char: '不太', pinyin: 'bùtài', meaning: 'not very' },
+            { char: '浴室', pinyin: 'yùshì', meaning: 'bathroom' },
+            { char: '厕所', pinyin: 'cèsuǒ', meaning: 'toilet' },
+            { char: '合用', pinyin: 'héyòng', meaning: 'share (use together)' },
+            { char: '最好', pinyin: 'zuìhǎo', meaning: 'had better' },
+            { char: '考虑', pinyin: 'kǎolǜ', meaning: 'consider' },
+            { char: '一层楼', pinyin: 'yì céng lóu', meaning: 'one floor; the same floor' },
+            { char: '考试', pinyin: 'kǎoshì', meaning: 'examination; test' }
+        ];
+
+        // Merge and de-duplicate by character
+        const combinedMap = new Map();
+        [...part1, ...part2].forEach(item => {
+            if (!combinedMap.has(item.char)) {
+                combinedMap.set(item.char, item);
+            }
+        });
+        const characters = Array.from(combinedMap.values());
+
+        initQuiz(characters, {
+            enablePreviewQueue: true,
+            previewQueueSize: 1,
+            previewElementId: 'upcomingCharacters',
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+        });
+    </script>
 </body>
 </html>
