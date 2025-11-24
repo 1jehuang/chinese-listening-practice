@@ -1380,7 +1380,10 @@ function selectWeighted(pool) {
         const ageSec = Math.max(5, (now - lastServed) / 1000);
         const wrongBonus = lastWrong > 0 && (now - lastWrong) < 300000 ? 2.5 : (stats.wrong > 0 ? 1.4 : 1.0);
         const exposureFactor = 1 / (0.7 + 0.3 * Math.max(1, served));
-        const weight = Math.pow(ageSec + 15, 1.3) * wrongBonus * exposureFactor;
+        const confidenceScore = getConfidenceScore(item.char);
+        // Lower confidence → higher multiplier; taper as confidence grows
+        const confidenceBoost = Math.pow(Math.max(0.35, 2.8 - confidenceScore), 1.6);
+        const weight = Math.pow(ageSec + 15, 1.3) * wrongBonus * exposureFactor * confidenceBoost;
         return { item, weight };
     }).filter(entry => entry.weight > 0);
 
