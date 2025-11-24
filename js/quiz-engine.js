@@ -101,6 +101,13 @@ let batchModeState = {
     cycleCount: 0
 };
 
+// Confidence sidebar state
+const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
+let confidencePanel = null;
+let confidenceListElement = null;
+let confidenceSummaryElement = null;
+let confidencePanelVisible = true;
+
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
     w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
@@ -355,6 +362,7 @@ function markSchedulerServed(question) {
     stats.served += 1;
     stats.lastServed = Date.now();
     schedulerOutcomeRecordedChar = null;
+    renderConfidenceList();
 }
 
 function markSchedulerOutcome(correct) {
@@ -377,6 +385,8 @@ function markSchedulerOutcome(correct) {
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         maybeAdvanceBatchAfterAnswer();
     }
+
+    renderConfidenceList();
 }
 
 function getBatchPageKey() {
@@ -499,6 +509,156 @@ function selectLeastConfident(pool, size) {
     const chosen = scored.slice(0, Math.min(size, scored.length)).map(entry => entry.item);
     // Shuffle within the chosen set so order stays unpredictable
     return chosen.sort(() => Math.random() - 0.5);
+}
+
+function loadConfidencePanelVisibility() {
+    try {
+        const stored = localStorage.getItem(CONFIDENCE_PANEL_KEY);
+        if (stored === 'false') {
+            confidencePanelVisible = false;
+        }
+    } catch (e) {
+        console.warn('Failed to load confidence panel visibility', e);
+    }
+}
+
+function saveConfidencePanelVisibility() {
+    try {
+        localStorage.setItem(CONFIDENCE_PANEL_KEY, confidencePanelVisible.toString());
+    } catch (e) {
+        console.warn('Failed to save confidence panel visibility', e);
+    }
+}
+
+function setConfidencePanelVisible(visible) {
+    confidencePanelVisible = Boolean(visible);
+    if (confidencePanel) {
+        confidencePanel.classList.toggle('hidden', !confidencePanelVisible);
+    }
+    const toggleBtn = document.getElementById('confidenceToggleBtn');
+    if (toggleBtn) {
+        toggleBtn.textContent = confidencePanelVisible ? 'Hide' : 'Show';
+        toggleBtn.setAttribute('aria-pressed', confidencePanelVisible ? 'true' : 'false');
+    }
+    saveConfidencePanelVisibility();
+}
+
+function toggleConfidencePanel() {
+    setConfidencePanelVisible(!confidencePanelVisible);
+}
+
+function ensureConfidencePanel() {
+    if (typeof document === 'undefined') return;
+    if (confidencePanel && confidenceListElement && confidenceSummaryElement) return;
+
+    const firstModeBtn = document.querySelector('.mode-btn');
+    const sidebar = firstModeBtn
+        ? firstModeBtn.closest('.w-64') || firstModeBtn.closest('.bg-white') || firstModeBtn.closest('.shadow-lg')
+        : null;
+
+    if (!sidebar) return;
+
+    let panel = document.getElementById('confidencePanel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'confidencePanel';
+        panel.className = 'mt-6 border-t border-gray-200 pt-4';
+        panel.innerHTML = `
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div>
+                    <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
+                    <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-[11px] text-gray-500">live</span>
+                    <button id="confidenceToggleBtn" type="button" class="text-[11px] font-semibold text-blue-600 px-2 py-1 rounded hover:bg-blue-50 border border-transparent hover:border-blue-200" aria-pressed="true">Hide</button>
+                </div>
+            </div>
+            <div id="confidenceSummary" class="text-xs text-gray-500 mb-2"></div>
+            <div id="confidenceList" class="space-y-1 max-h-[68vh] overflow-y-auto pr-1"></div>
+        `;
+        sidebar.appendChild(panel);
+    }
+
+    confidencePanel = panel;
+    confidenceListElement = panel.querySelector('#confidenceList');
+    confidenceSummaryElement = panel.querySelector('#confidenceSummary');
+
+    const toggleBtn = document.getElementById('confidenceToggleBtn');
+    if (toggleBtn && !toggleBtn.dataset.bound) {
+        toggleBtn.dataset.bound = 'true';
+        toggleBtn.addEventListener('click', toggleConfidencePanel);
+    }
+
+    // Apply persisted visibility
+    setConfidencePanelVisible(confidencePanelVisible);
+}
+
+function renderConfidenceList() {
+    if (typeof document === 'undefined') return;
+    ensureConfidencePanel();
+    if (!confidenceListElement) return;
+
+    if (!confidencePanelVisible) return; // avoid extra work when hidden
+
+    const pool = (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
+        ? originalQuizCharacters
+        : (Array.isArray(quizCharacters) ? quizCharacters : []);
+
+    if (!pool.length) {
+        confidenceListElement.innerHTML = '<div class="text-xs text-gray-500">No words loaded yet.</div>';
+        if (confidenceSummaryElement) confidenceSummaryElement.textContent = '';
+        return;
+    }
+
+    const scored = pool.map(item => {
+        const stats = getSchedulerStats(item.char);
+        return {
+            item,
+            stats,
+            score: getConfidenceScore(item.char)
+        };
+    });
+
+    scored.sort((a, b) => a.score - b.score);
+    const scores = scored.map(s => s.score);
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const span = Math.max(0.0001, maxScore - minScore);
+
+    const rows = scored.map(entry => {
+        const { item, stats, score } = entry;
+        const served = stats.served || 0;
+        const correct = stats.correct || 0;
+        const accPct = served ? Math.round((correct / served) * 100) : 0;
+        const normalized = (score - minScore) / span;
+        const pct = Math.max(0, Math.min(100, Math.round(normalized * 100)));
+        const barColor = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
+        const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+
+        return `
+            <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-2xl font-semibold text-gray-900">${escapeHtml(item.char || '?')}</span>
+                    <div class="min-w-0">
+                        ${pinyin ? `<div class="text-xs text-gray-600 truncate">${escapeHtml(pinyin)}</div>` : ''}
+                        <div class="text-[11px] text-gray-500">${served ? `${accPct}% · ${served} seen` : 'new'}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <div class="w-14 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full ${barColor}" style="width: ${pct}%;"></div>
+                    </div>
+                    <span class="text-[11px] font-semibold text-gray-700">${score.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    confidenceListElement.innerHTML = rows;
+    if (confidenceSummaryElement) {
+        confidenceSummaryElement.textContent = `${scored.length} words · lowest confidence at the top`;
+    }
 }
 
 function ensureConfettiStyles() {
@@ -929,6 +1089,7 @@ function refreshSrQueue(regenerateQuestion = false) {
     }
 
     updateFullscreenQueueDisplay();
+    renderConfidenceList();
 }
 
 function setSRAggressiveMode(enabled, options = {}) {
@@ -5358,6 +5519,7 @@ function initQuiz(charactersData, userConfig = {}) {
     quizCharacters = charactersData;
     config = userConfig || {};
 
+    loadConfidencePanelVisibility();
     loadComponentPreference();
     loadTimerSettings();
     loadSRData();
@@ -5433,6 +5595,7 @@ function initQuiz(charactersData, userConfig = {}) {
         : null;
     setPreviewQueueEnabled(config.enablePreviewQueue && previewElement);
     ensureSchedulerToolbar();
+    renderConfidenceList();
 
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
