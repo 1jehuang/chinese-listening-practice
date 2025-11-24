@@ -87,7 +87,9 @@ let schedulerStats = {}; // per-char session data
 let schedulerOutcomeRecordedChar = null;
 let schedulerOrderedIndex = 0;
 const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
-const BATCH_SIZE = 5;
+const BATCH_INITIAL_SIZE = 5;
+const BATCH_COMBINED_SIZE = 10;
+const BATCH_TOAST_ID = 'batchModeToast';
 const BATCH_MASTER_MIN_STREAK = 2;
 const BATCH_MASTER_MIN_ACCURACY = 0.72;
 const BATCH_MASTER_MIN_SEEN = 3;
@@ -308,7 +310,7 @@ function getSchedulerModeLabel(mode = schedulerMode) {
         case SCHEDULER_MODES.WEIGHTED:
             return 'Confidence-weighted (recency + errors)';
         case SCHEDULER_MODES.BATCH_5:
-            return '5-card batches (master then rotate)';
+            return 'Batch sets (5 → 10 after full pass)';
         case SCHEDULER_MODES.ORDERED:
             return 'In order (top-to-bottom)';
         case SCHEDULER_MODES.RANDOM:
@@ -324,7 +326,7 @@ function getSchedulerModeDescription(mode = schedulerMode) {
         case SCHEDULER_MODES.WEIGHTED:
             return 'Scores cards by recency + mistakes; picks proportionally to need.';
         case SCHEDULER_MODES.BATCH_5:
-            return 'Work a random set of 5 until mastered, then move to a fresh unused set.';
+            return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
             return 'Walk through the list in defined order and wrap.';
         case SCHEDULER_MODES.RANDOM:
@@ -475,10 +477,39 @@ function getBatchMasteryProgress() {
     };
 }
 
-function selectBatchFromPool(pool, size = BATCH_SIZE) {
+function showBatchCompletionToast(setLabel, cycleNumber, setSize) {
+    if (typeof document === 'undefined') return;
+    const existing = document.getElementById(BATCH_TOAST_ID);
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = BATCH_TOAST_ID;
+    toast.className = 'command-palette-toast';
+    const cycleText = cycleNumber > 1 ? ` · cycle ${cycleNumber}` : '';
+    toast.innerHTML = `
+        <span class="font-semibold text-blue-900">Set ${setLabel} mastered</span>
+        <span class="text-gray-700 text-sm">${setSize}-card set${cycleText} complete. Loading the next set…</span>
+    `;
+
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('command-palette-toast-show'));
+
+    setTimeout(() => {
+        toast.classList.remove('command-palette-toast-show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2600);
+}
+
+function getCurrentBatchSize() {
+    const cycle = Number.isFinite(batchModeState?.cycleCount) ? batchModeState.cycleCount : 0;
+    return cycle > 0 ? BATCH_COMBINED_SIZE : BATCH_INITIAL_SIZE;
+}
+
+function selectBatchFromPool(pool, size) {
+    const targetSize = Number.isFinite(size) ? size : getCurrentBatchSize();
     if (!Array.isArray(pool) || !pool.length) return [];
     const shuffled = pool.slice().sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(size, shuffled.length));
+    return shuffled.slice(0, Math.min(targetSize, shuffled.length));
 }
 
 function startNewBatch() {
@@ -501,7 +532,8 @@ function startNewBatch() {
         pool = available.slice();
     }
 
-    const nextBatch = selectBatchFromPool(pool);
+    const batchSize = getCurrentBatchSize();
+    const nextBatch = selectBatchFromPool(pool, batchSize);
     if (!nextBatch.length) return;
 
     batchModeState.activeBatch = nextBatch.map(item => item.char);
@@ -550,6 +582,9 @@ function maybeAdvanceBatchAfterAnswer() {
         return;
     }
     if (progress.masteredCount === progress.total) {
+        const setLabel = Math.max(1, batchModeState.batchIndex || 1);
+        const cycleNumber = Math.max(1, (batchModeState.cycleCount || 0) + 1);
+        showBatchCompletionToast(setLabel, cycleNumber, progress.total);
         startNewBatch();
     } else {
         updateBatchStatusDisplay();
@@ -572,13 +607,15 @@ function updateBatchStatusDisplay() {
     const totalAvailable = Array.isArray(quizCharacters) ? quizCharacters.length : active.length;
     const usedCount = Array.isArray(batchModeState.usedChars) ? batchModeState.usedChars.length : 0;
     const remaining = Math.max(0, totalAvailable - usedCount);
-    const cycleText = batchModeState.cycleCount > 0 ? ` · cycle ${batchModeState.cycleCount + 1}` : '';
+    const cycleNumber = Math.max(1, (batchModeState.cycleCount || 0) + 1);
+    const cycleLabel = `cycle ${cycleNumber}`;
     const setLabel = Math.max(1, batchModeState.batchIndex || 1);
+    const currentBatchSize = getCurrentBatchSize();
 
     statusEl.className = 'mt-1 text-xs text-blue-800';
 
     if (!active.length) {
-        statusEl.textContent = '5-card batches active: preparing a new set.';
+        statusEl.textContent = `Batch mode active: preparing a ${currentBatchSize}-card set.`;
         return;
     }
 
@@ -590,7 +627,7 @@ function updateBatchStatusDisplay() {
 
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-500">Batch Mode</div>
-        <div class="text-sm text-blue-900">Set ${setLabel}${cycleText}: ${charBadges}</div>
+        <div class="text-sm text-blue-900">Set ${setLabel} · ${cycleLabel} · ${currentBatchSize}-card set: ${charBadges}</div>
         <div class="text-[11px] text-blue-800">${masteredCount}/${active.length} mastered · ${remaining} unused left</div>
     `;
 }
