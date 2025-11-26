@@ -4424,7 +4424,9 @@ function submitDrawing() {
     // Play submit sound
     playSubmitSound();
 
-    const correct = recognized === currentQuestion.char;
+    const normalizedRecognized = normalizeDrawAnswer(recognized);
+    const normalizedTarget = normalizeDrawAnswer(currentQuestion.char);
+    const correct = normalizedRecognized === normalizedTarget;
     const isFirstAttempt = !answered;
 
     if (isFirstAttempt) {
@@ -4460,6 +4462,14 @@ function submitDrawing() {
     if (isFirstAttempt) {
         showDrawNextButton();
     }
+}
+
+function normalizeDrawAnswer(text = '') {
+    // Remove spaces, ellipses, dots, underscores, and dashes used as blanks/placeholders
+    return text
+        .replace(/\s+/g, '')
+        .replace(/[\.·•…⋯﹒＿_—-]/g, '')
+        .trim();
 }
 
 function revealDrawingAnswer() {
@@ -4881,7 +4891,9 @@ function submitFullscreenDrawing() {
         total++;
     }
 
-    const correct = recognized === currentQuestion.char;
+    const normalizedRecognized = normalizeDrawAnswer(recognized);
+    const normalizedTarget = normalizeDrawAnswer(currentQuestion.char);
+    const correct = normalizedRecognized === normalizedTarget;
 
     // Play sounds and update score
     if (correct) {
