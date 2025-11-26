@@ -3,56 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
     <title>Dictation – Lesson 7 (男女同住)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/textbook.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/spaced-repetition.js"></script>
+    <script src="js/quiz-engine.js"></script>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 md:p-8">
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
 
-    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8 mt-16 md:mt-0 textbook-card">
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
         <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 7 男女同住</h1>
-        <p class="text-center text-gray-600 mb-6">Use the textbook lines on pages 87–90 to practice listening and writing. Audio coming soon; for now, read aloud from the scans below or have a partner quiz you.</p>
+        <p class="text-center text-gray-600 mb-6">Listen first, then type the pinyin (or meaning). Study Mode lets you preview every line with quick audio playback.</p>
 
-        <div class="space-y-6">
-            <article>
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-lg font-semibold text-gray-800">Page 87</h2>
-                    <a class="text-blue-600 text-sm" href="images/lesson7/page87.jpg" target="_blank">Open full size ↗</a>
-                </div>
-                <div class="border border-gray-200 rounded-xl overflow-hidden">
-                    <img src="images/lesson7/page87.jpg" alt="Lesson 7 Page 87" class="textbook-img">
-                </div>
-            </article>
-            <article>
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-lg font-semibold text-gray-800">Page 88</h2>
-                    <a class="text-blue-600 text-sm" href="images/lesson7/page88.jpg" target="_blank">Open full size ↗</a>
-                </div>
-                <div class="border border-gray-200 rounded-xl overflow-hidden">
-                    <img src="images/lesson7/page88.jpg" alt="Lesson 7 Page 88" class="textbook-img">
-                </div>
-            </article>
-            <article>
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-lg font-semibold text-gray-800">Page 89</h2>
-                    <a class="text-blue-600 text-sm" href="images/lesson7/page89.jpg" target="_blank">Open full size ↗</a>
-                </div>
-                <div class="border border-gray-200 rounded-xl overflow-hidden">
-                    <img src="images/lesson7/page89.jpg" alt="Lesson 7 Page 89" class="textbook-img">
-                </div>
-            </article>
-            <article>
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-lg font-semibold text-gray-800">Page 90</h2>
-                    <a class="text-blue-600 text-sm" href="images/lesson7/page90.jpg" target="_blank">Open full size ↗</a>
-                </div>
-                <div class="border border-gray-200 rounded-xl overflow-hidden">
-                    <img src="images/lesson7/page90.jpg" alt="Lesson 7 Page 90" class="textbook-img">
-                </div>
-            </article>
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
+        </div>
+
+        <div id="questionDisplay" class="text-center"></div>
+        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
+        </div>
+
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+        <div id="fuzzyMode" class="hidden"></div>
+        <div id="strokeOrderMode" class="hidden"></div>
+        <div id="handwritingMode" class="hidden"></div>
+        <div id="drawCharMode" class="hidden"></div>
+
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+        </div>
+
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
         </div>
     </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '女：妈，从下个学期起，我要和几个同学住在学校附近的一个公寓里。我不想再住宿舍了。', pinyin: 'nǚ: mā, cóng xià.ge xuéqī qǐ, wǒ yào hé jǐ.ge tóngxué zhù zài xuéxiào fùjìn .de yí.ge gōngyù lǐ. wǒ bù xiǎng zài zhù sùshè .le', meaning: 'Daughter: Mom, starting next semester I’m going to live with a few classmates in an apartment near school. I don’t want to stay in the dorm anymore.' },
+            { char: '母：住宿舍不是很方便吗，为什么要搬出去呢？', pinyin: 'mǔ: zhù sùshè bú.shì hěn fāngbiàn .ma, wèi.shén.me yào bān chū.qù .ne', meaning: 'Mom: Isn’t the dorm very convenient? Why move out?' },
+            { char: '女：方便是方便，可是吃饭是个大问题。宿舍里没有厨房，一定得在学校食堂吃饭，又贵又不好吃，每天吃的真受不了。', pinyin: 'nǚ: fāngbiàn shì fāngbiàn, kě.shì chīfàn shì yí.ge dà wèntí. sùshè lǐ méi.yǒu chúfáng, yídìng děi zài xuéxiào shítáng chīfàn, yòu guì yòu bù hǎochī, měitiān chī .de zhēn shòu.bu.liǎo', meaning: 'Daughter: Convenient, yes, but eating is a big problem. There’s no kitchen in the dorm so we have to eat at the cafeteria—it’s expensive and not tasty; eating it every day is unbearable.' },
+            { char: '母：你真挑剔。功课这么忙，你哪儿有时间买菜做饭啊？', pinyin: 'mǔ: nǐ zhēn tiāo.ti. gōngkè zhè.me máng, nǐ nǎr yǒu shíjiān mǎi cài zuò fàn a', meaning: 'Mom: You’re so picky. With classes this busy, when will you have time to buy groceries and cook?' },
+            { char: '女：我们五个人轮流，每人只做一天晚饭，早饭、中饭就吃三明治，简单得很。', pinyin: 'nǚ: wǒ.men wǔ.ge rén lúnliú, měi rén zhǐ zuò yì tiān wǎnfàn, zǎofàn, zhōngfàn jiù chī sānmíngzhì, jiǎndān .de hěn', meaning: 'Daughter: The five of us will take turns; each person only cooks dinner one day. For breakfast and lunch we’ll just eat sandwiches—super simple.' },
+            { char: '母：说起来容易，做起来可就不简单了。', pinyin: 'mǔ: shuō.qi.lai róngyì, zuò.qi.lai kě jiù bù jiǎndān .le', meaning: 'Mom: Easy to say, not so easy to do.' },
+            { char: '女：妈，我们五个人决定每人带一样厨房用具到学校来，家里是不是有两个微波炉啊，那个小的还能不能给我？', pinyin: 'nǚ: mā, wǒ.men wǔ.ge rén juédìng měi rén dài yíyàng chúfáng yòngjù dào xuéxiào lái, jiā lǐ shì.bu.shì yǒu liǎng.ge wēibōlú .a, nà.ge xiǎo .de hái néng.bu.néng gěi wǒ', meaning: 'Daughter: Mom, we decided each person will bring one kitchen appliance to school. Don’t we have two microwaves at home? Could you let me take the small one?' },
+            { char: '母：可以，可以。可是那个微波炉好久没用了，不知道坏了没有。那个公寓里有没有地毯啊？', pinyin: 'mǔ: kě.yǐ, kě.yǐ. kě.shì nà.ge wēibōlú hǎo jiǔ méi yòng .le, bù zhīdao huài .le méi.yǒu. nà.ge gōngyù lǐ yǒu méi.yǒu dìtǎn .a', meaning: 'Mom: Sure, sure. But that microwave hasn’t been used in ages—I’m not sure if it still works. Does that apartment have any carpets?' },
+            { char: '女：我的屋子里有一张床，一张桌子，一个书架，两把椅子，还有一个台灯，就是没有地毯。', pinyin: 'nǚ: wǒ.de wū.zi lǐ yǒu yì zhāng chuáng, yì zhāng zhuō.zi, yí.ge shūjià, liǎng bǎ yǐ.zi, hái yǒu yí.ge táidēng, jiù.shì méi.yǒu dìtǎn', meaning: 'Daughter: My room has a bed, a desk, a bookshelf, two chairs, and a desk lamp—just no carpet.' },
+            { char: '母：没有地毯倒不要紧，哦，对了，跟你合住的那四个人都是谁啊？我都认识吗？', pinyin: 'mǔ: méi.yǒu dìtǎn dào bú yàojǐn, ó, duì.le, gēn nǐ hézhù .de nà sì.ge rén dōu shì shéi .a? wǒ dōu rènshi .ma', meaning: 'Mom: No carpet isn’t a big deal. Oh right—who are the four people living with you? Do I know them?' },
+            { char: '女：一个是Susan，一个是Mary，还有David跟…', pinyin: 'nǚ: yí.ge shì Susan, yí.ge shì Mary, hái.yǒu David gēn…', meaning: 'Daughter: One is Susan, one is Mary, and David and…' },
+            { char: '母：什么！有一个是男的？', pinyin: 'mǔ: shén.me! yǒu yí.ge shì nán.de', meaning: 'Mom: What! One of them is a man?' },
+            { char: '女：是啊，David也是二年级的学生，我们常在一起的，他人很好。', pinyin: 'nǚ: shì .a, David yě.shì èr niánjí .de xué.shēng, wǒ.men cháng zài yìqǐ .de, tā rén hěn hǎo', meaning: 'Daughter: Yup, David’s also a second-year student—we’re often together; he’s very nice.' },
+            { char: '母：男的女的住在一个公寓里不太好吧。那个公寓里有几个浴室厕所啊？', pinyin: 'mǔ: nán.de nǚ.de zhù zài yí.ge gōngyù lǐ bù tài hǎo .ba. nà.ge gōngyù lǐ yǒu jǐ.ge yùshì cèsuǒ .a', meaning: 'Mom: Men and women living in one apartment doesn’t seem great. How many bathrooms are there?' },
+            { char: '女：只有一个。', pinyin: 'nǚ: zhǐ yǒu yí.ge', meaning: 'Daughter: Only one.' },
+            { char: '母：怎么男的女的合用一个厕所啊？我想你最好再考虑考虑要不要跟他们住在一起。', pinyin: 'mǔ: zěn.me nán.de nǚ.de héyòng yí.ge cèsuǒ .a? wǒ xiǎng nǐ zuìhǎo zài kǎolǜ kǎolǜ yào bù yào gēn tā.men zhù zài yìqǐ', meaning: 'Mom: How can men and women share one bathroom? I think you’d better reconsider living with them.' },
+            { char: '女：这有什么关系呢？学校的宿舍也是男女同住一层楼的，也有合用厕所的。妈，明天还有考试呢，不跟您多说了。', pinyin: 'nǚ: zhè yǒu shén.me guān.xì .ne? xuéxiào .de sùshè yě.shì nán.nǚ tóng zhù yì céng lóu .de, yě yǒu héyòng cèsuǒ .de. mā, míngtiān hái yǒu kǎoshì .ne, bù gēn nín duō shuō .le', meaning: 'Daughter: What’s the big deal? The school dorms also have men and women on the same floor and shared bathrooms. Mom, I still have a test tomorrow, so I’ll stop here.' },
+            { char: '母：好吧，好吧。', pinyin: 'mǔ: hǎo.ba, hǎo.ba', meaning: 'Mom: Fine, fine.' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-meaning',
+            commandPaletteItems: paletteItems
+        });
+    </script>
 </body>
 </html>

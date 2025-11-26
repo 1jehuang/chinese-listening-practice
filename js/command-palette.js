@@ -342,6 +342,11 @@ function initCommandPalette(config = []) {
         return `<span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded border ${badge.class}">${badge.text}</span>`;
     }
 
+    function getScopeBadge(item) {
+        if (!item || !item.scope) return '';
+        return `<span class="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">${item.scope}</span>`;
+    }
+
     function renderResults(items) {
         filteredItems = items;
         if (!filteredItems.length) {
@@ -362,6 +367,7 @@ function initCommandPalette(config = []) {
                 ? `<span class="inline-flex items-center gap-1 text-xs font-mono font-semibold text-gray-600 bg-gray-100 border border-gray-300 rounded px-2 py-1 ml-2">${item.shortcut}</span>`
                 : '';
             const typeBadge = getTypeBadge(item);
+            const scopeBadge = getScopeBadge(item);
             const isSelected = index === 0;
             return `
                 <div class="palette-item px-5 py-3.5 cursor-pointer transition-all duration-150 flex items-start gap-3 border-l-4 ${isSelected ? 'bg-blue-50 border-blue-500' : 'border-transparent hover:bg-gray-50 hover:border-gray-300'}"
@@ -370,6 +376,7 @@ function initCommandPalette(config = []) {
                         <div class="flex items-center gap-2 mb-1">
                             <div class="font-semibold text-gray-900 text-base">${item.name}</div>
                             ${typeBadge}
+                            ${scopeBadge}
                         </div>
                         <div class="text-sm text-gray-600 leading-relaxed">${description}</div>
                     </div>
@@ -705,7 +712,8 @@ function initCommandPalette(config = []) {
                 available: () => {
                     const input = document.getElementById('answerInput');
                     return Boolean(input && input.offsetParent !== null);
-                }
+                },
+                scope: 'This page only'
             });
 
             actions.push({
@@ -723,7 +731,8 @@ function initCommandPalette(config = []) {
                 available: () => {
                     const input = document.getElementById('answerInput');
                     return Boolean(input && input.offsetParent !== null && input.value);
-                }
+                },
+                scope: 'This page only'
             });
         }
 
@@ -735,7 +744,8 @@ function initCommandPalette(config = []) {
                 keywords: 'submit check grade answer enter',
                 shortcut: 'Enter',
                 action: () => window.checkAnswer(),
-                available: () => typeof window.checkAnswer === 'function'
+                available: () => typeof window.checkAnswer === 'function',
+                scope: 'This page only'
             });
         }
 
@@ -746,7 +756,8 @@ function initCommandPalette(config = []) {
                 description: 'Move on to the next prompt immediately',
                 keywords: 'skip next question new prompt',
                 shortcut: 'Ctrl+J',
-                action: () => window.generateQuestion()
+                action: () => window.generateQuestion(),
+                scope: 'This page only'
             });
         }
 
@@ -763,7 +774,8 @@ function initCommandPalette(config = []) {
                     if (btn) btn.click();
                 }
             },
-            available: () => typeof window.currentAudioPlayFunc === 'function' || Boolean(document.getElementById('playAudioBtn'))
+            available: () => typeof window.currentAudioPlayFunc === 'function' || Boolean(document.getElementById('playAudioBtn')),
+            scope: 'This page only'
         });
 
         if (typeof window.clearCanvas === 'function') {
@@ -773,7 +785,8 @@ function initCommandPalette(config = []) {
                 description: 'Erase your strokes in draw mode',
                 keywords: 'clear drawing canvas erase handwriting',
                 action: () => window.clearCanvas(),
-                available: () => typeof window.clearCanvas === 'function' && window.mode === 'draw-char'
+                available: () => typeof window.clearCanvas === 'function' && window.mode === 'draw-char',
+                scope: 'Draw mode only'
             });
         }
 
@@ -784,7 +797,8 @@ function initCommandPalette(config = []) {
                 description: 'Send your handwriting to recognizer',
                 keywords: 'submit drawing handwriting check ocr',
                 action: () => window.submitDrawing(),
-                available: () => typeof window.submitDrawing === 'function' && window.mode === 'draw-char'
+                available: () => typeof window.submitDrawing === 'function' && window.mode === 'draw-char',
+                scope: 'Draw mode only'
             });
         }
 
@@ -795,7 +809,8 @@ function initCommandPalette(config = []) {
                 description: 'Show the correct character for draw mode',
                 keywords: 'reveal answer drawing handwriting show',
                 action: () => window.revealDrawingAnswer(),
-                available: () => typeof window.revealDrawingAnswer === 'function' && window.mode === 'draw-char'
+                available: () => typeof window.revealDrawingAnswer === 'function' && window.mode === 'draw-char',
+                scope: 'Draw mode only'
             });
         }
 
@@ -812,7 +827,8 @@ function initCommandPalette(config = []) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 },
-                available: () => Boolean(document.getElementById('studyList'))
+                available: () => Boolean(document.getElementById('studyList')),
+                scope: 'This page only'
             });
         }
 
@@ -829,17 +845,18 @@ function initCommandPalette(config = []) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 },
-                available: () => Boolean(document.getElementById('stats'))
+                available: () => Boolean(document.getElementById('stats')),
+                scope: 'This page only'
             });
         }
 
         actions.push({
             name: 'Reload Page',
             type: 'action',
-            description: 'Refresh the current page',
-            keywords: 'reload refresh restart reset',
-            shortcut: 'Ctrl+R',
-            action: () => window.location.reload()
+                description: 'Refresh the current page',
+                keywords: 'reload refresh restart reset',
+                shortcut: 'Ctrl+R',
+                action: () => window.location.reload()
         });
 
         const seenLabels = new Set();
@@ -861,7 +878,8 @@ function initCommandPalette(config = []) {
                 description: `Move the cursor to “${normalizedLabel}”`,
                 keywords: `focus ${normalizedLabel} input field text bar`,
                 action: () => focusElement(element),
-                available: () => element.isConnected && isElementVisible(element)
+                available: () => element.isConnected && isElementVisible(element),
+                scope: 'This page only'
             });
         });
 
