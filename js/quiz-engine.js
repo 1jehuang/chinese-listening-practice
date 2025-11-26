@@ -1368,7 +1368,6 @@ function ensureSchedulerToolbar() {
                 <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
                 <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
                 <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
-                <button id="schedulerBatchResetBtn" type="button" class="px-3 py-2 rounded-lg border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition">Reset 5-Card Sets</button>
             </div>
         `;
         container.insertBefore(bar, question);
@@ -1378,7 +1377,6 @@ function ensureSchedulerToolbar() {
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
     const adaptiveBtn = document.getElementById('schedulerAdaptiveBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
-    const batchResetBtn = document.getElementById('schedulerBatchResetBtn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
     if (randomBtn && !randomBtn.dataset.bound) {
@@ -1396,21 +1394,6 @@ function ensureSchedulerToolbar() {
     if (batchBtn && !batchBtn.dataset.bound) {
         batchBtn.dataset.bound = 'true';
         batchBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_5);
-    }
-    if (batchResetBtn && !batchResetBtn.dataset.bound) {
-        batchResetBtn.dataset.bound = 'true';
-        batchResetBtn.onclick = () => {
-            resetBatchState();
-            if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
-                setSchedulerMode(SCHEDULER_MODES.BATCH_5);
-            } else {
-                startNewBatch();
-                updateBatchStatusDisplay();
-                if (typeof generateQuestion === 'function') {
-                    generateQuestion();
-                }
-            }
-        };
     }
     if (orderedBtn && !orderedBtn.dataset.bound) {
         orderedBtn.dataset.bound = 'true';
