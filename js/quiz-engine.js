@@ -95,6 +95,15 @@ const BATCH_MASTER_MIN_STREAK = 2;
 const BATCH_MASTER_MIN_ACCURACY = 0.72;
 const BATCH_MASTER_MIN_SEEN = 3;
 const CONFIDENCE_GOAL = 5; // target confidence to celebrate across all words
+const BATCH_SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 12; // reset batch runs after 12h
+const BATCH_DEFAULT_STATE = {
+    activeBatch: [],
+    usedChars: [],
+    batchIndex: 0,
+    cycleCount: 0,
+    seenInBatch: [],
+    lastStartedAt: 0
+};
 let batchStateKey = '';
 let batchModeState = {
     activeBatch: [],
@@ -463,8 +472,7 @@ function getBatchStorageKey() {
 }
 
 function loadBatchState() {
-    const defaults = { activeBatch: [], usedChars: [], batchIndex: 0, cycleCount: 0, seenInBatch: [] };
-    batchModeState = { ...defaults };
+    batchModeState = { ...BATCH_DEFAULT_STATE };
     const key = getBatchStorageKey();
     try {
         const raw = localStorage.getItem(key);
@@ -476,6 +484,7 @@ function loadBatchState() {
                 batchModeState.batchIndex = Number.isFinite(parsed.batchIndex) ? parsed.batchIndex : 0;
                 batchModeState.cycleCount = Number.isFinite(parsed.cycleCount) ? parsed.cycleCount : 0;
                 batchModeState.seenInBatch = Array.isArray(parsed.seenInBatch) ? parsed.seenInBatch.filter(Boolean) : [];
+                batchModeState.lastStartedAt = Number.isFinite(parsed.lastStartedAt) ? parsed.lastStartedAt : 0;
             }
         }
     } catch (e) {
@@ -485,6 +494,7 @@ function loadBatchState() {
     batchModeState.activeBatch = Array.from(new Set(batchModeState.activeBatch));
     batchModeState.usedChars = Array.from(new Set(batchModeState.usedChars));
     batchModeState.seenInBatch = Array.from(new Set(batchModeState.seenInBatch));
+    maybeResetStaleBatchState();
 }
 
 function saveBatchState() {
@@ -493,6 +503,24 @@ function saveBatchState() {
         localStorage.setItem(key, JSON.stringify(batchModeState));
     } catch (e) {
         console.warn('Failed to save batch mode state', e);
+    }
+}
+
+function resetBatchState(options = {}) {
+    batchModeState = { ...BATCH_DEFAULT_STATE };
+    saveBatchState();
+    if (options.refresh !== false) {
+        previewQueue = [];
+        updatePreviewDisplay();
+        updateBatchStatusDisplay();
+    }
+}
+
+function maybeResetStaleBatchState() {
+    const last = Number.isFinite(batchModeState.lastStartedAt) ? batchModeState.lastStartedAt : 0;
+    const age = Date.now() - last;
+    if (!last || age > BATCH_SESSION_MAX_AGE_MS) {
+        resetBatchState({ refresh: false });
     }
 }
 
@@ -1071,6 +1099,7 @@ function startNewBatch() {
     batchModeState.usedChars = Array.from(usedSet);
     batchModeState.batchIndex = Math.max(1, (batchModeState.batchIndex || 0) + 1);
     batchModeState.seenInBatch = [];
+    batchModeState.lastStartedAt = Date.now();
     saveBatchState();
 
     previewQueue = [];
@@ -1222,8 +1251,12 @@ function updateAdaptiveStatusDisplay() {
 
 function setSchedulerMode(mode) {
     if (!Object.values(SCHEDULER_MODES).includes(mode)) return;
+    const switchingToBatch = mode === SCHEDULER_MODES.BATCH_5 && schedulerMode !== SCHEDULER_MODES.BATCH_5;
     schedulerMode = mode;
     saveSchedulerMode(mode);
+    if (switchingToBatch) {
+        resetBatchState({ refresh: false });
+    }
     updateSchedulerToolbar();
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         batchModeState.activeBatch = [];
@@ -1335,6 +1368,7 @@ function ensureSchedulerToolbar() {
                 <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
                 <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
                 <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
+                <button id="schedulerBatchResetBtn" type="button" class="px-3 py-2 rounded-lg border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition">Reset 5-Card Sets</button>
             </div>
         `;
         container.insertBefore(bar, question);
@@ -1344,6 +1378,7 @@ function ensureSchedulerToolbar() {
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
     const adaptiveBtn = document.getElementById('schedulerAdaptiveBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
+    const batchResetBtn = document.getElementById('schedulerBatchResetBtn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
     if (randomBtn && !randomBtn.dataset.bound) {
@@ -1361,6 +1396,21 @@ function ensureSchedulerToolbar() {
     if (batchBtn && !batchBtn.dataset.bound) {
         batchBtn.dataset.bound = 'true';
         batchBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_5);
+    }
+    if (batchResetBtn && !batchResetBtn.dataset.bound) {
+        batchResetBtn.dataset.bound = 'true';
+        batchResetBtn.onclick = () => {
+            resetBatchState();
+            if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+                setSchedulerMode(SCHEDULER_MODES.BATCH_5);
+            } else {
+                startNewBatch();
+                updateBatchStatusDisplay();
+                if (typeof generateQuestion === 'function') {
+                    generateQuestion();
+                }
+            }
+        };
     }
     if (orderedBtn && !orderedBtn.dataset.bound) {
         orderedBtn.dataset.bound = 'true';
@@ -5175,18 +5225,6 @@ function ensureDrawModeLayout() {
 
     drawCharMode.innerHTML = `
         <div class="space-y-4">
-            <div id="drawSrPanel" class="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
-                <div class="space-y-1">
-                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Spaced Repetition</div>
-                    <div id="drawSrStatus" class="text-sm font-semibold text-gray-700">Spaced repetition is off (showing all cards)</div>
-                    <div id="drawSrCardState" class="text-xs text-gray-600">Enable SR to see drawing card scheduling.</div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button id="drawSrToggleBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Toggle SR</button>
-                    <button id="drawAggressiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Aggressive SR</button>
-                    <button id="drawSrStatsBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">SR Stats</button>
-                </div>
-            </div>
             <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col lg:flex-row gap-4">
                 <div class="flex flex-col gap-3 text-center lg:text-left w-full lg:w-[220px]">
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
@@ -5241,20 +5279,6 @@ function ensureFullscreenDrawLayout() {
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
                     <div id="fullscreenOcrResult" class="text-7xl font-bold text-blue-600 min-h-[100px]">&nbsp;</div>
                     <p class="text-xs text-gray-500">Top guess updates automatically while you draw.</p>
-                    <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 space-y-2">
-                        <div class="text-xs uppercase tracking-[0.35em] text-blue-700">Spaced Repetition</div>
-                        <div id="fullscreenSrStatus" class="text-sm font-semibold text-blue-900">SR off</div>
-                        <div id="fullscreenSrCardState" class="text-xs text-blue-800">Enable SR to see schedule.</div>
-                        <div class="flex flex-wrap gap-2 pt-1">
-                            <button id="fullscreenSrToggleBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">Toggle SR</button>
-                            <button id="fullscreenAggressiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-red-400 hover:text-red-700 transition">Aggressive SR</button>
-                            <button id="fullscreenSrStatsBtn" type="button" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 font-semibold hover:border-blue-400 hover:text-blue-800 transition">SR Stats</button>
-                        </div>
-                        <div class="mt-2">
-                            <div class="text-[10px] uppercase tracking-[0.35em] text-blue-500 mb-1">All Items (SR Queue Order)</div>
-                            <ul id="fullscreenSrQueue" class="space-y-1 max-h-72 overflow-auto pr-1"></ul>
-                        </div>
-                    </div>
                 </div>
                 <div class="flex-1 flex flex-col items-center justify-center bg-gray-100 p-4 gap-3 min-h-0">
                     <div class="w-full max-w-4xl flex-1 flex items-center justify-center min-h-0">
@@ -5664,7 +5688,8 @@ function initQuizCommandPalette() {
                 action: () => {
                     togglePreviewQueue();
                 },
-                available: () => Boolean(previewElement)
+                available: () => Boolean(previewElement),
+                scope: 'This page only'
             });
         }
 
@@ -5676,7 +5701,8 @@ function initQuizCommandPalette() {
             action: () => {
                 toggleToneCycler();
             },
-            available: () => Boolean(answerInput)
+            available: () => Boolean(answerInput),
+            scope: 'Typing modes'
         });
 
         actions.push({
@@ -5687,7 +5713,8 @@ function initQuizCommandPalette() {
             action: () => {
                 toggleComponentBreakdownVisibility();
             },
-            available: () => Boolean(componentBreakdown || document.querySelector('.meaning-question-layout'))
+            available: () => Boolean(componentBreakdown || document.querySelector('.meaning-question-layout')),
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5696,7 +5723,8 @@ function initQuizCommandPalette() {
             description: 'Cycle forward through the available quiz modes',
             keywords: 'mode next cycle forward',
             action: () => cycleQuizMode(1),
-            available: () => document.querySelectorAll('.mode-btn').length > 1
+            available: () => document.querySelectorAll('.mode-btn').length > 1,
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5705,7 +5733,8 @@ function initQuizCommandPalette() {
             description: 'Go back to the previous quiz mode',
             keywords: 'mode previous back cycle',
             action: () => cycleQuizMode(-1),
-            available: () => document.querySelectorAll('.mode-btn').length > 1
+            available: () => document.querySelectorAll('.mode-btn').length > 1,
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5718,7 +5747,8 @@ function initQuizCommandPalette() {
                     copyToClipboard(window.currentQuestion.char);
                 }
             },
-            available: () => Boolean(window.currentQuestion?.char)
+            available: () => Boolean(window.currentQuestion?.char),
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5731,7 +5761,8 @@ function initQuizCommandPalette() {
                     copyToClipboard(`${window.currentQuestion.char} – ${window.currentQuestion.pinyin}`);
                 }
             },
-            available: () => Boolean(window.currentQuestion?.char && window.currentQuestion?.pinyin)
+            available: () => Boolean(window.currentQuestion?.char && window.currentQuestion?.pinyin),
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5746,7 +5777,8 @@ function initQuizCommandPalette() {
                     copyToClipboard(prompt);
                 }
             },
-            available: () => Boolean(getCurrentPromptText())
+            available: () => Boolean(getCurrentPromptText()),
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5760,7 +5792,8 @@ function initQuizCommandPalette() {
                     window.playPinyinAudio(firstPinyin, window.currentQuestion.char);
                 }
             },
-            available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function'
+            available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function',
+            scope: 'This page only'
         });
 
         actions.push({
@@ -5839,7 +5872,8 @@ function initQuizCommandPalette() {
             description: 'Skip the current batch and load a fresh set immediately',
             keywords: 'batch next set new five cards skip group rotate',
             action: () => advanceBatchSetNow(),
-            available: () => schedulerMode === SCHEDULER_MODES.BATCH_5
+            available: () => schedulerMode === SCHEDULER_MODES.BATCH_5,
+            scope: '5-card sets only'
         });
         actions.push({
             name: 'Refresh Adaptive Deck (5-card)',
@@ -5847,7 +5881,8 @@ function initQuizCommandPalette() {
             description: 'Re-evaluate graduation, refill the 5-card lane now.',
             keywords: 'adaptive refresh five card lane swap graduate',
             action: () => refreshAdaptiveDeckNow(true),
-            available: () => schedulerMode === SCHEDULER_MODES.ADAPTIVE_5
+            available: () => schedulerMode === SCHEDULER_MODES.ADAPTIVE_5,
+            scope: 'Adaptive 5 only'
         });
         actions.push({
             name: 'Next Item: In Order',
