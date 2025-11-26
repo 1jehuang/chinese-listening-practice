@@ -1428,6 +1428,19 @@ function updateSchedulerToolbar() {
 
     updateBatchStatusDisplay();
     updateAdaptiveStatusDisplay();
+    updateFullscreenNextSetButton();
+}
+
+function updateFullscreenNextSetButton() {
+    const btn = document.getElementById('fullscreenNextSetBtn');
+    if (!btn) return;
+
+    const inBatchMode = schedulerMode === SCHEDULER_MODES.BATCH_5;
+    btn.disabled = !inBatchMode;
+    btn.className = inBatchMode
+        ? 'px-4 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition'
+        : 'px-4 py-2 rounded-xl border border-gray-200 text-gray-400 font-semibold bg-gray-50 cursor-not-allowed transition';
+    btn.title = inBatchMode ? 'Load a fresh 5-card set now' : 'Switch to 5-Card Sets to use this';
 }
 
 function refreshSrQueue(regenerateQuestion = false) {
@@ -4577,6 +4590,7 @@ function enterFullscreenDrawing() {
     const submitBtn = document.getElementById('fullscreenSubmitBtn');
     const showAnswerBtn = document.getElementById('fullscreenShowAnswerBtn');
     const nextBtn = document.getElementById('fullscreenNextBtn');
+    const nextSetBtn = document.getElementById('fullscreenNextSetBtn');
     const exitBtn = document.getElementById('exitFullscreenBtn');
     const srToggleBtn = document.getElementById('fullscreenSrToggleBtn');
     const srStatsBtn = document.getElementById('fullscreenSrStatsBtn');
@@ -4588,6 +4602,17 @@ function enterFullscreenDrawing() {
     if (submitBtn) submitBtn.onclick = submitFullscreenDrawing;
     if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
     if (nextBtn) nextBtn.onclick = nextFullscreenQuestion;
+    if (nextSetBtn && !nextSetBtn.dataset.bound) {
+        nextSetBtn.dataset.bound = 'true';
+        nextSetBtn.onclick = () => {
+            if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+                setSchedulerMode(SCHEDULER_MODES.BATCH_5);
+            }
+            advanceBatchSetNow();
+            updateFullscreenQueueDisplay();
+            updateSchedulerToolbar();
+        };
+    }
     if (exitBtn) exitBtn.onclick = exitFullscreenDrawing;
     if (srToggleBtn && !srToggleBtn.dataset.bound) {
         srToggleBtn.dataset.bound = 'true';
@@ -4626,6 +4651,9 @@ function enterFullscreenDrawing() {
         const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
         playPinyinAudio(firstPinyin, currentQuestion.char);
     }
+
+    // Keep next-set control state in sync when entering fullscreen
+    updateFullscreenNextSetButton();
 }
 
 function exitFullscreenDrawing() {
@@ -5277,6 +5305,7 @@ function ensureFullscreenDrawLayout() {
                     <button id="fullscreenClearBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Clear</button>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <button id="fullscreenNextSetBtn" type="button" class="px-4 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition">Next Set</button>
                     <button id="fullscreenShowAnswerBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Show Answer</button>
                     <button id="fullscreenSubmitBtn" type="button" class="px-4 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition">Submit</button>
                     <button id="fullscreenNextBtn" type="button" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-500 transition">Next</button>
