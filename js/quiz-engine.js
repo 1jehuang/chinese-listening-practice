@@ -2363,9 +2363,11 @@ function generateQuestion() {
         strokeOrderMode.style.display = 'block';
         initStrokeOrder();
     } else if (mode === 'handwriting' && handwritingMode) {
-        const charCount = currentQuestion.char.length;
+        const cleanChars = stripPlaceholderChars(currentQuestion.char);
+        const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
+        const charCount = cleanChars.length || currentQuestion.char.length;
         const charText = charCount > 1 ? `Practice ${charCount} characters: ` : 'Practice: ';
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">${charText}${currentQuestion.pinyin}</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">${charText}${displayPinyin}</div>`;
         handwritingMode.style.display = 'block';
         initHandwriting();
     } else if (mode === 'draw-char' && drawCharMode) {
@@ -3873,8 +3875,9 @@ function initHandwriting() {
     writerDiv.innerHTML = '';
     handwritingAnswerShown = false; // Reset answer shown state for new question
 
-    // Create HanziWriter instances for all characters
-    const chars = currentQuestion.char.split('');
+    // Create HanziWriter instances for all characters (skip placeholders like … or _)
+    const chars = stripPlaceholderChars(currentQuestion.char).split('');
+    if (!chars.length) return;
     const writers = [];
 
     // Calculate available width dynamically to ensure characters fit on screen
@@ -3929,7 +3932,7 @@ function initHandwriting() {
 
     // Split pinyin into individual syllables for each character
     // Handle formats like "shàngkè", "shàng kè", "shàng.kè", etc.
-    const fullPinyin = currentQuestion.pinyin.split('/')[0].trim(); // Get first pinyin variant
+    const fullPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
     const pinyinSyllables = typeof splitPinyinSyllables === 'function' 
         ? splitPinyinSyllables(fullPinyin)
         : fullPinyin.split(/[.\s]+/).filter(p => p);
@@ -3962,7 +3965,9 @@ function initHandwriting() {
             }
         });
 
-        feedback.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+        const cleanChars = chars.join('');
+        const displayPinyin = fullPinyin;
+        feedback.textContent = `${cleanChars} (${displayPinyin}) - ${currentQuestion.meaning}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
         handwritingAnswerShown = true;
     };
@@ -4465,11 +4470,17 @@ function submitDrawing() {
 }
 
 function normalizeDrawAnswer(text = '') {
-    // Remove spaces, ellipses, dots, underscores, and dashes used as blanks/placeholders
-    return text
-        .replace(/\s+/g, '')
-        .replace(/[\.·•…⋯﹒＿_—-]/g, '')
-        .trim();
+    // Remove spaces and placeholder symbols used to indicate gaps
+    return stripPlaceholderChars(text).replace(/\s+/g, '').trim();
+}
+
+function stripPlaceholderChars(text = '') {
+    return text.replace(/[\.·•…⋯﹒＿_—-]/g, '');
+}
+
+function prettifyHandwritingPinyin(pinyin = '') {
+    // Remove placeholder dots/ellipsis and collapse whitespace for display
+    return pinyin.replace(/[\.·•…⋯﹒＿_—-]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function revealDrawingAnswer() {
