@@ -16,11 +16,14 @@
     <script src="js/quiz-engine.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
+    <style>
+        #pageRoot { transform-origin: top left; }
+    </style>
 </head>
-<body class="bg-white min-h-screen">
+<body class="bg-white min-h-screen overflow-hidden">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition text-sm z-50">← Home</a>
 
-    <div class="flex min-h-screen">
+    <div id="pageRoot" class="flex min-h-screen">
         <!-- Mode Selector Sidebar -->
         <div class="w-64 bg-transparent border-r border-gray-200 p-4 overflow-y-auto">
             <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
@@ -200,12 +203,34 @@
             { char: '简单', pinyin: 'jiǎndān', meaning: 'simple' }
         ];
 
-        initQuiz(characters, {
-            enablePreviewQueue: true,
-            previewQueueSize: 1,
-            previewElementId: 'upcomingCharacters',
-            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+    initQuiz(characters, {
+        enablePreviewQueue: true,
+        previewQueueSize: 1,
+        previewElementId: 'upcomingCharacters',
+        previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+    });
+
+    // Fit content to viewport by scaling down when necessary (no scaling up)
+    (function attachPageFit() {
+        const root = document.getElementById('pageRoot');
+        if (!root) return;
+
+        function applyFit() {
+            root.style.transform = 'scale(1)';
+            const contentW = root.scrollWidth;
+            const contentH = root.scrollHeight;
+            const availW = window.innerWidth - 8;
+            const availH = window.innerHeight - 8;
+            const scale = Math.min(1, availW / contentW, availH / contentH);
+            root.style.transform = `scale(${scale})`;
+        }
+
+        window.addEventListener('resize', applyFit);
+        window.addEventListener('load', () => {
+            applyFit();
+            setTimeout(applyFit, 120); // re-run after fonts/layout settle
         });
-    </script>
+    })();
+</script>
 </body>
 </html>
