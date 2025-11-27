@@ -3234,9 +3234,14 @@ function generateFuzzyMeaningOptions() {
 
     fuzzyInput.focus();
 
-    // Trigger fuzzy matching on prefilled value (from prefiring)
+    // Trigger fuzzy matching on prefilled value (from prefiring) and auto-submit
     if (fuzzyInput.value) {
         fuzzyInput.dispatchEvent(new Event('input'));
+        // Auto-submit the prefired answer
+        const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+        if (selected) {
+            selected.click();
+        }
     }
 
 }
@@ -3277,7 +3282,10 @@ function checkFuzzyAnswer(answer) {
             renderCharBreakdownSoon();
         }
         updateStats();
-        // Don't clear fuzzyInput - allow prefiring next answer during feedback period
+        // Clear input after submission - user can then type next answer during feedback period
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+        }
         scheduleNextQuestion(1500);
     } else {
         answered = false;
