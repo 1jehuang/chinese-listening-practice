@@ -141,6 +141,8 @@ const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
 const HIDE_MEANING_CHOICES_KEY = 'quiz_hide_meaning_choices';
 const CONFIDENCE_TRACKING_ENABLED_KEY = 'quiz_confidence_tracking_enabled';
 const CONFIDENCE_FORMULA_KEY = 'quiz_confidence_formula';
+const CONFIDENCE_RENDER_LIMIT = 150;          // cap list rendering to avoid huge DOM on big decks
+const CONFIDENCE_AUTO_HIDE_THRESHOLD = 400;   // default-hide tracker when deck exceeds this size
 let confidencePanel = null;
 let confidenceListElement = null;
 let confidenceSummaryElement = null;
@@ -964,6 +966,15 @@ function loadConfidencePanelVisibility() {
         const stored = localStorage.getItem(CONFIDENCE_PANEL_KEY);
         if (stored === 'false') {
             confidencePanelVisible = false;
+        } else if (stored === 'true') {
+            confidencePanelVisible = true;
+        } else {
+            const deckSize = Array.isArray(originalQuizCharacters)
+                ? originalQuizCharacters.length
+                : Array.isArray(quizCharacters)
+                    ? quizCharacters.length
+                    : 0;
+            confidencePanelVisible = deckSize <= CONFIDENCE_AUTO_HIDE_THRESHOLD;
         }
     } catch (e) {
         console.warn('Failed to load confidence panel visibility', e);
@@ -1154,14 +1165,17 @@ function renderConfidenceList() {
     });
 
     scored.sort((a, b) => a.score - b.score);
-    const scores = scored.map(s => s.score);
+    const totalCount = scored.length;
+    const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, totalCount);
+    const visible = scored.slice(0, renderCount);
+    const scores = visible.map(s => s.score);
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const span = Math.max(0.0001, maxScore - minScore);
     const skillLabel = getCurrentSkillKey();
     const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= goalThreshold);
 
-    const rows = scored.map(entry => {
+    const rows = visible.map(entry => {
         const { item, stats, score } = entry;
         const served = stats.served || 0;
         const correct = stats.correct || 0;
@@ -1209,7 +1223,10 @@ function renderConfidenceList() {
     if (confidenceSummaryElement) {
         const formulaLabel = isBKT ? 'BKT' : 'heuristic';
         const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
-        confidenceSummaryElement.textContent = `${scored.length} words · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
+        const scopeText = renderCount < totalCount
+            ? `Showing lowest ${renderCount}/${totalCount}`
+            : `${totalCount} words`;
+        confidenceSummaryElement.textContent = `${scopeText} · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
     }
 
     const goalBadge = document.getElementById('confidenceGoalBadge');
@@ -1614,7 +1631,7 @@ function ensureSchedulerToolbar() {
     if (!bar) {
         bar = document.createElement('div');
         bar.id = 'schedulerToolbar';
-        bar.className = 'mb-3 flex flex-wrap items-center justify-between gap-3 px-1';
+        bar.className = 'mb-3 flex flex-col items-center gap-2 px-1 text-center';
         bar.innerHTML = `
             <div class="flex flex-col items-center text-center flex-1 min-w-[220px]">
                 <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Selection Strategy</div>
@@ -1623,7 +1640,7 @@ function ensureSchedulerToolbar() {
                 <div id="batchModeStatus" class="hidden"></div>
                 <div id="adaptiveModeStatus" class="hidden"></div>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 justify-center">
                 <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
                 <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
                 <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
