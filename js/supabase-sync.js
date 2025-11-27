@@ -124,8 +124,8 @@ async function loadConfidenceFromSupabase() {
         const { data, error } = await supabaseClient
             .from('confidence_scores')
             .select('*')
+            .eq('user_id', currentUserId)
             .eq('page_key', pageKey);
-        // RLS automatically filters by user_id
 
         if (error) {
             console.warn('Failed to load confidence scores:', error);
@@ -160,15 +160,24 @@ async function mergeSupabaseStats() {
             wrong: Math.max(local.wrong || 0, row.wrong || 0),
             streak: row.streak || local.streak || 0, // prefer remote streak
             lastWrong: Math.max(local.lastWrong || 0, row.last_wrong || 0) || null,
-            lastServed: Math.max(local.lastServed || 0, row.last_served || 0) || null
+            lastServed: Math.max(local.lastServed || 0, row.last_served || 0) || null,
+            lastCorrect: local.lastCorrect || 0
         };
     }
 
     console.log(`Merged ${data.length} confidence scores from Supabase`);
 
+    // Save merged data back to localStorage
+    if (typeof saveSchedulerStats === 'function') {
+        saveSchedulerStats();
+    }
+
     // Refresh confidence panel if it exists
     if (typeof updateConfidenceList === 'function') {
         updateConfidenceList();
+    }
+    if (typeof renderConfidenceList === 'function') {
+        renderConfidenceList();
     }
 }
 

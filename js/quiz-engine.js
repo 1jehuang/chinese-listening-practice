@@ -83,7 +83,9 @@ const SCHEDULER_MODES = {
     ORDERED: 'ordered'
 };
 let schedulerMode = SCHEDULER_MODES.WEIGHTED;
-let schedulerStats = {}; // per-char-per-skill session data
+let schedulerStats = {}; // per-char-per-skill data (persisted to localStorage)
+let schedulerStatsKey = ''; // localStorage key for schedulerStats
+const SCHEDULER_STATS_KEY_PREFIX = 'quiz_scheduler_stats_';
 let schedulerOutcomeRecordedChar = null;
 let schedulerOrderedIndex = 0;
 const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
@@ -130,11 +132,13 @@ let adaptiveDeckState = {
 // Confidence sidebar state
 const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
 const HIDE_MEANING_CHOICES_KEY = 'quiz_hide_meaning_choices';
+const CONFIDENCE_TRACKING_ENABLED_KEY = 'quiz_confidence_tracking_enabled';
 let confidencePanel = null;
 let confidenceListElement = null;
 let confidenceSummaryElement = null;
 let confidencePanelVisible = true;
 let hideMeaningChoices = false;
+let confidenceTrackingEnabled = true;
 
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
@@ -387,6 +391,34 @@ function getCurrentSkillKey(customMode = mode) {
     return 'general';
 }
 
+function getSchedulerStatsPageKey() {
+    const path = window.location.pathname || '';
+    const pageName = path.substring(path.lastIndexOf('/') + 1).replace('.html', '') || 'home';
+    return SCHEDULER_STATS_KEY_PREFIX + pageName;
+}
+
+function loadSchedulerStats() {
+    try {
+        schedulerStatsKey = getSchedulerStatsPageKey();
+        const data = localStorage.getItem(schedulerStatsKey);
+        schedulerStats = data ? JSON.parse(data) : {};
+    } catch (e) {
+        console.warn('Failed to load scheduler stats', e);
+        schedulerStats = {};
+    }
+}
+
+function saveSchedulerStats() {
+    try {
+        if (!schedulerStatsKey) {
+            schedulerStatsKey = getSchedulerStatsPageKey();
+        }
+        localStorage.setItem(schedulerStatsKey, JSON.stringify(schedulerStats));
+    } catch (e) {
+        console.warn('Failed to save scheduler stats', e);
+    }
+}
+
 function getSchedulerStats(char, skillKey = getCurrentSkillKey()) {
     const key = `${char}::${skillKey}`;
     if (!schedulerStats[key]) {
@@ -405,10 +437,12 @@ function getSchedulerStats(char, skillKey = getCurrentSkillKey()) {
 
 function markSchedulerServed(question) {
     if (!question || !question.char) return;
+    if (!confidenceTrackingEnabled) return;
     const stats = getSchedulerStats(question.char);
     stats.served += 1;
     stats.lastServed = Date.now();
     schedulerOutcomeRecordedChar = null;
+    saveSchedulerStats();
     renderConfidenceList();
 
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
@@ -421,6 +455,7 @@ function markSchedulerServed(question) {
 
 function markSchedulerOutcome(correct) {
     if (!currentQuestion || !currentQuestion.char) return;
+    if (!confidenceTrackingEnabled) return;
     const char = currentQuestion.char;
     if (schedulerOutcomeRecordedChar === char) return;
     schedulerOutcomeRecordedChar = char;
@@ -435,6 +470,8 @@ function markSchedulerOutcome(correct) {
         stats.lastWrong = now;
         stats.streak = 0;
     }
+
+    saveSchedulerStats();
 
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         maybeAdvanceBatchAfterAnswer();
@@ -783,6 +820,48 @@ function loadConfidencePanelVisibility() {
     }
 }
 
+function loadConfidenceTrackingEnabled() {
+    try {
+        const stored = localStorage.getItem(CONFIDENCE_TRACKING_ENABLED_KEY);
+        // Default to enabled if not set
+        confidenceTrackingEnabled = stored === null || stored === 'true';
+    } catch (e) {
+        console.warn('Failed to load confidence tracking enabled', e);
+    }
+}
+
+function saveConfidenceTrackingEnabled() {
+    try {
+        localStorage.setItem(CONFIDENCE_TRACKING_ENABLED_KEY, confidenceTrackingEnabled.toString());
+    } catch (e) {
+        console.warn('Failed to save confidence tracking enabled', e);
+    }
+}
+
+function setConfidenceTrackingEnabled(enabled) {
+    confidenceTrackingEnabled = Boolean(enabled);
+    saveConfidenceTrackingEnabled();
+    updateConfidenceTrackingUI();
+}
+
+function toggleConfidenceTracking() {
+    setConfidenceTrackingEnabled(!confidenceTrackingEnabled);
+}
+
+function updateConfidenceTrackingUI() {
+    const liveLabel = document.getElementById('confidenceLiveLabel');
+    const trackingToggle = document.getElementById('confidenceTrackingToggle');
+    if (liveLabel) {
+        liveLabel.classList.toggle('text-gray-300', !confidenceTrackingEnabled);
+        liveLabel.classList.toggle('line-through', !confidenceTrackingEnabled);
+    }
+    if (trackingToggle) {
+        trackingToggle.textContent = confidenceTrackingEnabled ? 'On' : 'Off';
+        trackingToggle.classList.toggle('text-gray-400', !confidenceTrackingEnabled);
+        trackingToggle.classList.toggle('text-green-600', confidenceTrackingEnabled);
+    }
+}
+
 function loadHideMeaningChoices() {
     try {
         const stored = localStorage.getItem(HIDE_MEANING_CHOICES_KEY);
@@ -860,8 +939,11 @@ function ensureConfidencePanel() {
                     <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
                     <div id="confidenceGoalBadge" class="hidden inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">All ≥ ${CONFIDENCE_GOAL}</div>
                 </div>
-                <div class="flex items-center gap-1">
-                    <span class="text-[11px] text-gray-500">live</span>
+                <div class="flex flex-col items-end gap-1">
+                    <div class="flex items-center gap-1">
+                        <span id="confidenceLiveLabel" class="text-[11px] text-gray-500">live</span>
+                        <button id="confidenceTrackingToggle" type="button" class="text-[11px] font-semibold text-green-600 px-1 py-0.5 rounded hover:bg-gray-100" title="Toggle live tracking">On</button>
+                    </div>
                     <button id="confidenceToggleBtn" type="button" class="text-[11px] font-semibold text-blue-600 px-2 py-1 rounded hover:bg-blue-50 border border-transparent hover:border-blue-200" aria-pressed="true">Hide</button>
                 </div>
             </div>
@@ -881,8 +963,15 @@ function ensureConfidencePanel() {
         toggleBtn.addEventListener('click', toggleConfidencePanel);
     }
 
-    // Apply persisted visibility
+    const trackingToggle = document.getElementById('confidenceTrackingToggle');
+    if (trackingToggle && !trackingToggle.dataset.bound) {
+        trackingToggle.dataset.bound = 'true';
+        trackingToggle.addEventListener('click', toggleConfidenceTracking);
+    }
+
+    // Apply persisted visibility and tracking state
     setConfidencePanelVisible(confidencePanelVisible);
+    updateConfidenceTrackingUI();
 }
 
 function renderConfidenceList() {
@@ -6004,10 +6093,12 @@ function initQuiz(charactersData, userConfig = {}) {
     config = userConfig || {};
 
     loadConfidencePanelVisibility();
+    loadConfidenceTrackingEnabled();
     loadHideMeaningChoices();
     loadComponentPreference();
     loadTimerSettings();
     loadSRData();
+    loadSchedulerStats();
     loadSchedulerMode();
     ensureCharGlossesLoaded();
     loadBatchState();
