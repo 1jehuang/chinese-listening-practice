@@ -2028,6 +2028,33 @@ function reconcilePreviewQueue(pool = quizCharacters) {
         .slice(0, previewQueueSize);
 }
 
+function triggerCorrectFlash() {
+    const root = document.body;
+    if (!root) return;
+    root.classList.add('flash-correct');
+    if (correctFlashTimeout) clearTimeout(correctFlashTimeout);
+    correctFlashTimeout = setTimeout(() => {
+        root.classList.remove('flash-correct');
+        correctFlashTimeout = null;
+    }, 650);
+}
+
+function showCorrectToast(message = '✓ Correct!') {
+    let toast = document.getElementById('correctToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'correctToast';
+        toast.className = 'correct-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('visible');
+    if (correctToastTimeout) clearTimeout(correctToastTimeout);
+    correctToastTimeout = setTimeout(() => {
+        toast.classList.remove('visible');
+    }, 1200);
+}
+
 function ensurePreviewQueue() {
     if (!previewQueueEnabled || !previewElement) return;
     if (!Array.isArray(previewQueue)) {
@@ -3315,6 +3342,8 @@ function checkFuzzyAnswer(answer) {
         lastAnswerCorrect = correct;
 
         if (correct) {
+            triggerCorrectFlash();
+            showCorrectToast('✓ Great! Keep going');
             // Record the finished card on the left and advance
             previousQuestion = currentQuestion;
             previousQuestionResult = 'correct';
@@ -3449,6 +3478,8 @@ function checkMultipleChoice(answer) {
     if (correct) {
         score++;
         playCorrectSound();
+        triggerCorrectFlash();
+        showCorrectToast('✓ Nice!');
         feedback.textContent = `✓ Correct!`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         lastAnswerCorrect = true;
