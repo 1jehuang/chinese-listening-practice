@@ -19,6 +19,7 @@ let nextAnswerBuffer = ''; // carry typed text into the next question after show
 let previousQuestion = null;
 let previousQuestionResult = null; // 'correct' or 'incorrect'
 let upcomingQuestion = null;
+let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
@@ -2523,6 +2524,7 @@ function generateQuestion(options = {}) {
     feedback.textContent = '';
     hint.textContent = '';
     hint.className = 'text-center text-2xl font-semibold my-4';
+    threeColumnInlineFeedback = null;
     if (answerInput) {
         answerInput.value = prefillAnswer;
     }
@@ -3271,40 +3273,65 @@ function checkFuzzyAnswer(answer) {
 
     // For 3-column layout in char-to-meaning-type: immediately advance
     if (mode === 'char-to-meaning-type') {
-        // Store current as previous
-        previousQuestion = currentQuestion;
-        previousQuestionResult = correct ? 'correct' : 'incorrect';
-
-        // Move upcoming to current
-        if (upcomingQuestion) {
-            currentQuestion = upcomingQuestion;
-            window.currentQuestion = currentQuestion;
-            upcomingQuestion = null;
-        }
+        lastAnswerCorrect = correct;
 
         if (correct) {
+            // Record the finished card on the left and advance
+            previousQuestion = currentQuestion;
+            previousQuestionResult = 'correct';
+            threeColumnInlineFeedback = null;
+
             playCorrectSound();
             if (isFirstAttempt) {
                 score++;
                 markSchedulerOutcome(true);
             }
-        } else {
-            playWrongSound();
-            if (isFirstAttempt) {
-                markSchedulerOutcome(false);
+
+            updateStats();
+
+            // Move upcoming to current (pick fresh if none queued)
+            if (upcomingQuestion) {
+                currentQuestion = upcomingQuestion;
+                window.currentQuestion = currentQuestion;
+                upcomingQuestion = null;
+            } else {
+                currentQuestion = selectNextQuestion();
+                window.currentQuestion = currentQuestion;
             }
+
+            // Clear input and immediately show next question
+            if (fuzzyInput) {
+                fuzzyInput.value = '';
+            }
+
+            // Re-render with updated columns and generate new options
+            answered = false;
+            questionAttemptRecorded = false;
+            renderThreeColumnMeaningLayout();
+            generateFuzzyMeaningOptions();
+            feedback.textContent = '';
+            hint.textContent = '';
+            return;
         }
+
+        // Incorrect: stay on the same card and show inline feedback in the center column
+        playWrongSound();
+        if (isFirstAttempt) {
+            markSchedulerOutcome(false);
+        }
+
+        threeColumnInlineFeedback = {
+            message: `✗ Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`,
+            type: 'incorrect'
+        };
 
         updateStats();
 
-        // Clear input and immediately show next question
         if (fuzzyInput) {
             fuzzyInput.value = '';
+            setTimeout(() => fuzzyInput.focus(), 0);
         }
 
-        // Re-render with updated columns and generate new options
-        answered = false;
-        questionAttemptRecorded = false;
         renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
         feedback.textContent = '';
@@ -4018,31 +4045,54 @@ function renderThreeColumnMeaningLayout() {
     const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
     const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
                            previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
+    const prevResultIcon = previousQuestionResult === 'correct' ? '✓' :
+                           previousQuestionResult === 'incorrect' ? '✗' : '•';
+    const prevFeedbackText = previousQuestionResult === 'correct' ? 'Got it right' :
+                             previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
 
     const currentChar = escapeHtml(currentQuestion.char || '');
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
+    const inlineFeedback = threeColumnInlineFeedback;
+    const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
+
     questionDisplay.innerHTML = `
         <div class="three-column-meaning-layout">
-            <div class="column-previous ${prevResultClass}">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
                 ${previousQuestion ? `
-                    <div class="column-result-icon">${previousQuestionResult === 'correct' ? '✓' : '✗'}</div>
+                    <div class="column-feedback">
+                        <span class="column-result-icon">${prevResultIcon}</span>
+                        <span class="column-feedback-text">${prevFeedbackText}</span>
+                    </div>
                     <div class="column-char">${prevChar}</div>
                     <div class="column-pinyin">${prevPinyin}</div>
                     <div class="column-meaning">${prevMeaning}</div>
                 ` : `
-                    <div class="column-placeholder"></div>
+                    <div class="column-placeholder">Your last answer will appear here</div>
                 `}
             </div>
-            <div class="column-current">
-                <div class="column-char-large">${currentChar}</div>
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+                <div class="column-label">Now</div>
+                <div class="column-focus-ring">
+                    <div class="column-char-large">${currentChar}</div>
+                </div>
+                ${inlineFeedback ? `
+                    <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+                        ${inlineFeedbackMessage}
+                    </div>
+                ` : ''}
             </div>
-            <div class="column-upcoming">
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
                 ${upcomingQuestion ? `
-                    <div class="column-char">${upcomingChar}</div>
+                    <div class="column-ondeck">
+                        <div class="column-char">${upcomingChar}</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
                 ` : `
-                    <div class="column-placeholder"></div>
+                    <div class="column-placeholder">Next card is loading</div>
                 `}
             </div>
         </div>
