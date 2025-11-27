@@ -17,13 +17,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+<body class="bg-white min-h-screen p-4 md:p-8">
     <style>
         .quiz-shell {
-            max-width: 1200px;
-            width: 100%;
+            width: min(1280px, 100%);
             margin: 0 auto;
-            padding: 8px 6px 24px;
+            padding: 8px 12px 32px;
         }
         .quiz-header {
             display: flex;
@@ -64,7 +63,7 @@
         }
     </style>
 
-    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition text-sm">← Home</a>
 
     <div class="quiz-shell">
         <div class="quiz-header">
@@ -164,7 +163,7 @@
         <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
 
         <!-- Stats -->
-        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4">
             <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
             <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
         </div>
