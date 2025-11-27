@@ -768,7 +768,7 @@ function prepareAdaptiveForNextQuestion() {
     ensureAdaptiveDeck();
     updateAdaptiveStatusDisplay();
     if (previewQueueEnabled) {
-        previewQueue = [];
+        reconcilePreviewQueue();
         ensurePreviewQueue();
         updatePreviewDisplay();
     }
@@ -1822,11 +1822,26 @@ function isPreviewModeActive() {
     return true;
 }
 
+function reconcilePreviewQueue(pool = quizCharacters) {
+    if (!previewQueueEnabled) return;
+    if (!Array.isArray(previewQueue)) {
+        previewQueue = [];
+    }
+    const poolMap = new Map((Array.isArray(pool) ? pool : []).map(item => [item.char, item]));
+    // Preserve already-announced upcoming items when they still exist
+    previewQueue = previewQueue
+        .map(entry => poolMap.get(entry?.char))
+        .filter(Boolean)
+        .slice(0, previewQueueSize);
+}
+
 function ensurePreviewQueue() {
     if (!previewQueueEnabled || !previewElement) return;
     if (!Array.isArray(previewQueue)) {
         previewQueue = [];
     }
+    // Keep the existing "upcoming" items stable before topping up
+    reconcilePreviewQueue();
     while (previewQueue.length < previewQueueSize) {
         const excludeChars = previewQueue.map(item => item?.char).filter(Boolean);
         const candidate = selectNextQuestion(excludeChars);
@@ -1960,6 +1975,16 @@ function checkPinyinMatch(userAnswer, correct) {
     if (baseMatches && toneMatches) return true;
 
     return false;
+}
+
+// Normalize a pinyin string for strict but punctuation-agnostic comparison.
+// Keeps tone numbers (using convertPinyinToToneNumbers) so tone accuracy is still required,
+// but strips spaces, dots, commas, and other separators so variants like
+// "bān chū.qù", "ban1 chu1 qu4", and "ban1chu1qu4" compare equal.
+function normalizePinyinForChoice(pinyin) {
+    if (!pinyin) return '';
+    const asNumbers = convertPinyinToToneNumbers(pinyin.toLowerCase().trim());
+    return asNumbers.replace(PINYIN_STRIP_REGEX, '');
 }
 
 function normalizePinyin(pinyin) {
@@ -2877,15 +2902,25 @@ function generatePinyinOptions() {
     if (!options) return;
     options.innerHTML = '';
 
-    const currentPinyin = currentQuestion.pinyin.split('/')[0].trim();
-    const wrongOptions = [];
+    const currentVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+    const currentPinyin = currentVariants[0];
 
-    while (wrongOptions.length < 3) {
+    const wrongOptions = [];
+    const usedNormalized = new Set([normalizePinyinForChoice(currentPinyin)]);
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 500) {
+        safety++;
         const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        if (random.char === currentQuestion.char) continue;
+
         const randomPinyin = random.pinyin.split('/')[0].trim();
-        if (random.char !== currentQuestion.char && !wrongOptions.includes(randomPinyin)) {
-            wrongOptions.push(randomPinyin);
-        }
+        const normalizedRandom = normalizePinyinForChoice(randomPinyin);
+
+        if (usedNormalized.has(normalizedRandom)) continue;
+
+        wrongOptions.push(randomPinyin);
+        usedNormalized.add(normalizedRandom);
     }
 
     const allOptions = [...wrongOptions, currentPinyin];
@@ -2895,6 +2930,7 @@ function generatePinyinOptions() {
         const btn = document.createElement('button');
         btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
         btn.textContent = option;
+        btn.dataset.normalized = normalizePinyinForChoice(option);
         btn.onclick = () => checkMultipleChoice(option);
         options.appendChild(btn);
     });
@@ -3105,9 +3141,11 @@ function checkMultipleChoice(answer) {
     let correctAnswer = '';
 
     if (mode === 'char-to-pinyin-mc') {
-        const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
-        correct = pinyinOptions.includes(answer);
-        correctAnswer = currentQuestion.pinyin;
+        const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+        const normalizedAnswer = normalizePinyinForChoice(answer);
+        correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
+        // Show all accepted variants in the feedback to make fuzziness visible to the user
+        correctAnswer = pinyinOptions.join(' / ');
     } else if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
         correct = answer === currentQuestion.meaning;
         correctAnswer = currentQuestion.meaning;
@@ -5959,6 +5997,49 @@ function initQuizCommandPalette() {
             keywords: 'meaning choices hide show toggle multiple choice answers conceal options',
             action: () => toggleHideMeaningChoices(),
             available: () => true
+        });
+
+        // Confidence panel visibility controls
+        actions.push({
+            name: confidencePanelVisible ? 'Hide Confidence Tracker' : 'Show Confidence Tracker',
+            type: 'action',
+            description: confidencePanelVisible
+                ? 'Collapse the live confidence sidebar panel'
+                : 'Show the live confidence sidebar panel',
+            keywords: 'confidence tracker sidebar panel hide show live stats',
+            action: () => {
+                ensureConfidencePanel();
+                setConfidencePanelVisible(!confidencePanelVisible);
+            },
+            available: () => true,
+            scope: 'This page only'
+        });
+
+        // Explicit show/hide commands for voice/keyboard users
+        actions.push({
+            name: 'Show Confidence Tracker',
+            type: 'action',
+            description: 'Show the live confidence sidebar panel',
+            keywords: 'confidence tracker sidebar panel show live stats',
+            action: () => {
+                ensureConfidencePanel();
+                setConfidencePanelVisible(true);
+            },
+            available: () => !confidencePanelVisible,
+            scope: 'This page only'
+        });
+
+        actions.push({
+            name: 'Hide Confidence Tracker',
+            type: 'action',
+            description: 'Hide the live confidence sidebar panel',
+            keywords: 'confidence tracker sidebar panel hide collapse live stats',
+            action: () => {
+                ensureConfidencePanel();
+                setConfidencePanelVisible(false);
+            },
+            available: () => confidencePanelVisible,
+            scope: 'This page only'
         });
 
         // Scheduler actions
