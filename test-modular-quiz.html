@@ -17,14 +17,66 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+    <style>
+        .quiz-shell {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 8px 6px 24px;
+        }
+        .quiz-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .quiz-title {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+        .quiz-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .quiz-mode-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .quiz-mode-bar .mode-btn {
+            border-radius: 10px;
+            border-width: 1.5px;
+            font-weight: 600;
+            padding: 10px 12px;
+        }
+        @media (max-width: 720px) {
+            .quiz-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
 
-    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
-        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Test: Modular Quiz Engine</h1>
+    <div class="quiz-shell">
+        <div class="quiz-header">
+            <div class="quiz-title">Modular Quiz Engine</div>
+            <div class="quiz-toolbar">
+                <div id="batchModeStatus" class="text-xs text-blue-800"></div>
+                <div id="adaptiveModeStatus" class="text-xs text-purple-800"></div>
+            </div>
+        </div>
 
         <!-- Mode Selector -->
-        <div class="flex flex-wrap gap-2 justify-center mb-6">
+        <div class="quiz-mode-bar mb-4">
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white transition" data-mode="char-to-pinyin">Char → Pinyin</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin-mc">Char → Pinyin (MC)</button>
             <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>

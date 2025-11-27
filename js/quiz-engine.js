@@ -1588,7 +1588,7 @@ function updateFullscreenQueueDisplay() {
         const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
         const isCurrent = currentQuestion && currentQuestion.char === item.char;
         return `
-            <li class="flex items-center justify-between gap-3 bg-white border ${isCurrent ? 'border-blue-300' : 'border-gray-200'} rounded-xl px-3 py-2 shadow-sm ${isCurrent ? 'ring-2 ring-blue-100' : ''}">
+            <li class="flex items-center justify-between gap-3 border ${isCurrent ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-transparent'} rounded-lg px-3 py-2">
                 <div class="flex items-center gap-3">
                     <span class="text-xs font-semibold text-gray-500">#${idx + 1}</span>
                     <span class="text-2xl font-bold text-gray-900">${escapeHtml(item.char || '?')}</span>
@@ -1603,7 +1603,10 @@ function updateFullscreenQueueDisplay() {
 }
 
 function ensureSchedulerToolbar() {
-    const container = document.querySelector('.max-w-3xl');
+    const container =
+        document.querySelector('.quiz-shell') ||
+        document.querySelector('.max-w-3xl') ||
+        document.getElementById('questionDisplay')?.parentElement;
     const question = document.getElementById('questionDisplay');
     if (!container || !question) return;
 
@@ -1611,21 +1614,21 @@ function ensureSchedulerToolbar() {
     if (!bar) {
         bar = document.createElement('div');
         bar.id = 'schedulerToolbar';
-        bar.className = 'mb-4 rounded-xl border border-gray-200 bg-white shadow-sm p-3 flex flex-wrap items-center justify-between gap-3';
+        bar.className = 'mb-3 flex flex-wrap items-center justify-between gap-3 px-1';
         bar.innerHTML = `
             <div>
-                <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Selection Strategy</div>
+                <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Selection Strategy</div>
                 <div id="schedulerModeLabel" class="text-sm font-semibold text-gray-900"></div>
                 <div id="schedulerModeDescription" class="text-xs text-gray-600"></div>
                 <div id="batchModeStatus" class="hidden"></div>
                 <div id="adaptiveModeStatus" class="hidden"></div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
-                <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
-                <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
-                <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
-                <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
+                <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
+                <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+                <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
+                <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
+                <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             </div>
         `;
         container.insertBefore(bar, question);
