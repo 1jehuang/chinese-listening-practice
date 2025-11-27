@@ -232,10 +232,13 @@ async function signInWithGoogle() {
         return;
     }
 
+    // Store current page to redirect back after auth
+    const currentPage = window.location.href.split('#')[0];
+
     const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: window.location.href
+            redirectTo: currentPage
         }
     });
 
