@@ -122,6 +122,10 @@ let batchModeState = {
     seenInBatch: [] // chars served at least once in the current batch
 };
 
+// Visual celebration timers
+let correctFlashTimeout = null;
+let correctToastTimeout = null;
+
 // Adaptive rolling 5-card deck state
 const ADAPTIVE_STATE_KEY_PREFIX = 'quiz_adaptive_state_';
 const ADAPTIVE_DECK_SIZE = 5;
