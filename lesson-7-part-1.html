@@ -16,8 +16,45 @@
     <script src="js/quiz-engine.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
+    <style>
+        /* Compact, cardless layout just for this page */
+        body.compact-page .page-main {
+            max-width: 1180px;
+            padding-top: 6px;
+            padding-bottom: 12px;
+        }
+        body.compact-page h1 {
+            font-size: 2.15rem;
+            line-height: 1.15;
+            margin: 6px 0 8px;
+        }
+        body.compact-page #schedulerToolbar {
+            margin-bottom: 10px;
+        }
+        body.compact-page #questionDisplay {
+            margin-top: 6px;
+        }
+        body.compact-page #hint {
+            margin: 6px 0 10px;
+        }
+        body.compact-page #typeMode {
+            margin-top: 8px;
+        }
+        body.compact-page #typeMode input {
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        body.compact-page #stats {
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+        body.compact-page .three-column-meaning-layout {
+            margin: 14px auto 10px;
+            gap: 18px;
+        }
+    </style>
 </head>
-<body class="bg-white min-h-screen">
+<body class="bg-white min-h-screen compact-page">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition text-sm z-50">← Home</a>
 
     <div class="flex min-h-screen">
@@ -41,9 +78,9 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 p-4 md:p-8">
-            <div class="max-w-6xl mx-auto space-y-6">
-                <h1 class="text-3xl font-bold text-left mb-2 text-gray-900">Lesson 7 Part 1: 男女同住 · Vocab (Pages 88–89)</h1>
+        <div class="flex-1 p-4 md:p-8 page-main">
+            <div class="max-w-6xl mx-auto space-y-4">
+                <h1 class="text-3xl font-bold text-left mb-1 text-gray-900">Lesson 7 Part 1: 男女同住 · Vocab (Pages 88–89)</h1>
 
                 <!-- Question Display -->
                 <div id="questionDisplay" class="text-center"></div>
