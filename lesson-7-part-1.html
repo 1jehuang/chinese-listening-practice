@@ -16,29 +16,13 @@
     <script src="js/quiz-engine.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
-    <style>
-        #pageFitShell {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 8px;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-        #pageRoot {
-            transform-origin: top center;
-        }
-    </style>
 </head>
-<body class="bg-white min-h-screen overflow-hidden">
-    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition text-sm z-50">← Home</a>
+<body class="bg-gray-100 min-h-screen">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
 
-    <div id="pageFitShell">
-      <div id="pageRoot" class="flex min-h-screen">
+    <div class="flex min-h-screen">
         <!-- Mode Selector Sidebar -->
-        <div class="w-64 bg-transparent border-r border-gray-200 p-4 overflow-y-auto">
+        <div class="w-64 bg-white shadow-lg p-4 overflow-y-auto">
             <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
             <div class="flex flex-col gap-2">
                 <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500 text-left text-sm" data-mode="char-to-pinyin">Char → Pinyin</button>
@@ -58,8 +42,8 @@
 
         <!-- Main Content -->
         <div class="flex-1 p-4 md:p-8">
-            <div class="max-w-6xl mx-auto space-y-6">
-                <h1 class="text-3xl font-bold text-center mb-2 text-gray-900">Lesson 7 Part 1: 男女同住 · Vocab (Pages 88–89)</h1>
+            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Lesson 7 Part 1: 男女同住 · Vocab (Pages 88–89)</h1>
 
                 <!-- Question Display -->
                 <div id="questionDisplay" class="text-center"></div>
@@ -181,7 +165,6 @@
             </div>
         </div>
     </div>
-    </div>
 
     <script>
         const characters = [
@@ -223,29 +206,6 @@
         previewElementId: 'upcomingCharacters',
         previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
     });
-
-    // Fit content to viewport by scaling down when necessary (no scaling up)
-    (function attachPageFit() {
-        const root = document.getElementById('pageRoot');
-        const shell = document.getElementById('pageFitShell');
-        if (!root || !shell) return;
-
-        function applyFit() {
-            root.style.transform = 'scale(1)';
-            const contentW = root.scrollWidth;
-            const contentH = root.scrollHeight;
-            const availW = shell.clientWidth;
-            const availH = shell.clientHeight;
-            const scale = Math.min(1, availW / contentW, availH / contentH);
-            root.style.transform = `scale(${scale})`;
-        }
-
-        window.addEventListener('resize', applyFit);
-        window.addEventListener('load', () => {
-            applyFit();
-            setTimeout(applyFit, 120); // re-run after fonts/layout settle
-        });
-    })();
 </script>
 </body>
 </html>
