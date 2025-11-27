@@ -134,12 +134,30 @@ let adaptiveDeckState = {
 const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
 const HIDE_MEANING_CHOICES_KEY = 'quiz_hide_meaning_choices';
 const CONFIDENCE_TRACKING_ENABLED_KEY = 'quiz_confidence_tracking_enabled';
+const CONFIDENCE_FORMULA_KEY = 'quiz_confidence_formula';
 let confidencePanel = null;
 let confidenceListElement = null;
 let confidenceSummaryElement = null;
 let confidencePanelVisible = true;
 let hideMeaningChoices = false;
 let confidenceTrackingEnabled = true;
+
+// Confidence formula modes
+const CONFIDENCE_FORMULAS = {
+    HEURISTIC: 'heuristic',  // Original ad-hoc formula
+    BKT: 'bkt'               // Bayesian Knowledge Tracing
+};
+let confidenceFormula = CONFIDENCE_FORMULAS.HEURISTIC;
+
+// BKT (Bayesian Knowledge Tracing) parameters
+// These model within-session learning probability
+const BKT_PARAMS = {
+    P_L0: 0.0,    // Prior: probability of knowing before any exposure
+    P_T: 0.2,     // Transit: probability of learning per attempt
+    P_G: 0.25,    // Guess: probability of correct answer without knowing (1/4 for 4 choices)
+    P_S: 0.08     // Slip: probability of wrong answer despite knowing
+};
+const BKT_MASTERY_THRESHOLD = 0.95;  // P(Learned) >= this means "mastered"
 
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
@@ -472,6 +490,9 @@ function markSchedulerOutcome(correct) {
         stats.streak = 0;
     }
 
+    // Update BKT probability (always, so it's available if user switches formulas)
+    updateBKT(char, correct);
+
     saveSchedulerStats();
 
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
@@ -786,6 +807,13 @@ function refreshAdaptiveDeckNow(regenerate = false) {
 }
 
 function getConfidenceScore(char) {
+    if (confidenceFormula === CONFIDENCE_FORMULAS.BKT) {
+        return getBKTScore(char);
+    }
+    return getHeuristicConfidenceScore(char);
+}
+
+function getHeuristicConfidenceScore(char) {
     const stats = getSchedulerStats(char);
     const served = stats.served || 0;
     const correct = stats.correct || 0;
@@ -799,6 +827,106 @@ function getConfidenceScore(char) {
     const volumeBonus = Math.log10(1 + served) * 0.4;
     const streakBonus = Math.min(1.5, streak * 0.15);
     return accuracy * 2.5 + recencyBonus + volumeBonus + streakBonus - wrong * 0.05;
+}
+
+// =============================================================================
+// BKT (Bayesian Knowledge Tracing) - Within-session learning model
+// =============================================================================
+
+function getBKTScore(char) {
+    const stats = getSchedulerStats(char);
+    // P_L is stored in stats.bktPLearned, default to P_L0
+    return stats.bktPLearned ?? BKT_PARAMS.P_L0;
+}
+
+function updateBKT(char, wasCorrect) {
+    if (!char) return;
+    const stats = getSchedulerStats(char);
+    const P_T = BKT_PARAMS.P_T;
+    const P_G = BKT_PARAMS.P_G;
+    const P_S = BKT_PARAMS.P_S;
+
+    // Current P(Learned), default to prior
+    let P_L = stats.bktPLearned ?? BKT_PARAMS.P_L0;
+
+    // Bayesian update based on observation
+    if (wasCorrect) {
+        // P(L | correct) = P(correct | L) * P(L) / P(correct)
+        // P(correct | L) = 1 - P(S), P(correct | ~L) = P(G)
+        const pCorrectGivenL = 1 - P_S;
+        const pCorrectGivenNotL = P_G;
+        const pCorrect = P_L * pCorrectGivenL + (1 - P_L) * pCorrectGivenNotL;
+        P_L = (P_L * pCorrectGivenL) / pCorrect;
+    } else {
+        // P(L | wrong) = P(wrong | L) * P(L) / P(wrong)
+        // P(wrong | L) = P(S), P(wrong | ~L) = 1 - P(G)
+        const pWrongGivenL = P_S;
+        const pWrongGivenNotL = 1 - P_G;
+        const pWrong = P_L * pWrongGivenL + (1 - P_L) * pWrongGivenNotL;
+        P_L = (P_L * pWrongGivenL) / pWrong;
+    }
+
+    // Learning transition: even if not yet learned, there's a chance of learning
+    // P(L_new) = P(L | obs) + (1 - P(L | obs)) * P(T)
+    P_L = P_L + (1 - P_L) * P_T;
+
+    // Clamp to [0, 1] for safety
+    P_L = Math.max(0, Math.min(1, P_L));
+
+    stats.bktPLearned = P_L;
+    // Note: caller (markSchedulerOutcome) handles saveSchedulerStats()
+
+    return P_L;
+}
+
+function resetBKTForChar(char) {
+    if (!char) return;
+    const stats = getSchedulerStats(char);
+    stats.bktPLearned = BKT_PARAMS.P_L0;
+    saveSchedulerStats();
+}
+
+function resetAllBKT() {
+    const pool = (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
+        ? originalQuizCharacters
+        : (Array.isArray(quizCharacters) ? quizCharacters : []);
+    pool.forEach(item => {
+        if (item && item.char) {
+            const stats = getSchedulerStats(item.char);
+            stats.bktPLearned = BKT_PARAMS.P_L0;
+        }
+    });
+    saveSchedulerStats();
+    renderConfidenceList();
+}
+
+function loadConfidenceFormula() {
+    try {
+        const stored = localStorage.getItem(CONFIDENCE_FORMULA_KEY);
+        if (stored === CONFIDENCE_FORMULAS.BKT) {
+            confidenceFormula = CONFIDENCE_FORMULAS.BKT;
+        } else {
+            confidenceFormula = CONFIDENCE_FORMULAS.HEURISTIC;
+        }
+    } catch (e) {
+        console.warn('Failed to load confidence formula', e);
+    }
+}
+
+function saveConfidenceFormula() {
+    try {
+        localStorage.setItem(CONFIDENCE_FORMULA_KEY, confidenceFormula);
+    } catch (e) {
+        console.warn('Failed to save confidence formula', e);
+    }
+}
+
+function setConfidenceFormula(formula) {
+    if (formula === CONFIDENCE_FORMULAS.BKT || formula === CONFIDENCE_FORMULAS.HEURISTIC) {
+        confidenceFormula = formula;
+        saveConfidenceFormula();
+        renderConfidenceList();
+    }
 }
 
 function selectLeastConfident(pool, size) {
@@ -992,6 +1120,9 @@ function renderConfidenceList() {
         return;
     }
 
+    const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
+    const goalThreshold = isBKT ? BKT_MASTERY_THRESHOLD : CONFIDENCE_GOAL;
+
     const scored = pool.map(item => {
         const stats = getSchedulerStats(item.char);
         return {
@@ -1007,17 +1138,32 @@ function renderConfidenceList() {
     const maxScore = Math.max(...scores);
     const span = Math.max(0.0001, maxScore - minScore);
     const skillLabel = getCurrentSkillKey();
-    const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= CONFIDENCE_GOAL);
+    const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= goalThreshold);
 
     const rows = scored.map(entry => {
         const { item, stats, score } = entry;
         const served = stats.served || 0;
         const correct = stats.correct || 0;
         const accPct = served ? Math.round((correct / served) * 100) : 0;
-        const normalized = (score - minScore) / span;
-        const pct = Math.max(0, Math.min(100, Math.round(normalized * 100)));
-        const barColor = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
         const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+
+        let pct, barColor, scoreDisplay;
+        if (isBKT) {
+            // BKT: score is 0-1 probability, display directly as percentage
+            pct = Math.max(0, Math.min(100, Math.round(score * 100)));
+            barColor = score >= BKT_MASTERY_THRESHOLD ? 'bg-emerald-500' : (score >= 0.5 ? 'bg-yellow-500' : 'bg-amber-500');
+            scoreDisplay = `${pct}%`;
+        } else {
+            // Heuristic: normalize within the current range
+            const normalized = (score - minScore) / span;
+            pct = Math.max(0, Math.min(100, Math.round(normalized * 100)));
+            barColor = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
+            scoreDisplay = score.toFixed(2);
+        }
+
+        const masteredBadge = isBKT && score >= BKT_MASTERY_THRESHOLD
+            ? '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">✓</span>'
+            : '';
 
         return `
             <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
@@ -1032,7 +1178,7 @@ function renderConfidenceList() {
                     <div class="w-14 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div class="h-full ${barColor}" style="width: ${pct}%;"></div>
                     </div>
-                    <span class="text-[11px] font-semibold text-gray-700">${score.toFixed(2)}</span>
+                    <span class="text-[11px] font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
                 </div>
             </div>
         `;
@@ -1040,8 +1186,9 @@ function renderConfidenceList() {
 
     confidenceListElement.innerHTML = rows;
     if (confidenceSummaryElement) {
-        const goalText = allAboveGoal ? ` · all ≥ ${CONFIDENCE_GOAL} 🎉` : '';
-        confidenceSummaryElement.textContent = `${scored.length} words · lowest confidence at the top${goalText} · skill: ${skillLabel}`;
+        const formulaLabel = isBKT ? 'BKT' : 'heuristic';
+        const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
+        confidenceSummaryElement.textContent = `${scored.length} words · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
     }
 
     const goalBadge = document.getElementById('confidenceGoalBadge');
@@ -2421,7 +2568,8 @@ function generateQuestion(options = {}) {
         answerInput.value = prefillAnswer;
     }
     if (fuzzyInput) {
-        fuzzyInput.value = '';
+        // Also prefill fuzzyInput for char-to-meaning-type mode prefiring
+        fuzzyInput.value = prefillAnswer;
     }
 
     // Hide all mode containers
@@ -3003,7 +3151,7 @@ function generateFuzzyMeaningOptions() {
     if (!options || !fuzzyInput) return;
 
     options.innerHTML = '';
-    fuzzyInput.value = '';
+    // Don't clear fuzzyInput.value here - it may contain prefilled answer from prefiring
 
     const wrongOptions = [];
     while (wrongOptions.length < 3) {
@@ -3028,6 +3176,13 @@ function generateFuzzyMeaningOptions() {
 
     // Fuzzy matching on input
     fuzzyInput.oninput = () => {
+        // Track input during feedback period for prefiring
+        if (answered && lastAnswerCorrect) {
+            nextAnswerBuffer = fuzzyInput.value;
+        } else {
+            nextAnswerBuffer = '';
+        }
+
         const input = fuzzyInput.value.trim().toLowerCase();
         if (!input) {
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
@@ -3079,6 +3234,11 @@ function generateFuzzyMeaningOptions() {
 
     fuzzyInput.focus();
 
+    // Trigger fuzzy matching on prefilled value (from prefiring)
+    if (fuzzyInput.value) {
+        fuzzyInput.dispatchEvent(new Event('input'));
+    }
+
 }
 
 function checkFuzzyAnswer(answer) {
@@ -3117,9 +3277,7 @@ function checkFuzzyAnswer(answer) {
             renderCharBreakdownSoon();
         }
         updateStats();
-        if (fuzzyInput) {
-            fuzzyInput.value = '';
-        }
+        // Don't clear fuzzyInput - allow prefiring next answer during feedback period
         scheduleNextQuestion(1500);
     } else {
         answered = false;
@@ -3867,7 +4025,10 @@ function goToNextQuestionAfterCorrect() {
     if (!lastAnswerCorrect) return;
     clearPendingNextQuestion();
     lastAnswerCorrect = false;
-    if (answerInput) {
+    // Capture from whichever input field is active
+    if (mode === 'char-to-meaning-type' && fuzzyInput) {
+        nextAnswerBuffer = fuzzyInput.value;
+    } else if (answerInput) {
         nextAnswerBuffer = answerInput.value;
     }
     generateQuestion({ prefillAnswer: nextAnswerBuffer });
@@ -3885,10 +4046,14 @@ function scheduleNextQuestion(delay) {
     clearPendingNextQuestion();
     pendingNextQuestionTimeout = setTimeout(() => {
         pendingNextQuestionTimeout = null;
-        const buffered =
-            (typeof nextAnswerBuffer === 'string' && nextAnswerBuffer !== '')
-                ? nextAnswerBuffer
-                : (answerInput ? answerInput.value : '');
+        let buffered = '';
+        if (typeof nextAnswerBuffer === 'string' && nextAnswerBuffer !== '') {
+            buffered = nextAnswerBuffer;
+        } else if (mode === 'char-to-meaning-type' && fuzzyInput) {
+            buffered = fuzzyInput.value;
+        } else if (answerInput) {
+            buffered = answerInput.value;
+        }
         generateQuestion({ prefillAnswer: buffered });
         nextAnswerBuffer = '';
     }, delay);
@@ -6063,6 +6228,37 @@ function initQuizCommandPalette() {
             scope: 'This page only'
         });
 
+        // Confidence formula switching
+        actions.push({
+            name: 'Confidence: Use BKT (Bayesian)',
+            type: 'action',
+            description: 'Switch to Bayesian Knowledge Tracing - models learning probability (0-1 scale, 0.95 = mastered)',
+            keywords: 'confidence formula bkt bayesian knowledge tracing learning probability mastery',
+            action: () => setConfidenceFormula(CONFIDENCE_FORMULAS.BKT),
+            available: () => confidenceFormula !== CONFIDENCE_FORMULAS.BKT,
+            scope: 'This page only'
+        });
+        actions.push({
+            name: 'Confidence: Use Heuristic (Original)',
+            type: 'action',
+            description: 'Switch to original ad-hoc formula - accuracy + streaks + recency bonus',
+            keywords: 'confidence formula heuristic original accuracy streak recency',
+            action: () => setConfidenceFormula(CONFIDENCE_FORMULAS.HEURISTIC),
+            available: () => confidenceFormula !== CONFIDENCE_FORMULAS.HEURISTIC,
+            scope: 'This page only'
+        });
+        actions.push({
+            name: 'Reset BKT Scores',
+            type: 'action',
+            description: 'Reset all Bayesian Knowledge Tracing probabilities to 0 (start fresh)',
+            keywords: 'reset bkt bayesian knowledge tracing clear probability learning',
+            action: () => {
+                resetAllBKT();
+            },
+            available: () => true,
+            scope: 'This page only'
+        });
+
         // Scheduler actions
         actions.push({
             name: 'Next Item: Random',
@@ -6196,6 +6392,7 @@ function initQuiz(charactersData, userConfig = {}) {
 
     loadConfidencePanelVisibility();
     loadConfidenceTrackingEnabled();
+    loadConfidenceFormula();
     loadHideMeaningChoices();
     loadComponentPreference();
     loadTimerSettings();

@@ -139,6 +139,16 @@
             }
 
             const allCharacters = Array.isArray(COMMON_2500_CHARS) ? [...COMMON_2500_CHARS] : [];
+            const expectedCount = 2500;
+
+            if (allCharacters.length < expectedCount) {
+                document.getElementById('questionDisplay').innerHTML =
+                    `<div class="text-center text-red-600 text-xl my-8">Only ${allCharacters.length} characters loaded (expected ${expectedCount}). Please ensure js/common-2500-chars.js has the full list.</div>`;
+                console.warn(`Common character list truncated: ${allCharacters.length} loaded, expected ${expectedCount}.`);
+                return;
+            }
+
+            console.log(`Loaded ${allCharacters.length} common characters.`);
 
             if (!allCharacters.length) {
                 document.getElementById('questionDisplay').innerHTML =
