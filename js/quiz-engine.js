@@ -625,6 +625,10 @@ function isBatchCharMastered(char) {
     const stats = getSchedulerStats(char);
     if (!stats) return false;
 
+    // Confidence-based graduation (respects heuristic vs BKT formulas)
+    const confidenceMastered = (stats.served || 0) > 0 && isConfidenceHighEnough(char);
+    if (confidenceMastered) return true;
+
     const accuracy = stats.served > 0 ? (stats.correct / stats.served) : 0;
     const streak = stats.streak || 0;
     const seenEnough = stats.served >= BATCH_MASTER_MIN_SEEN;
@@ -711,8 +715,7 @@ function shouldGraduateAdaptiveChar(char) {
     const stats = getSchedulerStats(char);
     if (!stats.served || stats.served < ADAPTIVE_GRAD_MIN_SERVED) return false;
     if ((stats.streak || 0) < ADAPTIVE_GRAD_MIN_STREAK) return false;
-    const confidence = getConfidenceScore(char);
-    if (confidence < ADAPTIVE_GRAD_CONFIDENCE) return false;
+    if (!isConfidenceHighEnough(char)) return false;
     const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
     if (lastWrongAgo < ADAPTIVE_RECENT_WRONG_COOLDOWN) return false;
     return true;
@@ -817,6 +820,18 @@ function getConfidenceScore(char) {
         return getBKTScore(char);
     }
     return getHeuristicConfidenceScore(char);
+}
+
+function getConfidenceMasteryThreshold() {
+    return confidenceFormula === CONFIDENCE_FORMULAS.BKT
+        ? BKT_MASTERY_THRESHOLD
+        : ADAPTIVE_GRAD_CONFIDENCE;
+}
+
+function isConfidenceHighEnough(char) {
+    const score = getConfidenceScore(char);
+    const threshold = getConfidenceMasteryThreshold();
+    return Number.isFinite(score) && score >= threshold;
 }
 
 function getHeuristicConfidenceScore(char) {
