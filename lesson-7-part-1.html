@@ -17,10 +17,26 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
-<body class="bg-white min-h-screen">
+<body class="bg-white min-h-screen overflow-hidden">
+    <style>
+        #pageFitShell {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 12px 8px 24px;
+            box-sizing: border-box;
+        }
+        #pageRoot {
+            transform-origin: top center;
+        }
+    </style>
+
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition text-sm z-50">← Home</a>
 
-    <div class="flex min-h-screen">
+    <div id="pageFitShell">
+    <div id="pageRoot">
         <!-- Mode Selector Sidebar -->
         <div class="w-64 bg-transparent border-r border-gray-200 p-4 overflow-y-auto">
             <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
@@ -162,11 +178,31 @@
                     <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
                     <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
                 </div>
-            </div>
         </div>
     </div>
+    </div> <!-- /pageRoot -->
+    </div> <!-- /pageFitShell -->
 
     <script>
+        // Fit the entire page content into the viewport to avoid scrolling
+        function applyPageFitScale() {
+            const root = document.getElementById('pageRoot');
+            if (!root) return;
+            root.style.transform = 'scale(1)';
+            const { scrollWidth, scrollHeight } = root;
+            const availW = window.innerWidth - 12;
+            const availH = window.innerHeight - 12;
+            const scale = Math.min(1, availW / scrollWidth, availH / scrollHeight);
+            root.style.transform = `scale(${scale})`;
+        }
+
+        window.addEventListener('resize', applyPageFitScale);
+        window.addEventListener('load', () => {
+            applyPageFitScale();
+            // run again after layout settles
+            setTimeout(applyPageFitScale, 180);
+        });
+
         const characters = [
             // Page 88
             { char: '同住', pinyin: 'tóngzhù', meaning: 'live together' },
