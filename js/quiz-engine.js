@@ -15,6 +15,11 @@ let originalQuizCharacters = []; // Store original characters before SR filterin
 let config = {};
 let nextAnswerBuffer = ''; // carry typed text into the next question after showing feedback
 
+// 3-column layout state for char-to-meaning-type mode
+let previousQuestion = null;
+let previousQuestionResult = null; // 'correct' or 'incorrect'
+let upcomingQuestion = null;
+
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
 let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
@@ -2619,7 +2624,7 @@ function generateQuestion(options = {}) {
         choiceMode.style.display = 'block';
         updateMeaningChoicesVisibility();
     } else if (mode === 'char-to-meaning-type' && fuzzyMode) {
-        renderMeaningQuestionLayout();
+        renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
         fuzzyMode.style.display = 'block';
     } else if (mode === 'meaning-to-char' && choiceMode) {
@@ -3262,6 +3267,49 @@ function checkFuzzyAnswer(answer) {
     const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
     if (window.playPinyinAudio) {
         playPinyinAudio(firstPinyin, currentQuestion.char);
+    }
+
+    // For 3-column layout in char-to-meaning-type: immediately advance
+    if (mode === 'char-to-meaning-type') {
+        // Store current as previous
+        previousQuestion = currentQuestion;
+        previousQuestionResult = correct ? 'correct' : 'incorrect';
+
+        // Move upcoming to current
+        if (upcomingQuestion) {
+            currentQuestion = upcomingQuestion;
+            window.currentQuestion = currentQuestion;
+            upcomingQuestion = null;
+        }
+
+        if (correct) {
+            playCorrectSound();
+            if (isFirstAttempt) {
+                score++;
+                markSchedulerOutcome(true);
+            }
+        } else {
+            playWrongSound();
+            if (isFirstAttempt) {
+                markSchedulerOutcome(false);
+            }
+        }
+
+        updateStats();
+
+        // Clear input and immediately show next question
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+        }
+
+        // Re-render with updated columns and generate new options
+        answered = false;
+        questionAttemptRecorded = false;
+        renderThreeColumnMeaningLayout();
+        generateFuzzyMeaningOptions();
+        feedback.textContent = '';
+        hint.textContent = '';
+        return;
     }
 
     if (correct) {
@@ -3955,6 +4003,50 @@ function renderMeaningQuestionLayout() {
     applyComponentPanelVisibility();
     applyComponentColoring();
     renderEtymologyNote(null);
+}
+
+function renderThreeColumnMeaningLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    // Get upcoming question from preview queue or select one
+    if (!upcomingQuestion) {
+        upcomingQuestion = selectNextQuestion();
+    }
+
+    const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
+    const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
+    const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
+    const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
+                           previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
+
+    const currentChar = escapeHtml(currentQuestion.char || '');
+
+    const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout">
+            <div class="column-previous ${prevResultClass}">
+                ${previousQuestion ? `
+                    <div class="column-result-icon">${previousQuestionResult === 'correct' ? '✓' : '✗'}</div>
+                    <div class="column-char">${prevChar}</div>
+                    <div class="column-pinyin">${prevPinyin}</div>
+                    <div class="column-meaning">${prevMeaning}</div>
+                ` : `
+                    <div class="column-placeholder"></div>
+                `}
+            </div>
+            <div class="column-current">
+                <div class="column-char-large">${currentChar}</div>
+            </div>
+            <div class="column-upcoming">
+                ${upcomingQuestion ? `
+                    <div class="column-char">${upcomingChar}</div>
+                ` : `
+                    <div class="column-placeholder"></div>
+                `}
+            </div>
+        </div>
+    `;
 }
 
 function updateMeaningChoicesVisibility() {
