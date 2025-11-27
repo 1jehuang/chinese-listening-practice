@@ -2360,7 +2360,9 @@ function playFullDictationSentence() {
 // =============================================================================
 
 function generateQuestion(options = {}) {
-    const prefillAnswer = typeof options.prefillAnswer === 'string' ? options.prefillAnswer : '';
+    const prefillAnswer = typeof options.prefillAnswer === 'string'
+        ? options.prefillAnswer
+        : (typeof nextAnswerBuffer === 'string' ? nextAnswerBuffer : '');
     clearPendingNextQuestion();
     stopTimer();
     enteredSyllables = [];
@@ -3865,7 +3867,7 @@ function goToNextQuestionAfterCorrect() {
     if (!lastAnswerCorrect) return;
     clearPendingNextQuestion();
     lastAnswerCorrect = false;
-    if (answered && answerInput) {
+    if (answerInput) {
         nextAnswerBuffer = answerInput.value;
     }
     generateQuestion({ prefillAnswer: nextAnswerBuffer });
@@ -3883,7 +3885,10 @@ function scheduleNextQuestion(delay) {
     clearPendingNextQuestion();
     pendingNextQuestionTimeout = setTimeout(() => {
         pendingNextQuestionTimeout = null;
-        const buffered = (answered && lastAnswerCorrect && answerInput) ? answerInput.value : '';
+        const buffered =
+            (typeof nextAnswerBuffer === 'string' && nextAnswerBuffer !== '')
+                ? nextAnswerBuffer
+                : (answerInput ? answerInput.value : '');
         generateQuestion({ prefillAnswer: buffered });
         nextAnswerBuffer = '';
     }, delay);
