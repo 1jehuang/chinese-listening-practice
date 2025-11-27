@@ -13,6 +13,7 @@ let enteredTones = '';
 let quizCharacters = [];
 let originalQuizCharacters = []; // Store original characters before SR filtering
 let config = {};
+let nextAnswerBuffer = ''; // carry typed text into the next question after showing feedback
 
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
@@ -2358,7 +2359,8 @@ function playFullDictationSentence() {
 // QUIZ LOGIC
 // =============================================================================
 
-function generateQuestion() {
+function generateQuestion(options = {}) {
+    const prefillAnswer = typeof options.prefillAnswer === 'string' ? options.prefillAnswer : '';
     clearPendingNextQuestion();
     stopTimer();
     enteredSyllables = [];
@@ -2367,7 +2369,9 @@ function generateQuestion() {
     feedback.textContent = '';
     hint.textContent = '';
     hint.className = 'text-center text-2xl font-semibold my-4';
-    answerInput.value = '';
+    if (answerInput) {
+        answerInput.value = prefillAnswer;
+    }
     questionAttemptRecorded = false;
     handwritingAnswerShown = false; // Reset handwriting answer shown state
     lastAnswerCorrect = false;
@@ -2412,7 +2416,7 @@ function generateQuestion() {
 
     // Clear input fields to prevent autofilled values (e.g., "yi dian er ling" from TTS speed)
     if (answerInput) {
-        answerInput.value = '';
+        answerInput.value = prefillAnswer;
     }
     if (fuzzyInput) {
         fuzzyInput.value = '';
@@ -2517,6 +2521,12 @@ function generateQuestion() {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
+    }
+
+    // If we prefilled an answer (user typed during the reveal phase), preserve it
+    if (prefillAnswer && answerInput) {
+        // Update partial progress indicators for typed modes
+        updatePartialProgress();
     }
 
     // Start timer for the new question
@@ -3855,7 +3865,11 @@ function goToNextQuestionAfterCorrect() {
     if (!lastAnswerCorrect) return;
     clearPendingNextQuestion();
     lastAnswerCorrect = false;
-    generateQuestion();
+    if (answered && answerInput) {
+        nextAnswerBuffer = answerInput.value;
+    }
+    generateQuestion({ prefillAnswer: nextAnswerBuffer });
+    nextAnswerBuffer = '';
 }
 
 function clearPendingNextQuestion() {
@@ -3869,7 +3883,9 @@ function scheduleNextQuestion(delay) {
     clearPendingNextQuestion();
     pendingNextQuestionTimeout = setTimeout(() => {
         pendingNextQuestionTimeout = null;
-        generateQuestion();
+        const buffered = (answered && lastAnswerCorrect && answerInput) ? answerInput.value : '';
+        generateQuestion({ prefillAnswer: buffered });
+        nextAnswerBuffer = '';
     }, delay);
 }
 
@@ -6281,6 +6297,13 @@ function initQuiz(charactersData, userConfig = {}) {
             }
         } else {
             updatePartialProgress();
+        }
+
+        // While in the post-answer phase (correct), keep anything typed so it can prefill the next item
+        if (answered && lastAnswerCorrect) {
+            nextAnswerBuffer = answerInput.value;
+        } else {
+            nextAnswerBuffer = '';
         }
     });
 
