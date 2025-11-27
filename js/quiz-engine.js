@@ -1616,7 +1616,7 @@ function ensureSchedulerToolbar() {
         bar.id = 'schedulerToolbar';
         bar.className = 'mb-3 flex flex-wrap items-center justify-between gap-3 px-1';
         bar.innerHTML = `
-            <div>
+            <div class="flex flex-col items-center text-center flex-1 min-w-[220px]">
                 <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Selection Strategy</div>
                 <div id="schedulerModeLabel" class="text-sm font-semibold text-gray-900"></div>
                 <div id="schedulerModeDescription" class="text-xs text-gray-600"></div>
