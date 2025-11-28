@@ -413,7 +413,7 @@ function getCurrentSkillKey(customMode = mode) {
     if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning') {
         return 'meaning';
     }
-    if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
+    if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
         return 'pinyin';
     }
     if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char') {
@@ -2765,6 +2765,10 @@ function generateQuestion(options = {}) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generatePinyinOptions();
         choiceMode.style.display = 'block';
+    } else if (mode === 'char-to-pinyin-type' && fuzzyMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        generateFuzzyPinyinOptions();
+        fuzzyMode.style.display = 'block';
     } else if (mode === 'pinyin-to-char' && choiceMode) {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
         generateCharOptions();
@@ -3400,6 +3404,189 @@ function generateFuzzyMeaningOptions() {
         }
     }
 
+}
+
+function generateFuzzyPinyinOptions() {
+    const options = document.getElementById('fuzzyOptions');
+    if (!options || !fuzzyInput) return;
+
+    options.innerHTML = '';
+
+    const currentVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+    const currentPinyin = currentVariants[0];
+
+    const wrongOptions = [];
+    const usedNormalized = new Set([normalizePinyinForChoice(currentPinyin)]);
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 500) {
+        safety++;
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        if (random.char === currentQuestion.char) continue;
+
+        const randomPinyin = random.pinyin.split('/')[0].trim();
+        const normalizedRandom = normalizePinyinForChoice(randomPinyin);
+
+        if (usedNormalized.has(normalizedRandom)) continue;
+
+        wrongOptions.push(randomPinyin);
+        usedNormalized.add(normalizedRandom);
+    }
+
+    const allOptions = [...wrongOptions, currentPinyin];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.pinyin = option;
+        btn.dataset.normalized = normalizePinyinForChoice(option);
+        btn.onclick = () => checkFuzzyPinyinAnswer(option);
+        options.appendChild(btn);
+    });
+
+    // Fuzzy matching on input
+    fuzzyInput.oninput = () => {
+        if (answered && lastAnswerCorrect) {
+            nextAnswerBuffer = fuzzyInput.value;
+        } else {
+            nextAnswerBuffer = '';
+        }
+
+        const input = fuzzyInput.value.trim().toLowerCase();
+        if (!input) {
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+            return;
+        }
+
+        let bestMatch = null;
+        let bestScore = -1;
+
+        allOptions.forEach((option, index) => {
+            const score = fuzzyMatch(input, option.toLowerCase());
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = index;
+            }
+        });
+
+        document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
+            if (index === bestMatch) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-blue-200', 'border-blue-500');
+            } else {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            }
+        });
+    };
+
+    // Enter key handler
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+            e.preventDefault();
+            goToNextQuestionAfterCorrect();
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            if (selected) {
+                selected.click();
+            }
+        }
+    };
+
+    fuzzyInput.focus();
+
+    // Trigger fuzzy matching on prefilled value and auto-submit
+    if (fuzzyInput.value) {
+        fuzzyInput.dispatchEvent(new Event('input'));
+        const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+        if (selected) {
+            selected.click();
+        }
+    }
+}
+
+function checkFuzzyPinyinAnswer(answer) {
+    if (answered) return;
+    if (!answer) return;
+
+    const isFirstAttempt = !questionAttemptRecorded;
+    if (isFirstAttempt) {
+        total++;
+        questionAttemptRecorded = true;
+    }
+
+    const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+    const normalizedAnswer = normalizePinyinForChoice(answer);
+    const correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
+
+    // Play audio for the character
+    const firstPinyin = pinyinOptions[0];
+    if (window.playPinyinAudio) {
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+    }
+
+    if (correct) {
+        answered = true;
+        playCorrectSound();
+        triggerCorrectFlash();
+        showCorrectToast('✓ Nice!');
+        if (isFirstAttempt) {
+            score++;
+            markSchedulerOutcome(true);
+        }
+        lastAnswerCorrect = true;
+        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+        hint.textContent = currentQuestion.meaning;
+        hint.className = 'text-center text-xl my-4 text-gray-600';
+        renderCharacterComponents(currentQuestion);
+        updateStats();
+
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+        }
+        scheduleNextQuestion(800);
+    } else {
+        playWrongSound();
+        if (isFirstAttempt) {
+            markSchedulerOutcome(false);
+        }
+        lastAnswerCorrect = false;
+        feedback.textContent = `✗ Correct: ${currentQuestion.pinyin}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+        hint.textContent = `${currentQuestion.char} - ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-xl my-4 text-gray-600';
+        updateStats();
+
+        // Highlight correct answer
+        document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+            const btnNormalized = btn.dataset.normalized;
+            if (pinyinOptions.some(opt => normalizePinyinForChoice(opt) === btnNormalized)) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-green-200', 'border-green-500');
+            } else if (btn.textContent === answer) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-red-200', 'border-red-500');
+            }
+        });
+
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+            setTimeout(() => fuzzyInput.focus(), 0);
+        }
+
+        scheduleNextQuestion(2000);
+    }
 }
 
 function checkFuzzyAnswer(answer) {
@@ -4329,7 +4516,7 @@ function goToNextQuestionAfterCorrect() {
     clearPendingNextQuestion();
     lastAnswerCorrect = false;
     // Capture from whichever input field is active
-    if (mode === 'char-to-meaning-type' && fuzzyInput) {
+    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput) {
         nextAnswerBuffer = fuzzyInput.value;
     } else if (answerInput) {
         nextAnswerBuffer = answerInput.value;
@@ -4352,7 +4539,7 @@ function scheduleNextQuestion(delay) {
         let buffered = '';
         if (typeof nextAnswerBuffer === 'string' && nextAnswerBuffer !== '') {
             buffered = nextAnswerBuffer;
-        } else if (mode === 'char-to-meaning-type' && fuzzyInput) {
+        } else if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput) {
             buffered = fuzzyInput.value;
         } else if (answerInput) {
             buffered = answerInput.value;
@@ -6163,7 +6350,7 @@ function fallbackCopy(text) {
 }
 
 function getActiveInputField() {
-    if (mode === 'char-to-meaning-type' && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
         return fuzzyInput;
     }
     if (answerInput && isElementReallyVisible(answerInput)) {
@@ -6294,6 +6481,7 @@ function initQuizCommandPalette() {
     const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-mc', type: 'mode' },
+        { name: 'Char → Pinyin (Fuzzy)', mode: 'char-to-pinyin-type', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
