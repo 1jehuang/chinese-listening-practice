@@ -735,6 +735,7 @@
     line-height: 1;
     color: #0f172a;
     font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    white-space: nowrap;
 }
 
 .three-column-meaning-layout .column-placeholder {

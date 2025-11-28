@@ -2876,8 +2876,18 @@ function updateCurrentWordConfidence() {
         }
     }
 
-    const stats = getSchedulerStats(currentQuestion.char);
+    const skillKey = getCurrentSkillKey();
+    const stats = getSchedulerStats(currentQuestion.char, skillKey);
     const score = getConfidenceScore(currentQuestion.char);
+
+    console.log('updateCurrentWordConfidence:', {
+        char: currentQuestion.char,
+        mode,
+        skillKey,
+        stats,
+        score,
+        bktPLearned: stats.bktPLearned
+    });
     const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
     const threshold = getConfidenceMasteryThreshold();
 
@@ -4426,6 +4436,16 @@ function renderMeaningQuestionLayout() {
     renderEtymologyNote(null);
 }
 
+// Calculate dynamic font size based on character count
+function getCharLargeFontSize(charText) {
+    const len = charText.length;
+    if (len <= 1) return '140px';
+    if (len === 2) return '120px';
+    if (len === 3) return '90px';
+    if (len === 4) return '72px';
+    return '56px'; // 5+ characters
+}
+
 function renderThreeColumnMeaningLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
@@ -4445,6 +4465,7 @@ function renderThreeColumnMeaningLayout() {
                              previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
 
     const currentChar = escapeHtml(currentQuestion.char || '');
+    const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -4470,7 +4491,7 @@ function renderThreeColumnMeaningLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
                 <div class="column-label">Now</div>
                 <div class="column-focus-ring">
-                    <div class="column-char-large">${currentChar}</div>
+                    <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                 </div>
                 ${inlineFeedback ? `
                     <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
