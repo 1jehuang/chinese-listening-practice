@@ -2761,7 +2761,7 @@ function generateQuestion(options = {}) {
         generatePinyinOptions();
         choiceMode.style.display = 'block';
     } else if (mode === 'char-to-pinyin-type' && fuzzyMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        renderThreeColumnPinyinLayout();
         generateFuzzyPinyinOptions();
         fuzzyMode.style.display = 'block';
     } else if (mode === 'pinyin-to-char' && choiceMode) {
@@ -3586,58 +3586,74 @@ function checkFuzzyPinyinAnswer(answer) {
         playPinyinAudio(firstPinyin, currentQuestion.char);
     }
 
+    // For 3-column layout: immediately advance on correct
+    lastAnswerCorrect = correct;
+
     if (correct) {
-        answered = true;
+        // Record the finished card on the left and advance
+        previousQuestion = currentQuestion;
+        previousQuestionResult = 'correct';
+        threeColumnInlineFeedback = null;
+
         playCorrectSound();
-        triggerCorrectFlash();
-        showCorrectToast('✓ Nice!');
         if (isFirstAttempt) {
             score++;
             markSchedulerOutcome(true);
         }
-        lastAnswerCorrect = true;
-        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-        hint.textContent = currentQuestion.meaning;
-        hint.className = 'text-center text-xl my-4 text-gray-600';
-        renderCharacterComponents(currentQuestion);
+
         updateStats();
 
+        // Move upcoming to current (pick fresh if none queued)
+        if (upcomingQuestion) {
+            currentQuestion = upcomingQuestion;
+            window.currentQuestion = currentQuestion;
+            upcomingQuestion = null;
+        } else {
+            currentQuestion = selectNextQuestion();
+            window.currentQuestion = currentQuestion;
+        }
+
+        // Mark the new question as served and update confidence display
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
+
+        // Clear input and immediately show next question
         if (fuzzyInput) {
             fuzzyInput.value = '';
         }
-        scheduleNextQuestion(800);
-    } else {
-        playWrongSound();
-        if (isFirstAttempt) {
-            markSchedulerOutcome(false);
-        }
-        lastAnswerCorrect = false;
-        feedback.textContent = `✗ Correct: ${currentQuestion.pinyin}`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
-        hint.textContent = `${currentQuestion.char} - ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-xl my-4 text-gray-600';
-        updateStats();
 
-        // Highlight correct answer
-        document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-            const btnNormalized = btn.dataset.normalized;
-            if (pinyinOptions.some(opt => normalizePinyinForChoice(opt) === btnNormalized)) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-green-200', 'border-green-500');
-            } else if (btn.textContent === answer) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-red-200', 'border-red-500');
-            }
-        });
-
-        if (fuzzyInput) {
-            fuzzyInput.value = '';
-            setTimeout(() => fuzzyInput.focus(), 0);
-        }
-
-        scheduleNextQuestion(2000);
+        // Re-render with updated columns and generate new options
+        answered = false;
+        questionAttemptRecorded = false;
+        renderThreeColumnPinyinLayout();
+        generateFuzzyPinyinOptions();
+        feedback.textContent = '';
+        hint.textContent = '';
+        return;
     }
+
+    // Incorrect: stay on the same card and show inline feedback in the center column
+    playWrongSound();
+    if (isFirstAttempt) {
+        markSchedulerOutcome(false);
+    }
+
+    threeColumnInlineFeedback = {
+        message: `✗ Correct: ${currentQuestion.pinyin}`,
+        type: 'incorrect'
+    };
+
+    updateStats();
+
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+        setTimeout(() => fuzzyInput.focus(), 0);
+    }
+
+    renderThreeColumnPinyinLayout();
+    generateFuzzyPinyinOptions();
+    feedback.textContent = '';
+    hint.textContent = '';
 }
 
 function checkFuzzyAnswer(answer) {
@@ -4436,6 +4452,74 @@ function getCharLargeFontSize(charText) {
 }
 
 function renderThreeColumnMeaningLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    // Get upcoming question from preview queue or select one
+    if (!upcomingQuestion) {
+        upcomingQuestion = selectNextQuestion();
+    }
+
+    const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
+    const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
+    const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
+    const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
+                           previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
+    const prevResultIcon = previousQuestionResult === 'correct' ? '✓' :
+                           previousQuestionResult === 'incorrect' ? '✗' : '•';
+    const prevFeedbackText = previousQuestionResult === 'correct' ? 'Got it right' :
+                             previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
+
+    const currentChar = escapeHtml(currentQuestion.char || '');
+    const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
+
+    const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
+
+    const inlineFeedback = threeColumnInlineFeedback;
+    const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                ${previousQuestion ? `
+                    <div class="column-feedback">
+                        <span class="column-result-icon">${prevResultIcon}</span>
+                        <span class="column-feedback-text">${prevFeedbackText}</span>
+                    </div>
+                    <div class="column-char">${prevChar}</div>
+                    <div class="column-pinyin">${prevPinyin}</div>
+                    <div class="column-meaning">${prevMeaning}</div>
+                ` : `
+                    <div class="column-placeholder">Your last answer will appear here</div>
+                `}
+            </div>
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+                <div class="column-label">Now</div>
+                <div class="column-focus-ring">
+                    <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
+                </div>
+                ${inlineFeedback ? `
+                    <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+                        ${inlineFeedbackMessage}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                ${upcomingQuestion ? `
+                    <div class="column-ondeck">
+                        <div class="column-char">${upcomingChar}</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
+                ` : `
+                    <div class="column-placeholder">Next card is loading</div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function renderThreeColumnPinyinLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
     // Get upcoming question from preview queue or select one
