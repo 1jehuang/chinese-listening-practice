@@ -6480,8 +6480,7 @@ function registerQuizHotkeys() {
 function initQuizCommandPalette() {
     const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
-        { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-mc', type: 'mode' },
-        { name: 'Char → Pinyin (Fuzzy)', mode: 'char-to-pinyin-type', type: 'mode' },
+        { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-type', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
