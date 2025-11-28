@@ -3547,6 +3547,21 @@ function generateFuzzyPinyinOptions() {
 
         if (e.key === 'Enter') {
             e.preventDefault();
+            const typedInput = fuzzyInput.value.trim();
+
+            // First, check if typed input directly matches the correct pinyin (allows typing full answer)
+            if (typedInput) {
+                const pinyinVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+                const isDirectMatch = pinyinVariants.some(variant => checkPinyinMatch(typedInput, variant));
+
+                if (isDirectMatch) {
+                    // Direct pinyin match - submit the correct pinyin
+                    checkFuzzyPinyinAnswer(pinyinVariants[0]);
+                    return;
+                }
+            }
+
+            // Otherwise, click the highlighted option
             const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
             if (selected) {
                 selected.click();
@@ -3559,6 +3574,20 @@ function generateFuzzyPinyinOptions() {
     // Trigger fuzzy matching on prefilled value and auto-submit
     if (fuzzyInput.value) {
         fuzzyInput.dispatchEvent(new Event('input'));
+
+        // Check for direct pinyin match first
+        const typedInput = fuzzyInput.value.trim();
+        if (typedInput) {
+            const pinyinVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+            const isDirectMatch = pinyinVariants.some(variant => checkPinyinMatch(typedInput, variant));
+
+            if (isDirectMatch) {
+                checkFuzzyPinyinAnswer(pinyinVariants[0]);
+                return;
+            }
+        }
+
+        // Fall back to clicking highlighted option
         const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
         if (selected) {
             selected.click();
