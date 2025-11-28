@@ -1718,22 +1718,17 @@ function ensureSchedulerToolbar() {
     if (!bar) {
         bar = document.createElement('div');
         bar.id = 'schedulerToolbar';
-        bar.className = 'mb-3 flex flex-col items-center gap-2 px-1 text-center';
+        bar.className = 'mb-4 flex flex-wrap gap-2 justify-center items-center';
         bar.innerHTML = `
-            <div class="flex flex-col items-center text-center flex-1 min-w-[220px]">
-                <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Selection Strategy</div>
-                <div id="schedulerModeLabel" class="text-sm font-semibold text-gray-900"></div>
-                <div id="schedulerModeDescription" class="text-xs text-gray-600"></div>
-                <div id="batchModeStatus" class="hidden"></div>
-                <div id="adaptiveModeStatus" class="hidden"></div>
-            </div>
-            <div class="flex flex-wrap gap-2 justify-center">
-                <button id="schedulerRandomBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Random</button>
-                <button id="schedulerWeightedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
-                <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
-                <button id="schedulerBatchBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
-                <button id="schedulerOrderedBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
-            </div>
+            <button id="schedulerRandomBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
+            <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+            <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
+            <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
+            <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
+            <div id="schedulerModeLabel" class="hidden"></div>
+            <div id="schedulerModeDescription" class="hidden"></div>
+            <div id="batchModeStatus" class="hidden"></div>
+            <div id="adaptiveModeStatus" class="hidden"></div>
         `;
         container.insertBefore(bar, question);
     }
@@ -2880,14 +2875,6 @@ function updateCurrentWordConfidence() {
     const stats = getSchedulerStats(currentQuestion.char, skillKey);
     const score = getConfidenceScore(currentQuestion.char);
 
-    console.log('updateCurrentWordConfidence:', {
-        char: currentQuestion.char,
-        mode,
-        skillKey,
-        stats,
-        score,
-        bktPLearned: stats.bktPLearned
-    });
     const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
     const threshold = getConfidenceMasteryThreshold();
 
@@ -3700,6 +3687,10 @@ function checkFuzzyAnswer(answer) {
                 currentQuestion = selectNextQuestion();
                 window.currentQuestion = currentQuestion;
             }
+
+            // Mark the new question as served and update confidence display
+            markSchedulerServed(currentQuestion);
+            updateCurrentWordConfidence();
 
             // Clear input and immediately show next question
             if (fuzzyInput) {

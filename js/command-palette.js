@@ -57,7 +57,8 @@ const DEFAULT_PAGES = [
     { name: 'Modular Quiz Sandbox', url: 'test-modular-quiz.html', type: 'page', keywords: 'sandbox modular dev' },
     { name: 'Audio Prompt Tester', url: 'test-audio.html', type: 'page', keywords: 'audio sound test harness' },
     { name: 'Pinyin Input Tester', url: 'test-pinyin-input.html', type: 'page', keywords: 'pinyin input ime tester' },
-    { name: 'Syllable Entry Harness', url: 'test-syllable-entry.html', type: 'page', keywords: 'syllable entry experiment' }
+    { name: 'Syllable Entry Harness', url: 'test-syllable-entry.html', type: 'page', keywords: 'syllable entry experiment' },
+    { name: 'Experimental Layout', url: 'experimental-layout.html', type: 'page', keywords: 'experimental layout flat test sandbox' }
 ];
 
 const PALETTE_INPUT_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
