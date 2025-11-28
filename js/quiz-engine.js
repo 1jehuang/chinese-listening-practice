@@ -778,6 +778,7 @@ function maybeGraduateAdaptiveDeck() {
 
     deck.forEach(char => {
         if (shouldGraduateAdaptiveChar(char)) {
+            console.log(`🎓 Graduating "${char}" from adaptive deck!`);
             masteredSet.add(char);
             adaptiveDeckState.deck = adaptiveDeckState.deck.filter(c => c !== char);
             changed = true;
@@ -787,6 +788,7 @@ function maybeGraduateAdaptiveDeck() {
     if (changed) {
         adaptiveDeckState.mastered = Array.from(masteredSet);
         saveAdaptiveState();
+        console.log(`Adaptive deck now has ${adaptiveDeckState.deck.length} cards, ${adaptiveDeckState.mastered.length} mastered`);
     }
     return changed;
 }
