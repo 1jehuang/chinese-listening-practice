@@ -9,44 +9,344 @@
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
     <style>
-        /* Fit content to viewport */
-        .quiz-content-area {
+        :root {
+            --bg: #f6f8fb;
+            --card: #ffffff;
+            --line: #e5e7eb;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --accent-2: #0ea5e9;
+            --shadow: 0 8px 28px rgba(31, 41, 55, 0.08);
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(120% 140% at 15% 20%, #e0f2fe 0, transparent 40%),
+                        radial-gradient(90% 120% at 85% 10%, #e0e7ff 0, transparent 38%),
+                        var(--bg);
+            color: var(--text);
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+        }
+
+        /* Main layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar - match existing pages */
+        .sidebar {
+            width: 16rem;
+            flex-shrink: 0;
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            margin-top: 3rem;
+        }
+
+        .sidebar nav {
             display: flex;
             flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar .mode-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            border: 2px solid #d1d5db;
+            background: #ffffff;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #374151;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .sidebar .mode-btn svg { width: 18px; height: 18px; stroke-width: 2.25; }
+
+        .sidebar .mode-btn:hover { background: #f3f4f6; }
+
+        .sidebar .mode-btn.active {
+            background: #3b82f6;
+            color: #ffffff;
+            border-color: #3b82f6;
+        }
+
+        /* Main content area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding: 1.5rem 2.5rem 1.25rem;
+            overflow: hidden;
+            gap: 1rem;
+        }
+
+        /* Header */
+        .quiz-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .quiz-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+        }
+
+        /* Quiz display area */
+        .quiz-display {
             flex: 1;
             min-height: 0;
-            justify-content: space-between;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: center;
         }
 
-        /* Compact three-column layout for this page */
-        .three-column-meaning-layout {
-            margin: 8px auto;
-            padding: 4px 8px;
-            gap: 16px;
+        .content-frame {
+            width: min(1080px, 100%);
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 1rem;
+            box-shadow: var(--shadow);
+            padding: 1.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
         }
 
-        .three-column-meaning-layout .column-char-large {
-            font-size: clamp(48px, 10vw, 100px);
+        #questionDisplay {
+            width: 100%;
         }
 
-        .three-column-meaning-layout .column-char {
-            font-size: clamp(32px, 6vw, 48px);
+        .question-card {
+            min-height: 240px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            padding: 0.5rem;
         }
 
-        .three-column-meaning-layout .column-card {
-            min-height: 120px;
-            padding: 6px;
+        /* Upcoming + hint */
+        .stacked-meta {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 0.9rem;
         }
 
-        /* Compact input area */
-        #typeMode, #fuzzyMode, #choiceMode {
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .preview-list {
+            display: flex;
+            justify-content: center;
+            gap: 0.6rem;
+            font-size: 2.25rem;
+            color: #d1d5db;
+        }
+
+        #hint {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: center;
+            min-height: 1.5rem;
+        }
+
+        /* Input section */
+        .input-section {
+            flex-shrink: 0;
+            width: min(720px, 100%);
+            margin: 0 auto;
+        }
+
+        .input-card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 1rem;
+            box-shadow: var(--shadow);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .input-section input[type="text"] {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .input-section input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .choice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .choice-grid button {
+            padding: 0.85rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.75rem;
+            background: white;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .choice-grid button:hover {
+            border-color: var(--accent);
+            background: #eff6ff;
+            transform: translateY(-1px);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.7rem 1.2rem;
+            border-radius: 0.75rem;
+            border: 1px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .btn svg, .home-btn svg { width: 18px; height: 18px; stroke-width: 2.25; }
+
+        .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 6px 20px rgba(37,99,235,0.2); }
+        .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .btn-ghost { background: #f8fafc; color: #0f172a; border-color: var(--line); }
+        .btn-ghost:hover { background: #e5e7eb; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #22c55e; color: #fff; }
+        .btn-success:hover { background: #16a34a; }
+
+        /* Stats bar */
+        .stats-bar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 0.75rem 0;
+            font-size: 0.9rem;
+            color: var(--muted);
+            border-top: 1px solid #e5e7eb;
             margin-top: auto;
         }
 
-        #stats {
-            margin-top: 8px;
-            padding-top: 8px;
+        .stats-bar span { font-weight: 600; }
+
+        /* Feedback */
+        #feedback {
+            min-height: 2rem;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 0.25rem 0;
         }
+
+        /* Hide sections by default */
+        #typeMode, #choiceMode, #fuzzyMode, #strokeOrderMode,
+        #handwritingMode, #drawCharMode, #studyMode {
+            display: none;
+        }
+
+        #typeMode.active, #choiceMode.active, #fuzzyMode.active,
+        #strokeOrderMode.active, #handwritingMode.active,
+        #drawCharMode.active, #studyMode.active {
+            display: block;
+        }
+
+        /* Home button */
+        .home-btn {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.45rem 0.85rem;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            color: #111827;
+            text-decoration: none;
+            z-index: 50;
+            box-shadow: var(--shadow);
+            transition: transform 0.12s ease, box-shadow 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .home-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(17,24,39,0.16); }
+
+        /* Canvas & audio */
+        #audioSection button { padding: 0.75rem 1.5rem; }
+
+        #drawCanvas {
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #d1d5db;
+            border-radius: 0.75rem;
+            cursor: crosshair;
+            background: #f8fafc;
+        }
+
+        /* Three-column layout tweaks */
+        .three-column-meaning-layout {
+            margin: 0 auto;
+            padding: 0.5rem;
+            gap: 2rem;
+        }
+
+        .three-column-meaning-layout .column-char-large { font-size: clamp(56px, 12vw, 120px); }
+        .three-column-meaning-layout .column-char { font-size: clamp(28px, 5vw, 40px); }
+        .three-column-meaning-layout .column-card { min-height: auto; padding: 0.5rem; }
     </style>
     <script src="js/utils.js"></script>
     <script src="js/command-palette.js"></script>
@@ -57,114 +357,122 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
-<body class="bg-white m-0 p-0 overflow-hidden">
-    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition text-sm z-50">← Home</a>
+<body>
+    <a href="home.html" class="home-btn"><span data-lucide="arrow-left"></span>Home</a>
 
-    <div class="flex h-screen w-screen">
-        <!-- Mode Selector Sidebar (same as lesson pages) -->
-        <div class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto flex-shrink-0 h-full">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 bg-white shadow-lg p-4 overflow-y-auto">
             <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
-            <div class="flex flex-col gap-2">
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-meaning-type">Char → Meaning</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin">Char → Pinyin</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-tones">Char → Tones</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-pinyin">Audio → Pinyin</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="pinyin-to-char">Pinyin → Char</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-meaning">Audio → Meaning</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="meaning-to-char">Meaning → Char</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="stroke-order">Stroke Order</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="handwriting">Handwriting</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="draw-char">Draw Character</button>
-                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="study">Study Mode</button>
-            </div>
-        </div>
+            <nav class="flex flex-col gap-2">
+                <button class="mode-btn" data-mode="char-to-meaning-type"><span data-lucide="book-open"></span>Char → Meaning</button>
+                <button class="mode-btn" data-mode="char-to-pinyin"><span data-lucide="type"></span>Char → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-type"><span data-lucide="list"></span>Char → Pinyin (MC)</button>
+                <button class="mode-btn" data-mode="char-to-tones"><span data-lucide="waveform"></span>Char → Tones</button>
+                <button class="mode-btn" data-mode="audio-to-pinyin"><span data-lucide="volume-2"></span>Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="pinyin-to-char"><span data-lucide="keyboard"></span>Pinyin → Char</button>
+                <button class="mode-btn" data-mode="audio-to-meaning"><span data-lucide="headphones"></span>Audio → Meaning</button>
+                <button class="mode-btn" data-mode="meaning-to-char"><span data-lucide="languages"></span>Meaning → Char</button>
+                <button class="mode-btn" data-mode="stroke-order"><span data-lucide="pen-tool"></span>Stroke Order</button>
+                <button class="mode-btn" data-mode="handwriting"><span data-lucide="pen-line"></span>Handwriting</button>
+                <button class="mode-btn" data-mode="draw-char"><span data-lucide="pen-square"></span>Draw Character</button>
+                <button class="mode-btn" data-mode="study"><span data-lucide="graduation-cap"></span>Study Mode</button>
+            </nav>
+        </aside>
 
-        <!-- Main Content (flat, no card, fit to viewport) -->
-        <div class="flex-1 p-4 h-full flex flex-col overflow-hidden">
-            <div class="w-full flex-1 flex flex-col min-h-0 quiz-content-area">
-                <h1 class="text-lg font-bold text-center mb-2 text-gray-800 flex-shrink-0">Experimental Layout</h1>
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>Experimental Layout</h1>
+            </header>
 
-                <!-- Question Display -->
-                <div id="questionDisplay" class="text-center flex-shrink-0"></div>
+            <!-- Quiz Display -->
+            <section class="quiz-display">
+                <div class="content-frame">
+                    <div id="upcomingCharacters" class="hidden stacked-meta">
+                        <div class="pill">Upcoming</div>
+                        <div class="preview-list"></div>
+                    </div>
 
-                <!-- Upcoming Preview -->
-                <div id="upcomingCharacters" class="hidden text-center mt-4">
-                    <div class="preview-list flex justify-center gap-4 text-4xl text-gray-300"></div>
-                    <div class="text-xs uppercase tracking-widest text-gray-400 mt-2">Upcoming</div>
-                </div>
+                    <div class="question-card">
+                        <div id="questionDisplay"></div>
+                    </div>
 
-                <!-- Hint -->
-                <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+                    <div id="hint"></div>
 
-                <!-- Audio Section -->
-                <div id="audioSection" class="text-center my-4 hidden">
-                    <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
-                </div>
-
-                <!-- Type Mode -->
-                <div id="typeMode" class="space-y-4 max-w-xl mx-auto">
-                    <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
-                    <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
-                </div>
-
-                <!-- Choice Mode -->
-                <div id="choiceMode" class="hidden max-w-xl mx-auto">
-                    <div id="options" class="grid grid-cols-2 gap-3"></div>
-                </div>
-
-                <!-- Fuzzy Mode -->
-                <div id="fuzzyMode" class="hidden space-y-4 max-w-xl mx-auto">
-                    <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
-                    <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
-                </div>
-
-                <!-- Stroke Order Mode -->
-                <div id="strokeOrderMode" class="hidden">
-                    <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
-                </div>
-
-                <!-- Handwriting Mode -->
-                <div id="handwritingMode" class="hidden">
-                    <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
-                    <div class="text-center text-sm text-gray-500 mb-2">Audio will play for each character as it appears</div>
-                    <div id="handwritingWriter" class="flex justify-center my-8"></div>
-                    <div class="flex justify-center gap-3">
-                        <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer / Replay</button>
-                        <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+                    <div id="audioSection" class="hidden" style="text-align: center;">
+                        <button id="playAudioBtn" class="btn btn-primary"><span data-lucide="volume-2"></span>Play Sound</button>
                     </div>
                 </div>
+            </section>
 
-                <!-- Draw Character Mode -->
-                <div id="drawCharMode" class="hidden">
-                    <div class="text-center mb-4">
-                        <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
-                        <div class="text-sm text-gray-500">Real-time recognition</div>
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="input-card">
+                    <!-- Type Mode -->
+                    <div id="typeMode">
+                        <input type="text" id="answerInput" placeholder="Type your answer...">
+                        <button id="checkBtn" class="btn btn-primary" style="display: none;">Check Answer</button>
                     </div>
-                    <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
-                    <div class="flex gap-3 justify-center mt-4">
-                        <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">Clear</button>
-                        <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">Submit</button>
-                        <button id="fullscreenDrawBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">Fullscreen</button>
+
+                    <!-- Choice Mode -->
+                    <div id="choiceMode">
+                        <div id="options" class="choice-grid"></div>
                     </div>
-                </div>
 
-                <!-- Study Mode -->
-                <div id="studyMode" class="hidden">
-                    <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
-                    <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
-                </div>
+                    <!-- Fuzzy Mode -->
+                    <div id="fuzzyMode">
+                        <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                        <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                    </div>
 
-                <!-- Feedback -->
-                <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+                    <!-- Stroke Order Mode -->
+                    <div id="strokeOrderMode">
+                        <div id="strokeOrderWriter" style="display: flex; justify-content: center;"></div>
+                    </div>
 
-                <!-- Stats -->
-                <div id="stats" class="flex justify-center gap-8 text-sm text-gray-500 pt-2 mt-auto">
-                    <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
-                    <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+                    <!-- Handwriting Mode -->
+                    <div id="handwritingMode">
+                        <p style="text-align: center; color: #6b7280; margin-bottom: 0.5rem;">Practice writing on paper, then reveal the answer</p>
+                        <p style="text-align: center; font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.75rem;">Audio will play for each character as it appears</p>
+                        <div id="handwritingWriter" style="display: flex; justify-content: center;"></div>
+                        <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                            <button id="hwShowBtn" class="btn btn-primary"><span data-lucide="lightbulb"></span>Show Answer / Replay</button>
+                            <button id="hwNextBtn" class="btn btn-success"><span data-lucide="arrow-right"></span>Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Draw Character Mode -->
+                    <div id="drawCharMode">
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <div id="ocrResult" style="font-size: 3.5rem; min-height: 5rem; color: var(--accent); font-weight: 700;"></div>
+                            <div style="font-size: 0.875rem; color: #9ca3af;">Real-time recognition</div>
+                        </div>
+                        <canvas id="drawCanvas" width="300" height="300"></canvas>
+                        <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                            <button id="clearCanvasBtn" class="btn btn-danger"><span data-lucide="eraser"></span>Clear</button>
+                            <button id="submitDrawBtn" class="btn btn-success"><span data-lucide="check"></span>Submit</button>
+                            <button id="fullscreenDrawBtn" class="btn btn-primary"><span data-lucide="maximize-2"></span>Fullscreen</button>
+                        </div>
+                    </div>
+
+                    <!-- Study Mode -->
+                    <div id="studyMode">
+                        <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary with audio</p>
+                        <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- Feedback -->
+                    <div id="feedback"></div>
                 </div>
-            </div>
-        </div>
+            </section>
+
+            <!-- Stats Bar -->
+            <footer class="stats-bar" id="stats">
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
+            </footer>
+        </main>
     </div>
 
     <script>
@@ -187,6 +495,10 @@
             previewElementId: 'upcomingCharacters',
             previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
         });
+    </script>
+    <script type="module">
+        import { createIcons, icons } from "https://unpkg.com/lucide@latest?module";
+        createIcons({ icons });
     </script>
 </body>
 </html>

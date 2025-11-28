@@ -3663,8 +3663,6 @@ function checkFuzzyAnswer(answer) {
         lastAnswerCorrect = correct;
 
         if (correct) {
-            triggerCorrectFlash();
-            showCorrectToast('✓ Great! Keep going');
             // Record the finished card on the left and advance
             previousQuestion = currentQuestion;
             previousQuestionResult = 'correct';
