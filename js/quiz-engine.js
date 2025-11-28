@@ -2854,8 +2854,62 @@ function generateQuestion(options = {}) {
     updateFullscreenSrUI();
     updateFullscreenQueueDisplay();
 
+    // Show current word confidence
+    updateCurrentWordConfidence();
+
     // Track response time for FSRS
     srQuestionStartTime = Date.now();
+}
+
+function updateCurrentWordConfidence() {
+    if (!currentQuestion || !currentQuestion.char) return;
+
+    // Find or create the confidence indicator element
+    let indicator = document.getElementById('currentWordConfidence');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'currentWordConfidence';
+        indicator.className = 'text-center text-sm text-gray-500 mt-2';
+        // Insert after questionDisplay
+        if (questionDisplay && questionDisplay.parentNode) {
+            questionDisplay.parentNode.insertBefore(indicator, questionDisplay.nextSibling);
+        }
+    }
+
+    const stats = getSchedulerStats(currentQuestion.char);
+    const score = getConfidenceScore(currentQuestion.char);
+    const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
+    const threshold = getConfidenceMasteryThreshold();
+
+    const served = stats.served || 0;
+    const correct = stats.correct || 0;
+    const streak = stats.streak || 0;
+    const accPct = served > 0 ? Math.round((correct / served) * 100) : 0;
+
+    let scoreDisplay, barPct, barColor;
+    if (isBKT) {
+        scoreDisplay = `${Math.round(score * 100)}%`;
+        barPct = Math.round(score * 100);
+        barColor = score >= threshold ? 'bg-emerald-500' : (score >= 0.5 ? 'bg-yellow-400' : 'bg-amber-400');
+    } else {
+        scoreDisplay = score.toFixed(2);
+        barPct = Math.min(100, Math.round((score / 6) * 100)); // normalize heuristic roughly to 0-100
+        barColor = score >= threshold ? 'bg-emerald-500' : (score >= 2 ? 'bg-yellow-400' : 'bg-amber-400');
+    }
+
+    const masteredBadge = score >= threshold ? ' ✓' : '';
+
+    indicator.innerHTML = `
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full">
+            <span class="text-xs text-gray-600">Confidence:</span>
+            <div class="w-16 h-2 bg-gray-300 rounded-full overflow-hidden">
+                <div class="h-full ${barColor} transition-all" style="width: ${barPct}%;"></div>
+            </div>
+            <span class="text-xs font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
+            <span class="text-xs text-gray-400">|</span>
+            <span class="text-xs text-gray-500">${served > 0 ? `${accPct}% · ${served} seen · ${streak}🔥` : 'new'}</span>
+        </div>
+    `;
 }
 
 function ensureTtsSpeedControl() {
