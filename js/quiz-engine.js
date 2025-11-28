@@ -159,7 +159,7 @@ const CONFIDENCE_FORMULAS = {
     HEURISTIC: 'heuristic',  // Original ad-hoc formula
     BKT: 'bkt'               // Bayesian Knowledge Tracing
 };
-let confidenceFormula = CONFIDENCE_FORMULAS.HEURISTIC;
+let confidenceFormula = CONFIDENCE_FORMULAS.BKT;
 
 // BKT (Bayesian Knowledge Tracing) parameters
 // These model within-session learning probability
@@ -169,7 +169,7 @@ const BKT_PARAMS = {
     P_G: 0.25,    // Guess: probability of correct answer without knowing (1/4 for 4 choices)
     P_S: 0.08     // Slip: probability of wrong answer despite knowing
 };
-const BKT_MASTERY_THRESHOLD = 0.95;  // P(Learned) >= this means "mastered"
+const BKT_MASTERY_THRESHOLD = 0.85;  // P(Learned) >= this means "mastered"
 
 // FSRS-4.5 default parameters (optimized weights)
 const FSRS_PARAMS = {
@@ -973,10 +973,10 @@ function resetAllBKT() {
 function loadConfidenceFormula() {
     try {
         const stored = localStorage.getItem(CONFIDENCE_FORMULA_KEY);
-        if (stored === CONFIDENCE_FORMULAS.BKT) {
-            confidenceFormula = CONFIDENCE_FORMULAS.BKT;
-        } else {
+        if (stored === CONFIDENCE_FORMULAS.HEURISTIC) {
             confidenceFormula = CONFIDENCE_FORMULAS.HEURISTIC;
+        } else {
+            confidenceFormula = CONFIDENCE_FORMULAS.BKT;
         }
     } catch (e) {
         console.warn('Failed to load confidence formula', e);
