@@ -719,13 +719,56 @@ function reconcileAdaptiveStateWithPool(source = quizCharacters) {
 function shouldGraduateAdaptiveChar(char) {
     if (!char) return false;
     const stats = getSchedulerStats(char);
-    if (!stats.served || stats.served < ADAPTIVE_GRAD_MIN_SERVED) return false;
-    if ((stats.streak || 0) < ADAPTIVE_GRAD_MIN_STREAK) return false;
-    if (!isConfidenceHighEnough(char)) return false;
+    const served = stats.served || 0;
+    const streak = stats.streak || 0;
+    const confidenceOk = isConfidenceHighEnough(char);
     const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
+
+    if (served < ADAPTIVE_GRAD_MIN_SERVED) return false;
+    if (streak < ADAPTIVE_GRAD_MIN_STREAK) return false;
+    if (!confidenceOk) return false;
     if (lastWrongAgo < ADAPTIVE_RECENT_WRONG_COOLDOWN) return false;
     return true;
 }
+
+// Debug function - call debugAdaptiveGraduation() in console to see why cards aren't graduating
+function debugAdaptiveGraduation() {
+    const deck = Array.isArray(adaptiveDeckState.deck) ? adaptiveDeckState.deck : [];
+    const skillKey = getCurrentSkillKey();
+    const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
+    const threshold = getConfidenceMasteryThreshold();
+
+    console.log('=== Adaptive Graduation Debug ===');
+    console.log('Current skill:', skillKey);
+    console.log('Confidence formula:', isBKT ? 'BKT' : 'Heuristic');
+    console.log('Confidence threshold:', threshold);
+    console.log('Min served:', ADAPTIVE_GRAD_MIN_SERVED);
+    console.log('Min streak:', ADAPTIVE_GRAD_MIN_STREAK);
+    console.log('Wrong cooldown (sec):', ADAPTIVE_RECENT_WRONG_COOLDOWN);
+    console.log('');
+
+    deck.forEach(char => {
+        const stats = getSchedulerStats(char);
+        const score = getConfidenceScore(char);
+        const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
+
+        const checks = {
+            served: (stats.served || 0) >= ADAPTIVE_GRAD_MIN_SERVED,
+            streak: (stats.streak || 0) >= ADAPTIVE_GRAD_MIN_STREAK,
+            confidence: score >= threshold,
+            cooldown: lastWrongAgo >= ADAPTIVE_RECENT_WRONG_COOLDOWN
+        };
+        const wouldGraduate = checks.served && checks.streak && checks.confidence && checks.cooldown;
+
+        console.log(`${char}: served=${stats.served || 0}, streak=${stats.streak || 0}, score=${score.toFixed(2)}, lastWrongAgo=${lastWrongAgo.toFixed(0)}s`);
+        console.log(`  Checks: served=${checks.served}, streak=${checks.streak}, confidence=${checks.confidence}, cooldown=${checks.cooldown}`);
+        console.log(`  Would graduate: ${wouldGraduate}`);
+    });
+
+    console.log('');
+    console.log('Mastered so far:', adaptiveDeckState.mastered?.length || 0, 'words');
+}
+window.debugAdaptiveGraduation = debugAdaptiveGraduation;
 
 function maybeGraduateAdaptiveDeck() {
     if (schedulerMode !== SCHEDULER_MODES.ADAPTIVE_5) return false;
