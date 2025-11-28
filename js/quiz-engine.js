@@ -4,7 +4,7 @@
 
 // Quiz state
 let currentQuestion = null;
-let mode = 'char-to-pinyin';
+let mode = 'char-to-meaning-type';
 let answered = false;
 let score = 0;
 let total = 0;
