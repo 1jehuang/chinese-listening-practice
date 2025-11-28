@@ -1139,6 +1139,63 @@ function ensureConfidencePanel() {
     updateConfidenceTrackingUI();
 }
 
+const CONFIDENCE_SECTIONED_THRESHOLD = 50; // use 3-section layout when deck exceeds this size
+const CONFIDENCE_SECTION_SIZE = 10;        // number of items per section in sectioned view
+
+function renderConfidenceRow(entry, isBKT, minScore, maxScore) {
+    const { item, stats, score } = entry;
+    const served = stats.served || 0;
+    const correct = stats.correct || 0;
+    const accPct = served ? Math.round((correct / served) * 100) : 0;
+    const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+    const span = Math.max(0.0001, maxScore - minScore);
+
+    let pct, barColor, scoreDisplay;
+    if (isBKT) {
+        pct = Math.max(0, Math.min(100, Math.round(score * 100)));
+        barColor = score >= BKT_MASTERY_THRESHOLD ? 'bg-emerald-500' : (score >= 0.5 ? 'bg-yellow-500' : 'bg-amber-500');
+        scoreDisplay = `${pct}%`;
+    } else {
+        const normalized = (score - minScore) / span;
+        pct = Math.max(0, Math.min(100, Math.round(normalized * 100)));
+        barColor = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
+        scoreDisplay = score.toFixed(2);
+    }
+
+    const masteredBadge = isBKT && score >= BKT_MASTERY_THRESHOLD
+        ? '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">✓</span>'
+        : '';
+
+    return `
+        <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-2xl font-semibold text-gray-900">${escapeHtml(item.char || '?')}</span>
+                <div class="min-w-0">
+                    ${pinyin ? `<div class="text-xs text-gray-600 truncate">${escapeHtml(pinyin)}</div>` : ''}
+                    <div class="text-[11px] text-gray-500">${served ? `${accPct}% · ${served} seen` : 'new'}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <div class="w-14 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full ${barColor}" style="width: ${pct}%;"></div>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderConfidenceSection(title, entries, isBKT, minScore, maxScore, colorClass) {
+    if (!entries.length) return '';
+    const rows = entries.map(e => renderConfidenceRow(e, isBKT, minScore, maxScore)).join('');
+    return `
+        <div class="mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wide ${colorClass} mb-2 px-2">${title}</div>
+            ${rows}
+        </div>
+    `;
+}
+
 function renderConfidenceList() {
     if (typeof document === 'undefined') return;
     ensureConfidencePanel();
@@ -1170,67 +1227,48 @@ function renderConfidenceList() {
 
     scored.sort((a, b) => a.score - b.score);
     const totalCount = scored.length;
-    const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, totalCount);
-    const visible = scored.slice(0, renderCount);
-    const scores = visible.map(s => s.score);
-    const minScore = Math.min(...scores);
-    const maxScore = Math.max(...scores);
-    const span = Math.max(0.0001, maxScore - minScore);
+    const allScores = scored.map(s => s.score);
+    const minScore = Math.min(...allScores);
+    const maxScore = Math.max(...allScores);
     const skillLabel = getCurrentSkillKey();
     const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= goalThreshold);
 
-    const rows = visible.map(entry => {
-        const { item, stats, score } = entry;
-        const served = stats.served || 0;
-        const correct = stats.correct || 0;
-        const accPct = served ? Math.round((correct / served) * 100) : 0;
-        const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
+    // Use sectioned view for large decks
+    if (totalCount > CONFIDENCE_SECTIONED_THRESHOLD) {
+        const sectionSize = CONFIDENCE_SECTION_SIZE;
+        const lowest = scored.slice(0, sectionSize);
+        const middleStart = Math.floor((totalCount - sectionSize) / 2);
+        const middle = scored.slice(middleStart, middleStart + sectionSize);
+        const highest = scored.slice(-sectionSize).reverse(); // reverse so highest first
 
-        let pct, barColor, scoreDisplay;
-        if (isBKT) {
-            // BKT: score is 0-1 probability, display directly as percentage
-            pct = Math.max(0, Math.min(100, Math.round(score * 100)));
-            barColor = score >= BKT_MASTERY_THRESHOLD ? 'bg-emerald-500' : (score >= 0.5 ? 'bg-yellow-500' : 'bg-amber-500');
-            scoreDisplay = `${pct}%`;
-        } else {
-            // Heuristic: normalize within the current range
-            const normalized = (score - minScore) / span;
-            pct = Math.max(0, Math.min(100, Math.round(normalized * 100)));
-            barColor = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
-            scoreDisplay = score.toFixed(2);
+        const html =
+            renderConfidenceSection(`Lowest Confidence (${sectionSize})`, lowest, isBKT, minScore, maxScore, 'text-amber-600') +
+            renderConfidenceSection(`Middle (${sectionSize})`, middle, isBKT, minScore, maxScore, 'text-yellow-600') +
+            renderConfidenceSection(`Highest Confidence (${sectionSize})`, highest, isBKT, minScore, maxScore, 'text-emerald-600');
+
+        confidenceListElement.innerHTML = html;
+
+        if (confidenceSummaryElement) {
+            const formulaLabel = isBKT ? 'BKT' : 'heuristic';
+            const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
+            confidenceSummaryElement.textContent = `${totalCount} words (sectioned view) · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
         }
+    } else {
+        // Original flat view for smaller decks
+        const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, totalCount);
+        const visible = scored.slice(0, renderCount);
 
-        const masteredBadge = isBKT && score >= BKT_MASTERY_THRESHOLD
-            ? '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">✓</span>'
-            : '';
+        const rows = visible.map(entry => renderConfidenceRow(entry, isBKT, minScore, maxScore)).join('');
 
-        return `
-            <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="text-2xl font-semibold text-gray-900">${escapeHtml(item.char || '?')}</span>
-                    <div class="min-w-0">
-                        ${pinyin ? `<div class="text-xs text-gray-600 truncate">${escapeHtml(pinyin)}</div>` : ''}
-                        <div class="text-[11px] text-gray-500">${served ? `${accPct}% · ${served} seen` : 'new'}</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                    <div class="w-14 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full ${barColor}" style="width: ${pct}%;"></div>
-                    </div>
-                    <span class="text-[11px] font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    confidenceListElement.innerHTML = rows;
-    if (confidenceSummaryElement) {
-        const formulaLabel = isBKT ? 'BKT' : 'heuristic';
-        const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
-        const scopeText = renderCount < totalCount
-            ? `Showing lowest ${renderCount}/${totalCount}`
-            : `${totalCount} words`;
-        confidenceSummaryElement.textContent = `${scopeText} · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
+        confidenceListElement.innerHTML = rows;
+        if (confidenceSummaryElement) {
+            const formulaLabel = isBKT ? 'BKT' : 'heuristic';
+            const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
+            const scopeText = renderCount < totalCount
+                ? `Showing lowest ${renderCount}/${totalCount}`
+                : `${totalCount} words`;
+            confidenceSummaryElement.textContent = `${scopeText} · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
+        }
     }
 
     const goalBadge = document.getElementById('confidenceGoalBadge');
