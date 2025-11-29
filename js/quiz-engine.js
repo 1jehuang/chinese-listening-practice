@@ -51,6 +51,7 @@ let toneFlowStage = null;           // 'pinyin' | 'tone'
 let toneFlowExpected = [];
 let toneFlowIndex = 0;
 let toneFlowUseFuzzy = false;
+let toneFlowCompleted = [];         // tracks completed tones for progress display
 let handwritingAnswerShown = false;
 let studyModeInitialized = false;
 let drawModeInitialized = false;
@@ -4044,6 +4045,7 @@ function startPinyinToneMcFlow(useFuzzyInput = false) {
     toneFlowStage = 'pinyin';
     toneFlowExpected = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim()).split('').map(n => Number(n));
     toneFlowIndex = 0;
+    toneFlowCompleted = [];
     toneFlowUseFuzzy = useFuzzyInput;
     answered = false;
     feedback.textContent = '';
@@ -4108,6 +4110,7 @@ function handleToneFlowPinyinChoice(choice, btn) {
 function renderToneFlowStep() {
     if (toneFlowStage !== 'tone') return;
     setToneFlowPrompt(`Tone for syllable ${toneFlowIndex + 1} of ${toneFlowExpected.length}`);
+    updateToneFlowProgress();
     if (toneFlowUseFuzzy && fuzzyMode && fuzzyInput) {
         if (choiceMode) choiceMode.style.display = 'none';
         fuzzyMode.style.display = 'block';
@@ -4117,6 +4120,31 @@ function renderToneFlowStep() {
         if (fuzzyMode) fuzzyMode.style.display = 'none';
         renderToneChoices();
     }
+}
+
+function updateToneFlowProgress() {
+    if (toneFlowExpected.length <= 1) {
+        hint.textContent = '';
+        return;
+    }
+
+    // Build progress display showing completed tones with checkmarks
+    const parts = [];
+    for (let i = 0; i < toneFlowExpected.length; i++) {
+        if (i < toneFlowCompleted.length) {
+            // Completed - show with green checkmark
+            parts.push(`<span class="text-green-600 font-bold">✓${toneFlowCompleted[i]}</span>`);
+        } else if (i === toneFlowIndex) {
+            // Current - show as placeholder
+            parts.push(`<span class="text-blue-600 font-bold border-b-2 border-blue-600">?</span>`);
+        } else {
+            // Upcoming - show as gray placeholder
+            parts.push(`<span class="text-gray-400">_</span>`);
+        }
+    }
+
+    hint.innerHTML = `<span class="text-sm">Progress: </span>${parts.join(' ')}`;
+    hint.className = 'text-center text-xl my-2';
 }
 
 function renderToneChoices() {
@@ -4234,9 +4262,11 @@ function handleToneFlowToneChoice(choice, btn) {
 
     if (choice === expected) {
         btn.classList.add('bg-green-100', 'border-green-500');
+        toneFlowCompleted.push(choice);  // Record completed tone
         toneFlowIndex += 1;
         if (toneFlowIndex >= toneFlowExpected.length) {
-            // Completed word
+            // Completed word - show final progress with all checkmarks
+            updateToneFlowProgress();
             score++;
             total++;
             updateStats();
@@ -4244,12 +4274,20 @@ function handleToneFlowToneChoice(choice, btn) {
             markSchedulerOutcome(true);
             feedback.textContent = '✓ Correct!';
             feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-            hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+            // Show completed tones in hint
+            const completedTones = toneFlowCompleted.map(t => `✓${t}`).join(' ');
+            hint.innerHTML = `<span class="text-green-600 font-bold">${completedTones}</span> — ${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
             hint.className = 'text-center text-xl font-semibold my-4 text-green-600';
             answered = true;
             scheduleNextQuestion(900);
         } else {
-            setTimeout(() => renderToneFlowStep(), 250);
+            // Show brief success feedback before moving to next
+            feedback.textContent = '✓';
+            feedback.className = 'text-center text-xl font-semibold text-green-600 my-2';
+            setTimeout(() => {
+                feedback.textContent = '';
+                renderToneFlowStep();
+            }, 250);
         }
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
