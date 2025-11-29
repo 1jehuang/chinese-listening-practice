@@ -2527,7 +2527,11 @@ function ensurePreviewQueue() {
     // Keep the existing "upcoming" items stable before topping up
     reconcilePreviewQueue();
     while (previewQueue.length < previewQueueSize) {
+        // Exclude both preview queue items AND the current question
         const excludeChars = previewQueue.map(item => item?.char).filter(Boolean);
+        if (currentQuestion?.char) {
+            excludeChars.push(currentQuestion.char);
+        }
         const candidate = selectNextQuestion(excludeChars);
         if (!candidate) break;
         previewQueue.push(candidate);
