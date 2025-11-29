@@ -4108,9 +4108,15 @@ function handleToneFlowPinyinChoice(choice, btn) {
 function renderToneFlowStep() {
     if (toneFlowStage !== 'tone') return;
     setToneFlowPrompt(`Tone for syllable ${toneFlowIndex + 1} of ${toneFlowExpected.length}`);
-    if (choiceMode) choiceMode.style.display = 'block';
-    if (fuzzyMode) fuzzyMode.style.display = 'none';
-    renderToneChoices();
+    if (toneFlowUseFuzzy && fuzzyMode && fuzzyInput) {
+        if (choiceMode) choiceMode.style.display = 'none';
+        fuzzyMode.style.display = 'block';
+        renderFuzzyToneChoices();
+    } else {
+        if (choiceMode) choiceMode.style.display = 'block';
+        if (fuzzyMode) fuzzyMode.style.display = 'none';
+        renderToneChoices();
+    }
 }
 
 function renderToneChoices() {
@@ -4125,6 +4131,99 @@ function renderToneChoices() {
         btn.onclick = () => handleToneFlowToneChoice(num, btn);
         options.appendChild(btn);
     });
+}
+
+function renderFuzzyToneChoices() {
+    const options = document.getElementById('fuzzyOptions');
+    if (!options || !fuzzyInput) return;
+    options.innerHTML = '';
+    fuzzyInput.value = '';
+
+    const toneLabels = [
+        { num: 1, label: '1 - First (flat)' },
+        { num: 2, label: '2 - Second (rising)' },
+        { num: 3, label: '3 - Third (dip)' },
+        { num: 4, label: '4 - Fourth (falling)' },
+        { num: 5, label: '5 - Fifth (neutral)' }
+    ];
+
+    toneLabels.forEach(({ num, label }) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
+        btn.textContent = label;
+        btn.dataset.tone = num;
+        btn.onclick = () => handleToneFlowToneChoice(num, btn);
+        options.appendChild(btn);
+    });
+
+    // Fuzzy matching on input
+    fuzzyInput.oninput = () => {
+        const input = fuzzyInput.value.trim().toLowerCase();
+        if (!input) {
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+            return;
+        }
+
+        // Direct number match
+        const numMatch = parseInt(input);
+        if (numMatch >= 1 && numMatch <= 5) {
+            highlightToneButton(numMatch);
+            return;
+        }
+
+        // Word matching: first, second, third, fourth, fifth, flat, rising, dip, falling, neutral
+        const wordMap = {
+            'f': 1, 'fi': 1, 'fir': 1, 'firs': 1, 'first': 1, 'fl': 1, 'fla': 1, 'flat': 1,
+            's': 2, 'se': 2, 'sec': 2, 'seco': 2, 'secon': 2, 'second': 2, 'r': 2, 'ri': 2, 'ris': 2, 'risi': 2, 'risin': 2, 'rising': 2,
+            't': 3, 'th': 3, 'thi': 3, 'thir': 3, 'third': 3, 'd': 3, 'di': 3, 'dip': 3,
+            'fo': 4, 'fou': 4, 'four': 4, 'fourt': 4, 'fourth': 4, 'fa': 4, 'fal': 4, 'fall': 4, 'falli': 4, 'fallin': 4, 'falling': 4,
+            'fi': 1, 'fif': 5, 'fift': 5, 'fifth': 5, 'n': 5, 'ne': 5, 'neu': 5, 'neut': 5, 'neutr': 5, 'neutra': 5, 'neutral': 5
+        };
+
+        // More specific matches take priority
+        let matched = null;
+        if (wordMap[input] !== undefined) {
+            matched = wordMap[input];
+        }
+
+        if (matched) {
+            highlightToneButton(matched);
+        } else {
+            // No match - clear highlights
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+        }
+    };
+
+    function highlightToneButton(toneNum) {
+        document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+            if (parseInt(btn.dataset.tone) === toneNum) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-blue-200', 'border-blue-500');
+            } else {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            }
+        });
+    }
+
+    // Enter key handler: pick highlighted option
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            if (selected) {
+                selected.click();
+            }
+        }
+    };
+
+    fuzzyInput.focus();
 }
 
 function handleToneFlowToneChoice(choice, btn) {
