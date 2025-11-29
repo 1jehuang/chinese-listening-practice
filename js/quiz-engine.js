@@ -4269,6 +4269,9 @@ function handleToneFlowToneChoice(choice, btn) {
             updateStats();
             playCorrectSound();
             markSchedulerOutcome(true);
+            // Play the character audio
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
             feedback.textContent = '✓ Correct!';
             feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             // Show completed tones in hint
