@@ -407,6 +407,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
             return 'Confidence-weighted (recency + errors)';
         case SCHEDULER_MODES.ADAPTIVE_5:
             return 'Adaptive 5-card lane';
+        case SCHEDULER_MODES.FEED:
+            return 'Feed (explore/exploit)';
         case SCHEDULER_MODES.BATCH_5:
             return 'Batch sets (5 → 10 after full pass)';
         case SCHEDULER_MODES.ORDERED:
@@ -423,6 +425,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
             return 'Scores cards by recency + mistakes; picks proportionally to need.';
         case SCHEDULER_MODES.ADAPTIVE_5:
             return 'Rolling 5-card lane; graduate confident cards while sticky ones stay until solid.';
+        case SCHEDULER_MODES.FEED:
+            return 'Explore/exploit balance via UCB; flexible hand size adapts to your progress.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
@@ -2052,6 +2056,7 @@ function ensureSchedulerToolbar() {
             <button id="schedulerRandomBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
             <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
             <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
+            <button id="schedulerFeedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
             <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
             <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             <div id="schedulerModeLabel" class="hidden"></div>
@@ -2065,6 +2070,7 @@ function ensureSchedulerToolbar() {
     const randomBtn = document.getElementById('schedulerRandomBtn');
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
     const adaptiveBtn = document.getElementById('schedulerAdaptiveBtn');
+    const feedBtn = document.getElementById('schedulerFeedBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
@@ -2079,6 +2085,10 @@ function ensureSchedulerToolbar() {
     if (adaptiveBtn && !adaptiveBtn.dataset.bound) {
         adaptiveBtn.dataset.bound = 'true';
         adaptiveBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.ADAPTIVE_5);
+    }
+    if (feedBtn && !feedBtn.dataset.bound) {
+        feedBtn.dataset.bound = 'true';
+        feedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.FEED);
     }
     if (batchBtn && !batchBtn.dataset.bound) {
         batchBtn.dataset.bound = 'true';
@@ -2103,6 +2113,7 @@ function updateSchedulerToolbar() {
         { id: 'schedulerRandomBtn', mode: SCHEDULER_MODES.RANDOM },
         { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED },
         { id: 'schedulerAdaptiveBtn', mode: SCHEDULER_MODES.ADAPTIVE_5 },
+        { id: 'schedulerFeedBtn', mode: SCHEDULER_MODES.FEED },
         { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
         { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
     ];
@@ -2117,6 +2128,7 @@ function updateSchedulerToolbar() {
 
     updateBatchStatusDisplay();
     updateAdaptiveStatusDisplay();
+    updateFeedStatusDisplay();
     updateFullscreenNextSetButton();
 }
 
