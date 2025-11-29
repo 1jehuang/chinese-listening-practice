@@ -2960,6 +2960,12 @@ function generateQuestion(options = {}) {
     if (audioSection) audioSection.classList.add('hidden');
     resetDictationState();
 
+    // Show scheduler toolbar for quiz modes (hide for study/non-quiz modes)
+    const schedulerBar = document.getElementById('schedulerToolbar');
+    if (schedulerBar) {
+        schedulerBar.style.display = (mode === 'study') ? 'none' : '';
+    }
+
     // Show appropriate UI based on mode
     if (mode === 'char-to-pinyin') {
         renderDictationSentence(currentQuestion);
