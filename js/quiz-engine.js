@@ -137,6 +137,7 @@ let correctToastTimeout = null;
 // Adaptive rolling 5-card deck state
 const ADAPTIVE_STATE_KEY_PREFIX = 'quiz_adaptive_state_';
 const ADAPTIVE_DECK_SIZE = 5;
+const ADAPTIVE_MIN_DECK_SIZE = 3;  // minimum cards to keep variety, pulls from mastered if needed
 const ADAPTIVE_GRAD_CONFIDENCE = 4.2;
 const ADAPTIVE_GRAD_MIN_SERVED = 3;
 const ADAPTIVE_GRAD_MIN_STREAK = 2;
@@ -830,12 +831,28 @@ function ensureAdaptiveDeck() {
     const availableSet = new Set(pool.map(item => item.char));
     adaptiveDeckState.deck = (adaptiveDeckState.deck || []).filter(char => availableSet.has(char));
 
+    // First, fill from unmastered pool up to ADAPTIVE_DECK_SIZE
     while (adaptiveDeckState.deck.length < ADAPTIVE_DECK_SIZE && pool.length) {
         const candidates = pool.filter(item => !adaptiveDeckState.deck.includes(item.char));
         if (!candidates.length) break;
         const chosen = (selectLeastConfident(candidates, 1)[0]) || selectRandom(candidates);
         if (!chosen) break;
         adaptiveDeckState.deck.push(chosen.char);
+    }
+
+    // If deck is still below minimum, pull from mastered cards to maintain variety
+    if (adaptiveDeckState.deck.length < ADAPTIVE_MIN_DECK_SIZE && masteredSet.size > 0) {
+        const masteredChars = Array.from(masteredSet);
+        const masteredItems = fullPool.filter(item => masteredChars.includes(item.char));
+
+        while (adaptiveDeckState.deck.length < ADAPTIVE_MIN_DECK_SIZE && masteredItems.length) {
+            const candidates = masteredItems.filter(item => !adaptiveDeckState.deck.includes(item.char));
+            if (!candidates.length) break;
+            // Pick least confident among mastered cards
+            const chosen = (selectLeastConfident(candidates, 1)[0]) || selectRandom(candidates);
+            if (!chosen) break;
+            adaptiveDeckState.deck.push(chosen.char);
+        }
     }
 
     adaptiveDeckState.deck = Array.from(new Set(adaptiveDeckState.deck));
