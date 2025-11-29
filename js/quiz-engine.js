@@ -970,8 +970,10 @@ function getFeedUCBScore(char) {
     const totalPulls = feedModeState.totalPulls || 1;
 
     if (!stats || stats.attempts === 0) {
-        // Unseen card = highest priority (exploration)
-        return Infinity;
+        // Unseen card gets a high but finite score
+        // This allows weak seen cards to sometimes beat unseen ones
+        // Score of 2.0 = equivalent to 0% confidence + moderate exploration bonus
+        return 2.0 + Math.random() * 0.5;
     }
 
     const confidence = stats.correct / stats.attempts;
