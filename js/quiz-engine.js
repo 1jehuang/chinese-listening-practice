@@ -4284,6 +4284,8 @@ function handleToneFlowToneChoice(choice, btn) {
             // Show brief success feedback before moving to next
             feedback.textContent = '✓';
             feedback.className = 'text-center text-xl font-semibold text-green-600 my-2';
+            // Clear the text box for the next tone
+            if (fuzzyInput) fuzzyInput.value = '';
             setTimeout(() => {
                 feedback.textContent = '';
                 renderToneFlowStep();
@@ -4293,6 +4295,8 @@ function handleToneFlowToneChoice(choice, btn) {
         btn.classList.add('bg-red-100', 'border-red-500');
         feedback.textContent = 'Wrong tone, try again.';
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
+        // Clear the text box immediately
+        if (fuzzyInput) fuzzyInput.value = '';
         setTimeout(() => {
             feedback.textContent = '';
             renderToneFlowStep();
