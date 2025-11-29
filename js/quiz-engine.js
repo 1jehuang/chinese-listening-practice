@@ -96,7 +96,8 @@ const SCHEDULER_MODES = {
     ADAPTIVE_5: 'adaptive-5',
     BATCH_5: 'batch-5',
     ORDERED: 'ordered',
-    FEED: 'feed'
+    FEED: 'feed',
+    FEED_SR: 'feed-sr'
 };
 let schedulerMode = SCHEDULER_MODES.WEIGHTED;
 let schedulerStats = {}; // per-char-per-skill data (persisted to localStorage)
@@ -158,6 +159,7 @@ const FEED_MAX_HAND_SIZE = 10;             // maximum cards in hand
 const FEED_DEFAULT_HAND_SIZE = 5;          // target when balanced
 const FEED_STREAK_TO_REMOVE = 2;           // correct streak to remove from hand
 const FEED_WEAK_THRESHOLD = 0.6;           // confidence below this = "weak"
+const FEED_SR_MIN_SESSION_ATTEMPTS = 2;    // minimum attempts this session before SR graduation
 let feedStateKey = '';
 let feedModeState = {
     hand: [],                              // current active cards (flexible size)
@@ -409,6 +411,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
             return 'Adaptive 5-card lane';
         case SCHEDULER_MODES.FEED:
             return 'Feed (explore/exploit)';
+        case SCHEDULER_MODES.FEED_SR:
+            return 'Feed SR (with graduation)';
         case SCHEDULER_MODES.BATCH_5:
             return 'Batch sets (5 → 10 after full pass)';
         case SCHEDULER_MODES.ORDERED:
@@ -427,6 +431,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
             return 'Rolling 5-card lane; graduate confident cards while sticky ones stay until solid.';
         case SCHEDULER_MODES.FEED:
             return 'Explore/exploit balance via UCB; flexible hand size adapts to your progress.';
+        case SCHEDULER_MODES.FEED_SR:
+            return 'Feed mode with SR confidence graduation; cards leave hand when mastered.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
@@ -546,7 +552,7 @@ function markSchedulerOutcome(correct) {
         prepareAdaptiveForNextQuestion();
     }
 
-    if (schedulerMode === SCHEDULER_MODES.FEED) {
+    if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR) {
         recordFeedOutcome(char, correct);
         prepareFeedForNextQuestion();
     }
@@ -968,21 +974,43 @@ function prepareAdaptiveForNextQuestion() {
 function getFeedUCBScore(char) {
     const stats = feedModeState.seen[char];
     const totalPulls = feedModeState.totalPulls || 1;
+    const useSRConfidence = schedulerMode === SCHEDULER_MODES.FEED_SR;
 
     if (!stats || stats.attempts === 0) {
         // Unseen cards get high priority, especially early on
         // Score scales with how much we've explored - less explored = higher unseen priority
         const explorationRatio = getFeedExplorationRatio();
-        const baseScore = explorationRatio < 0.5 ? 3.0 : 2.0;
+        let baseScore = explorationRatio < 0.5 ? 3.0 : 2.0;
+
+        // In Feed SR mode, boost priority for low-SR-confidence cards we haven't seen this session
+        if (useSRConfidence) {
+            const srScore = getConfidenceScore(char);
+            const threshold = getConfidenceMasteryThreshold();
+            // Low SR confidence = higher priority
+            const srBoost = Math.max(0, (threshold - srScore) / threshold);
+            baseScore += srBoost * 1.5;
+        }
+
         return baseScore + Math.random() * 0.5;
     }
 
-    const confidence = stats.correct / stats.attempts;
+    const sessionConfidence = stats.correct / stats.attempts;
     const explorationBonus = FEED_UCB_C * Math.sqrt(Math.log(totalPulls) / stats.attempts);
 
     // Higher score = more likely to pick
     // Low confidence OR rarely seen = high score
-    return (1 - confidence) + explorationBonus;
+    let score = (1 - sessionConfidence) + explorationBonus;
+
+    // In Feed SR mode, also factor in persistent SR confidence
+    if (useSRConfidence) {
+        const srScore = getConfidenceScore(char);
+        const threshold = getConfidenceMasteryThreshold();
+        // Low SR confidence = higher priority (boost score)
+        const srBoost = Math.max(0, (threshold - srScore) / threshold);
+        score += srBoost * 0.5;
+    }
+
+    return score;
 }
 
 function getFeedExplorationRatio() {
@@ -994,6 +1022,10 @@ function getFeedExplorationRatio() {
 }
 
 function getFeedTargetHandSize() {
+    if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR) {
+        return FEED_DEFAULT_HAND_SIZE;
+    }
+
     const poolSize = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
     if (poolSize === 0) return FEED_DEFAULT_HAND_SIZE;
 
@@ -1025,7 +1057,7 @@ function getFeedTargetHandSize() {
 }
 
 function ensureFeedHand() {
-    if (schedulerMode !== SCHEDULER_MODES.FEED) return;
+    if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR) return;
     reconcileFeedStateWithPool();
 
     const fullPool = Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
@@ -1036,12 +1068,22 @@ function ensureFeedHand() {
     }
 
     const targetSize = getFeedTargetHandSize();
+    const useSRGraduation = schedulerMode === SCHEDULER_MODES.FEED_SR;
 
-    // Remove cards from hand that have hit the streak threshold
+    // Remove cards from hand that have graduated
     feedModeState.hand = feedModeState.hand.filter(char => {
         const stats = feedModeState.seen[char];
         if (!stats) return true; // keep if never seen (shouldn't happen)
-        return (stats.streak || 0) < FEED_STREAK_TO_REMOVE;
+
+        if (useSRGraduation) {
+            // Feed SR: graduate when SR confidence is high enough AND we've seen it this session
+            const sessionAttempts = stats.attempts || 0;
+            if (sessionAttempts < FEED_SR_MIN_SESSION_ATTEMPTS) return true; // keep until we've tested it
+            return !isConfidenceHighEnough(char);
+        } else {
+            // Regular Feed: graduate on streak
+            return (stats.streak || 0) < FEED_STREAK_TO_REMOVE;
+        }
     });
 
     // Force exploration: ensure at least 1 unseen card in hand until 80% explored
@@ -1178,9 +1220,11 @@ function prepareFeedForNextQuestion() {
 function updateFeedStatusDisplay() {
     const statusEl = document.getElementById('schedulerStatus');
     if (!statusEl) return;
-    if (schedulerMode !== SCHEDULER_MODES.FEED) {
+    const isFeedSR = schedulerMode === SCHEDULER_MODES.FEED_SR;
+    const isFeed = schedulerMode === SCHEDULER_MODES.FEED;
+    if (!isFeed && !isFeedSR) {
         // Clear feed display if we're in a different mode
-        if (statusEl.innerHTML.includes('Feed Mode')) {
+        if (statusEl.innerHTML.includes('Feed Mode') || statusEl.innerHTML.includes('Feed SR')) {
             statusEl.innerHTML = '';
         }
         return;
@@ -1190,28 +1234,52 @@ function updateFeedStatusDisplay() {
     const seenCount = Object.keys(feedModeState.seen || {}).length;
     const poolSize = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
     const explorationPct = poolSize > 0 ? Math.round((seenCount / poolSize) * 100) : 0;
+    const threshold = getConfidenceMasteryThreshold();
 
-    // Count weak cards
+    // Count weak cards and mastered cards
     let weakCount = 0;
-    for (const stats of Object.values(feedModeState.seen || {})) {
+    let masteredCount = 0;
+    for (const char of Object.keys(feedModeState.seen || {})) {
+        const stats = feedModeState.seen[char];
         if (stats && stats.attempts > 0 && (stats.correct / stats.attempts) < FEED_WEAK_THRESHOLD) {
             weakCount++;
+        }
+        if (isFeedSR && isConfidenceHighEnough(char)) {
+            masteredCount++;
         }
     }
 
     const handBadges = hand.map(char => {
         const stats = feedModeState.seen[char];
-        const conf = stats && stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0;
-        const streak = stats?.streak || 0;
-        const streakIcon = streak >= FEED_STREAK_TO_REMOVE ? '✓' : (streak > 0 ? `×${streak}` : '');
-        return `<span class="inline-block px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800">${char} ${conf}%${streakIcon}</span>`;
+        const sessionConf = stats && stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0;
+
+        if (isFeedSR) {
+            // Show SR confidence score for Feed SR mode
+            const srScore = getConfidenceScore(char);
+            const isMastered = srScore >= threshold;
+            const srPct = confidenceFormula === CONFIDENCE_FORMULAS.BKT
+                ? Math.round(srScore * 100)
+                : Math.round((srScore / 6) * 100);
+            const icon = isMastered ? '✓' : '';
+            return `<span class="inline-block px-1.5 py-0.5 rounded text-xs ${isMastered ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}">${char} ${srPct}%${icon}</span>`;
+        } else {
+            // Show streak for regular Feed mode
+            const streak = stats?.streak || 0;
+            const streakIcon = streak >= FEED_STREAK_TO_REMOVE ? '✓' : (streak > 0 ? `×${streak}` : '');
+            return `<span class="inline-block px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800">${char} ${sessionConf}%${streakIcon}</span>`;
+        }
     }).join(' ');
+
+    const modeLabel = isFeedSR ? 'Feed SR Mode' : 'Feed Mode';
+    const statsLine = isFeedSR
+        ? `${explorationPct}% explored · ${masteredCount} mastered · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`
+        : `${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`;
 
     statusEl.className = 'mt-1 text-xs text-purple-800';
     statusEl.innerHTML = `
-        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">Feed Mode</div>
+        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
         <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
-        <div class="text-[11px] text-purple-700">${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls</div>
+        <div class="text-[11px] text-purple-700">${statsLine}</div>
     `;
 }
 
@@ -1990,7 +2058,7 @@ function setSchedulerMode(mode) {
     } else {
         updateAdaptiveStatusDisplay();
     }
-    if (schedulerMode === SCHEDULER_MODES.FEED) {
+    if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR) {
         loadFeedState();
         prepareFeedForNextQuestion();
     } else {
@@ -2025,7 +2093,7 @@ function getFullscreenQueueCandidates() {
         }
         return Array.isArray(batchPool) ? batchPool.slice() : [];
     }
-    if (schedulerMode === SCHEDULER_MODES.FEED) {
+    if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR) {
         const feedPool = getFeedQuestionPool();
         if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
             const previewChars = previewQueue.map(item => item && item.char);
@@ -2098,6 +2166,7 @@ function ensureSchedulerToolbar() {
             <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
             <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
             <button id="schedulerFeedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
+            <button id="schedulerFeedSRBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed SR</button>
             <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
             <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             <div id="schedulerModeLabel" class="hidden"></div>
@@ -2112,6 +2181,7 @@ function ensureSchedulerToolbar() {
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
     const adaptiveBtn = document.getElementById('schedulerAdaptiveBtn');
     const feedBtn = document.getElementById('schedulerFeedBtn');
+    const feedSRBtn = document.getElementById('schedulerFeedSRBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
@@ -2130,6 +2200,10 @@ function ensureSchedulerToolbar() {
     if (feedBtn && !feedBtn.dataset.bound) {
         feedBtn.dataset.bound = 'true';
         feedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.FEED);
+    }
+    if (feedSRBtn && !feedSRBtn.dataset.bound) {
+        feedSRBtn.dataset.bound = 'true';
+        feedSRBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.FEED_SR);
     }
     if (batchBtn && !batchBtn.dataset.bound) {
         batchBtn.dataset.bound = 'true';
@@ -2155,6 +2229,7 @@ function updateSchedulerToolbar() {
         { id: 'schedulerWeightedBtn', mode: SCHEDULER_MODES.WEIGHTED },
         { id: 'schedulerAdaptiveBtn', mode: SCHEDULER_MODES.ADAPTIVE_5 },
         { id: 'schedulerFeedBtn', mode: SCHEDULER_MODES.FEED },
+        { id: 'schedulerFeedSRBtn', mode: SCHEDULER_MODES.FEED_SR },
         { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
         { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
     ];
@@ -2447,7 +2522,7 @@ function selectNextQuestion(exclusions = []) {
         sourcePool = getBatchQuestionPool();
     } else if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         sourcePool = getAdaptiveQuestionPool();
-    } else if (schedulerMode === SCHEDULER_MODES.FEED) {
+    } else if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR) {
         sourcePool = getFeedQuestionPool();
     }
     const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
@@ -2461,6 +2536,7 @@ function selectNextQuestion(exclusions = []) {
         case SCHEDULER_MODES.ADAPTIVE_5:
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.FEED:
+        case SCHEDULER_MODES.FEED_SR:
             return selectFeedQuestion(Array.from(exclusionSet)) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
             return selectWeighted(pool) || selectRandom(pool);
@@ -7847,6 +7923,13 @@ function initQuizCommandPalette() {
             action: () => setSchedulerMode(SCHEDULER_MODES.FEED)
         });
         actions.push({
+            name: 'Next Item: Feed SR Mode',
+            type: 'action',
+            description: 'Feed mode with SR confidence graduation - cards leave hand when mastered',
+            keywords: 'feed sr mode explore exploit mab bandit adaptive learning ucb graduation confidence',
+            action: () => setSchedulerMode(SCHEDULER_MODES.FEED_SR)
+        });
+        actions.push({
             name: 'Reset Feed Mode',
             type: 'action',
             description: 'Clear all Feed Mode progress and start fresh',
@@ -7855,7 +7938,7 @@ function initQuizCommandPalette() {
                 resetFeedState();
                 prepareFeedForNextQuestion();
             },
-            available: () => schedulerMode === SCHEDULER_MODES.FEED,
+            available: () => schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR,
             scope: 'Feed mode only'
         });
 
