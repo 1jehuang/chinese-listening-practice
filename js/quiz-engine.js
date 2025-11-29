@@ -412,7 +412,7 @@ function getSchedulerModeLabel(mode = schedulerMode) {
         case SCHEDULER_MODES.FEED:
             return 'Feed (explore/exploit)';
         case SCHEDULER_MODES.FEED_SR:
-            return 'Feed SR (with graduation)';
+            return 'Feed Graduate';
         case SCHEDULER_MODES.BATCH_5:
             return 'Batch sets (5 → 10 after full pass)';
         case SCHEDULER_MODES.ORDERED:
@@ -432,7 +432,7 @@ function getSchedulerModeDescription(mode = schedulerMode) {
         case SCHEDULER_MODES.FEED:
             return 'Explore/exploit balance via UCB; flexible hand size adapts to your progress.';
         case SCHEDULER_MODES.FEED_SR:
-            return 'Feed mode with SR confidence graduation; cards leave hand when mastered.';
+            return 'Feed mode with graduation; cards leave hand when confidence is high enough.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
@@ -982,7 +982,7 @@ function getFeedUCBScore(char) {
         const explorationRatio = getFeedExplorationRatio();
         let baseScore = explorationRatio < 0.5 ? 3.0 : 2.0;
 
-        // In Feed SR mode, boost priority for low-SR-confidence cards we haven't seen this session
+        // In Feed Graduate mode, boost priority for low-confidence cards we haven't seen this session
         if (useSRConfidence) {
             const srScore = getConfidenceScore(char);
             const threshold = getConfidenceMasteryThreshold();
@@ -1001,7 +1001,7 @@ function getFeedUCBScore(char) {
     // Low confidence OR rarely seen = high score
     let score = (1 - sessionConfidence) + explorationBonus;
 
-    // In Feed SR mode, also factor in persistent SR confidence
+    // In Feed Graduate mode, also factor in persistent confidence score
     if (useSRConfidence) {
         const srScore = getConfidenceScore(char);
         const threshold = getConfidenceMasteryThreshold();
@@ -1076,7 +1076,7 @@ function ensureFeedHand() {
         if (!stats) return true; // keep if never seen (shouldn't happen)
 
         if (useSRGraduation) {
-            // Feed SR: graduate when SR confidence is high enough AND we've seen it this session
+            // Feed Graduate: graduate when confidence is high enough AND we've seen it this session
             const sessionAttempts = stats.attempts || 0;
             if (sessionAttempts < FEED_SR_MIN_SESSION_ATTEMPTS) return true; // keep until we've tested it
             return !isConfidenceHighEnough(char);
@@ -1224,7 +1224,7 @@ function updateFeedStatusDisplay() {
     const isFeed = schedulerMode === SCHEDULER_MODES.FEED;
     if (!isFeed && !isFeedSR) {
         // Clear feed display if we're in a different mode
-        if (statusEl.innerHTML.includes('Feed Mode') || statusEl.innerHTML.includes('Feed SR')) {
+        if (statusEl.innerHTML.includes('Feed Mode') || statusEl.innerHTML.includes('Feed Graduate')) {
             statusEl.innerHTML = '';
         }
         return;
@@ -1254,7 +1254,7 @@ function updateFeedStatusDisplay() {
         const sessionConf = stats && stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0;
 
         if (isFeedSR) {
-            // Show SR confidence score for Feed SR mode
+            // Show confidence score for Feed Graduate mode
             const srScore = getConfidenceScore(char);
             const isMastered = srScore >= threshold;
             const srPct = confidenceFormula === CONFIDENCE_FORMULAS.BKT
@@ -1270,7 +1270,7 @@ function updateFeedStatusDisplay() {
         }
     }).join(' ');
 
-    const modeLabel = isFeedSR ? 'Feed SR Mode' : 'Feed Mode';
+    const modeLabel = isFeedSR ? 'Feed Graduate Mode' : 'Feed Mode';
     const statsLine = isFeedSR
         ? `${explorationPct}% explored · ${masteredCount} mastered · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`
         : `${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`;
@@ -2166,7 +2166,7 @@ function ensureSchedulerToolbar() {
             <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
             <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
             <button id="schedulerFeedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
-            <button id="schedulerFeedSRBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed SR</button>
+            <button id="schedulerFeedSRBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
             <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
             <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             <div id="schedulerModeLabel" class="hidden"></div>
@@ -7923,10 +7923,10 @@ function initQuizCommandPalette() {
             action: () => setSchedulerMode(SCHEDULER_MODES.FEED)
         });
         actions.push({
-            name: 'Next Item: Feed SR Mode',
+            name: 'Next Item: Feed Graduate Mode',
             type: 'action',
-            description: 'Feed mode with SR confidence graduation - cards leave hand when mastered',
-            keywords: 'feed sr mode explore exploit mab bandit adaptive learning ucb graduation confidence',
+            description: 'Feed mode with graduation - cards leave hand when confidence is high enough',
+            keywords: 'feed graduate mode explore exploit mab bandit adaptive learning ucb graduation confidence mastery',
             action: () => setSchedulerMode(SCHEDULER_MODES.FEED_SR)
         });
         actions.push({
