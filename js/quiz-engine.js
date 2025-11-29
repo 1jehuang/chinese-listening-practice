@@ -970,10 +970,11 @@ function getFeedUCBScore(char) {
     const totalPulls = feedModeState.totalPulls || 1;
 
     if (!stats || stats.attempts === 0) {
-        // Unseen card gets a high but finite score
-        // This allows weak seen cards to sometimes beat unseen ones
-        // Score of 2.0 = equivalent to 0% confidence + moderate exploration bonus
-        return 2.0 + Math.random() * 0.5;
+        // Unseen cards get high priority, especially early on
+        // Score scales with how much we've explored - less explored = higher unseen priority
+        const explorationRatio = getFeedExplorationRatio();
+        const baseScore = explorationRatio < 0.5 ? 3.0 : 2.0;
+        return baseScore + Math.random() * 0.5;
     }
 
     const confidence = stats.correct / stats.attempts;
@@ -1042,6 +1043,44 @@ function ensureFeedHand() {
         if (!stats) return true; // keep if never seen (shouldn't happen)
         return (stats.streak || 0) < FEED_STREAK_TO_REMOVE;
     });
+
+    // Force exploration: ensure at least 1 unseen card in hand until 80% explored
+    const unseenCards = fullPool.filter(item =>
+        !feedModeState.hand.includes(item.char) &&
+        (!feedModeState.seen[item.char] || feedModeState.seen[item.char].attempts === 0)
+    );
+    const explorationRatio = getFeedExplorationRatio();
+
+    // Check if hand already has unseen cards
+    const handHasUnseen = feedModeState.hand.some(char =>
+        !feedModeState.seen[char] || feedModeState.seen[char].attempts === 0
+    );
+
+    // If under 80% explored and no unseen in hand, kick out lowest-priority seen card and add unseen
+    if (explorationRatio < 0.8 && unseenCards.length > 0 && !handHasUnseen && feedModeState.hand.length > 0) {
+        // Find the card with highest confidence (least needed) to remove
+        let worstIdx = 0;
+        let worstScore = Infinity;
+        for (let i = 0; i < feedModeState.hand.length; i++) {
+            const score = getFeedUCBScore(feedModeState.hand[i]);
+            if (score < worstScore) {
+                worstScore = score;
+                worstIdx = i;
+            }
+        }
+        feedModeState.hand.splice(worstIdx, 1);
+    }
+
+    // Add unseen cards to fill reserved slots
+    const reservedSlots = explorationRatio < 0.8 && unseenCards.length > 0 ? Math.min(2, Math.ceil(targetSize * 0.3)) : 0;
+    for (let i = 0; i < reservedSlots && feedModeState.hand.length < targetSize && unseenCards.length > 0; i++) {
+        const idx = Math.floor(Math.random() * unseenCards.length);
+        const randomUnseen = unseenCards[idx];
+        if (randomUnseen && !feedModeState.hand.includes(randomUnseen.char)) {
+            feedModeState.hand.push(randomUnseen.char);
+            unseenCards.splice(idx, 1);
+        }
+    }
 
     // Fill hand up to target size using UCB scores
     while (feedModeState.hand.length < targetSize && feedModeState.hand.length < fullPool.length) {
