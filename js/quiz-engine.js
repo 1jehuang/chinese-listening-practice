@@ -4273,6 +4273,10 @@ function handleToneFlowToneChoice(choice, btn) {
             updateStats();
             playCorrectSound();
             markSchedulerOutcome(true);
+            // Record for 3-column "last answer" display
+            previousQuestion = currentQuestion;
+            previousQuestionResult = 'correct';
+            threeColumnInlineFeedback = null;
             // Play the character audio
             const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
             playPinyinAudio(firstPinyin, currentQuestion.char);
@@ -4298,14 +4302,17 @@ function handleToneFlowToneChoice(choice, btn) {
         }
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
-        feedback.textContent = 'Wrong tone, try again.';
+        // Show the correct answer
+        const chars = (currentQuestion.char || '').replace(/[＿_]/g, '').split('');
+        const currentChar = chars[toneFlowIndex] || '?';
+        feedback.innerHTML = `Wrong — correct tone for <strong>${currentChar}</strong> is <strong>${expected}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
         // Clear the text box immediately
         if (fuzzyInput) fuzzyInput.value = '';
         setTimeout(() => {
             feedback.textContent = '';
             renderToneFlowStep();
-        }, 400);
+        }, 800);
     }
 }
 
