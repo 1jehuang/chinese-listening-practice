@@ -5338,9 +5338,10 @@ function getCharLargeFontSize(charText) {
 function renderThreeColumnMeaningLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
-    // Get upcoming question from preview queue or select one
+    // Get upcoming question from preview queue or select one (exclude current)
     if (!upcomingQuestion) {
-        upcomingQuestion = selectNextQuestion();
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        upcomingQuestion = selectNextQuestion(exclusions);
     }
 
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
@@ -5406,9 +5407,10 @@ function renderThreeColumnMeaningLayout() {
 function renderThreeColumnPinyinLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
-    // Get upcoming question from preview queue or select one
+    // Get upcoming question from preview queue or select one (exclude current)
     if (!upcomingQuestion) {
-        upcomingQuestion = selectNextQuestion();
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        upcomingQuestion = selectNextQuestion(exclusions);
     }
 
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
