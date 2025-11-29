@@ -74,16 +74,6 @@ let timerRemainingSeconds = 0;
 const TIMER_ENABLED_KEY = 'quizTimerEnabled';
 const TIMER_SECONDS_KEY = 'quizTimerSeconds';
 
-// Spaced Repetition state (FSRS-based)
-let srEnabled = false;
-let srData = {};
-let srPageKey = '';
-let srDueCount = 0;
-let srQuestionStartTime = 0;
-const SR_ENABLED_KEY = 'sr_enabled';
-let srAggressiveMode = false;
-const SR_AGGRESSIVE_KEY = 'sr_aggressive_mode';
-const SR_STATE_NAMES = ['New', 'Learning', 'Review', 'Relearning'];
 let charGlossMap = null;
 let charGlossLoaded = false;
 let charGlossPromise = null;
@@ -279,87 +269,6 @@ function showToneCyclerStatus() {
         }
         toneCyclerStatusTimeout = null;
     }, 1600);
-}
-
-// =============================================================================
-// SPACED REPETITION - Now loaded from js/spaced-repetition.js
-// =============================================================================
-// (Functions: FSRS algorithm, SR card management, loadSRData, saveSRData, etc.)
-
-function showSRCardInfo(char) {
-    // Remove any existing SR card info
-    const existing = document.getElementById('srCardInfo');
-    if (existing) {
-        existing.remove();
-    }
-
-    if (!srEnabled || !char) {
-        return;
-    }
-
-    const card = getSRCardData(char);
-    const stateName = SR_STATE_NAMES[card.state] || 'Unknown';
-
-    // Calculate days until due
-    const now = Date.now();
-    const daysUntilDue = card.due > now ? ((card.due - now) / (24 * 60 * 60 * 1000)).toFixed(1) : 0;
-
-    // Color coding for state
-    const stateColors = {
-        0: 'text-blue-600 bg-blue-50 border-blue-200',  // New
-        1: 'text-yellow-600 bg-yellow-50 border-yellow-200',  // Learning
-        2: 'text-green-600 bg-green-50 border-green-200',  // Review
-        3: 'text-orange-600 bg-orange-50 border-orange-200'   // Relearning
-    };
-    const stateClass = stateColors[card.state] || 'text-gray-600 bg-gray-50 border-gray-200';
-
-    const infoBox = document.createElement('div');
-    infoBox.id = 'srCardInfo';
-    infoBox.className = `${stateClass} border-l-4 px-4 py-2 mb-4 rounded text-sm`;
-    infoBox.innerHTML = `
-        <div class="flex items-center justify-between gap-4 flex-wrap">
-            <div class="flex items-center gap-4">
-                <span class="font-semibold">📊 ${stateName}</span>
-                <span class="text-xs opacity-75">Stability: ${card.stability.toFixed(1)}d</span>
-                <span class="text-xs opacity-75">Difficulty: ${card.difficulty.toFixed(1)}/10</span>
-                ${card.reps > 0 ? `<span class="text-xs opacity-75">Reviews: ${card.reps}</span>` : ''}
-                ${card.lapses > 0 ? `<span class="text-xs opacity-75">Lapses: ${card.lapses}</span>` : ''}
-                ${daysUntilDue > 0 ? `<span class="text-xs opacity-75">Next: ${daysUntilDue}d</span>` : ''}
-            </div>
-        </div>
-    `;
-
-    // Insert after SR banner or at top of container
-    const srBanner = document.getElementById('srBanner');
-    const container = document.querySelector('.max-w-3xl');
-
-    if (srBanner && srBanner.parentNode) {
-        srBanner.parentNode.insertBefore(infoBox, srBanner.nextSibling);
-    } else if (container && container.firstChild) {
-        container.insertBefore(infoBox, container.firstChild);
-    }
-}
-
-function formatSRDueText(dueTimestamp) {
-    const now = Date.now();
-    const delta = (dueTimestamp || 0) - now;
-    if (!dueTimestamp || delta <= 0) return 'due now';
-
-    const minutes = Math.round(delta / 60000);
-    if (minutes < 90) return `due in ${minutes}m`;
-
-    const hours = delta / 3600000;
-    if (hours < 48) return `due in ${hours.toFixed(1)}h`;
-
-    const days = delta / 86400000;
-    return `due in ${days.toFixed(1)}d`;
-}
-
-function summarizeSRCard(card) {
-    if (!card) return '';
-    const stateName = SR_STATE_NAMES[card.state] || 'New';
-    const dueText = formatSRDueText(card.due);
-    return `${stateName} • ${dueText}`;
 }
 
 function ensureCharGlossesLoaded() {
