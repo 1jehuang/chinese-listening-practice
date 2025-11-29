@@ -95,7 +95,8 @@ const SCHEDULER_MODES = {
     WEIGHTED: 'weighted',
     ADAPTIVE_5: 'adaptive-5',
     BATCH_5: 'batch-5',
-    ORDERED: 'ordered'
+    ORDERED: 'ordered',
+    FEED: 'feed'
 };
 let schedulerMode = SCHEDULER_MODES.WEIGHTED;
 let schedulerStats = {}; // per-char-per-skill data (persisted to localStorage)
@@ -147,6 +148,21 @@ let adaptiveDeckState = {
     deck: [],
     mastered: [],
     cycleCount: 0
+};
+
+// Feed mode state (explore/exploit with flexible hand)
+const FEED_STATE_KEY_PREFIX = 'quiz_feed_state_';
+const FEED_UCB_C = 1.5;                    // exploration constant for UCB
+const FEED_MIN_HAND_SIZE = 3;              // minimum cards in hand
+const FEED_MAX_HAND_SIZE = 10;             // maximum cards in hand
+const FEED_DEFAULT_HAND_SIZE = 5;          // target when balanced
+const FEED_STREAK_TO_REMOVE = 2;           // correct streak to remove from hand
+const FEED_WEAK_THRESHOLD = 0.6;           // confidence below this = "weak"
+let feedStateKey = '';
+let feedModeState = {
+    hand: [],                              // current active cards (flexible size)
+    seen: {},                              // { char: { attempts, correct, streak, lastSeen } }
+    totalPulls: 0                          // total questions asked
 };
 
 // Confidence sidebar state
@@ -525,6 +541,11 @@ function markSchedulerOutcome(correct) {
     if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         prepareAdaptiveForNextQuestion();
     }
+
+    if (schedulerMode === SCHEDULER_MODES.FEED) {
+        recordFeedOutcome(char, correct);
+        prepareFeedForNextQuestion();
+    }
 }
 
 function markBatchSeen(char) {
@@ -678,6 +699,12 @@ function getAdaptiveStorageKey() {
     return adaptiveStateKey;
 }
 
+function getFeedStorageKey() {
+    if (feedStateKey) return feedStateKey;
+    feedStateKey = `${FEED_STATE_KEY_PREFIX}${getAdaptivePageKey()}`;
+    return feedStateKey;
+}
+
 function loadAdaptiveState() {
     const defaults = { deck: [], mastered: [], cycleCount: 0 };
     adaptiveDeckState = { ...defaults };
@@ -710,6 +737,55 @@ function saveAdaptiveState() {
     } catch (e) {
         console.warn('Failed to save adaptive deck state', e);
     }
+}
+
+// Feed mode persistence
+function loadFeedState() {
+    const defaults = { hand: [], seen: {}, totalPulls: 0 };
+    feedModeState = { ...defaults };
+    const key = getFeedStorageKey();
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                feedModeState.hand = Array.isArray(parsed.hand) ? parsed.hand.filter(Boolean) : [];
+                feedModeState.seen = (parsed.seen && typeof parsed.seen === 'object') ? parsed.seen : {};
+                feedModeState.totalPulls = Number.isFinite(parsed.totalPulls) ? parsed.totalPulls : 0;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load feed mode state', e);
+    }
+    feedModeState.hand = Array.from(new Set(feedModeState.hand));
+}
+
+function saveFeedState() {
+    const key = getFeedStorageKey();
+    try {
+        localStorage.setItem(key, JSON.stringify(feedModeState));
+    } catch (e) {
+        console.warn('Failed to save feed mode state', e);
+    }
+}
+
+function reconcileFeedStateWithPool(source = quizCharacters) {
+    const knownChars = new Set((Array.isArray(source) ? source : []).map(item => item.char));
+    // Remove cards from hand that are no longer in pool
+    feedModeState.hand = (feedModeState.hand || []).filter(char => knownChars.has(char));
+    // Clean up seen stats for cards no longer in pool
+    const newSeen = {};
+    for (const char of Object.keys(feedModeState.seen || {})) {
+        if (knownChars.has(char)) {
+            newSeen[char] = feedModeState.seen[char];
+        }
+    }
+    feedModeState.seen = newSeen;
+}
+
+function resetFeedState() {
+    feedModeState = { hand: [], seen: {}, totalPulls: 0 };
+    saveFeedState();
 }
 
 function reconcileAdaptiveStateWithPool(source = quizCharacters) {
@@ -879,6 +955,219 @@ function prepareAdaptiveForNextQuestion() {
         ensurePreviewQueue();
         updatePreviewDisplay();
     }
+}
+
+// =====================
+// Feed Mode Functions
+// =====================
+
+function getFeedUCBScore(char) {
+    const stats = feedModeState.seen[char];
+    const totalPulls = feedModeState.totalPulls || 1;
+
+    if (!stats || stats.attempts === 0) {
+        // Unseen card = highest priority (exploration)
+        return Infinity;
+    }
+
+    const confidence = stats.correct / stats.attempts;
+    const explorationBonus = FEED_UCB_C * Math.sqrt(Math.log(totalPulls) / stats.attempts);
+
+    // Higher score = more likely to pick
+    // Low confidence OR rarely seen = high score
+    return (1 - confidence) + explorationBonus;
+}
+
+function getFeedExplorationRatio() {
+    // What fraction of the pool have we seen?
+    const poolSize = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
+    if (poolSize === 0) return 0;
+    const seenCount = Object.keys(feedModeState.seen || {}).length;
+    return seenCount / poolSize;
+}
+
+function getFeedTargetHandSize() {
+    const poolSize = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
+    if (poolSize === 0) return FEED_DEFAULT_HAND_SIZE;
+
+    const explorationRatio = getFeedExplorationRatio();
+
+    // Count weak cards (cards we've seen but have low confidence on)
+    let weakCount = 0;
+    for (const char of Object.keys(feedModeState.seen || {})) {
+        const stats = feedModeState.seen[char];
+        if (stats && stats.attempts > 0) {
+            const confidence = stats.correct / stats.attempts;
+            if (confidence < FEED_WEAK_THRESHOLD) {
+                weakCount++;
+            }
+        }
+    }
+
+    if (explorationRatio < 0.3) {
+        // Still exploring - larger hand to cycle through more cards
+        return Math.min(FEED_MAX_HAND_SIZE, poolSize);
+    } else if (explorationRatio < 0.6) {
+        // Middle phase - moderate hand size
+        return Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE + 2, weakCount + 3));
+    } else {
+        // Explored most of the deck - shrink to focus on weak cards
+        // Hand size based on how many weak cards exist
+        return Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE, weakCount + 2));
+    }
+}
+
+function ensureFeedHand() {
+    if (schedulerMode !== SCHEDULER_MODES.FEED) return;
+    reconcileFeedStateWithPool();
+
+    const fullPool = Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
+    if (!fullPool.length) {
+        feedModeState.hand = [];
+        saveFeedState();
+        return;
+    }
+
+    const targetSize = getFeedTargetHandSize();
+
+    // Remove cards from hand that have hit the streak threshold
+    feedModeState.hand = feedModeState.hand.filter(char => {
+        const stats = feedModeState.seen[char];
+        if (!stats) return true; // keep if never seen (shouldn't happen)
+        return (stats.streak || 0) < FEED_STREAK_TO_REMOVE;
+    });
+
+    // Fill hand up to target size using UCB scores
+    while (feedModeState.hand.length < targetSize && feedModeState.hand.length < fullPool.length) {
+        // Get all candidates not in hand
+        const candidates = fullPool.filter(item => !feedModeState.hand.includes(item.char));
+        if (!candidates.length) break;
+
+        // Pick the one with highest UCB score
+        let bestChar = null;
+        let bestScore = -Infinity;
+
+        for (const item of candidates) {
+            const score = getFeedUCBScore(item.char);
+            if (score > bestScore) {
+                bestScore = score;
+                bestChar = item.char;
+            }
+        }
+
+        if (!bestChar) break;
+        feedModeState.hand.push(bestChar);
+    }
+
+    feedModeState.hand = Array.from(new Set(feedModeState.hand));
+    saveFeedState();
+}
+
+function getFeedQuestionPool() {
+    if (schedulerMode !== SCHEDULER_MODES.FEED) {
+        return Array.isArray(quizCharacters) ? quizCharacters : [];
+    }
+    ensureFeedHand();
+    const availableMap = new Map((Array.isArray(quizCharacters) ? quizCharacters : []).map(item => [item.char, item]));
+    return (feedModeState.hand || []).map(char => availableMap.get(char)).filter(Boolean);
+}
+
+function selectFeedQuestion(excludeChars = []) {
+    const hand = getFeedQuestionPool();
+    if (!hand.length) return null;
+
+    const candidates = hand.filter(item => !excludeChars.includes(item.char));
+    if (!candidates.length) return selectRandom(hand);
+
+    // Pick from hand - prioritize weakest cards
+    let bestItem = null;
+    let bestScore = -Infinity;
+
+    for (const item of candidates) {
+        const score = getFeedUCBScore(item.char);
+        // Add small random factor to avoid always picking the same card
+        const jitteredScore = score + Math.random() * 0.1;
+        if (jitteredScore > bestScore) {
+            bestScore = jitteredScore;
+            bestItem = item;
+        }
+    }
+
+    return bestItem || selectRandom(candidates);
+}
+
+function recordFeedOutcome(char, correct) {
+    if (schedulerMode !== SCHEDULER_MODES.FEED) return;
+    if (!char) return;
+
+    feedModeState.totalPulls = (feedModeState.totalPulls || 0) + 1;
+
+    if (!feedModeState.seen[char]) {
+        feedModeState.seen[char] = { attempts: 0, correct: 0, streak: 0, lastSeen: Date.now() };
+    }
+
+    const stats = feedModeState.seen[char];
+    stats.attempts += 1;
+    stats.lastSeen = Date.now();
+
+    if (correct) {
+        stats.correct += 1;
+        stats.streak = (stats.streak || 0) + 1;
+    } else {
+        stats.streak = 0;
+    }
+
+    saveFeedState();
+
+    // After recording, refresh hand (may remove/add cards)
+    ensureFeedHand();
+}
+
+function prepareFeedForNextQuestion() {
+    if (schedulerMode !== SCHEDULER_MODES.FEED) return;
+    reconcileFeedStateWithPool();
+    ensureFeedHand();
+    updateFeedStatusDisplay();
+}
+
+function updateFeedStatusDisplay() {
+    const statusEl = document.getElementById('schedulerStatus');
+    if (!statusEl) return;
+    if (schedulerMode !== SCHEDULER_MODES.FEED) {
+        // Clear feed display if we're in a different mode
+        if (statusEl.innerHTML.includes('Feed Mode')) {
+            statusEl.innerHTML = '';
+        }
+        return;
+    }
+
+    const hand = feedModeState.hand || [];
+    const seenCount = Object.keys(feedModeState.seen || {}).length;
+    const poolSize = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
+    const explorationPct = poolSize > 0 ? Math.round((seenCount / poolSize) * 100) : 0;
+
+    // Count weak cards
+    let weakCount = 0;
+    for (const stats of Object.values(feedModeState.seen || {})) {
+        if (stats && stats.attempts > 0 && (stats.correct / stats.attempts) < FEED_WEAK_THRESHOLD) {
+            weakCount++;
+        }
+    }
+
+    const handBadges = hand.map(char => {
+        const stats = feedModeState.seen[char];
+        const conf = stats && stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0;
+        const streak = stats?.streak || 0;
+        const streakIcon = streak >= FEED_STREAK_TO_REMOVE ? '✓' : (streak > 0 ? `×${streak}` : '');
+        return `<span class="inline-block px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800">${char} ${conf}%${streakIcon}</span>`;
+    }).join(' ');
+
+    statusEl.className = 'mt-1 text-xs text-purple-800';
+    statusEl.innerHTML = `
+        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">Feed Mode</div>
+        <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
+        <div class="text-[11px] text-purple-700">${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls</div>
+    `;
 }
 
 function refreshAdaptiveDeckNow(regenerate = false) {
@@ -1656,6 +1945,12 @@ function setSchedulerMode(mode) {
     } else {
         updateAdaptiveStatusDisplay();
     }
+    if (schedulerMode === SCHEDULER_MODES.FEED) {
+        loadFeedState();
+        prepareFeedForNextQuestion();
+    } else {
+        updateFeedStatusDisplay();
+    }
     if (schedulerMode === SCHEDULER_MODES.ORDERED) {
         schedulerOrderedIndex = 0;
     }
@@ -1684,6 +1979,15 @@ function getFullscreenQueueCandidates() {
             return [...previewQueue, ...remainder];
         }
         return Array.isArray(batchPool) ? batchPool.slice() : [];
+    }
+    if (schedulerMode === SCHEDULER_MODES.FEED) {
+        const feedPool = getFeedQuestionPool();
+        if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
+            const previewChars = previewQueue.map(item => item && item.char);
+            const remainder = (Array.isArray(feedPool) ? feedPool : []).filter(item => !previewChars.includes(item?.char));
+            return [...previewQueue, ...remainder];
+        }
+        return Array.isArray(feedPool) ? feedPool.slice() : [];
     }
     if (schedulerMode === SCHEDULER_MODES.ORDERED) {
         // Ordered uses current pool order directly
@@ -2090,6 +2394,8 @@ function selectNextQuestion(exclusions = []) {
         sourcePool = getBatchQuestionPool();
     } else if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         sourcePool = getAdaptiveQuestionPool();
+    } else if (schedulerMode === SCHEDULER_MODES.FEED) {
+        sourcePool = getFeedQuestionPool();
     }
     const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
     if (!pool.length) return null;
@@ -2101,6 +2407,8 @@ function selectNextQuestion(exclusions = []) {
             return selectRandom(pool);
         case SCHEDULER_MODES.ADAPTIVE_5:
             return selectWeighted(pool) || selectRandom(pool);
+        case SCHEDULER_MODES.FEED:
+            return selectFeedQuestion(Array.from(exclusionSet)) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.RANDOM:
@@ -7468,6 +7776,25 @@ function initQuizCommandPalette() {
             keywords: 'in order sequential fixed order list scheduler',
             action: () => setSchedulerMode(SCHEDULER_MODES.ORDERED)
         });
+        actions.push({
+            name: 'Next Item: Feed Mode',
+            type: 'action',
+            description: 'Explore/exploit MAB-based adaptive learning with flexible hand size',
+            keywords: 'feed mode explore exploit mab bandit adaptive learning ucb',
+            action: () => setSchedulerMode(SCHEDULER_MODES.FEED)
+        });
+        actions.push({
+            name: 'Reset Feed Mode',
+            type: 'action',
+            description: 'Clear all Feed Mode progress and start fresh',
+            keywords: 'feed reset clear mab bandit hand',
+            action: () => {
+                resetFeedState();
+                prepareFeedForNextQuestion();
+            },
+            available: () => schedulerMode === SCHEDULER_MODES.FEED,
+            scope: 'Feed mode only'
+        });
 
         // Spaced Repetition actions
         actions.push({
@@ -7557,11 +7884,13 @@ function initQuiz(charactersData, userConfig = {}) {
     ensureCharGlossesLoaded();
     loadBatchState();
     loadAdaptiveState();
+    loadFeedState();
 
     // Apply SR filtering to characters
     quizCharacters = applySRFiltering(quizCharacters);
     reconcileBatchStateWithQueue();
     reconcileAdaptiveStateWithPool();
+    reconcileFeedStateWithPool();
 
     if (config.defaultMode) {
         mode = config.defaultMode;
