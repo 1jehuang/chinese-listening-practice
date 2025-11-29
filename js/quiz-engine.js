@@ -4128,23 +4128,27 @@ function updateToneFlowProgress() {
         return;
     }
 
-    // Build progress display showing completed tones with checkmarks
+    // Get the characters (strip any placeholder chars like ＿)
+    const chars = (currentQuestion.char || '').replace(/[＿_]/g, '').split('');
+
+    // Build progress display showing each character with its tone
     const parts = [];
     for (let i = 0; i < toneFlowExpected.length; i++) {
+        const char = chars[i] || '?';
         if (i < toneFlowCompleted.length) {
-            // Completed - show with green checkmark
-            parts.push(`<span class="text-green-600 font-bold">✓${toneFlowCompleted[i]}</span>`);
+            // Completed - show character with tone in green
+            parts.push(`<span class="text-green-600 font-bold">${char}<sub>${toneFlowCompleted[i]}</sub></span>`);
         } else if (i === toneFlowIndex) {
-            // Current - show as placeholder
-            parts.push(`<span class="text-blue-600 font-bold border-b-2 border-blue-600">?</span>`);
+            // Current - show character with placeholder
+            parts.push(`<span class="text-blue-600 font-bold border-b-2 border-blue-600">${char}<sub>?</sub></span>`);
         } else {
-            // Upcoming - show as gray placeholder
-            parts.push(`<span class="text-gray-400">_</span>`);
+            // Upcoming - show character grayed out
+            parts.push(`<span class="text-gray-400">${char}<sub>_</sub></span>`);
         }
     }
 
-    hint.innerHTML = `<span class="text-sm">Progress: </span>${parts.join(' ')}`;
-    hint.className = 'text-center text-xl my-2';
+    hint.innerHTML = parts.join(' ');
+    hint.className = 'text-center text-2xl my-2';
 }
 
 function renderToneChoices() {
@@ -4274,10 +4278,11 @@ function handleToneFlowToneChoice(choice, btn) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
             feedback.textContent = '✓ Correct!';
             feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-            // Show completed tones in hint
-            const completedTones = toneFlowCompleted.map(t => `✓${t}`).join(' ');
-            hint.innerHTML = `<span class="text-green-600 font-bold">${completedTones}</span> — ${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-            hint.className = 'text-center text-xl font-semibold my-4 text-green-600';
+            // Show completed tones with characters
+            const chars = (currentQuestion.char || '').replace(/[＿_]/g, '').split('');
+            const charTones = chars.map((c, i) => `${c}<sub>${toneFlowCompleted[i] || ''}</sub>`).join(' ');
+            hint.innerHTML = `<span class="text-green-600 font-bold text-2xl">${charTones}</span> <span class="text-gray-600">(${currentQuestion.pinyin}) - ${currentQuestion.meaning}</span>`;
+            hint.className = 'text-center text-xl font-semibold my-4';
             answered = true;
             scheduleNextQuestion(900);
         } else {
