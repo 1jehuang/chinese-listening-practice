@@ -4168,11 +4168,11 @@ function renderFuzzyToneChoices() {
     fuzzyInput.value = '';
 
     const toneLabels = [
-        { num: 1, label: '1 - First (flat)' },
-        { num: 2, label: '2 - Second (rising)' },
-        { num: 3, label: '3 - Third (dip)' },
-        { num: 4, label: '4 - Fourth (falling)' },
-        { num: 5, label: '5 - Fifth (neutral)' }
+        { num: 1, label: '1 - First', match: 'first' },
+        { num: 2, label: '2 - Second', match: 'second' },
+        { num: 3, label: '3 - Third', match: 'third' },
+        { num: 4, label: '4 - Fourth', match: 'fourth' },
+        { num: 5, label: '5 - Fifth', match: 'fifth' }
     ];
 
     toneLabels.forEach(({ num, label }) => {
@@ -4202,23 +4202,20 @@ function renderFuzzyToneChoices() {
             return;
         }
 
-        // Word matching: first, second, third, fourth, fifth, flat, rising, dip, falling, neutral
-        const wordMap = {
-            'f': 1, 'fi': 1, 'fir': 1, 'firs': 1, 'first': 1, 'fl': 1, 'fla': 1, 'flat': 1,
-            's': 2, 'se': 2, 'sec': 2, 'seco': 2, 'secon': 2, 'second': 2, 'r': 2, 'ri': 2, 'ris': 2, 'risi': 2, 'risin': 2, 'rising': 2,
-            't': 3, 'th': 3, 'thi': 3, 'thir': 3, 'third': 3, 'd': 3, 'di': 3, 'dip': 3,
-            'fo': 4, 'fou': 4, 'four': 4, 'fourt': 4, 'fourth': 4, 'fa': 4, 'fal': 4, 'fall': 4, 'falli': 4, 'fallin': 4, 'falling': 4,
-            'fi': 1, 'fif': 5, 'fift': 5, 'fifth': 5, 'n': 5, 'ne': 5, 'neu': 5, 'neut': 5, 'neutr': 5, 'neutra': 5, 'neutral': 5
-        };
+        // Fuzzy match against first/second/third/fourth/fifth
+        let bestMatch = null;
+        let bestScore = -1;
 
-        // More specific matches take priority
-        let matched = null;
-        if (wordMap[input] !== undefined) {
-            matched = wordMap[input];
-        }
+        toneLabels.forEach(({ num, match }) => {
+            const score = fuzzyMatch(input, match);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = num;
+            }
+        });
 
-        if (matched) {
-            highlightToneButton(matched);
+        if (bestMatch && bestScore > 0) {
+            highlightToneButton(bestMatch);
         } else {
             // No match - clear highlights
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
