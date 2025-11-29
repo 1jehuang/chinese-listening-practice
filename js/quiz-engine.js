@@ -1119,15 +1119,14 @@ function prepareFeedForNextQuestion() {
 }
 
 function updateFeedStatusDisplay() {
-    const statusEl = document.getElementById('schedulerStatus');
+    const statusEl = document.getElementById('feedModeStatus');
     if (!statusEl) return;
     const isFeedSR = schedulerMode === SCHEDULER_MODES.FEED_SR;
     const isFeed = schedulerMode === SCHEDULER_MODES.FEED;
     if (!isFeed && !isFeedSR) {
         // Clear feed display if we're in a different mode
-        if (statusEl.innerHTML.includes('Feed Mode') || statusEl.innerHTML.includes('Feed Graduate')) {
-            statusEl.innerHTML = '';
-        }
+        statusEl.innerHTML = '';
+        statusEl.className = 'hidden';
         return;
     }
 
@@ -1452,6 +1451,36 @@ function setHideMeaningChoices(value, options = {}) {
 
 function toggleHideMeaningChoices() {
     setHideMeaningChoices(!hideMeaningChoices);
+}
+
+// Setup keyboard shortcut hints that appear when inputs are not focused
+function setupInputShortcutHints() {
+    const inputs = [
+        document.getElementById('answerInput'),
+        document.getElementById('fuzzyInput')
+    ].filter(Boolean);
+
+    inputs.forEach(input => {
+        if (input.dataset.hintSetup) return;
+        input.dataset.hintSetup = 'true';
+
+        const originalPlaceholder = input.placeholder || 'Type your answer...';
+
+        input.addEventListener('focus', () => {
+            input.placeholder = originalPlaceholder;
+        });
+
+        input.addEventListener('blur', () => {
+            if (!input.value.trim()) {
+                input.placeholder = `${originalPlaceholder} (press / to focus)`;
+            }
+        });
+
+        // Set initial state if not focused
+        if (document.activeElement !== input && !input.value.trim()) {
+            input.placeholder = `${originalPlaceholder} (press / to focus)`;
+        }
+    });
 }
 
 function ensureConfidencePanel() {
@@ -2048,32 +2077,51 @@ function updateFullscreenQueueDisplay() {
 }
 
 function ensureSchedulerToolbar() {
-    const container =
-        document.querySelector('.quiz-shell') ||
-        document.querySelector('.max-w-3xl') ||
-        document.getElementById('questionDisplay')?.parentElement;
+    // For experimental layout, insert after quiz-header; otherwise use legacy container
+    const quizHeader = document.querySelector('.quiz-header');
+    const isExperimentalLayout = document.body.classList.contains('experimental-layout');
+
+    const container = isExperimentalLayout
+        ? (quizHeader?.parentElement || document.querySelector('.main-content'))
+        : (document.querySelector('.quiz-shell') ||
+           document.querySelector('.max-w-3xl') ||
+           document.getElementById('questionDisplay')?.parentElement);
+
+    const insertAfter = isExperimentalLayout ? quizHeader : null;
     const question = document.getElementById('questionDisplay');
-    if (!container || !question) return;
+    if (!container) return;
 
     let bar = document.getElementById('schedulerToolbar');
     if (!bar) {
         bar = document.createElement('div');
         bar.id = 'schedulerToolbar';
-        bar.className = 'mb-4 flex flex-wrap gap-2 justify-center items-center';
+        bar.className = 'mb-2 flex flex-col items-center gap-1';
         bar.innerHTML = `
-            <button id="schedulerRandomBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
-            <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
-            <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
-            <button id="schedulerFeedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
-            <button id="schedulerFeedSRBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
-            <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
-            <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             <div id="schedulerModeLabel" class="hidden"></div>
             <div id="schedulerModeDescription" class="hidden"></div>
             <div id="batchModeStatus" class="hidden"></div>
             <div id="adaptiveModeStatus" class="hidden"></div>
+            <div id="feedModeStatus" class="hidden"></div>
+            <div class="flex flex-wrap gap-2 justify-center items-center">
+                <button id="schedulerRandomBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
+                <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+                <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
+                <button id="schedulerFeedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
+                <button id="schedulerFeedSRBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
+                <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
+                <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
+            </div>
         `;
-        container.insertBefore(bar, question);
+        // Insert after header on experimental layout, or before question on legacy
+        if (insertAfter && insertAfter.nextSibling) {
+            container.insertBefore(bar, insertAfter.nextSibling);
+        } else if (insertAfter) {
+            container.appendChild(bar);
+        } else if (question) {
+            container.insertBefore(bar, question);
+        } else {
+            container.appendChild(bar);
+        }
     }
 
     const randomBtn = document.getElementById('schedulerRandomBtn');
@@ -6128,16 +6176,27 @@ function enterFullscreenDrawing() {
     fullscreenCanvas = document.getElementById('fullscreenDrawCanvas');
     if (!fullscreenCanvas) return;
 
-    // Set canvas size to better utilize screen space
-    // Account for toolbar (80px) and padding, aim for square canvas
-    const availableHeight = window.innerHeight - 200; // Reserve space for toolbar and margins
-    const availableWidth = window.innerWidth - 100; // Reserve space for margins
-    const canvasSize = Math.min(availableHeight, availableWidth, 1000); // Increased max size to 1000px
-    fullscreenCanvas.width = canvasSize;
-    fullscreenCanvas.height = canvasSize;
+    // Full-page canvas - fills entire viewport
+    const resizeFullscreenCanvas = () => {
+        const dpr = window.devicePixelRatio || 1;
+        fullscreenCanvas.width = window.innerWidth * dpr;
+        fullscreenCanvas.height = window.innerHeight * dpr;
+        fullscreenCanvas.style.width = window.innerWidth + 'px';
+        fullscreenCanvas.style.height = window.innerHeight + 'px';
+        if (fullscreenCtx) {
+            fullscreenCtx.scale(dpr, dpr);
+            fullscreenCtx.lineWidth = 6;
+            fullscreenCtx.lineCap = 'round';
+            fullscreenCtx.lineJoin = 'round';
+            fullscreenCtx.strokeStyle = '#000';
+            redrawFullscreenCanvas();
+        }
+    };
+    resizeFullscreenCanvas();
+    window.addEventListener('resize', resizeFullscreenCanvas);
 
     fullscreenCtx = fullscreenCanvas.getContext('2d');
-    fullscreenCtx.lineWidth = Math.max(8, canvasSize / 80); // Scale stroke width with canvas size
+    fullscreenCtx.lineWidth = 6; // Fixed stroke width for full-page canvas
     fullscreenCtx.lineCap = 'round';
     fullscreenCtx.lineJoin = 'round';
     fullscreenCtx.strokeStyle = '#000';
@@ -6215,18 +6274,16 @@ function exitFullscreenDrawing() {
 
 function getFullscreenCanvasCoords(e) {
     const rect = fullscreenCanvas.getBoundingClientRect();
-    const scaleX = fullscreenCanvas.width / rect.width;
-    const scaleY = fullscreenCanvas.height / rect.height;
-
+    // For full-page canvas, coordinates are simply client coords since canvas fills viewport
     if (e.touches && e.touches[0]) {
         return {
-            x: (e.touches[0].clientX - rect.left) * scaleX,
-            y: (e.touches[0].clientY - rect.top) * scaleY
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
         };
     }
     return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
     };
 }
 
@@ -6807,42 +6864,52 @@ function ensureDrawModeLayout() {
 
 function ensureFullscreenDrawLayout() {
     if (fullscreenDrawInitialized) return;
-    const container = document.getElementById('fullscreenDrawContainer');
-    if (!container) return;
+    let container = document.getElementById('fullscreenDrawContainer');
+
+    // Create container if it doesn't exist
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'fullscreenDrawContainer';
+        container.className = 'hidden fixed inset-0 z-50 bg-white';
+        document.body.appendChild(container);
+    }
 
     container.innerHTML = `
-        <div class="flex flex-col h-full bg-white overflow-hidden">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 p-4">
-                <div>
-                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Fullscreen Drawing</div>
-                    <div id="fullscreenPrompt" class="text-2xl font-semibold text-gray-900 mt-1">Draw:</div>
+        <div class="relative w-full h-full overflow-hidden">
+            <!-- Full-page canvas as background -->
+            <canvas id="fullscreenDrawCanvas" class="absolute inset-0 w-full h-full touch-none select-none bg-white" style="cursor: crosshair;"></canvas>
+
+            <!-- Top bar with prompt and exit -->
+            <div class="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pointer-events-none z-10">
+                <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-lg border border-gray-200">
+                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Draw</div>
+                    <div id="fullscreenPrompt" class="text-3xl font-bold text-gray-900">字</div>
                 </div>
-                <button id="exitFullscreenBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Exit</button>
+                <button id="exitFullscreenBtn" type="button" class="pointer-events-auto px-4 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 shadow-lg transition">Exit</button>
             </div>
-            <div class="flex flex-1 flex-col lg:flex-row min-h-0 overflow-auto">
-                <div class="border-b border-gray-200 bg-white p-4 lg:w-72 lg:border-b-0 lg:border-r flex flex-col gap-3 flex-shrink-0">
-                    <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
-                    <div id="fullscreenOcrResult" class="text-7xl font-bold text-blue-600 min-h-[100px]">&nbsp;</div>
-                    <p class="text-xs text-gray-500">Top guess updates automatically while you draw.</p>
+
+            <!-- Left panel with OCR result -->
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200 w-32">
+                    <div class="text-xs uppercase tracking-[0.25em] text-gray-400 mb-2">Match</div>
+                    <div id="fullscreenOcrResult" class="text-6xl font-bold text-blue-600 text-center min-h-[80px]">&nbsp;</div>
                 </div>
-                <div class="flex-1 flex flex-col items-center justify-center bg-gray-100 p-4 gap-3 min-h-0">
-                    <div class="w-full max-w-4xl flex-1 flex items-center justify-center min-h-0">
-                        <canvas id="fullscreenDrawCanvas" width="600" height="600" class="bg-white border-4 border-gray-200 rounded-3xl shadow-xl touch-none select-none max-w-full max-h-full"></canvas>
+            </div>
+
+            <!-- Bottom toolbar -->
+            <div class="absolute bottom-0 left-0 right-0 p-4 pointer-events-none z-10">
+                <div class="flex flex-wrap items-center justify-center gap-3 pointer-events-auto">
+                    <div class="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-gray-200 flex gap-2">
+                        <button id="fullscreenUndoBtn" type="button" class="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition text-sm">Undo</button>
+                        <button id="fullscreenRedoBtn" type="button" class="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition text-sm">Redo</button>
+                        <button id="fullscreenClearBtn" type="button" class="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition text-sm">Clear</button>
                     </div>
-                    <div class="text-xs text-gray-500 text-center">Hold Space to pan · Scroll to zoom</div>
-                </div>
-            </div>
-            <div class="border-t border-gray-200 bg-white p-4 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-                <div class="flex flex-wrap gap-2">
-                    <button id="fullscreenUndoBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Undo</button>
-                    <button id="fullscreenRedoBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Redo</button>
-                    <button id="fullscreenClearBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Clear</button>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button id="fullscreenNextSetBtn" type="button" class="px-4 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition">Next Set</button>
-                    <button id="fullscreenShowAnswerBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Show Answer</button>
-                    <button id="fullscreenSubmitBtn" type="button" class="px-4 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition">Submit</button>
-                    <button id="fullscreenNextBtn" type="button" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-500 transition">Next</button>
+                    <div class="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-gray-200 flex gap-2">
+                        <button id="fullscreenNextSetBtn" type="button" class="px-3 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition text-sm">Next Set</button>
+                        <button id="fullscreenShowAnswerBtn" type="button" class="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition text-sm">Show</button>
+                        <button id="fullscreenSubmitBtn" type="button" class="px-3 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition text-sm">Submit</button>
+                        <button id="fullscreenNextBtn" type="button" class="px-3 py-2 rounded-xl border border-blue-500 text-blue-600 font-semibold hover:bg-blue-50 transition text-sm">Next →</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -7631,6 +7698,9 @@ function initQuiz(charactersData, userConfig = {}) {
         fuzzyInput.setAttribute('autocapitalize', 'off');
         fuzzyInput.setAttribute('spellcheck', 'false');
     }
+
+    // Setup keyboard shortcut hints for inputs
+    setupInputShortcutHints();
 
     previewQueue = [];
     const requestedPreviewSize = Number(config.previewQueueSize);
