@@ -4091,11 +4091,19 @@ function handleToneFlowPinyinChoice(choice, btn) {
         btn.classList.add('bg-green-100', 'border-green-500');
         setToneFlowPrompt('Now pick the tones');
         toneFlowStage = 'tone';
+        // Clear input before switching to tone step
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+        }
         setTimeout(() => renderToneFlowStep(), 250);
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
         feedback.textContent = 'Not quite. Try another pinyin.';
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
+        // Clear input immediately on wrong answer
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+        }
         setTimeout(() => {
             feedback.textContent = '';
             if (toneFlowUseFuzzy) {
@@ -4294,7 +4302,9 @@ function handleToneFlowToneChoice(choice, btn) {
             feedback.textContent = '✓';
             feedback.className = 'text-center text-xl font-semibold text-green-600 my-2';
             // Clear the text box for the next tone
-            if (fuzzyInput) fuzzyInput.value = '';
+            if (fuzzyInput) {
+                fuzzyInput.value = '';
+            }
             setTimeout(() => {
                 feedback.textContent = '';
                 renderToneFlowStep();
@@ -4307,8 +4317,11 @@ function handleToneFlowToneChoice(choice, btn) {
         const currentChar = chars[toneFlowIndex] || '?';
         feedback.innerHTML = `Wrong — correct tone for <strong>${currentChar}</strong> is <strong>${expected}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        // Clear the text box immediately
-        if (fuzzyInput) fuzzyInput.value = '';
+        // Clear the text box immediately and refocus
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+            setTimeout(() => fuzzyInput.focus(), 0);
+        }
         setTimeout(() => {
             feedback.textContent = '';
             renderToneFlowStep();
