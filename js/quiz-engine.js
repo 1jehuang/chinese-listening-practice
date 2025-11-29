@@ -3086,6 +3086,10 @@ function generateQuestion(options = {}) {
         if (previewQueue.length) {
             nextQuestion = previewQueue.shift();
         }
+        // Set currentQuestion BEFORE refilling so it gets excluded
+        if (nextQuestion) {
+            currentQuestion = nextQuestion;
+        }
         ensurePreviewQueue();
     }
 
