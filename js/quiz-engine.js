@@ -11,7 +11,7 @@ let total = 0;
 let enteredSyllables = [];
 let enteredTones = '';
 let quizCharacters = [];
-let originalQuizCharacters = []; // Store original characters before SR filtering
+let originalQuizCharacters = []; // Store original characters array
 let config = {};
 let nextAnswerBuffer = ''; // carry typed text into the next question after showing feedback
 
@@ -187,14 +187,6 @@ const BKT_PARAMS = {
     P_S: 0.08     // Slip: probability of wrong answer despite knowing
 };
 const BKT_MASTERY_THRESHOLD = 0.85;  // P(Learned) >= this means "mastered"
-
-// FSRS-4.5 default parameters (optimized weights)
-const FSRS_PARAMS = {
-    w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
-    requestRetention: 0.9,  // Target 90% recall probability
-    maximumInterval: 36500, // 100 years in days (effectively unlimited)
-    decay: -0.5            // Power law decay constant
-};
 
 // Hanzi Writer
 let writer = null;
@@ -2039,7 +2031,6 @@ function updateFullscreenQueueDisplay() {
     }
 
     const items = queue.map((item, idx) => {
-        const label = srEnabled ? summarizeSRCard(getSRCardData(item.char)) : 'SR off';
         const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
         const isCurrent = currentQuestion && currentQuestion.char === item.char;
         return `
@@ -2049,7 +2040,6 @@ function updateFullscreenQueueDisplay() {
                     <span class="text-2xl font-bold text-gray-900">${escapeHtml(item.char || '?')}</span>
                     <span class="text-sm text-gray-500">${escapeHtml(pinyin)}</span>
                 </div>
-                <span class="text-xs ${isCurrent ? 'text-blue-700' : 'text-gray-600'}">${label}</span>
             </li>
         `;
     }).join('');
@@ -3030,21 +3020,10 @@ function generateQuestion(options = {}) {
         startTimer();
     }
 
-    // Show SR card info if enabled
-    if (srEnabled && currentQuestion) {
-        showSRCardInfo(currentQuestion.char);
-    }
-
-    // Update SR UI for drawing surfaces
-    updateDrawingSrUI();
-    updateFullscreenSrUI();
     updateFullscreenQueueDisplay();
 
     // Show current word confidence
     updateCurrentWordConfidence();
-
-    // Track response time for FSRS
-    srQuestionStartTime = Date.now();
 }
 
 function updateCurrentWordConfidence() {
@@ -3245,12 +3224,6 @@ function checkAnswer() {
             }
             lastAnswerCorrect = true;
 
-            // Update SR data on correct answer
-            if (srEnabled && currentQuestion && currentQuestion.char) {
-                const responseTime = Date.now() - srQuestionStartTime;
-                updateSRCard(currentQuestion.char, true, responseTime);
-            }
-
             feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin} (${expectedTones})`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
@@ -3274,12 +3247,6 @@ function checkAnswer() {
                 total++;
             }
             lastAnswerCorrect = false;
-
-            // Update SR data on wrong answer
-            if (srEnabled && currentQuestion && currentQuestion.char) {
-                const responseTime = Date.now() - srQuestionStartTime;
-                updateSRCard(currentQuestion.char, false, responseTime);
-            }
 
             feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${currentQuestion.pinyin})`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
@@ -3346,12 +3313,6 @@ function handleCorrectFullAnswer() {
     }
     lastAnswerCorrect = true;
     markSchedulerOutcome(true);
-
-    // Update SR data on correct answer
-    if (srEnabled && currentQuestion && currentQuestion.char) {
-        const responseTime = Date.now() - srQuestionStartTime;
-        updateSRCard(currentQuestion.char, true, responseTime);
-    }
 
     if (mode === 'audio-to-pinyin') {
         feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
@@ -5649,9 +5610,6 @@ function initCanvas() {
     const zoomOutBtn = document.getElementById('zoomOutBtn');
     const resetBtn = document.getElementById('resetViewBtn');
     const fullscreenBtn = document.getElementById('fullscreenDrawBtn');
-    const srToggleBtn = document.getElementById('drawSrToggleBtn');
-    const srStatsBtn = document.getElementById('drawSrStatsBtn');
-    const aggressiveBtn = document.getElementById('drawAggressiveBtn');
 
     if (clearBtn) clearBtn.onclick = clearCanvas;
     if (submitBtn) submitBtn.onclick = submitDrawing;
@@ -5662,28 +5620,6 @@ function initCanvas() {
     if (zoomOutBtn) zoomOutBtn.onclick = zoomOut;
     if (resetBtn) resetBtn.onclick = resetView;
     if (fullscreenBtn) fullscreenBtn.onclick = enterFullscreenDrawing;
-    if (srToggleBtn && !srToggleBtn.dataset.bound) {
-        srToggleBtn.dataset.bound = 'true';
-        srToggleBtn.onclick = () => {
-            toggleSREnabled();
-            updateDrawingSrUI();
-            updateFullscreenSrUI();
-        };
-    }
-    if (srStatsBtn && !srStatsBtn.dataset.bound) {
-        srStatsBtn.dataset.bound = 'true';
-        srStatsBtn.onclick = () => {
-            showSrStatsAlert();
-        };
-    }
-    if (aggressiveBtn && !aggressiveBtn.dataset.bound) {
-        aggressiveBtn.dataset.bound = 'true';
-        aggressiveBtn.onclick = () => {
-            toggleSRAggressiveMode();
-            updateDrawingSrUI();
-            updateFullscreenSrUI();
-        };
-    }
 
     updateOcrCandidates();
     updateUndoRedoButtons();
@@ -6068,12 +6004,6 @@ function submitDrawing() {
             score++;
         }
         markSchedulerOutcome(correct);
-        if (srEnabled && currentQuestion && currentQuestion.char) {
-            const responseTime = Date.now() - srQuestionStartTime;
-            updateSRCard(currentQuestion.char, correct, responseTime);
-            updateDrawingSrUI();
-            updateFullscreenSrUI();
-        }
     }
 
     if (correct) {
@@ -6140,12 +6070,6 @@ function revealDrawingAnswer() {
         answered = true;
         total++;
 
-        if (srEnabled && currentQuestion && currentQuestion.char) {
-            const responseTime = Date.now() - srQuestionStartTime;
-            updateSRCard(currentQuestion.char, false, responseTime);
-            updateDrawingSrUI();
-            updateFullscreenSrUI();
-        }
         markSchedulerOutcome(false);
     }
 
@@ -6194,9 +6118,6 @@ function enterFullscreenDrawing() {
     isFullscreenMode = true;
     container.classList.remove('hidden');
 
-    // Keep SR indicators in sync inside fullscreen
-    updateFullscreenSrUI();
-
     // Update prompt
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
@@ -6240,9 +6161,6 @@ function enterFullscreenDrawing() {
     const nextBtn = document.getElementById('fullscreenNextBtn');
     const nextSetBtn = document.getElementById('fullscreenNextSetBtn');
     const exitBtn = document.getElementById('exitFullscreenBtn');
-    const srToggleBtn = document.getElementById('fullscreenSrToggleBtn');
-    const srStatsBtn = document.getElementById('fullscreenSrStatsBtn');
-    const aggressiveBtn = document.getElementById('fullscreenAggressiveBtn');
 
     if (undoBtn) undoBtn.onclick = undoFullscreenStroke;
     if (redoBtn) redoBtn.onclick = redoFullscreenStroke;
@@ -6262,28 +6180,6 @@ function enterFullscreenDrawing() {
         };
     }
     if (exitBtn) exitBtn.onclick = exitFullscreenDrawing;
-    if (srToggleBtn && !srToggleBtn.dataset.bound) {
-        srToggleBtn.dataset.bound = 'true';
-        srToggleBtn.onclick = () => {
-            toggleSREnabled();
-            updateFullscreenSrUI();
-            updateDrawingSrUI();
-        };
-    }
-    if (srStatsBtn && !srStatsBtn.dataset.bound) {
-        srStatsBtn.dataset.bound = 'true';
-        srStatsBtn.onclick = () => {
-            showSrStatsAlert();
-        };
-    }
-    if (aggressiveBtn && !aggressiveBtn.dataset.bound) {
-        aggressiveBtn.dataset.bound = 'true';
-        aggressiveBtn.onclick = () => {
-            toggleSRAggressiveMode();
-            updateFullscreenSrUI();
-            updateDrawingSrUI();
-        };
-    }
 
     // Reset drawing state
     strokes = [];
@@ -6543,12 +6439,6 @@ function submitFullscreenDrawing() {
         playWrongSound();
     }
 
-    if (isFirstAttempt && srEnabled && currentQuestion && currentQuestion.char) {
-        const responseTime = Date.now() - srQuestionStartTime;
-        updateSRCard(currentQuestion.char, correct, responseTime);
-        updateDrawingSrUI();
-        updateFullscreenSrUI();
-    }
     if (isFirstAttempt) {
         markSchedulerOutcome(correct);
     }
@@ -6611,12 +6501,6 @@ function showFullscreenAnswer() {
         answered = true;
         total++;
 
-        if (srEnabled && currentQuestion && currentQuestion.char) {
-            const responseTime = Date.now() - srQuestionStartTime;
-            updateSRCard(currentQuestion.char, false, responseTime);
-            updateDrawingSrUI();
-            updateFullscreenSrUI();
-        }
         markSchedulerOutcome(false);
 
         updateStats();
@@ -7656,53 +7540,6 @@ function initQuizCommandPalette() {
             scope: 'Feed mode only'
         });
 
-        // Spaced Repetition actions
-        actions.push({
-            name: srEnabled ? 'Disable Spaced Repetition' : 'Enable Spaced Repetition',
-            type: 'action',
-            description: srEnabled
-                ? 'Turn off spaced repetition and show all cards'
-                : 'Show only cards that are due for review based on your performance',
-            keywords: 'spaced repetition sr review memory schedule toggle enable disable',
-            action: () => {
-                toggleSREnabled();
-            }
-        });
-
-        if (srEnabled) {
-            actions.push({
-                name: 'View SR Stats',
-                type: 'action',
-                description: `${srDueCount} cards due today`,
-                keywords: 'spaced repetition sr stats review due cards',
-                action: () => {
-                    showSrStatsAlert();
-                }
-            });
-
-            actions.push({
-                name: 'Reset SR Data',
-                type: 'action',
-                description: 'Clear all spaced repetition progress for this page',
-                keywords: 'spaced repetition sr reset clear delete data',
-                action: () => {
-                    resetSRData();
-                }
-            });
-
-            actions.push({
-                name: srAggressiveMode ? 'Disable Aggressive SR (Drawing)' : 'Enable Aggressive SR (Drawing)',
-                type: 'action',
-                description: srAggressiveMode
-                    ? 'Return to normal scheduling for drawing'
-                    : 'Clamp intervals and focus on due cards while drawing',
-                keywords: 'spaced repetition sr aggressive fast drawing due clamp',
-                action: () => {
-                    toggleSRAggressiveMode();
-                }
-            });
-        }
-
         return actions;
     }
 
@@ -7738,7 +7575,6 @@ function initQuiz(charactersData, userConfig = {}) {
     loadHideMeaningChoices();
     loadComponentPreference();
     loadTimerSettings();
-    loadSRData();
     loadSchedulerStats();
     loadSchedulerMode();
     ensureCharGlossesLoaded();
@@ -7746,8 +7582,6 @@ function initQuiz(charactersData, userConfig = {}) {
     loadAdaptiveState();
     loadFeedState();
 
-    // Apply SR filtering to characters
-    quizCharacters = applySRFiltering(quizCharacters);
     reconcileBatchStateWithQueue();
     reconcileAdaptiveStateWithPool();
     reconcileFeedStateWithPool();
@@ -7934,9 +7768,6 @@ function initQuiz(charactersData, userConfig = {}) {
 
     // Initialize command palette
     initQuizCommandPalette();
-
-    // Show SR banner if enabled
-    showSRBanner();
 
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         prepareBatchForNextQuestion();
