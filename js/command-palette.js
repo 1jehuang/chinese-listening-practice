@@ -1,5 +1,7 @@
 // Command Palette - works on all pages and can be customized per page
 
+const EXPERIMENTAL_UI_KEY = 'experimental_ui_enabled';
+
 const DEFAULT_PAGES = [
     { name: 'Home', url: 'home.html', type: 'page', keywords: 'dashboard start overview' },
     { name: 'Pinyin Practice', url: 'pinyin-practice.html', type: 'page', keywords: 'typing drill listening' },
@@ -58,6 +60,7 @@ const DEFAULT_PAGES = [
     { name: 'Audio Prompt Tester', url: 'test-audio.html', type: 'page', keywords: 'audio sound test harness' },
     { name: 'Pinyin Input Tester', url: 'test-pinyin-input.html', type: 'page', keywords: 'pinyin input ime tester' },
     { name: 'Syllable Entry Harness', url: 'test-syllable-entry.html', type: 'page', keywords: 'syllable entry experiment' },
+    { name: 'Char → Pinyin → Tones (MC)', url: 'char-to-pinyin-tones-mc.html', type: 'page', keywords: 'pinyin tones multiple choice two step' },
     { name: 'Experimental Layout', url: 'experimental-layout.html', type: 'page', keywords: 'experimental layout flat test sandbox' }
 ];
 
@@ -424,7 +427,12 @@ function initCommandPalette(config = []) {
         }
 
         if (item.type === 'page') {
-            window.location.href = item.url;
+            let target = item.url;
+            if (isExperimentalUIEnabled() && pageSupportsExperimental(item) && item.url !== 'experimental-layout.html') {
+                const source = encodeURIComponent(item.url);
+                target = `experimental-layout.html#from=${source}`;
+            }
+            window.location.href = target;
             return;
         }
 
@@ -650,8 +658,10 @@ function initCommandPalette(config = []) {
         }
 
         const contextualActions = createContextualActions();
+        const experimentalActions = createExperimentalActions();
         const combinedItems = [
             ...base.actions,
+            ...experimentalActions,
             ...contextualActions,
             ...base.modes,
             ...base.pages,
@@ -885,6 +895,60 @@ function initCommandPalette(config = []) {
         });
 
         return actions;
+    }
+
+    function createExperimentalActions() {
+        return [
+            {
+                name: 'Enable Experimental UI',
+                type: 'action',
+                description: 'Use the experimental layout for quiz / practice pages opened from the palette',
+                keywords: 'experimental ui layout toggle enable',
+                action: () => {
+                    setExperimentalUIEnabled(true);
+                    console.info('Experimental UI enabled');
+                },
+                available: () => !isExperimentalUIEnabled(),
+                scope: 'Global'
+            },
+            {
+                name: 'Disable Experimental UI',
+                type: 'action',
+                description: 'Return to the standard layout for all pages',
+                keywords: 'experimental ui layout toggle disable off',
+                action: () => {
+                    setExperimentalUIEnabled(false);
+                    console.info('Experimental UI disabled');
+                },
+                available: () => isExperimentalUIEnabled(),
+                scope: 'Global'
+            }
+        ];
+    }
+
+    function isExperimentalUIEnabled() {
+        try {
+            return localStorage.getItem(EXPERIMENTAL_UI_KEY) === 'true';
+        } catch {
+            return false;
+        }
+    }
+
+    function setExperimentalUIEnabled(enabled) {
+        try {
+            localStorage.setItem(EXPERIMENTAL_UI_KEY, enabled ? 'true' : 'false');
+        } catch {
+            // ignore storage errors
+        }
+    }
+
+    function pageSupportsExperimental(item) {
+        if (!item || item.type !== 'page' || !item.url) return false;
+        const url = item.url.toLowerCase();
+        const blocked = ['home.html', 'index.html', 'experimental-layout.html'];
+        if (blocked.includes(url)) return false;
+        // Broadly allow lesson/test/drill pages so the toggle is reliable.
+        return /(quiz|dictation|practice|lesson|test|pinyin|tone|syllable|radical|context|listening|char|character)/i.test(url);
     }
 
     function computeItemScore(query, condensedQuery, item) {

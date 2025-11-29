@@ -283,7 +283,7 @@ function createAuthUI() {
 
     const authContainer = document.createElement('div');
     authContainer.id = 'auth-container';
-    authContainer.className = 'fixed top-4 right-4 z-50';
+    authContainer.className = 'fixed top-4 left-28 z-50';
     authContainer.innerHTML = `
         <button id="auth-btn" class="bg-white hover:bg-gray-100 text-gray-700 w-10 h-10 rounded-full shadow border border-gray-200 transition flex items-center justify-center" title="Sign in">
             <svg id="auth-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

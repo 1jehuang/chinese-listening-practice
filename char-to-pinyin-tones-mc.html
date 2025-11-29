@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Char → Pinyin → Tones (MC)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        body { background: #f8fafc; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .btn { padding: 0.65rem 0.9rem; border-radius: 0.65rem; border: 2px solid #e5e7eb; background: #fff; transition: all 120ms ease; }
+        .btn:hover { border-color: #3b82f6; background: #eff6ff; }
+        .btn.correct { border-color: #22c55e; background: #dcfce7; color: #166534; }
+        .btn.wrong { border-color: #ef4444; background: #fee2e2; color: #991b1b; }
+        .pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eef2ff; color: #4338ca; font-weight: 600; font-size: 0.85rem; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <header class="mb-6 text-center">
+            <p class="text-sm uppercase tracking-[0.18em] text-gray-400">Two-step drill</p>
+            <h1 class="text-2xl font-bold text-gray-900">Char → Pinyin → Tones (Multiple Choice)</h1>
+            <p class="text-gray-600 mt-2">Pick the right pinyin, then choose the tone for each syllable (1–5).</p>
+        </header>
+
+        <section class="card p-6 md:p-8">
+            <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+                <div>
+                    <div class="pill">Question <span id="questionNumber">1</span>/<span id="totalQuestions">0</span></div>
+                    <div id="feedback" class="mt-2 text-sm text-gray-600 min-h-[1.25rem]"></div>
+                </div>
+                <div class="text-right text-sm text-gray-600">
+                    <div>Score: <span id="score">0</span>/<span id="attempted">0</span></div>
+                    <div>Accuracy: <span id="accuracy">0%</span></div>
+                </div>
+            </div>
+
+            <div class="text-center mb-6">
+                <div class="text-6xl md:text-7xl font-bold text-gray-900" id="character">字</div>
+            </div>
+
+            <div id="prompt" class="text-center text-lg font-semibold text-gray-800 mb-4">Select the correct pinyin</div>
+
+            <div id="choices" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+            <div class="flex justify-center mt-6">
+                <button id="nextBtn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">Next</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const data = [
+            { char: '同住', pinyin: 'tóng zhù' },
+            { char: '学期', pinyin: 'xué qī' },
+            { char: '公寓', pinyin: 'gōng yù' },
+            { char: '宿舍', pinyin: 'sù shè' },
+            { char: '方便', pinyin: 'fāng biàn' },
+            { char: '搬出去', pinyin: 'bān chū qù' },
+            { char: '食堂', pinyin: 'shí táng' },
+            { char: '三明治', pinyin: 'sān míng zhì' },
+            { char: '受不了', pinyin: 'shòu bu liǎo' },
+            { char: '容易', pinyin: 'róng yì' },
+        ];
+
+        const toneMap = {
+            ā:1, á:2, ǎ:3, à:4, a:5,
+            ē:1, é:2, ě:3, è:4, e:5,
+            ī:1, í:2, ǐ:3, ì:4, i:5,
+            ō:1, ó:2, ǒ:3, ò:4, o:5,
+            ū:1, ú:2, ǔ:3, ù:4, u:5,
+            ǖ:1, ǘ:2, ǚ:3, ǜ:4, ü:5,
+            Ā:1, Á:2, Ǎ:3, À:4, A:5,
+            Ē:1, É:2, Ě:3, È:4, E:5,
+            Ī:1, Í:2, Ǐ:3, Ì:4, I:5,
+            Ō:1, Ó:2, Ǒ:3, Ò:4, O:5,
+            Ū:1, Ú:2, Ǔ:3, Ù:4, U:5,
+            Ǖ:1, Ǘ:2, Ǚ:3, Ǜ:4, Ü:5
+        };
+
+        let order = shuffle([...data.keys()]);
+        let idx = 0;
+        let stage = 'pinyin';
+        let currentWord = null;
+        let toneSteps = [];
+        let toneIndex = 0;
+        let score = 0;
+        let attempted = 0;
+
+        const el = {
+            character: document.getElementById('character'),
+            choices: document.getElementById('choices'),
+            feedback: document.getElementById('feedback'),
+            prompt: document.getElementById('prompt'),
+            score: document.getElementById('score'),
+            attempted: document.getElementById('attempted'),
+            accuracy: document.getElementById('accuracy'),
+            questionNumber: document.getElementById('questionNumber'),
+            totalQuestions: document.getElementById('totalQuestions'),
+            nextBtn: document.getElementById('nextBtn')
+        };
+
+        el.totalQuestions.textContent = data.length;
+
+        function shuffle(arr) {
+            const a = arr.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function getTonesForWord(pinyin) {
+            return pinyin.trim().split(/\s+/).map(syllable => {
+                for (const ch of syllable) {
+                    if (toneMap[ch] !== undefined) return toneMap[ch];
+                }
+                return 5; // neutral if none found
+            });
+        }
+
+        function buildPinyinOptions(correct) {
+            const all = data.map(d => d.pinyin);
+            const options = [correct];
+            while (options.length < 4) {
+                const pick = all[Math.floor(Math.random() * all.length)];
+                if (!options.includes(pick)) options.push(pick);
+            }
+            return shuffle(options);
+        }
+
+        function renderQuestion() {
+            stage = 'pinyin';
+            el.nextBtn.classList.add('hidden');
+            currentWord = data[order[idx]];
+            toneSteps = getTonesForWord(currentWord.pinyin);
+            toneIndex = 0;
+
+            el.character.textContent = currentWord.char;
+            el.prompt.textContent = 'Select the correct pinyin';
+            el.questionNumber.textContent = idx + 1;
+            el.feedback.textContent = '';
+
+            const options = buildPinyinOptions(currentWord.pinyin);
+            renderChoices(options, handlePinyinChoice);
+        }
+
+        function renderChoices(options, handler) {
+            el.choices.innerHTML = '';
+            options.forEach(text => {
+                const btn = document.createElement('button');
+                btn.className = 'btn text-lg font-semibold text-gray-800';
+                btn.textContent = text;
+                btn.addEventListener('click', () => handler(btn, text));
+                el.choices.appendChild(btn);
+            });
+        }
+
+        function handlePinyinChoice(btn, choice) {
+            disableChoices();
+            const correct = choice === currentWord.pinyin;
+            btn.classList.add(correct ? 'correct' : 'wrong');
+            if (correct) {
+                el.feedback.textContent = 'Good! Now pick the tones.';
+                setTimeout(() => startToneStep(), 350);
+            } else {
+                el.feedback.textContent = 'Not quite. Try again.';
+                setTimeout(() => renderQuestion(), 450);
+            }
+        }
+
+        function startToneStep() {
+            stage = 'tone';
+            renderTonePrompt();
+        }
+
+        function renderTonePrompt() {
+            el.feedback.textContent = '';
+            el.prompt.textContent = `Tone for syllable ${toneIndex + 1} of ${toneSteps.length}`;
+            const options = [1,2,3,4,5];
+            renderChoices(options, handleToneChoice);
+        }
+
+        function handleToneChoice(btn, choice) {
+            disableChoices();
+            const correct = Number(choice) === toneSteps[toneIndex];
+            btn.classList.add(correct ? 'correct' : 'wrong');
+            if (correct) {
+                toneIndex += 1;
+                if (toneIndex >= toneSteps.length) {
+                    attempted += 1;
+                    score += 1;
+                    updateScore();
+                    el.feedback.textContent = 'Nice! Word complete.';
+                    el.nextBtn.classList.remove('hidden');
+                } else {
+                    setTimeout(() => renderTonePrompt(), 300);
+                }
+            } else {
+                el.feedback.textContent = 'Nope, pick the tone again.';
+                setTimeout(() => renderTonePrompt(), 300);
+            }
+        }
+
+        function disableChoices() {
+            el.choices.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+
+        function updateScore() {
+            el.score.textContent = score;
+            el.attempted.textContent = attempted;
+            const acc = attempted ? Math.round((score / attempted) * 100) : 0;
+            el.accuracy.textContent = acc + '%';
+        }
+
+        el.nextBtn.addEventListener('click', () => {
+            idx = (idx + 1) % data.length;
+            renderQuestion();
+        });
+
+        renderQuestion();
+    </script>
+</body>
+</html>

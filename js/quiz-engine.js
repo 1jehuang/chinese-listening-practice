@@ -47,6 +47,10 @@ let dictationPartElements = [];
 let dictationTotalSyllables = 0;
 let dictationMatchedSyllables = 0;
 let dictationPrimaryPinyin = '';
+let toneFlowStage = null;           // 'pinyin' | 'tone'
+let toneFlowExpected = [];
+let toneFlowIndex = 0;
+let toneFlowUseFuzzy = false;
 let handwritingAnswerShown = false;
 let studyModeInitialized = false;
 let drawModeInitialized = false;
@@ -413,7 +417,7 @@ function getCurrentSkillKey(customMode = mode) {
     if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning') {
         return 'meaning';
     }
-    if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
+    if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
         return 'pinyin';
     }
     if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char') {
@@ -2664,6 +2668,9 @@ function generateQuestion(options = {}) {
     stopTimer();
     enteredSyllables = [];
     enteredTones = '';
+    toneFlowStage = null;
+    toneFlowExpected = [];
+    toneFlowIndex = 0;
     answered = false;
     feedback.textContent = '';
     hint.textContent = '';
@@ -2763,6 +2770,10 @@ function generateQuestion(options = {}) {
     } else if (mode === 'char-to-pinyin-type' && fuzzyMode) {
         renderThreeColumnPinyinLayout();
         generateFuzzyPinyinOptions();
+        fuzzyMode.style.display = 'block';
+    } else if (mode === 'char-to-pinyin-tones-mc' && fuzzyMode) {
+        renderThreeColumnPinyinLayout();
+        startPinyinToneMcFlow(true); // use fuzzy input for the pinyin step
         fuzzyMode.style.display = 'block';
     } else if (mode === 'pinyin-to-char' && choiceMode) {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
@@ -3035,6 +3046,8 @@ function setupAudioMode(options = {}) {
 function checkAnswer() {
     stopTimer();
 
+    if (mode === 'char-to-pinyin-tones-mc') return; // handled by custom flow
+
     if (!answerInput.value.trim()) return;
 
     const userAnswer = answerInput.value.trim();
@@ -3303,6 +3316,36 @@ function generatePinyinOptions() {
         btn.textContent = option;
         btn.dataset.normalized = normalizePinyinForChoice(option);
         btn.onclick = () => checkMultipleChoice(option);
+        options.appendChild(btn);
+    });
+}
+
+function generatePinyinOptionsToneFlow() {
+    const options = document.getElementById('options');
+    if (!options) return;
+    options.innerHTML = '';
+
+    const currentPinyin = currentQuestion.pinyin.split('/')[0].trim();
+
+    // Generate 3 wrong options
+    const wrongOptions = [];
+    while (wrongOptions.length < 3) {
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        const randomPinyin = random.pinyin.split('/')[0].trim();
+        if (randomPinyin !== currentPinyin && !wrongOptions.includes(randomPinyin)) {
+            wrongOptions.push(randomPinyin);
+        }
+    }
+
+    const allOptions = [...wrongOptions, currentPinyin];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.textContent = option;
+        btn.dataset.normalized = normalizePinyinForChoice(option);
+        btn.onclick = () => handleToneFlowPinyinChoice(option, btn);
         options.appendChild(btn);
     });
 }
@@ -3595,6 +3638,95 @@ function generateFuzzyPinyinOptions() {
     }
 }
 
+// Fuzzy pinyin options specifically for the pinyin→tones MC flow
+function generateFuzzyPinyinOptionsToneFlow() {
+    const options = document.getElementById('fuzzyOptions');
+    if (!options || !fuzzyInput) return;
+
+    options.innerHTML = '';
+
+    const currentVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+    const currentPinyin = currentVariants[0];
+
+    const wrongOptions = [];
+    const usedNormalized = new Set([normalizePinyinForChoice(currentPinyin)]);
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 500) {
+        safety++;
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        if (random.char === currentQuestion.char) continue;
+
+        const randomPinyin = random.pinyin.split('/')[0].trim();
+        const normalizedRandom = normalizePinyinForChoice(randomPinyin);
+
+        if (usedNormalized.has(normalizedRandom)) continue;
+
+        wrongOptions.push(randomPinyin);
+        usedNormalized.add(normalizedRandom);
+    }
+
+    const allOptions = [...wrongOptions, currentPinyin];
+    allOptions.sort(() => Math.random() - 0.5);
+
+    allOptions.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.pinyin = option;
+        btn.dataset.normalized = normalizePinyinForChoice(option);
+        btn.onclick = () => handleToneFlowPinyinChoice(option, btn);
+        options.appendChild(btn);
+    });
+
+    // Fuzzy matching on input
+    fuzzyInput.oninput = () => {
+        const input = fuzzyInput.value.trim().toLowerCase();
+        if (!input) {
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+            return;
+        }
+
+        let bestMatch = null;
+        let bestScore = -1;
+
+        allOptions.forEach((option, index) => {
+            const score = fuzzyMatch(input, option.toLowerCase());
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = index;
+            }
+        });
+
+        document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
+            if (index === bestMatch) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-blue-200', 'border-blue-500');
+            } else {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            }
+        });
+    };
+
+    // Enter key handler: pick highlighted option
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            if (selected) {
+                selected.click();
+            }
+        }
+    };
+
+    fuzzyInput.focus();
+}
+
 function checkFuzzyPinyinAnswer(answer) {
     if (answered) return;
     if (!answer) return;
@@ -3835,6 +3967,11 @@ function checkMultipleChoice(answer) {
         correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
         // Show all accepted variants in the feedback to make fuzziness visible to the user
         correctAnswer = pinyinOptions.join(' / ');
+    } else if (mode === 'char-to-pinyin-tones-mc') {
+        const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+        const normalizedAnswer = normalizePinyinForChoice(answer);
+        correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
+        correctAnswer = pinyinOptions.join(' / ');
     } else if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
         correct = answer === currentQuestion.meaning;
         correctAnswer = currentQuestion.meaning;
@@ -3897,6 +4034,133 @@ function checkMultipleChoice(answer) {
     }
 
     updateStats();
+}
+
+// =====================
+// Char → Pinyin → Tones (MC) flow
+// =====================
+
+function startPinyinToneMcFlow(useFuzzyInput = false) {
+    toneFlowStage = 'pinyin';
+    toneFlowExpected = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim()).split('').map(n => Number(n));
+    toneFlowIndex = 0;
+    toneFlowUseFuzzy = useFuzzyInput;
+    answered = false;
+    feedback.textContent = '';
+    hint.textContent = '';
+    hint.className = 'text-center text-lg text-gray-600 my-2';
+    setToneFlowPrompt('Select the correct pinyin');
+
+    if (useFuzzyInput && fuzzyMode && fuzzyInput) {
+        generateFuzzyPinyinOptionsToneFlow();
+        fuzzyMode.style.display = 'block';
+        if (choiceMode) choiceMode.style.display = 'none';
+    } else {
+        generatePinyinOptionsToneFlow();
+        if (choiceMode) choiceMode.style.display = 'block';
+        if (fuzzyMode) fuzzyMode.style.display = 'none';
+    }
+}
+
+function setToneFlowPrompt(text) {
+    const prompt = document.getElementById('prompt');
+    if (prompt) {
+        prompt.textContent = text;
+    } else {
+        hint.textContent = text;
+    }
+}
+
+function disableChoices() {
+    document.querySelectorAll('#options button, #fuzzyOptions button').forEach(btn => {
+        btn.disabled = true;
+    });
+}
+
+function handleToneFlowPinyinChoice(choice, btn) {
+    if (toneFlowStage !== 'pinyin') return;
+    const normalizedAnswer = normalizePinyinForChoice(choice);
+    const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+    const correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
+
+    disableChoices();
+
+    if (correct) {
+        btn.classList.add('bg-green-100', 'border-green-500');
+        setToneFlowPrompt('Now pick the tones');
+        toneFlowStage = 'tone';
+        setTimeout(() => renderToneFlowStep(), 250);
+    } else {
+        btn.classList.add('bg-red-100', 'border-red-500');
+        feedback.textContent = 'Not quite. Try another pinyin.';
+        feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
+        setTimeout(() => {
+            feedback.textContent = '';
+            if (toneFlowUseFuzzy) {
+                generateFuzzyPinyinOptionsToneFlow();
+            } else {
+                generatePinyinOptionsToneFlow();
+            }
+        }, 500);
+    }
+}
+
+function renderToneFlowStep() {
+    if (toneFlowStage !== 'tone') return;
+    setToneFlowPrompt(`Tone for syllable ${toneFlowIndex + 1} of ${toneFlowExpected.length}`);
+    if (choiceMode) choiceMode.style.display = 'block';
+    if (fuzzyMode) fuzzyMode.style.display = 'none';
+    renderToneChoices();
+}
+
+function renderToneChoices() {
+    const options = document.getElementById('options');
+    if (!options) return;
+    options.innerHTML = '';
+
+    [1,2,3,4,5].forEach(num => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 text-lg bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.textContent = num;
+        btn.onclick = () => handleToneFlowToneChoice(num, btn);
+        options.appendChild(btn);
+    });
+}
+
+function handleToneFlowToneChoice(choice, btn) {
+    if (toneFlowStage !== 'tone') return;
+
+    const expected = toneFlowExpected[toneFlowIndex];
+    disableChoices();
+
+    if (choice === expected) {
+        btn.classList.add('bg-green-100', 'border-green-500');
+        toneFlowIndex += 1;
+        if (toneFlowIndex >= toneFlowExpected.length) {
+            // Completed word
+            score++;
+            total++;
+            updateStats();
+            playCorrectSound();
+            markSchedulerOutcome(true);
+            feedback.textContent = '✓ Correct!';
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+            hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-xl font-semibold my-4 text-green-600';
+            answered = true;
+            scheduleNextQuestion(900);
+        } else {
+            setTimeout(() => renderToneFlowStep(), 250);
+        }
+    } else {
+        btn.classList.add('bg-red-100', 'border-red-500');
+        feedback.textContent = 'Wrong tone, try again.';
+        feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
+        setTimeout(() => {
+            feedback.textContent = '';
+            renderToneFlowStep();
+        }, 400);
+    }
 }
 
 function updateStats() {
@@ -6481,6 +6745,7 @@ function getCurrentPromptText() {
             return asString(question.meaning);
         case 'char-to-pinyin':
         case 'char-to-pinyin-mc':
+        case 'char-to-pinyin-tones-mc':
         case 'char-to-tones':
         case 'char-to-meaning':
         case 'char-to-meaning-type':
@@ -6658,6 +6923,7 @@ function initQuizCommandPalette() {
     const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-type', type: 'mode' },
+        { name: 'Char → Pinyin → Tones (MC)', mode: 'char-to-pinyin-tones-mc', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
