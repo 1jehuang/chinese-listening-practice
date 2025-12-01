@@ -4320,6 +4320,56 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
     fuzzyInput.onkeydown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            const input = fuzzyInput.value.trim();
+
+            // Check if input includes tone number (e.g., "wan3")
+            const toneMatch = input.match(/^(.+?)([1-5])$/);
+            if (toneMatch) {
+                const pinyinPart = toneMatch[1];
+                const toneNum = parseInt(toneMatch[2]);
+                const expectedTone = toneFlowExpected[toneFlowIndex];
+                const expectedPinyin = normalizePinyinForChoice(currentSyllable);
+                const inputPinyin = normalizePinyinForChoice(pinyinPart);
+
+                // If both pinyin and tone are correct, skip the tone step
+                if (inputPinyin === expectedPinyin && toneNum === expectedTone) {
+                    fuzzyInput.value = '';
+                    playCorrectSound();
+                    const currentChar = toneFlowChars[toneFlowIndex] || '';
+                    const currentSyl = toneFlowSyllables[toneFlowIndex] || '';
+                    if (currentChar && currentSyl) {
+                        playPinyinAudio(currentSyl, currentChar);
+                    }
+                    toneFlowCompletedPinyin.push(currentSyllable);
+                    toneFlowCompleted.push(toneNum);
+                    toneFlowIndex += 1;
+
+                    if (toneFlowIndex >= toneFlowExpected.length) {
+                        // Completed entire word
+                        updateToneFlowProgress();
+                        score++;
+                        total++;
+                        updateStats();
+                        markSchedulerOutcome(true);
+                        previousQuestion = currentQuestion;
+                        previousQuestionResult = 'correct';
+                        threeColumnInlineFeedback = null;
+                        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+                        playPinyinAudio(firstPinyin, currentQuestion.char);
+                        feedback.textContent = '✓ Correct!';
+                        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+                        answered = true;
+                        generateQuestion();
+                    } else {
+                        // Move to next character
+                        feedback.textContent = '';
+                        renderToneFlowCharacterStep();
+                    }
+                    return;
+                }
+            }
+
+            // Normal flow - click highlighted button
             const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
             if (selected) {
                 selected.click();
