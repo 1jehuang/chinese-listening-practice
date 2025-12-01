@@ -6979,15 +6979,15 @@ function ensureStudyModeLayout() {
     if (studyModeInitialized) return true;
 
     studyMode.innerHTML = `
-        <div class="space-y-4">
-            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div class="space-y-4" style="width: calc(100vw - 2rem); margin-left: calc(-50vw + 50% + 1rem); max-width: 1400px; margin-right: auto;">
+            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between px-4">
                 <div>
                     <h2 class="text-2xl font-semibold text-gray-900">Study Mode Reference</h2>
-                    <p class="text-sm text-gray-600">Quick list of this lesson’s vocab. Use search or sorting as needed.</p>
+                    <p class="text-sm text-gray-600">Quick list of this lesson's vocab. Use search or sorting as needed.</p>
                 </div>
                 <div id="studyStatsFiltered" class="text-sm text-gray-500">Showing 0 / 0 terms</div>
             </div>
-            <div class="flex flex-col gap-3 md:flex-row md:items-center">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center px-4">
                 <div class="relative flex-1 w-full">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">⌕</span>
                     <input
@@ -7010,7 +7010,7 @@ function ensureStudyModeLayout() {
                     <button id="studyResetBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 transition bg-white">Reset</button>
                 </div>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm mx-4">
                 <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-semibold tracking-wide text-gray-500 uppercase bg-gray-50 rounded-t-2xl">
                     <span class="md:col-span-2">Character</span>
                     <span class="md:col-span-3">Pinyin</span>
