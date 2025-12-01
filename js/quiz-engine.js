@@ -3219,7 +3219,7 @@ function generateQuestion(options = {}) {
         initCanvas();
         clearCanvas();
     } else if (mode === 'study' && studyMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-4xl my-8 font-bold text-gray-700">Study All Vocabulary</div>`;
+        questionDisplay.innerHTML = '';
         studyMode.style.display = 'block';
         populateStudyList();
     } else if (mode === 'radical-practice' && radicalPracticeMode) {
