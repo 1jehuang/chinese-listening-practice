@@ -7586,6 +7586,46 @@ function initQuizCommandPalette() {
             available: () => true
         });
 
+        actions.push({
+            name: 'Reset Current Mode Stats',
+            type: 'action',
+            description: `Clear confidence data for "${getCurrentSkillKey()}" mode on this page`,
+            keywords: 'reset clear confidence stats mode data progress',
+            action: () => {
+                const skillKey = getCurrentSkillKey();
+                if (!confirm(`Reset all "${skillKey}" confidence data for this lesson? This cannot be undone.`)) return;
+
+                let count = 0;
+                for (const key of Object.keys(schedulerStats)) {
+                    if (key.endsWith(`::${skillKey}`)) {
+                        delete schedulerStats[key];
+                        count++;
+                    }
+                }
+                saveSchedulerStats();
+                if (typeof renderConfidenceList === 'function') renderConfidenceList();
+                alert(`Reset ${count} "${skillKey}" entries.`);
+            },
+            available: () => Object.keys(schedulerStats).length > 0
+        });
+
+        actions.push({
+            name: 'Reset All Lesson Stats',
+            type: 'action',
+            description: 'Clear ALL confidence data for this lesson (all modes)',
+            keywords: 'reset clear confidence stats lesson data progress all',
+            action: () => {
+                if (!confirm('Reset ALL confidence data for this lesson? This cannot be undone.')) return;
+
+                const count = Object.keys(schedulerStats).length;
+                schedulerStats = {};
+                saveSchedulerStats();
+                if (typeof renderConfidenceList === 'function') renderConfidenceList();
+                alert(`Reset ${count} entries for this lesson.`);
+            },
+            available: () => Object.keys(schedulerStats).length > 0
+        });
+
         // Confidence panel visibility controls
         actions.push({
             name: confidencePanelVisible ? 'Hide Confidence Tracker' : 'Show Confidence Tracker',
