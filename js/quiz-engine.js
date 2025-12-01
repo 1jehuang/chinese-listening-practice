@@ -4298,6 +4298,24 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
     fuzzyInput.focus();
 }
 
+// Strip tone marks from pinyin but keep the letters (e.g., "wǎn" -> "wan")
+function stripToneMarks(pinyin) {
+    if (!pinyin) return '';
+    let result = pinyin;
+    const marks = {
+        'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+        'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+        'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+        'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+        'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+        'ǖ': 'ü', 'ǘ': 'ü', 'ǚ': 'ü', 'ǜ': 'ü'
+    };
+    for (const [marked, base] of Object.entries(marks)) {
+        result = result.replace(new RegExp(marked, 'g'), base);
+    }
+    return result;
+}
+
 function handleToneFlowPinyinChoiceSingle(choice, btn) {
     if (toneFlowStage !== 'pinyin') return;
 
@@ -4311,6 +4329,13 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
     if (correct) {
         btn.classList.add('bg-green-100', 'border-green-500');
         toneFlowCompletedPinyin.push(choice);
+        playCorrectSound();
+        // Play the character audio
+        const currentChar = toneFlowChars[toneFlowIndex] || '';
+        const currentSyl = toneFlowSyllables[toneFlowIndex] || '';
+        if (currentChar && currentSyl) {
+            playPinyinAudio(currentSyl, currentChar);
+        }
         // Clear input before switching to tone step
         if (fuzzyInput) {
             fuzzyInput.value = '';
@@ -4361,7 +4386,9 @@ function updateToneFlowProgress() {
         // Single character - show pinyin if we have it, otherwise nothing
         if (toneFlowCompletedPinyin.length > 0 && toneFlowStage === 'tone') {
             const char = toneFlowChars[0] || '?';
-            hint.innerHTML = `<span class="text-blue-600 font-bold">${char} (${toneFlowCompletedPinyin[0]})</span> → <span class="text-gray-500">tone?</span>`;
+            // Strip tone marks so we don't give away the answer
+            const pinyinNoTone = stripToneMarks(toneFlowCompletedPinyin[0]);
+            hint.innerHTML = `<span class="text-blue-600 font-bold">${char} (${pinyinNoTone})</span> → <span class="text-gray-500">tone?</span>`;
             hint.className = 'text-center text-xl my-2';
         } else {
             hint.textContent = '';
@@ -4533,9 +4560,11 @@ function handleToneFlowToneChoice(choice, btn) {
             hint.innerHTML = `<span class="text-green-600 font-bold text-2xl">${charTones}</span> <span class="text-gray-600">(${currentQuestion.pinyin}) - ${currentQuestion.meaning}</span>`;
             hint.className = 'text-center text-xl font-semibold my-4';
             answered = true;
-            scheduleNextQuestion(900);
+            // Move to next question immediately
+            nextQuestion();
         } else {
             // Show brief success feedback before moving to next CHARACTER (pinyin step)
+            playCorrectSound();
             feedback.textContent = '✓';
             feedback.className = 'text-center text-xl font-semibold text-green-600 my-2';
             // Clear the text box for the next character
