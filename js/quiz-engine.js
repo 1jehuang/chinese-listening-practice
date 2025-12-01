@@ -4319,6 +4319,11 @@ function stripToneMarks(pinyin) {
 function handleToneFlowPinyinChoiceSingle(choice, btn) {
     if (toneFlowStage !== 'pinyin') return;
 
+    // Clear input immediately on submit
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+    }
+
     const currentSyllable = toneFlowSyllables[toneFlowIndex];
     const normalizedAnswer = normalizePinyinForChoice(choice);
     const normalizedExpected = normalizePinyinForChoice(currentSyllable);
@@ -4336,10 +4341,6 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
         if (currentChar && currentSyl) {
             playPinyinAudio(currentSyl, currentChar);
         }
-        // Clear input before switching to tone step
-        if (fuzzyInput) {
-            fuzzyInput.value = '';
-        }
         setToneFlowPrompt(`Now pick tone for: ${toneFlowChars[toneFlowIndex]}`);
         toneFlowStage = 'tone';
         setTimeout(() => renderToneFlowToneStep(), 250);
@@ -4347,9 +4348,6 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
         btn.classList.add('bg-red-100', 'border-red-500');
         feedback.innerHTML = `Wrong — correct pinyin is <strong>${currentSyllable}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        if (fuzzyInput) {
-            fuzzyInput.value = '';
-        }
         setTimeout(() => {
             feedback.textContent = '';
             renderToneFlowCharacterStep();
@@ -4531,6 +4529,11 @@ function renderFuzzyToneChoices() {
 function handleToneFlowToneChoice(choice, btn) {
     if (toneFlowStage !== 'tone') return;
 
+    // Clear input immediately on submit
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+    }
+
     const expected = toneFlowExpected[toneFlowIndex];
     disableChoices();
 
@@ -4567,10 +4570,6 @@ function handleToneFlowToneChoice(choice, btn) {
             playCorrectSound();
             feedback.textContent = '✓';
             feedback.className = 'text-center text-xl font-semibold text-green-600 my-2';
-            // Clear the text box for the next character
-            if (fuzzyInput) {
-                fuzzyInput.value = '';
-            }
             setTimeout(() => {
                 feedback.textContent = '';
                 renderToneFlowCharacterStep();  // Go to next character's pinyin
