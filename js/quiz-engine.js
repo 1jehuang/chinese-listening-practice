@@ -4502,10 +4502,13 @@ function renderFuzzyToneChoices() {
             return;
         }
 
-        // Direct number match
+        // Direct number match - auto-submit immediately
         const numMatch = parseInt(input);
         if (numMatch >= 1 && numMatch <= 5) {
-            highlightToneButton(numMatch);
+            const btn = document.querySelector(`#fuzzyOptions button[data-tone="${numMatch}"]`);
+            if (btn) {
+                btn.click();
+            }
             return;
         }
 
