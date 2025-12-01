@@ -1603,7 +1603,7 @@ function renderConfidenceList() {
     ensureConfidencePanel();
     if (!confidenceListElement) return;
 
-    if (!confidencePanelVisible) return; // avoid extra work when hidden
+    if (!confidencePanelVisible) return;
 
     const pool = (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
         ? originalQuizCharacters
@@ -4118,12 +4118,18 @@ function checkMultipleChoice(answer) {
 
 function startPinyinToneMcFlow(useFuzzyInput = false) {
     const primaryPinyin = currentQuestion.pinyin.split('/')[0].trim();
-    // Split into syllables
-    toneFlowSyllables = primaryPinyin.split(/\s+/).filter(Boolean);
+    // Split into syllables using the proper pinyin splitter
+    // splitPinyinSyllables handles both spaced and unspaced pinyin
+    toneFlowSyllables = (typeof splitPinyinSyllables === 'function')
+        ? splitPinyinSyllables(primaryPinyin)
+        : primaryPinyin.split(/\s+/).filter(Boolean);
     toneFlowChars = (currentQuestion.char || '').replace(/[＿_]/g, '').split('');
+
+    // Each syllable gets its own tone (extract from each syllable individually)
     toneFlowExpected = toneFlowSyllables.map(syl => {
         const toneSeq = extractToneSequence(syl);
-        return toneSeq ? Number(toneSeq) : 5;
+        // toneSeq might be multi-digit if syllable wasn't split properly, take first digit
+        return toneSeq ? Number(String(toneSeq).charAt(0)) : 5;
     });
     toneFlowIndex = 0;
     toneFlowCompleted = [];

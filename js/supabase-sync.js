@@ -142,7 +142,18 @@ async function loadConfidenceFromSupabase() {
 // Merge Supabase data into scheduler stats
 async function mergeSupabaseStats() {
     const data = await loadConfidenceFromSupabase();
-    if (!data || data.length === 0) return;
+
+    // Always render confidence list after merge attempt
+    const doRender = () => {
+        if (typeof renderConfidenceList === 'function') {
+            renderConfidenceList();
+        }
+    };
+
+    if (!data || data.length === 0) {
+        doRender();
+        return;
+    }
 
     // schedulerStats is global from quiz-engine.js
     if (typeof schedulerStats === 'undefined') return;
@@ -220,6 +231,16 @@ async function initSupabaseSync() {
     // Load existing data from Supabase
     await mergeSupabaseStats();
 
+    // If quiz characters aren't loaded yet, schedule a retry to render confidence list
+    const quizCharsLoaded = typeof originalQuizCharacters !== 'undefined' && originalQuizCharacters?.length > 0;
+    if (!quizCharsLoaded) {
+        setTimeout(() => {
+            if (typeof renderConfidenceList === 'function') {
+                renderConfidenceList();
+            }
+        }, 500);
+    }
+
     // Hook into outcome tracking
     hookSchedulerSync();
 
@@ -244,35 +265,17 @@ async function signInWithGoogle() {
     // Store current page to redirect back after auth
     const currentPage = window.location.href.split('#')[0];
 
-    // Check if currently signed in as anonymous - if so, link instead of sign in
-    const { data: { session } } = await supabaseClient.auth.getSession();
-
-    if (session?.user?.is_anonymous) {
-        // Link Google identity to existing anonymous account (preserves user_id)
-        const { data, error } = await supabaseClient.auth.linkIdentity({
-            provider: 'google',
-            options: {
-                redirectTo: currentPage
-            }
-        });
-
-        if (error) {
-            console.error('Google link failed:', error);
-            alert('Link failed: ' + error.message);
+    // Always use regular OAuth sign-in (linkIdentity is disabled in Supabase)
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: currentPage
         }
-    } else {
-        // Normal sign in (no anonymous session to preserve)
-        const { data, error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: currentPage
-            }
-        });
+    });
 
-        if (error) {
-            console.error('Google sign-in failed:', error);
-            alert('Sign in failed: ' + error.message);
-        }
+    if (error) {
+        console.error('Google sign-in failed:', error);
+        alert('Sign in failed: ' + error.message);
     }
 }
 
