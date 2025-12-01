@@ -210,6 +210,155 @@ let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
 
+// Layout upgrade state
+let lessonLayoutStylesInjected = false;
+let legacyLessonLayoutUpgraded = false;
+
+function injectLessonLayoutStyles() {
+    if (lessonLayoutStylesInjected) return;
+    const existing = document.querySelector('link[href$="lesson-layout.css"]');
+    if (existing) {
+        lessonLayoutStylesInjected = true;
+        return;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/lesson-layout.css';
+    document.head.appendChild(link);
+    lessonLayoutStylesInjected = true;
+}
+
+function upgradeLegacyLessonLayoutIfNeeded() {
+    if (legacyLessonLayoutUpgraded) return;
+    const body = document.body;
+    if (!body) return;
+
+    const alreadyExperimental = body.classList.contains('experimental-layout') || document.querySelector('.app-container');
+    if (alreadyExperimental) {
+        legacyLessonLayoutUpgraded = true;
+        return;
+    }
+
+    const lessonMatch = (document.title || '').match(/Lesson\s+([1-6])/i);
+    if (!lessonMatch) return;
+
+    const question = document.getElementById('questionDisplay');
+    const modeButtons = Array.from(document.querySelectorAll('.mode-btn'));
+    if (!question || !modeButtons.length) return;
+
+    const flexContainer = document.querySelector('.flex.min-h-screen') || document.querySelector('body > .flex');
+    const sidebarWrapper = document.querySelector('.w-64 .mode-btn')?.closest('.w-64');
+    const contentCard = question.closest('.max-w-3xl') || question.closest('.quiz-shell') || question.parentElement;
+
+    injectLessonLayoutStyles();
+    legacyLessonLayoutUpgraded = true;
+
+    const fullscreenDrawContainer = document.getElementById('fullscreenDrawContainer');
+
+    // Standardize body + home button styling
+    const homeLink = document.querySelector('a[href="home.html"]');
+    if (homeLink) {
+        homeLink.className = 'home-btn';
+    }
+
+    body.classList.remove('bg-gray-100', 'min-h-screen', 'p-4', 'md:p-8');
+    body.classList.add('experimental-layout');
+    document.documentElement.style.height = '100%';
+    body.style.height = '100%';
+
+    const appContainer = document.createElement('div');
+    appContainer.className = 'app-container';
+
+    const aside = document.createElement('aside');
+    aside.className = 'sidebar w-64 bg-white shadow-lg';
+
+    let sidebarTitle = sidebarWrapper?.querySelector('h2');
+    if (sidebarTitle) {
+        sidebarTitle.remove();
+    } else {
+        sidebarTitle = document.createElement('h2');
+        sidebarTitle.textContent = 'Quiz Modes';
+    }
+    aside.appendChild(sidebarTitle);
+
+    const desc = document.createElement('p');
+    desc.className = 'mode-desc';
+    desc.textContent = 'Choose a mode, then answer in the panel to the right.';
+    aside.appendChild(desc);
+
+    const nav = document.createElement('nav');
+    modeButtons.forEach(btn => {
+        btn.className = 'mode-btn';
+        if (btn.parentElement) btn.parentElement.removeChild(btn);
+        nav.appendChild(btn);
+    });
+    aside.appendChild(nav);
+
+    const main = document.createElement('main');
+    main.className = 'main-content';
+
+    const header = document.createElement('header');
+    header.className = 'quiz-header';
+    let existingTitle = contentCard?.querySelector('h1') || document.querySelector('h1');
+    if (existingTitle) {
+        existingTitle.remove();
+        existingTitle.removeAttribute('class');
+        header.appendChild(existingTitle);
+    } else {
+        const fallback = document.createElement('h1');
+        fallback.textContent = document.title || 'Lesson';
+        header.appendChild(fallback);
+    }
+
+    const headerDescription = contentCard
+        ? Array.from(contentCard.children).find(el => el.tagName === 'P' && !el.querySelector('.mode-btn'))
+        : null;
+    if (headerDescription) {
+        headerDescription.remove();
+        headerDescription.className = 'text-sm text-gray-500 mt-1 text-center';
+        header.appendChild(headerDescription);
+    }
+    main.appendChild(header);
+
+    const quizDisplay = document.createElement('section');
+    quizDisplay.className = 'quiz-display';
+    ['questionDisplay', 'upcomingCharacters', 'hint', 'audioSection', 'componentBreakdown', 'questionPreview'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) quizDisplay.appendChild(el);
+    });
+    main.appendChild(quizDisplay);
+
+    const inputSection = document.createElement('section');
+    inputSection.className = 'input-section';
+    ['typeMode', 'choiceMode', 'fuzzyMode', 'strokeOrderMode', 'handwritingMode', 'drawCharMode', 'studyMode', 'radicalPracticeMode'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) inputSection.appendChild(el);
+    });
+    const feedbackEl = document.getElementById('feedback');
+    if (feedbackEl) inputSection.appendChild(feedbackEl);
+    main.appendChild(inputSection);
+
+    const stats = document.getElementById('stats');
+    if (stats) {
+        stats.className = 'stats-bar';
+        main.appendChild(stats);
+    }
+
+    appContainer.appendChild(aside);
+    appContainer.appendChild(main);
+
+    const legacyRoot = flexContainer || contentCard;
+    if (legacyRoot && legacyRoot !== body && legacyRoot !== document.documentElement && legacyRoot.parentElement) {
+        legacyRoot.replaceWith(appContainer);
+    } else {
+        body.appendChild(appContainer);
+    }
+
+    if (fullscreenDrawContainer) {
+        document.body.appendChild(fullscreenDrawContainer);
+    }
+}
+
 // =============================================================================
 // PINYIN UTILITIES - Now loaded from js/pinyin-utils.js
 // =============================================================================
@@ -7001,11 +7150,11 @@ function createStudyRow(item, displayIndex) {
     row.className = 'study-row flex flex-col gap-2 p-4 md:grid md:grid-cols-12 md:items-center md:gap-4 hover:bg-gray-50 transition';
 
     const charCell = document.createElement('div');
-    charCell.className = 'text-4xl font-bold text-gray-900 tracking-tight md:col-span-2';
+    charCell.className = 'text-4xl font-bold text-gray-900 tracking-tight md:col-span-2 min-w-0 overflow-hidden';
     charCell.textContent = item.char || '—';
 
     const pinyinCell = document.createElement('div');
-    pinyinCell.className = 'text-base font-semibold text-gray-900 md:col-span-3';
+    pinyinCell.className = 'text-base font-semibold text-gray-900 md:col-span-3 min-w-0 overflow-hidden break-words';
     const displayPinyin = (item.pinyin || '')
         .split('/')
         .map(part => part.trim())
@@ -7014,11 +7163,11 @@ function createStudyRow(item, displayIndex) {
     pinyinCell.textContent = displayPinyin || '—';
 
     const meaningCell = document.createElement('div');
-    meaningCell.className = 'text-sm text-gray-600 leading-snug md:col-span-6';
+    meaningCell.className = 'text-sm text-gray-600 leading-snug md:col-span-6 min-w-0 overflow-hidden break-words';
     meaningCell.textContent = item.meaning || '—';
 
     const actionsCell = document.createElement('div');
-    actionsCell.className = 'flex items-center justify-start md:justify-end md:col-span-1';
+    actionsCell.className = 'flex items-center justify-start md:justify-end md:col-span-1 min-w-0 flex-shrink-0';
 
     const audioButton = document.createElement('button');
     audioButton.type = 'button';
@@ -7904,6 +8053,9 @@ function initQuizCommandPalette() {
 function initQuiz(charactersData, userConfig = {}) {
     // Reserve Ctrl/Cmd+K for focusing the quiz input instead of the command palette
     window.__preferCtrlKForQuiz = true;
+
+    // Upgrade pre-Lesson 7 pages to the experimental layout automatically
+    upgradeLegacyLessonLayoutIfNeeded();
 
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
