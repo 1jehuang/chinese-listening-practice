@@ -4365,6 +4365,7 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
 
     if (correct) {
         btn.classList.add('bg-green-100', 'border-green-500');
+        btn.innerHTML = `✓ ${choice}`;
         toneFlowCompletedPinyin.push(choice);
         playCorrectSound();
         // Play the character audio
@@ -4378,6 +4379,7 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
         setTimeout(() => renderToneFlowToneStep(), 250);
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
+        btn.innerHTML = `✗ ${choice}`;
         feedback.innerHTML = `Wrong — correct pinyin is <strong>${currentSyllable}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
         setTimeout(() => {
@@ -4574,6 +4576,7 @@ function handleToneFlowToneChoice(choice, btn) {
 
     if (choice === expected) {
         btn.classList.add('bg-green-100', 'border-green-500');
+        btn.innerHTML = `✓ ${btn.textContent}`;
         toneFlowCompleted.push(choice);  // Record completed tone
         toneFlowIndex += 1;
         if (toneFlowIndex >= toneFlowExpected.length) {
@@ -4612,6 +4615,7 @@ function handleToneFlowToneChoice(choice, btn) {
         }
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
+        btn.innerHTML = `✗ ${btn.textContent}`;
         // Show the correct answer
         const currentChar = toneFlowChars[toneFlowIndex] || '?';
         feedback.innerHTML = `Wrong — correct tone for <strong>${currentChar}</strong> is <strong>${expected}</strong>`;
