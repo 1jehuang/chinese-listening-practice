@@ -4376,7 +4376,7 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
         }
         setToneFlowPrompt(`Now pick tone for: ${toneFlowChars[toneFlowIndex]}`);
         toneFlowStage = 'tone';
-        setTimeout(() => renderToneFlowToneStep(), 250);
+        renderToneFlowToneStep();
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
         btn.innerHTML = `✗ ${choice}`;
@@ -4604,14 +4604,10 @@ function handleToneFlowToneChoice(choice, btn) {
             // Move to next question immediately
             generateQuestion();
         } else {
-            // Show brief success feedback before moving to next CHARACTER (pinyin step)
+            // Move to next CHARACTER (pinyin step) immediately
             playCorrectSound();
-            feedback.textContent = '✓';
-            feedback.className = 'text-center text-xl font-semibold text-green-600 my-2';
-            setTimeout(() => {
-                feedback.textContent = '';
-                renderToneFlowCharacterStep();  // Go to next character's pinyin
-            }, 250);
+            feedback.textContent = '';
+            renderToneFlowCharacterStep();
         }
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
