@@ -4382,10 +4382,8 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
         btn.innerHTML = `✗ ${choice}`;
         feedback.innerHTML = `Wrong — correct pinyin is <strong>${currentSyllable}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        setTimeout(() => {
-            feedback.textContent = '';
-            renderToneFlowCharacterStep();
-        }, 800);
+        // Re-render immediately so user can retry, feedback clears on next action
+        renderToneFlowCharacterStep();
     }
 }
 
@@ -4616,15 +4614,8 @@ function handleToneFlowToneChoice(choice, btn) {
         const currentChar = toneFlowChars[toneFlowIndex] || '?';
         feedback.innerHTML = `Wrong — correct tone for <strong>${currentChar}</strong> is <strong>${expected}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        // Clear the text box immediately and refocus
-        if (fuzzyInput) {
-            fuzzyInput.value = '';
-            setTimeout(() => fuzzyInput.focus(), 0);
-        }
-        setTimeout(() => {
-            feedback.textContent = '';
-            renderToneFlowToneStep();  // Stay on tone step for this character
-        }, 800);
+        // Re-render immediately so user can retry, feedback clears on next action
+        renderToneFlowToneStep();
     }
 }
 
