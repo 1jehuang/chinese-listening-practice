@@ -4251,16 +4251,29 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
 
     const currentSyllable = toneFlowSyllables[toneFlowIndex];
 
-    // Generate 3 wrong options
+    // Build a pool of all single syllables from the vocabulary
+    const syllablePool = [];
+    quizCharacters.forEach(item => {
+        const primaryPinyin = item.pinyin.split('/')[0].trim();
+        const syllables = (typeof splitPinyinSyllables === 'function')
+            ? splitPinyinSyllables(primaryPinyin)
+            : primaryPinyin.split(/\s+/).filter(Boolean);
+        syllables.forEach(syl => {
+            if (syl && !syl.includes('.') && !syl.includes('…')) {
+                syllablePool.push(syl);
+            }
+        });
+    });
+
+    // Generate 3 wrong options from the pool
     const wrongOptions = [];
     const usedNormalized = new Set([normalizePinyinForChoice(currentSyllable)]);
     let safety = 0;
 
     while (wrongOptions.length < 3 && safety < 500) {
         safety++;
-        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-        const randomSyllables = random.pinyin.split('/')[0].trim().split(/\s+/);
-        const randomSyl = randomSyllables[Math.floor(Math.random() * randomSyllables.length)];
+        const randomSyl = syllablePool[Math.floor(Math.random() * syllablePool.length)];
+        if (!randomSyl) continue;
         const normalizedRandom = normalizePinyinForChoice(randomSyl);
 
         if (usedNormalized.has(normalizedRandom)) continue;
@@ -4369,7 +4382,15 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
                 }
             }
 
-            // Normal flow - click highlighted button
+            // Check for exact match first (normalized)
+            const inputNormalized = normalizePinyinForChoice(input);
+            const exactMatch = document.querySelector(`#fuzzyOptions button[data-normalized="${inputNormalized}"]`);
+            if (exactMatch) {
+                exactMatch.click();
+                return;
+            }
+
+            // Fall back to highlighted button from fuzzy match
             const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
             if (selected) {
                 selected.click();
