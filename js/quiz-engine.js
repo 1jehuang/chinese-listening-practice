@@ -6313,6 +6313,9 @@ function enterFullscreenDrawing() {
     fullscreenCanvas = document.getElementById('fullscreenDrawCanvas');
     if (!fullscreenCanvas) return;
 
+    // Get context first so resizeFullscreenCanvas can apply dpr scaling
+    fullscreenCtx = fullscreenCanvas.getContext('2d');
+
     // Full-page canvas - fills entire viewport
     const resizeFullscreenCanvas = () => {
         const dpr = window.devicePixelRatio || 1;
@@ -6331,12 +6334,6 @@ function enterFullscreenDrawing() {
     };
     resizeFullscreenCanvas();
     window.addEventListener('resize', resizeFullscreenCanvas);
-
-    fullscreenCtx = fullscreenCanvas.getContext('2d');
-    fullscreenCtx.lineWidth = 6; // Fixed stroke width for full-page canvas
-    fullscreenCtx.lineCap = 'round';
-    fullscreenCtx.lineJoin = 'round';
-    fullscreenCtx.strokeStyle = '#000';
 
     // Add event listeners
     fullscreenCanvas.addEventListener('mousedown', startFullscreenDrawing);

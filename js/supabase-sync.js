@@ -97,6 +97,8 @@ async function flushPendingUpdates() {
             streak: u.stats.streak || 0,
             last_wrong: u.stats.lastWrong || null,
             last_served: u.stats.lastServed || null,
+            last_correct: u.stats.lastCorrect || null,
+            bkt_p_learned: u.stats.bktPLearned ?? 0.0,
             updated_at: new Date().toISOString()
         }));
 
@@ -172,7 +174,8 @@ async function mergeSupabaseStats() {
             streak: row.streak || local.streak || 0, // prefer remote streak
             lastWrong: Math.max(local.lastWrong || 0, row.last_wrong || 0) || null,
             lastServed: Math.max(local.lastServed || 0, row.last_served || 0) || null,
-            lastCorrect: local.lastCorrect || 0
+            lastCorrect: Math.max(local.lastCorrect || 0, row.last_correct || 0) || null,
+            bktPLearned: Math.max(local.bktPLearned ?? 0, row.bkt_p_learned ?? 0)
         };
     }
 
@@ -228,6 +231,9 @@ async function initSupabaseSync() {
         return;
     }
 
+    // Load and apply user preferences from Supabase BEFORE loading stats
+    await applySupabasePreferences();
+
     // Load existing data from Supabase
     await mergeSupabaseStats();
 
@@ -243,6 +249,9 @@ async function initSupabaseSync() {
 
     // Hook into outcome tracking
     hookSchedulerSync();
+
+    // Hook into localStorage for preference sync
+    hookPreferenceSync();
 
     // Flush pending updates before page unload
     window.addEventListener('beforeunload', () => {
@@ -365,9 +374,100 @@ function createAuthUI() {
     updateAuthButton();
 }
 
+// =============================================================================
+// USER PREFERENCES SYNC
+// =============================================================================
+
+const SYNCED_PREFERENCES = [
+    'quiz_scheduler_mode',      // Which scheduler mode (weighted, batch_5, etc.)
+    'confidence_formula'        // heuristic or bkt
+];
+
+async function savePreferenceToSupabase(key, value) {
+    if (!supabaseClient || !currentUserId) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('user_preferences')
+            .upsert({
+                user_id: currentUserId,
+                preference_key: key,
+                preference_value: String(value),
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,preference_key' });
+
+        if (error) {
+            console.warn('Failed to save preference:', key, error);
+        } else {
+            console.log('Saved preference:', key, '=', value);
+        }
+    } catch (e) {
+        console.warn('Failed to save preference:', key, e);
+    }
+}
+
+async function loadPreferencesFromSupabase() {
+    if (!supabaseClient || !currentUserId) return {};
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('user_preferences')
+            .select('preference_key, preference_value')
+            .eq('user_id', currentUserId);
+
+        if (error) {
+            console.warn('Failed to load preferences:', error);
+            return {};
+        }
+
+        const prefs = {};
+        for (const row of (data || [])) {
+            prefs[row.preference_key] = row.preference_value;
+        }
+        console.log('Loaded preferences from Supabase:', prefs);
+        return prefs;
+    } catch (e) {
+        console.warn('Failed to load preferences:', e);
+        return {};
+    }
+}
+
+// Hook into localStorage to sync preferences
+function hookPreferenceSync() {
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+
+    localStorage.setItem = function(key, value) {
+        originalSetItem(key, value);
+
+        // Sync specific preference keys to Supabase
+        if (SYNCED_PREFERENCES.includes(key)) {
+            savePreferenceToSupabase(key, value);
+        }
+    };
+
+    console.log('Hooked localStorage for preference sync');
+}
+
+// Apply synced preferences from Supabase to localStorage
+async function applySupabasePreferences() {
+    const prefs = await loadPreferencesFromSupabase();
+
+    for (const key of SYNCED_PREFERENCES) {
+        if (prefs[key] !== undefined) {
+            const localValue = localStorage.getItem(key);
+            // Only apply if local doesn't have it or remote is different
+            if (localValue !== prefs[key]) {
+                localStorage.setItem(key, prefs[key]);
+                console.log('Applied preference from Supabase:', key, '=', prefs[key]);
+            }
+        }
+    }
+}
+
 // Expose functions globally
 window.signInWithGoogle = signInWithGoogle;
 window.signOut = signOut;
+window.savePreferenceToSupabase = savePreferenceToSupabase;
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
