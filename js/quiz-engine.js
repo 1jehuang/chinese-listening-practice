@@ -159,6 +159,9 @@ let feedModeState = {
 
 // Confidence sidebar state
 const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
+
+// Quiz mode persistence (per-page)
+const QUIZ_MODE_KEY_PREFIX = 'quiz_mode_';
 const HIDE_MEANING_CHOICES_KEY = 'quiz_hide_meaning_choices';
 const CONFIDENCE_TRACKING_ENABLED_KEY = 'quiz_confidence_tracking_enabled';
 const CONFIDENCE_FORMULA_KEY = 'quiz_confidence_formula';
@@ -301,6 +304,35 @@ function saveSchedulerMode(mode) {
         localStorage.setItem(SCHEDULER_MODE_KEY, mode);
     } catch (e) {
         console.warn('Failed to save scheduler mode', e);
+    }
+}
+
+function getQuizModeKey() {
+    const path = window.location.pathname || '';
+    const pageName = path.substring(path.lastIndexOf('/') + 1).replace('.html', '') || 'home';
+    return QUIZ_MODE_KEY_PREFIX + pageName;
+}
+
+function loadQuizMode() {
+    try {
+        const stored = localStorage.getItem(getQuizModeKey());
+        if (stored) {
+            // Verify the mode button exists on this page
+            const btn = document.querySelector(`[data-mode="${stored}"]`);
+            if (btn) {
+                mode = stored;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load quiz mode', e);
+    }
+}
+
+function saveQuizMode(newMode) {
+    try {
+        localStorage.setItem(getQuizModeKey(), newMode);
+    } catch (e) {
+        console.warn('Failed to save quiz mode', e);
     }
 }
 
@@ -4564,7 +4596,7 @@ function handleToneFlowToneChoice(choice, btn) {
             hint.className = 'text-center text-xl font-semibold my-4';
             answered = true;
             // Move to next question immediately
-            nextQuestion();
+            generateQuestion();
         } else {
             // Show brief success feedback before moving to next CHARACTER (pinyin step)
             playCorrectSound();
@@ -7697,6 +7729,9 @@ function initQuiz(charactersData, userConfig = {}) {
         mode = config.defaultMode;
     }
 
+    // Load saved mode (overrides default if valid)
+    loadQuizMode();
+
     // Get DOM elements
     questionDisplay = document.getElementById('questionDisplay');
     answerInput = document.getElementById('answerInput');
@@ -7860,6 +7895,7 @@ function initQuiz(charactersData, userConfig = {}) {
             btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
             btn.classList.remove('border-gray-300');
             mode = btn.dataset.mode;
+            saveQuizMode(mode);
             score = 0;
             total = 0;
             updateStats();
