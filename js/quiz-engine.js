@@ -6517,7 +6517,8 @@ async function runFullscreenOCR() {
 
 function clearFullscreenCanvas() {
     if (!fullscreenCtx || !fullscreenCanvas) return;
-    fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+    // Use CSS dimensions since context has DPR scale transform applied
+    fullscreenCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     strokes = [];
     undoneStrokes = [];
     currentStroke = null;
@@ -6562,7 +6563,8 @@ function redoFullscreenStroke() {
 function redrawFullscreenCanvas() {
     if (!fullscreenCtx || !fullscreenCanvas) return;
 
-    fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+    // Use CSS dimensions since context has DPR scale transform applied
+    fullscreenCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
     strokes.forEach(stroke => {
         if (stroke.x.length === 0) return;
