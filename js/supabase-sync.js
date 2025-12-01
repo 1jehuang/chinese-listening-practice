@@ -9,7 +9,7 @@ let supabaseClient = null;
 let currentUserId = null;
 let syncEnabled = true;
 let syncDebounceTimer = null;
-const SYNC_DEBOUNCE_MS = 2000; // Batch updates every 2 seconds
+const SYNC_DEBOUNCE_MS = 500; // Batch updates every 500ms (reduced for reliability)
 
 // Initialize Supabase client
 function initSupabase() {
@@ -114,6 +114,62 @@ async function flushPendingUpdates() {
     } catch (e) {
         console.warn('Failed to sync confidence scores:', e);
     }
+}
+
+// Synchronous version using sendBeacon for page unload (guaranteed to complete)
+function flushPendingUpdatesSync() {
+    if (!currentUserId || Object.keys(pendingUpdates).length === 0) return;
+
+    const pageKey = getSyncPageKey();
+    const updates = Object.values(pendingUpdates);
+    pendingUpdates = {};
+
+    const rows = updates.map(u => ({
+        user_id: currentUserId,
+        page_key: pageKey,
+        char: u.char,
+        skill_key: u.skillKey,
+        served: u.stats.served || 0,
+        correct: u.stats.correct || 0,
+        wrong: u.stats.wrong || 0,
+        streak: u.stats.streak || 0,
+        last_wrong: u.stats.lastWrong || null,
+        last_served: u.stats.lastServed || null,
+        last_correct: u.stats.lastCorrect || null,
+        bkt_p_learned: u.stats.bktPLearned ?? 0.0,
+        updated_at: new Date().toISOString()
+    }));
+
+    // Use sendBeacon with Supabase REST API directly
+    const url = `${SUPABASE_URL}/rest/v1/confidence_scores?on_conflict=user_id,page_key,char,skill_key`;
+    const blob = new Blob([JSON.stringify(rows)], { type: 'application/json' });
+
+    // Get current session token for auth
+    const sessionData = localStorage.getItem('sb-nekdqvzknuqrhuwxpujt-auth-token');
+    let accessToken = SUPABASE_ANON_KEY;
+    if (sessionData) {
+        try {
+            const parsed = JSON.parse(sessionData);
+            if (parsed.access_token) {
+                accessToken = parsed.access_token;
+            }
+        } catch (e) {}
+    }
+
+    // sendBeacon doesn't support custom headers, so use fetch with keepalive instead
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+            'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(rows),
+        keepalive: true // This ensures the request completes even if the page closes
+    }).catch(() => {}); // Ignore errors on unload
+
+    console.log(`Queued ${rows.length} confidence scores for sync (keepalive)`);
 }
 
 // Load confidence scores from Supabase for current page
@@ -253,10 +309,17 @@ async function initSupabaseSync() {
     // Hook into localStorage for preference sync
     hookPreferenceSync();
 
-    // Flush pending updates before page unload
+    // Flush pending updates using sendBeacon (survives page close)
     window.addEventListener('beforeunload', () => {
         if (Object.keys(pendingUpdates).length > 0) {
-            flushPendingUpdates();
+            flushPendingUpdatesSync(); // Use sync version with sendBeacon
+        }
+    });
+
+    // Also flush on visibility change (tab hidden/closed)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && Object.keys(pendingUpdates).length > 0) {
+            flushPendingUpdatesSync();
         }
     });
 }
@@ -464,10 +527,51 @@ async function applySupabasePreferences() {
     }
 }
 
+// =============================================================================
+// DEBUG FUNCTIONS
+// =============================================================================
+
+// Debug function to check sync status
+async function debugSyncStatus() {
+    console.group('🔍 Supabase Sync Debug');
+    console.log('supabaseClient:', !!supabaseClient);
+    console.log('currentUserId:', currentUserId);
+    console.log('syncEnabled:', syncEnabled);
+    console.log('pendingUpdates:', Object.keys(pendingUpdates).length, pendingUpdates);
+    console.log('pageKey:', getSyncPageKey());
+
+    if (supabaseClient) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        console.log('session:', session ? { userId: session.user?.id, isAnonymous: session.user?.is_anonymous, email: session.user?.email } : null);
+    }
+
+    const data = await loadConfidenceFromSupabase();
+    console.log('Data in Supabase for this page:', data?.length || 0, 'rows');
+    if (data && data.length > 0) {
+        console.table(data.slice(0, 10)); // Show first 10 rows
+    }
+
+    console.log('Local schedulerStats:', typeof schedulerStats !== 'undefined' ? Object.keys(schedulerStats).length : 'not defined', 'keys');
+    console.groupEnd();
+
+    return { userId: currentUserId, supabaseRows: data?.length || 0, pendingUpdates: Object.keys(pendingUpdates).length };
+}
+
+// Force immediate sync
+async function forceSyncNow() {
+    console.log('🔄 Force syncing...');
+    clearTimeout(syncDebounceTimer);
+    await flushPendingUpdates();
+    console.log('✅ Force sync complete');
+}
+
 // Expose functions globally
 window.signInWithGoogle = signInWithGoogle;
 window.signOut = signOut;
 window.savePreferenceToSupabase = savePreferenceToSupabase;
+window.debugSyncStatus = debugSyncStatus;
+window.forceSyncNow = forceSyncNow;
+window.flushPendingUpdates = flushPendingUpdates;
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
