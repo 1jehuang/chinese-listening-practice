@@ -244,16 +244,35 @@ async function signInWithGoogle() {
     // Store current page to redirect back after auth
     const currentPage = window.location.href.split('#')[0];
 
-    const { data, error } = await supabaseClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: currentPage
-        }
-    });
+    // Check if currently signed in as anonymous - if so, link instead of sign in
+    const { data: { session } } = await supabaseClient.auth.getSession();
 
-    if (error) {
-        console.error('Google sign-in failed:', error);
-        alert('Sign in failed: ' + error.message);
+    if (session?.user?.is_anonymous) {
+        // Link Google identity to existing anonymous account (preserves user_id)
+        const { data, error } = await supabaseClient.auth.linkIdentity({
+            provider: 'google',
+            options: {
+                redirectTo: currentPage
+            }
+        });
+
+        if (error) {
+            console.error('Google link failed:', error);
+            alert('Link failed: ' + error.message);
+        }
+    } else {
+        // Normal sign in (no anonymous session to preserve)
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: currentPage
+            }
+        });
+
+        if (error) {
+            console.error('Google sign-in failed:', error);
+            alert('Sign in failed: ' + error.message);
+        }
     }
 }
 
