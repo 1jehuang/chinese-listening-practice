@@ -3206,11 +3206,8 @@ function generateQuestion(options = {}) {
         strokeOrderMode.style.display = 'block';
         initStrokeOrder();
     } else if (mode === 'handwriting' && handwritingMode) {
-        const cleanChars = stripPlaceholderChars(currentQuestion.char);
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
-        const charCount = cleanChars.length || currentQuestion.char.length;
-        const charText = charCount > 1 ? `Practice ${charCount} characters: ` : 'Practice: ';
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">${charText}${displayPinyin}</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">${displayPinyin}</div>`;
         handwritingMode.style.display = 'block';
         initHandwriting();
     } else if (mode === 'draw-char' && drawCharMode) {
@@ -7598,14 +7595,18 @@ function handleQuizHotkeys(e) {
         if (isTypingTarget(target)) return;
         e.preventDefault();
 
+        console.log('Keydown space, answerShown:', handwritingAnswerShown, 'downTime:', handwritingSpaceDownTime);
+
         if (!handwritingAnswerShown) {
             // Answer not shown, show it
+            console.log('Showing answer');
             if (window.handwritingShowAnswer) {
                 window.handwritingShowAnswer();
             }
         } else {
             // Answer is shown - start timing on first keydown only
             if (handwritingSpaceDownTime === null) {
+                console.log('Starting timer');
                 handwritingSpaceDownTime = Date.now();
                 updateHandwritingSpaceHint(true);
             }
@@ -7654,18 +7655,24 @@ function handleQuizKeyup(e) {
     const mode = currentMode;
 
     // Space key release for handwriting mode
-    if (mode === 'handwriting' && e.key === ' ' && handwritingSpaceDownTime !== null) {
-        e.preventDefault();
-        const holdDuration = Date.now() - handwritingSpaceDownTime;
-        handwritingSpaceDownTime = null;
-        updateHandwritingSpaceHint(false);
+    if (mode === 'handwriting' && e.key === ' ') {
+        console.log('Keyup space in handwriting mode, downTime:', handwritingSpaceDownTime);
+        if (handwritingSpaceDownTime !== null) {
+            e.preventDefault();
+            const holdDuration = Date.now() - handwritingSpaceDownTime;
+            console.log('Hold duration:', holdDuration);
+            handwritingSpaceDownTime = null;
+            updateHandwritingSpaceHint(false);
 
-        if (holdDuration >= 300) {
-            // Held for 0.3+ seconds = wrong
-            handleHandwritingResult(false);
-        } else {
-            // Quick tap = correct
-            handleHandwritingResult(true);
+            if (holdDuration >= 300) {
+                // Held for 0.3+ seconds = wrong
+                console.log('Marking as wrong');
+                handleHandwritingResult(false);
+            } else {
+                // Quick tap = correct
+                console.log('Marking as correct');
+                handleHandwritingResult(true);
+            }
         }
     }
 }
