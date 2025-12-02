@@ -3125,6 +3125,11 @@ function generateQuestion(options = {}) {
     window.currentQuestion = currentQuestion;
     markSchedulerServed(currentQuestion);
 
+    // Update learn mode overlay if active
+    if (typeof updateLearnModeCharacter === 'function') {
+        updateLearnModeCharacter();
+    }
+
     // Clear any previous per-character breakdown
     const prevBreakdown = document.getElementById('charBreakdown');
     if (prevBreakdown) prevBreakdown.remove();
@@ -6646,6 +6651,17 @@ function exitFullscreenLearnMode() {
     if (learnBtn) {
         learnBtn.textContent = '📖 Learn';
         learnBtn.onclick = enterFullscreenLearnMode;
+    }
+}
+
+// Update learn mode overlay with new character (called when question changes)
+function updateLearnModeCharacter() {
+    if (!isFullscreenLearnMode) return;
+
+    const char = currentQuestion ? currentQuestion.char : '';
+    const overlay = document.getElementById('learnModeOverlay');
+    if (overlay && char) {
+        overlay.textContent = char;
     }
 }
 
