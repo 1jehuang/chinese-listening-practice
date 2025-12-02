@@ -7594,26 +7594,20 @@ function handleQuizHotkeys(e) {
     if (mode === 'handwriting' && !e.altKey && !e.ctrlKey && !e.metaKey) {
         if (isTypingTarget(target)) return;
 
-        console.log('[HW] Key pressed:', e.key, 'answerShown:', handwritingAnswerShown);
-
         if (e.key === ' ') {
             e.preventDefault();
             if (!handwritingAnswerShown) {
                 // First space: show the answer
-                console.log('[HW] Showing answer...');
                 if (window.handwritingShowAnswer) {
                     window.handwritingShowAnswer();
-                    console.log('[HW] Answer shown, handwritingAnswerShown now:', handwritingAnswerShown);
                 }
             } else {
                 // Space after answer shown = correct
-                console.log('[HW] Marking correct and going to next');
                 handleHandwritingResult(true);
             }
             return;
         } else if (handwritingAnswerShown && e.key.length === 1) {
             // Any other key after answer shown = wrong
-            console.log('[HW] Other key, marking wrong');
             e.preventDefault();
             handleHandwritingResult(false);
             return;
@@ -7662,11 +7656,7 @@ function handleQuizKeyup(e) {
 }
 
 function handleHandwritingResult(correct) {
-    console.log('[HW] handleHandwritingResult called, correct:', correct);
-    if (!currentQuestion) {
-        console.log('[HW] No currentQuestion, returning');
-        return;
-    }
+    if (!currentQuestion) return;
 
     if (correct) {
         // Play correct sound and word audio
@@ -7676,16 +7666,15 @@ function handleHandwritingResult(correct) {
             setTimeout(() => playPinyinAudio(firstPinyin, currentQuestion.char), 200);
         }
         // Record correct answer
-        recordBKTResponse(currentQuestion.char, true, 'writing');
+        updateBKT(currentQuestion.char, true);
     } else {
         // Play wrong sound
         playWrongSound();
         // Record wrong answer
-        recordBKTResponse(currentQuestion.char, false, 'writing');
+        updateBKT(currentQuestion.char, false);
     }
 
     // Go to next question
-    console.log('[HW] Calling generateQuestion');
     generateQuestion();
 }
 
