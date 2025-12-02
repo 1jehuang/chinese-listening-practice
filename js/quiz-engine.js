@@ -7594,20 +7594,26 @@ function handleQuizHotkeys(e) {
     if (mode === 'handwriting' && !e.altKey && !e.ctrlKey && !e.metaKey) {
         if (isTypingTarget(target)) return;
 
+        console.log('[HW] Key pressed:', e.key, 'answerShown:', handwritingAnswerShown);
+
         if (e.key === ' ') {
             e.preventDefault();
             if (!handwritingAnswerShown) {
                 // First space: show the answer
+                console.log('[HW] Showing answer...');
                 if (window.handwritingShowAnswer) {
                     window.handwritingShowAnswer();
+                    console.log('[HW] Answer shown, handwritingAnswerShown now:', handwritingAnswerShown);
                 }
             } else {
                 // Space after answer shown = correct
+                console.log('[HW] Marking correct and going to next');
                 handleHandwritingResult(true);
             }
             return;
         } else if (handwritingAnswerShown && e.key.length === 1) {
             // Any other key after answer shown = wrong
+            console.log('[HW] Other key, marking wrong');
             e.preventDefault();
             handleHandwritingResult(false);
             return;
