@@ -832,6 +832,54 @@
     width: 100%;
 }
 
+/* Study Mode: widen and prevent overlap */
+body.study-mode-active .quiz-display {
+    display: none;
+}
+
+body.study-mode-active .input-section {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0 0 0.5rem;
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.study-mode-active .input-section > div {
+    width: 100%;
+}
+
+body.study-mode-active #studyMode {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+body.study-mode-active .study-mode-shell {
+    width: 100%;
+    height: 100%;
+}
+
+body.study-mode-active .study-list-card,
+body.study-mode-active .study-gallery-card {
+    min-height: 0;
+}
+
+body.study-mode-active #studyList {
+    max-height: none;
+}
+
+body.study-mode-active #confidencePanel {
+    display: none !important;
+}
+
+body.study-mode-active .app-container {
+    padding-right: 0;
+}
+
 /* Collapsible sidebar styles */
 .sidebar-wrapper {
     position: relative;

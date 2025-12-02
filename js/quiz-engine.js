@@ -67,6 +67,12 @@ const studyModeState = {
     shuffleOrder: null
 };
 
+function syncModeLayoutState() {
+    const root = document.body;
+    if (!root) return;
+    root.classList.toggle('study-mode-active', mode === 'study');
+}
+
 // Timer state
 let timerEnabled = false;
 let timerSeconds = 10;
@@ -3076,6 +3082,7 @@ function generateQuestion(options = {}) {
     lastAnswerCorrect = false;
     clearComponentBreakdown();
     hideDrawNextButton();
+    syncModeLayoutState();
 
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         prepareBatchForNextQuestion();
@@ -5793,6 +5800,7 @@ function initHandwriting() {
 
     writerDiv.innerHTML = '';
     handwritingAnswerShown = false; // Reset answer shown state for new question
+    updateHandwritingSpaceHint(false); // Reset hint UI
 
     // Create HanziWriter instances for all characters (skip placeholders like … or _)
     const chars = stripPlaceholderChars(currentQuestion.char).split('');
@@ -5889,6 +5897,7 @@ function initHandwriting() {
         feedback.textContent = `${cleanChars} (${displayPinyin}) - ${currentQuestion.meaning}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
         handwritingAnswerShown = true;
+        updateHandwritingSpaceHint(false);
     };
 
     if (hwShowBtn) {
@@ -6974,45 +6983,49 @@ function ensureStudyModeLayout() {
     if (studyModeInitialized) return true;
 
     studyMode.innerHTML = `
-        <div class="study-mode-container space-y-4">
-            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between px-4">
+        <div class="study-mode-shell h-full flex flex-col gap-4 overflow-hidden">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between px-4 lg:px-6">
                 <div>
                     <h2 class="text-2xl font-semibold text-gray-900">Study Mode Reference</h2>
                     <p class="text-sm text-gray-600">Quick list of this lesson's vocab. Use search or sorting as needed.</p>
                 </div>
                 <div id="studyStatsFiltered" class="text-sm text-gray-500">Showing 0 / 0 terms</div>
             </div>
-            <div class="flex flex-col gap-3 md:flex-row md:items-center px-4">
-                <div class="relative flex-1 w-full">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">⌕</span>
-                    <input
-                        id="studySearchInput"
-                        type="search"
-                        class="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-white shadow-sm text-gray-800"
-                        placeholder="Search character, pinyin, or meaning"
-                        autocomplete="off"
-                    >
+            <div class="study-body grid grid-cols-1 gap-4 px-4 lg:px-6 flex-1 min-h-0 overflow-y-auto">
+                <div class="study-list-card flex flex-col gap-3 min-h-0">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                        <div class="relative flex-1 w-full">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">⌕</span>
+                            <input
+                                id="studySearchInput"
+                                type="search"
+                                class="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-white shadow-sm text-gray-800"
+                                placeholder="Search character, pinyin, or meaning"
+                                autocomplete="off"
+                            >
+                        </div>
+                        <div class="flex flex-wrap gap-3 items-center text-sm md:justify-end">
+                            <label for="studySortSelect" class="font-semibold text-gray-600">Sort:</label>
+                            <select id="studySortSelect" class="px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-700 bg-white">
+                                <option value="original">Original order</option>
+                                <option value="char">Character (A-Z)</option>
+                                <option value="pinyin">Pinyin (A-Z)</option>
+                                <option value="meaning">Meaning (A-Z)</option>
+                            </select>
+                            <button id="studyShuffleBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 transition bg-white">Shuffle</button>
+                            <button id="studyResetBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 transition bg-white">Reset</button>
+                        </div>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 bg-white shadow-sm flex-1 min-h-0 flex flex-col">
+                        <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-semibold tracking-wide text-gray-500 uppercase bg-gray-50 rounded-t-2xl">
+                            <span class="md:col-span-2">Character</span>
+                            <span class="md:col-span-3">Pinyin</span>
+                            <span class="md:col-span-6">Meaning</span>
+                            <span class="md:col-span-1 text-right">Audio</span>
+                        </div>
+                        <div id="studyList" class="study-list flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100"></div>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-3 items-center text-sm">
-                    <label for="studySortSelect" class="font-semibold text-gray-600">Sort:</label>
-                    <select id="studySortSelect" class="px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-700 bg-white">
-                        <option value="original">Original order</option>
-                        <option value="char">Character (A-Z)</option>
-                        <option value="pinyin">Pinyin (A-Z)</option>
-                        <option value="meaning">Meaning (A-Z)</option>
-                    </select>
-                    <button id="studyShuffleBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 hover:text-blue-600 transition bg-white">Shuffle</button>
-                    <button id="studyResetBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-500 transition bg-white">Reset</button>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm mx-4">
-                <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-semibold tracking-wide text-gray-500 uppercase bg-gray-50 rounded-t-2xl">
-                    <span class="md:col-span-2">Character</span>
-                    <span class="md:col-span-3">Pinyin</span>
-                    <span class="md:col-span-6">Meaning</span>
-                    <span class="md:col-span-1 text-right">Audio</span>
-                </div>
-                <div id="studyList" class="max-h-[65vh] overflow-y-auto divide-y divide-gray-100"></div>
             </div>
         </div>
     `;
@@ -7590,10 +7603,12 @@ function handleQuizHotkeys(e) {
             if (window.handwritingShowAnswer) {
                 window.handwritingShowAnswer();
             }
-        } else if (handwritingSpaceDownTime === null) {
-            // Answer is shown and this is a new press, start timing
-            handwritingSpaceDownTime = Date.now();
-            updateHandwritingSpaceHint(true);
+        } else {
+            // Answer is shown - start timing on first keydown only
+            if (handwritingSpaceDownTime === null) {
+                handwritingSpaceDownTime = Date.now();
+                updateHandwritingSpaceHint(true);
+            }
         }
         return;
     }
@@ -7680,11 +7695,26 @@ function updateHandwritingSpaceHint(holding) {
     if (!hint) return;
 
     if (holding) {
-        hint.textContent = 'Release for ✓ correct, keep holding for ✗ wrong...';
-        hint.className = 'text-center text-sm text-amber-600 mt-2';
+        hint.innerHTML = `
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-amber-100 rounded-full border-2 border-amber-400">
+                <kbd class="px-3 py-1.5 bg-white border border-amber-400 rounded-md shadow-sm text-sm font-mono">Space</kbd>
+                <span class="text-amber-700 font-medium">Release → ✓ &nbsp;|&nbsp; Hold → ✗</span>
+            </div>
+        `;
+    } else if (handwritingAnswerShown) {
+        hint.innerHTML = `
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-blue-50 rounded-full border border-blue-200">
+                <kbd class="px-3 py-1.5 bg-white border border-blue-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
+                <span class="text-blue-700">Tap → ✓ correct &nbsp;|&nbsp; Hold → ✗ wrong</span>
+            </div>
+        `;
     } else {
-        hint.textContent = 'Space: show → tap ✓ correct · hold ✗ wrong';
-        hint.className = 'text-center text-sm text-gray-500 mt-2';
+        hint.innerHTML = `
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-gray-100 rounded-full">
+                <kbd class="px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
+                <span class="text-gray-600">Press to reveal</span>
+            </div>
+        `;
     }
 }
 
