@@ -57,6 +57,7 @@ let toneFlowCompleted = [];         // tracks completed tones for progress displ
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
 let handwritingAnswerShown = false;
 let handwritingSpaceDownTime = null;
+let handwritingHoldTimeout = null;
 let studyModeInitialized = false;
 let drawModeInitialized = false;
 let fullscreenDrawInitialized = false;
@@ -3079,6 +3080,10 @@ function generateQuestion(options = {}) {
     questionAttemptRecorded = false;
     handwritingAnswerShown = false; // Reset handwriting answer shown state
     handwritingSpaceDownTime = null; // Reset space key timing
+    if (handwritingHoldTimeout) {
+        clearTimeout(handwritingHoldTimeout);
+        handwritingHoldTimeout = null;
+    }
     lastAnswerCorrect = false;
     clearComponentBreakdown();
     hideDrawNextButton();
@@ -7589,27 +7594,26 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Space key handling for handwriting mode (keydown - start timing)
+    // Space key handling for handwriting mode (keydown - start timeout)
     if (mode === 'handwriting' && e.key === ' ' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         // Don't interfere if user is typing in an input or textarea
         if (isTypingTarget(target)) return;
         e.preventDefault();
 
-        console.log('Keydown space, answerShown:', handwritingAnswerShown, 'downTime:', handwritingSpaceDownTime);
-
         if (!handwritingAnswerShown) {
             // Answer not shown, show it
-            console.log('Showing answer');
             if (window.handwritingShowAnswer) {
                 window.handwritingShowAnswer();
             }
-        } else {
-            // Answer is shown - start timing on first keydown only
-            if (handwritingSpaceDownTime === null) {
-                console.log('Starting timer');
-                handwritingSpaceDownTime = Date.now();
-                updateHandwritingSpaceHint(true);
-            }
+        } else if (!handwritingHoldTimeout) {
+            // Answer is shown and no timeout running - start hold detection
+            updateHandwritingSpaceHint(true);
+            handwritingHoldTimeout = setTimeout(() => {
+                // Held for 300ms = wrong
+                handwritingHoldTimeout = null;
+                updateHandwritingSpaceHint(false);
+                handleHandwritingResult(false);
+            }, 300);
         }
         return;
     }
@@ -7654,26 +7658,13 @@ function registerQuizHotkeys() {
 function handleQuizKeyup(e) {
     const mode = currentMode;
 
-    // Space key release for handwriting mode
-    if (mode === 'handwriting' && e.key === ' ') {
-        console.log('Keyup space in handwriting mode, downTime:', handwritingSpaceDownTime);
-        if (handwritingSpaceDownTime !== null) {
-            e.preventDefault();
-            const holdDuration = Date.now() - handwritingSpaceDownTime;
-            console.log('Hold duration:', holdDuration);
-            handwritingSpaceDownTime = null;
-            updateHandwritingSpaceHint(false);
-
-            if (holdDuration >= 300) {
-                // Held for 0.3+ seconds = wrong
-                console.log('Marking as wrong');
-                handleHandwritingResult(false);
-            } else {
-                // Quick tap = correct
-                console.log('Marking as correct');
-                handleHandwritingResult(true);
-            }
-        }
+    // Space key release for handwriting mode - cancel timeout and mark correct
+    if (mode === 'handwriting' && e.key === ' ' && handwritingHoldTimeout) {
+        e.preventDefault();
+        clearTimeout(handwritingHoldTimeout);
+        handwritingHoldTimeout = null;
+        updateHandwritingSpaceHint(false);
+        handleHandwritingResult(true);
     }
 }
 
