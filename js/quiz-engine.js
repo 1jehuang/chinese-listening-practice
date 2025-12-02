@@ -280,97 +280,111 @@ const CHARACTER_DECOMPOSITIONS = {
         { char: '十', pinyin: 'shí', meaning: 'ten' },
         { char: '一', pinyin: 'yī', meaning: 'one' }
     ],
-    // Lesson 7 characters with decompositions
+    // Lesson 7 characters with decompositions and stroke matches
+    // matches: array where each element indicates which component (0 or 1) that stroke belongs to
     '住': {
         components: [
             { char: '亻', pinyin: 'rén', meaning: 'person' },
             { char: '主', pinyin: 'zhǔ', meaning: 'master' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,1,1,1,1,1]
     },
     '同': {
         components: [
             { char: '冂', pinyin: 'jiōng', meaning: 'borders' },
             { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
         ],
-        type: 'surround'
+        type: 'surround',
+        matches: [0,0,0,1,1,1]
     },
     '起': {
         components: [
             { char: '走', pinyin: 'zǒu', meaning: 'walk' },
             { char: '己', pinyin: 'jǐ', meaning: 'self' }
         ],
-        type: 'other'
+        type: 'other',
+        matches: [0,0,0,0,0,0,0,1,1,1]
     },
     '期': {
         components: [
             { char: '其', pinyin: 'qí', meaning: 'its' },
             { char: '月', pinyin: 'yuè', meaning: 'moon' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,0,0,0,0,1,1,1,1]
     },
     '寓': {
         components: [
             { char: '宀', pinyin: 'mián', meaning: 'roof' },
             { char: '禺', pinyin: 'yú', meaning: 'area' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1,1,1,1,1]
     },
     '宿': {
         components: [
             { char: '宀', pinyin: 'mián', meaning: 'roof' },
             { char: '佰', pinyin: 'bǎi', meaning: 'hundred' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1,1,1,1]
     },
     '舍': {
         components: [
             { char: '人', pinyin: 'rén', meaning: 'person' },
             { char: '舌', pinyin: 'shé', meaning: 'tongue' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,1,1,1,1,1,1]
     },
     '便': {
         components: [
             { char: '亻', pinyin: 'rén', meaning: 'person' },
             { char: '更', pinyin: 'gēng', meaning: 'change' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,1,1,1,1,1,1,1]
     },
     '搬': {
         components: [
             { char: '扌', pinyin: 'shǒu', meaning: 'hand' },
             { char: '般', pinyin: 'bān', meaning: 'sort' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1,1,1,1,1,1,1]
     },
     '吃': {
         components: [
             { char: '口', pinyin: 'kǒu', meaning: 'mouth' },
             { char: '乞', pinyin: 'qǐ', meaning: 'beg' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1]
     },
     '饭': {
         components: [
             { char: '饣', pinyin: 'shí', meaning: 'food' },
             { char: '反', pinyin: 'fǎn', meaning: 'opposite' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1]
     },
     '问': {
         components: [
             { char: '门', pinyin: 'mén', meaning: 'door' },
             { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
         ],
-        type: 'surround'
+        type: 'surround',
+        matches: [0,0,0,1,1,1]
     },
     '题': {
         components: [
             { char: '是', pinyin: 'shì', meaning: 'is' },
             { char: '页', pinyin: 'yè', meaning: 'page' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,0,0,0,0,0,1,1,1,1,1,1]
     },
     '厨': {
         components: [
@@ -378,27 +392,31 @@ const CHARACTER_DECOMPOSITIONS = {
             { char: '寸', pinyin: 'cùn', meaning: 'inch' }
         ],
         type: 'other'
+        // Complex matches with nested components - skip for now
     },
     '房': {
         components: [
             { char: '户', pinyin: 'hù', meaning: 'door' },
             { char: '方', pinyin: 'fāng', meaning: 'square' }
         ],
-        type: 'other'
+        type: 'other',
+        matches: [0,0,0,0,1,1,1,1]
     },
     '定': {
         components: [
             { char: '宀', pinyin: 'mián', meaning: 'roof' },
             { char: '正', pinyin: 'zhèng', meaning: 'correct' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1]
     },
     '堂': {
         components: [
             { char: '尚', pinyin: 'shàng', meaning: 'still' },
             { char: '土', pinyin: 'tǔ', meaning: 'earth' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,0,0,0,0,0,1,1,1]
     },
     '贵': {
         components: [
@@ -406,13 +424,15 @@ const CHARACTER_DECOMPOSITIONS = {
             { char: '贝', pinyin: 'bèi', meaning: 'shell' }
         ],
         type: 'tb'
+        // Complex nested matches - skip for now
     },
     '好': {
         components: [
             { char: '女', pinyin: 'nǚ', meaning: 'woman' },
             { char: '子', pinyin: 'zǐ', meaning: 'child' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1]
     },
     '每': {
         components: [
@@ -420,118 +440,135 @@ const CHARACTER_DECOMPOSITIONS = {
             { char: '母', pinyin: 'mǔ', meaning: 'mother' }
         ],
         type: 'tb'
+        // Has null values in matches - skip for now
     },
     '天': {
         components: [
             { char: '一', pinyin: 'yī', meaning: 'one' },
             { char: '大', pinyin: 'dà', meaning: 'big' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,1,1,1]
     },
     '挑': {
         components: [
             { char: '扌', pinyin: 'shǒu', meaning: 'hand' },
             { char: '兆', pinyin: 'zhào', meaning: 'omen' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1,1,1]
     },
     '剔': {
         components: [
             { char: '易', pinyin: 'yì', meaning: 'easy' },
             { char: '刂', pinyin: 'dāo', meaning: 'knife' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,0,0,0,0,1,1]
     },
     '功': {
         components: [
             { char: '工', pinyin: 'gōng', meaning: 'work' },
             { char: '力', pinyin: 'lì', meaning: 'power' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1]
     },
     '课': {
         components: [
             { char: '讠', pinyin: 'yán', meaning: 'speech' },
             { char: '果', pinyin: 'guǒ', meaning: 'fruit' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,1,1,1,1,1,1,1,1]
     },
     '怎': {
         components: [
             { char: '乍', pinyin: 'zhà', meaning: 'suddenly' },
             { char: '心', pinyin: 'xīn', meaning: 'heart' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,0,0,1,1,1,1]
     },
     '时': {
         components: [
             { char: '日', pinyin: 'rì', meaning: 'sun' },
             { char: '寸', pinyin: 'cùn', meaning: 'inch' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1]
     },
     '间': {
         components: [
             { char: '门', pinyin: 'mén', meaning: 'door' },
             { char: '日', pinyin: 'rì', meaning: 'sun' }
         ],
-        type: 'surround'
+        type: 'surround',
+        matches: [0,0,0,1,1,1,1]
     },
     '菜': {
         components: [
             { char: '艹', pinyin: 'cǎo', meaning: 'grass' },
             { char: '采', pinyin: 'cǎi', meaning: 'pick' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1,1,1,1]
     },
     '轮': {
         components: [
             { char: '车', pinyin: 'chē', meaning: 'vehicle' },
             { char: '仑', pinyin: 'lún', meaning: 'order' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1]
     },
     '流': {
         components: [
             { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
             { char: '㐬', pinyin: 'liú', meaning: 'flow' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1,1,1,1]
     },
     '晚': {
         components: [
             { char: '日', pinyin: 'rì', meaning: 'sun' },
             { char: '免', pinyin: 'miǎn', meaning: 'exempt' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1,1,1,1]
     },
     '早': {
         components: [
             { char: '日', pinyin: 'rì', meaning: 'sun' },
             { char: '十', pinyin: 'shí', meaning: 'ten' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,0,1,1]
     },
     '明': {
         components: [
             { char: '日', pinyin: 'rì', meaning: 'sun' },
             { char: '月', pinyin: 'yuè', meaning: 'moon' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1]
     },
     '治': {
         components: [
             { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
             { char: '台', pinyin: 'tái', meaning: 'platform' }
         ],
-        type: 'lr'
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1,1]
     },
     '简': {
         components: [
             { char: '竹', pinyin: 'zhú', meaning: 'bamboo' },
             { char: '间', pinyin: 'jiān', meaning: 'between' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,0,0,0,0,1,1,1,1,1,1,1]
     },
     '单': {
         components: [
@@ -3577,15 +3614,16 @@ function generateQuestion(options = {}) {
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
     } else if (mode === 'missing-component' && missingComponentMode) {
-        // Find a character that has decomposition data
+        // Find a character that has decomposition data WITH matches (for precise stroke rendering)
         let attempts = 0;
         let foundDecomposition = null;
         while (!foundDecomposition && attempts < 100) {
             // Get all single characters from the current question's char field
             const chars = Array.from(currentQuestion.char);
             for (const c of chars) {
-                if (CHARACTER_DECOMPOSITIONS[c] && CHARACTER_DECOMPOSITIONS[c].components) {
-                    foundDecomposition = { char: c, data: CHARACTER_DECOMPOSITIONS[c] };
+                const decomp = CHARACTER_DECOMPOSITIONS[c];
+                if (decomp && decomp.components && decomp.matches) {
+                    foundDecomposition = { char: c, data: decomp };
                     break;
                 }
             }
@@ -3599,7 +3637,7 @@ function generateQuestion(options = {}) {
         }
 
         if (!foundDecomposition) {
-            questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with decomposition data available in this lesson.</div>`;
+            questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
             return;
         }
 
@@ -3608,44 +3646,14 @@ function generateQuestion(options = {}) {
         const missingIndex = Math.floor(Math.random() * components.length);
         currentMissingComponent = components[missingIndex];
 
-        // Create the display showing character with missing component visually whited out
-        const otherComponents = components.filter((_, i) => i !== missingIndex);
-        const charType = foundDecomposition.data.type;
+        // Get the visible component index (the one that's NOT missing)
+        const visibleIndex = missingIndex === 0 ? 1 : 0;
+        const givenComponent = components[visibleIndex];
 
-        // Determine mask position based on character type and which component is missing
-        let maskStyle = '';
-        if (charType === 'lr') {
-            // Left-right: mask left or right half
-            maskStyle = missingIndex === 0
-                ? 'clip-path: inset(0 50% 0 0);' // Hide left half (first component)
-                : 'clip-path: inset(0 0 0 50%);'; // Hide right half (second component)
-        } else if (charType === 'tb') {
-            // Top-bottom: mask top or bottom half
-            maskStyle = missingIndex === 0
-                ? 'clip-path: inset(0 0 50% 0);' // Hide top half (first component)
-                : 'clip-path: inset(50% 0 0 0);'; // Hide bottom half (second component)
-        } else if (charType === 'surround') {
-            // For surround, hide inner (second component usually)
-            maskStyle = missingIndex === 0
-                ? 'clip-path: inset(25% 25% 25% 25%);' // Hide outer
-                : 'clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 25%, 25% 25%, 25% 75%, 75% 75%, 75% 25%, 0 25%);'; // Hide inner
-        }
-
-        // Show the given component (not the missing one)
-        const givenComponent = otherComponents[0];
-
+        // Create display with partial character container
         questionDisplay.innerHTML = `
             <div class="text-center my-6">
-                <div style="position: relative; display: inline-block; width: 120px; height: 120px; margin-bottom: 1rem;">
-                    <!-- Full character faded in background -->
-                    <div style="position: absolute; inset: 0; font-size: 7rem; line-height: 120px; color: #e5e7eb; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${foundDecomposition.char}</div>
-                    <!-- Character with missing part clipped out -->
-                    <div style="position: absolute; inset: 0; font-size: 7rem; line-height: 120px; color: #1f2937; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif; ${maskStyle}">${foundDecomposition.char}</div>
-                    <!-- Question mark overlay on missing area -->
-                    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
-                        <span style="font-size: 3rem; color: #3b82f6; font-weight: bold; opacity: 0.7;">?</span>
-                    </div>
-                </div>
+                <div id="partialCharDisplay" style="display: inline-block; width: 120px; height: 120px; margin-bottom: 1rem;"></div>
                 <div class="text-xl text-gray-600 mb-2">
                     <span class="text-3xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
                     <span class="text-gray-400 mx-2">+</span>
@@ -3655,6 +3663,17 @@ function generateQuestion(options = {}) {
                 </div>
                 <div class="text-base text-gray-400">Which component is missing?</div>
             </div>`;
+
+        // Render partial character using stroke data (show only visible component)
+        const partialCharEl = document.getElementById('partialCharDisplay');
+        if (partialCharEl) {
+            renderPartialCharacter(
+                foundDecomposition.char,
+                foundDecomposition.data,
+                [visibleIndex], // Only show the visible component's strokes
+                partialCharEl
+            );
+        }
 
         missingComponentMode.style.display = 'block';
         generateComponentOptions();
@@ -7882,6 +7901,72 @@ function checkRadicalAnswer() {
 
 let componentInputEl = null;
 let componentAllOptions = [];
+let partialCharacterCache = {};
+
+// Render a character showing only certain components using Hanzi Writer stroke data
+async function renderPartialCharacter(char, decomposition, visibleComponents, targetElement) {
+    if (!decomposition.matches || !targetElement) {
+        // Fallback: just show the character
+        targetElement.innerHTML = `<span style="font-size: 6rem; color: #1f2937;">${char}</span>`;
+        return;
+    }
+
+    try {
+        // Load stroke data from Hanzi Writer
+        const charData = await new Promise((resolve, reject) => {
+            if (partialCharacterCache[char]) {
+                resolve(partialCharacterCache[char]);
+                return;
+            }
+            if (typeof HanziWriter !== 'undefined' && HanziWriter.loadCharacterData) {
+                HanziWriter.loadCharacterData(char).then(data => {
+                    partialCharacterCache[char] = data;
+                    resolve(data);
+                }).catch(reject);
+            } else {
+                reject(new Error('HanziWriter not available'));
+            }
+        });
+
+        if (!charData || !charData.strokes) {
+            throw new Error('No stroke data');
+        }
+
+        const matches = decomposition.matches;
+        const strokes = charData.strokes;
+
+        // Create SVG with only visible strokes
+        const svgSize = 120;
+        const scale = svgSize / 1024; // Hanzi Writer uses 1024x1024 coordinate system
+
+        let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}" viewBox="0 0 1024 1024">`;
+
+        // Transform to flip Y axis (Hanzi Writer data is Y-inverted)
+        svgContent += `<g transform="scale(1, -1) translate(0, -900)">`;
+
+        strokes.forEach((strokePath, i) => {
+            const componentIndex = matches[i];
+            const isVisible = visibleComponents.includes(componentIndex);
+
+            if (isVisible) {
+                // Show this stroke normally
+                svgContent += `<path d="${strokePath}" fill="#1f2937" />`;
+            } else {
+                // Show as faded/ghost
+                svgContent += `<path d="${strokePath}" fill="#e5e7eb" />`;
+            }
+        });
+
+        svgContent += `</g></svg>`;
+
+        targetElement.innerHTML = svgContent;
+
+    } catch (err) {
+        console.warn('Failed to render partial character:', err);
+        // Fallback to CSS clip-path approach
+        targetElement.innerHTML = `<span style="font-size: 6rem; color: #1f2937;">${char}</span>`;
+    }
+}
 
 function generateComponentOptions() {
     const componentOptionsDiv = document.getElementById('componentOptions');
