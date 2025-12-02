@@ -572,12 +572,539 @@ const CHARACTER_DECOMPOSITIONS = {
     },
     '单': {
         components: [
-            { char: '十', pinyin: 'shí', meaning: 'ten' },
-            { char: '田', pinyin: 'tián', meaning: 'field' }
+            { char: '丷', pinyin: 'bā', meaning: 'eight' },
+            { char: '甲', pinyin: 'jiǎ', meaning: 'armor' }
         ],
-        type: 'tb'
+        type: 'tb',
+        matches: [0,0,1,1,1,1,1,1]
+    },
+    // Additional characters for better coverage
+    '从': {
+        components: [
+            { char: '人', pinyin: 'rén', meaning: 'person' },
+            { char: '人', pinyin: 'rén', meaning: 'person' }
+        ],
+        type: 'lr',
+        matches: [0,0,1,1]
+    },
+    '学': {
+        components: [
+            { char: '⺍', pinyin: 'xuě', meaning: 'cover' },
+            { char: '子', pinyin: 'zǐ', meaning: 'child' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,1,1,1]
+    },
+    '公': {
+        components: [
+            { char: '八', pinyin: 'bā', meaning: 'eight' },
+            { char: '厶', pinyin: 'sī', meaning: 'private' }
+        ],
+        type: 'tb',
+        matches: [0,0,1,1]
+    },
+    '方': {
+        components: [
+            { char: '丶', pinyin: 'diǎn', meaning: 'dot' },
+            { char: '万', pinyin: 'wàn', meaning: 'ten thousand' }
+        ],
+        type: 'tb',
+        matches: [0,1,1,1]
+    },
+    '出': {
+        components: [
+            { char: '山', pinyin: 'shān', meaning: 'mountain' },
+            { char: '凵', pinyin: 'kǎn', meaning: 'container' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1]
+    },
+    '去': {
+        components: [
+            { char: '土', pinyin: 'tǔ', meaning: 'earth' },
+            { char: '厶', pinyin: 'sī', meaning: 'private' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1]
+    },
+    '食': {
+        components: [
+            { char: '人', pinyin: 'rén', meaning: 'person' },
+            { char: '良', pinyin: 'liáng', meaning: 'good' }
+        ],
+        type: 'tb',
+        matches: [0,0,1,1,1,1,1,1,1]
+    },
+    '贵': {
+        components: [
+            { char: '中', pinyin: 'zhōng', meaning: 'middle' },
+            { char: '贝', pinyin: 'bèi', meaning: 'shell' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,1,1,1,1]
+    },
+    '每': {
+        components: [
+            { char: '𠂉', pinyin: 'piě', meaning: 'slash' },
+            { char: '母', pinyin: 'mǔ', meaning: 'mother' }
+        ],
+        type: 'tb',
+        matches: [0,1,1,1,1,1,1]
+    },
+    '买': {
+        components: [
+            { char: '乛', pinyin: 'yǐ', meaning: 'twist' },
+            { char: '头', pinyin: 'tóu', meaning: 'head' }
+        ],
+        type: 'tb',
+        matches: [0,1,1,1,1,1]
+    },
+    '受': {
+        components: [
+            { char: '爫', pinyin: 'zhǎo', meaning: 'claw' },
+            { char: '又', pinyin: 'yòu', meaning: 'again' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1]
+    },
+    '不': {
+        components: [
+            { char: '一', pinyin: 'yī', meaning: 'one' },
+            { char: '卜', pinyin: 'bǔ', meaning: 'divine' }
+        ],
+        type: 'tb',
+        matches: [0,1,1,1]
+    },
+    '了': {
+        components: [
+            { char: '乛', pinyin: 'yǐ', meaning: 'twist' },
+            { char: '亅', pinyin: 'jué', meaning: 'hook' }
+        ],
+        type: 'tb',
+        matches: [0,1]
+    },
+    '么': {
+        components: [
+            { char: '丿', pinyin: 'piě', meaning: 'slash' },
+            { char: '厶', pinyin: 'sī', meaning: 'private' }
+        ],
+        type: 'tb',
+        matches: [0,1,1]
+    },
+    '中': {
+        components: [
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' },
+            { char: '丨', pinyin: 'gǔn', meaning: 'line' }
+        ],
+        type: 'other',
+        matches: [0,0,0,1]
+    },
+    '三': {
+        components: [
+            { char: '一', pinyin: 'yī', meaning: 'one' },
+            { char: '二', pinyin: 'èr', meaning: 'two' }
+        ],
+        type: 'tb',
+        matches: [0,1,1]
+    },
+    '厨': {
+        components: [
+            { char: '厂', pinyin: 'chǎng', meaning: 'cliff' },
+            { char: '豆', pinyin: 'dòu', meaning: 'bean' }
+        ],
+        type: 'other',
+        matches: [0,1,1,1,1,1,1,1,1,1,1,1]
+    },
+    // Lesson 7 Part 2 characters
+    '容': {
+        components: [
+            { char: '宀', pinyin: 'mián', meaning: 'roof' },
+            { char: '谷', pinyin: 'gǔ', meaning: 'valley' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1,1,1]
+    },
+    '易': {
+        components: [
+            { char: '日', pinyin: 'rì', meaning: 'sun' },
+            { char: '勿', pinyin: 'wù', meaning: 'not' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,1,1,1,1]
+    },
+    '决': {
+        components: [
+            { char: '冫', pinyin: 'bīng', meaning: 'ice' },
+            { char: '夬', pinyin: 'guài', meaning: 'decisive' }
+        ],
+        type: 'lr',
+        matches: [0,0,1,1,1,1]
+    },
+    '带': {
+        components: [
+            { char: '卅', pinyin: 'sà', meaning: 'thirty' },
+            { char: '巾', pinyin: 'jīn', meaning: 'cloth' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,0,1,1,1]
+    },
+    '样': {
+        components: [
+            { char: '木', pinyin: 'mù', meaning: 'wood' },
+            { char: '羊', pinyin: 'yáng', meaning: 'sheep' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1,1,1]
+    },
+    '用': {
+        components: [
+            { char: '冂', pinyin: 'jiōng', meaning: 'borders' },
+            { char: '卜', pinyin: 'bǔ', meaning: 'divine' }
+        ],
+        type: 'other',
+        matches: [0,0,1,1,1]
+    },
+    '具': {
+        components: [
+            { char: '目', pinyin: 'mù', meaning: 'eye' },
+            { char: '八', pinyin: 'bā', meaning: 'eight' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,1,1,1]
+    },
+    '微': {
+        components: [
+            { char: '彳', pinyin: 'chì', meaning: 'step' },
+            { char: '攵', pinyin: 'pū', meaning: 'strike' }
+        ],
+        type: 'other',
+        matches: [0,0,0,1,1,1,1,1,1,1,1,1,1]
+    },
+    '波': {
+        components: [
+            { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
+            { char: '皮', pinyin: 'pí', meaning: 'skin' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1,1]
+    },
+    '炉': {
+        components: [
+            { char: '火', pinyin: 'huǒ', meaning: 'fire' },
+            { char: '户', pinyin: 'hù', meaning: 'door' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1]
+    },
+    '行': {
+        components: [
+            { char: '彳', pinyin: 'chì', meaning: 'step' },
+            { char: '亍', pinyin: 'chù', meaning: 'step' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1]
+    },
+    '久': {
+        components: [
+            { char: '丿', pinyin: 'piě', meaning: 'slash' },
+            { char: '乂', pinyin: 'yì', meaning: 'govern' }
+        ],
+        type: 'other',
+        matches: [0,1,1]
+    },
+    '坏': {
+        components: [
+            { char: '土', pinyin: 'tǔ', meaning: 'earth' },
+            { char: '不', pinyin: 'bù', meaning: 'not' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1]
+    },
+    '家': {
+        components: [
+            { char: '宀', pinyin: 'mián', meaning: 'roof' },
+            { char: '豕', pinyin: 'shǐ', meaning: 'pig' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1,1,1]
+    },
+    '床': {
+        components: [
+            { char: '广', pinyin: 'guǎng', meaning: 'wide' },
+            { char: '木', pinyin: 'mù', meaning: 'wood' }
+        ],
+        type: 'other',
+        matches: [0,0,0,1,1,1,1]
+    },
+    '桌': {
+        components: [
+            { char: '卜', pinyin: 'bǔ', meaning: 'divine' },
+            { char: '木', pinyin: 'mù', meaning: 'wood' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,0,1,1,1,1]
+    },
+    '书': {
+        components: [
+            { char: '乛', pinyin: 'yǐ', meaning: 'twist' },
+            { char: '丶', pinyin: 'diǎn', meaning: 'dot' }
+        ],
+        type: 'other',
+        matches: [0,0,0,1]
+    },
+    '架': {
+        components: [
+            { char: '加', pinyin: 'jiā', meaning: 'add' },
+            { char: '木', pinyin: 'mù', meaning: 'wood' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,1,1,1,1]
+    },
+    '把': {
+        components: [
+            { char: '扌', pinyin: 'shǒu', meaning: 'hand' },
+            { char: '巴', pinyin: 'bā', meaning: 'hope' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1]
+    },
+    '椅': {
+        components: [
+            { char: '木', pinyin: 'mù', meaning: 'wood' },
+            { char: '奇', pinyin: 'qí', meaning: 'strange' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1,1,1,1,1]
+    },
+    '台': {
+        components: [
+            { char: '厶', pinyin: 'sī', meaning: 'private' },
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
+        ],
+        type: 'tb',
+        matches: [0,0,1,1,1]
+    },
+    '灯': {
+        components: [
+            { char: '火', pinyin: 'huǒ', meaning: 'fire' },
+            { char: '丁', pinyin: 'dīng', meaning: 'nail' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1]
+    },
+    '地': {
+        components: [
+            { char: '土', pinyin: 'tǔ', meaning: 'earth' },
+            { char: '也', pinyin: 'yě', meaning: 'also' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1]
+    },
+    '毯': {
+        components: [
+            { char: '毛', pinyin: 'máo', meaning: 'fur' },
+            { char: '炎', pinyin: 'yán', meaning: 'flame' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1,1,1,1,1]
+    },
+    '要': {
+        components: [
+            { char: '覀', pinyin: 'xī', meaning: 'west' },
+            { char: '女', pinyin: 'nǚ', meaning: 'woman' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,0,1,1,1]
+    },
+    '紧': {
+        components: [
+            { char: '臤', pinyin: 'qiān', meaning: 'firm' },
+            { char: '糸', pinyin: 'sī', meaning: 'silk' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,0,0,0,1,1,1]
+    },
+    '对': {
+        components: [
+            { char: '又', pinyin: 'yòu', meaning: 'again' },
+            { char: '寸', pinyin: 'cùn', meaning: 'inch' }
+        ],
+        type: 'lr',
+        matches: [0,0,1,1,1]
+    },
+    '合': {
+        components: [
+            { char: '人', pinyin: 'rén', meaning: 'person' },
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1,1]
+    },
+    '认': {
+        components: [
+            { char: '讠', pinyin: 'yán', meaning: 'speech' },
+            { char: '人', pinyin: 'rén', meaning: 'person' }
+        ],
+        type: 'lr',
+        matches: [0,0,1,1]
+    },
+    '识': {
+        components: [
+            { char: '讠', pinyin: 'yán', meaning: 'speech' },
+            { char: '只', pinyin: 'zhī', meaning: 'only' }
+        ],
+        type: 'lr',
+        matches: [0,0,1,1,1,1,1]
+    },
+    '年': {
+        components: [
+            { char: '丿', pinyin: 'piě', meaning: 'slash' },
+            { char: '干', pinyin: 'gān', meaning: 'dry' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1,1]
+    },
+    '级': {
+        components: [
+            { char: '纟', pinyin: 'sī', meaning: 'silk' },
+            { char: '及', pinyin: 'jí', meaning: 'reach' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1]
+    },
+    '太': {
+        components: [
+            { char: '大', pinyin: 'dà', meaning: 'big' },
+            { char: '丶', pinyin: 'diǎn', meaning: 'dot' }
+        ],
+        type: 'other',
+        matches: [0,0,0,1]
+    },
+    '浴': {
+        components: [
+            { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
+            { char: '谷', pinyin: 'gǔ', meaning: 'valley' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,1,1,1,1,1,1,1]
+    },
+    '室': {
+        components: [
+            { char: '宀', pinyin: 'mián', meaning: 'roof' },
+            { char: '至', pinyin: 'zhì', meaning: 'arrive' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,1,1,1,1,1,1]
+    },
+    '厕': {
+        components: [
+            { char: '厂', pinyin: 'chǎng', meaning: 'cliff' },
+            { char: '则', pinyin: 'zé', meaning: 'rule' }
+        ],
+        type: 'other',
+        matches: [0,1,1,1,1,1,1,1]
+    },
+    '所': {
+        components: [
+            { char: '户', pinyin: 'hù', meaning: 'door' },
+            { char: '斤', pinyin: 'jīn', meaning: 'axe' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1]
+    },
+    '最': {
+        components: [
+            { char: '日', pinyin: 'rì', meaning: 'sun' },
+            { char: '取', pinyin: 'qǔ', meaning: 'take' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,1,1,1,1,1,1,1,1]
+    },
+    '考': {
+        components: [
+            { char: '耂', pinyin: 'lǎo', meaning: 'old' },
+            { char: '丂', pinyin: 'kǎo', meaning: 'breath' }
+        ],
+        type: 'tb',
+        matches: [0,0,0,0,1,1]
+    },
+    '虑': {
+        components: [
+            { char: '虍', pinyin: 'hū', meaning: 'tiger' },
+            { char: '思', pinyin: 'sī', meaning: 'think' }
+        ],
+        type: 'other',
+        matches: [0,0,0,0,0,0,1,1,1,1]
+    },
+    '层': {
+        components: [
+            { char: '尸', pinyin: 'shī', meaning: 'corpse' },
+            { char: '云', pinyin: 'yún', meaning: 'cloud' }
+        ],
+        type: 'other',
+        matches: [0,0,0,1,1,1,1]
+    },
+    '楼': {
+        components: [
+            { char: '木', pinyin: 'mù', meaning: 'wood' },
+            { char: '娄', pinyin: 'lóu', meaning: 'weak' }
+        ],
+        type: 'lr',
+        matches: [0,0,0,0,1,1,1,1,1,1,1,1,1]
+    },
+    '可': {
+        components: [
+            { char: '丁', pinyin: 'dīng', meaning: 'nail' },
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
+        ],
+        type: 'other',
+        matches: [0,0,1,1,1]
     }
 };
+
+// Decomposition data loading state
+let decompositionsLoaded = false;
+let decompositionsLoading = false;
+let decompositionsLoadPromise = null;
+
+// Load character decompositions from external JSON file
+async function loadDecompositionsData() {
+    if (decompositionsLoaded) return;
+    if (decompositionsLoading) {
+        return decompositionsLoadPromise;
+    }
+
+    decompositionsLoading = true;
+    decompositionsLoadPromise = (async () => {
+        try {
+            const response = await fetch('data/decompositions.json');
+            if (!response.ok) {
+                console.warn('Could not load decompositions.json:', response.status);
+                return;
+            }
+            const data = await response.json();
+
+            // Merge loaded data with existing inline data
+            // Inline data takes precedence (for manual overrides)
+            let count = 0;
+            for (const [char, decomp] of Object.entries(data)) {
+                if (char === '_radicals') continue; // Don't override radicals
+                if (!CHARACTER_DECOMPOSITIONS[char]) {
+                    CHARACTER_DECOMPOSITIONS[char] = decomp;
+                    count++;
+                }
+            }
+            console.log(`Loaded ${count} character decompositions from JSON`);
+            decompositionsLoaded = true;
+        } catch (err) {
+            console.warn('Error loading decompositions data:', err);
+        } finally {
+            decompositionsLoading = false;
+        }
+    })();
+
+    return decompositionsLoadPromise;
+}
 
 // Layout upgrade state
 let lessonLayoutStylesInjected = false;
@@ -3614,82 +4141,43 @@ function generateQuestion(options = {}) {
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
     } else if (mode === 'missing-component' && missingComponentMode) {
-        // Find a character that has decomposition data WITH matches (for precise stroke rendering)
-        let attempts = 0;
-        let foundDecomposition = null;
-        while (!foundDecomposition && attempts < 100) {
-            // Get all single characters from the current question's char field
-            const chars = Array.from(currentQuestion.char);
-            for (const c of chars) {
-                const decomp = CHARACTER_DECOMPOSITIONS[c];
-                if (decomp && decomp.components && decomp.matches) {
-                    foundDecomposition = { char: c, data: decomp };
-                    break;
+        // Use three-column layout for missing component mode
+        // Ensure decomposition data is loaded first
+        if (!decompositionsLoaded && decompositionsLoading) {
+            questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
+            decompositionsLoadPromise.then(() => {
+                if (mode === 'missing-component') {
+                    generateQuestion();
                 }
-            }
-            if (!foundDecomposition) {
-                const candidate = getRandomQuestion();
-                if (!candidate) break;
-                currentQuestion = candidate;
-                window.currentQuestion = currentQuestion;
-            }
-            attempts++;
+            });
+            return;
         }
 
-        if (!foundDecomposition) {
+        // If we have an upcoming question ready, use it; otherwise prepare one
+        let prepared = null;
+        if (componentUpcomingQuestion) {
+            prepared = componentUpcomingQuestion;
+            componentUpcomingQuestion = null;
+        } else {
+            prepared = prepareComponentQuestion();
+        }
+
+        if (!prepared) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
             return;
         }
 
-        // Pick a random component to be "missing"
-        const components = foundDecomposition.data.components;
-        const missingIndex = Math.floor(Math.random() * components.length);
-        currentMissingComponent = components[missingIndex];
+        // Set up current question and decomposition
+        currentQuestion = prepared.question;
+        window.currentQuestion = currentQuestion;
+        currentDecomposition = prepared.decomposition;
+        currentMissingComponent = prepared.decomposition.missingComponent;
 
-        // Get the visible component index (the one that's NOT missing)
-        const visibleIndex = missingIndex === 0 ? 1 : 0;
-        const givenComponent = components[visibleIndex];
+        // Clear inline feedback for new question
+        componentInlineFeedback = null;
 
-        // Create display with partial character container - show pinyin and meaning
-        // For multi-character words, show the other characters fully
-        const fullWord = currentQuestion.char;
-        const targetChar = foundDecomposition.char;
-        const otherChars = fullWord.split('').map(c => c === targetChar ? null : c);
-
-        // Build word display with partial char placeholder
-        let wordDisplay = '';
-        for (let i = 0; i < fullWord.length; i++) {
-            if (fullWord[i] === targetChar) {
-                wordDisplay += `<span id="partialCharDisplay" style="display: inline-block; width: 100px; height: 100px; vertical-align: middle;"></span>`;
-            } else {
-                wordDisplay += `<span class="text-7xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif; vertical-align: middle;">${fullWord[i]}</span>`;
-            }
-        }
-
-        questionDisplay.innerHTML = `
-            <div class="text-center my-4">
-                <div class="text-2xl text-blue-600 font-semibold mb-1">${currentQuestion.pinyin}</div>
-                <div class="text-lg text-gray-500 mb-3">${currentQuestion.meaning}</div>
-                <div style="min-height: 100px; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
-                    ${wordDisplay}
-                </div>
-                <div class="text-lg text-gray-600 mt-3">
-                    <span class="text-2xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
-                    <span class="text-gray-400 mx-2">+</span>
-                    <span class="text-2xl text-blue-500 font-bold">?</span>
-                </div>
-            </div>`;
-
-        // Render partial character using stroke data (show only visible component)
-        const partialCharEl = document.getElementById('partialCharDisplay');
-        if (partialCharEl) {
-            renderPartialCharacter(
-                foundDecomposition.char,
-                foundDecomposition.data,
-                [visibleIndex], // Only show the visible component's strokes
-                partialCharEl
-            );
-        }
+        // Render three-column layout
+        renderThreeColumnComponentLayout();
 
         missingComponentMode.style.display = 'block';
         generateComponentOptions();
@@ -7918,6 +8406,177 @@ function checkRadicalAnswer() {
 let componentInputEl = null;
 let componentAllOptions = [];
 let partialCharacterCache = {};
+let currentDecomposition = null; // { char, data, visibleIndex, givenComponent }
+let componentPreviousQuestion = null; // { question, decomposition: { char, data, visibleIndex, givenComponent, missingComponent } }
+let componentPreviousResult = null; // 'correct' or 'incorrect'
+let componentUpcomingQuestion = null; // { question, decomposition: { char, data, visibleIndex, givenComponent, missingComponent } }
+let componentInlineFeedback = null; // { message, type: 'correct'|'incorrect' }
+
+// Prepare a question with component decomposition data
+function prepareComponentQuestion(exclusions = []) {
+    let attempts = 0;
+    let foundDecomposition = null;
+    let question = null;
+
+    while (!foundDecomposition && attempts < 100) {
+        question = selectNextQuestion(exclusions);
+        if (!question) break;
+
+        const chars = Array.from(question.char);
+        for (const c of chars) {
+            const decomp = CHARACTER_DECOMPOSITIONS[c];
+            if (decomp && decomp.components && decomp.matches) {
+                // Pick a random component to be "missing"
+                const components = decomp.components;
+                const missingIndex = Math.floor(Math.random() * components.length);
+                const visibleIndex = missingIndex === 0 ? 1 : 0;
+
+                foundDecomposition = {
+                    char: c,
+                    data: decomp,
+                    visibleIndex: visibleIndex,
+                    givenComponent: components[visibleIndex],
+                    missingComponent: components[missingIndex]
+                };
+                break;
+            }
+        }
+        attempts++;
+    }
+
+    if (!foundDecomposition || !question) return null;
+
+    return {
+        question: question,
+        decomposition: foundDecomposition
+    };
+}
+
+// Render three-column layout for missing component mode
+async function renderThreeColumnComponentLayout() {
+    if (!questionDisplay || !currentQuestion || !currentDecomposition) return;
+
+    // Get upcoming question if not already set
+    if (!componentUpcomingQuestion) {
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        componentUpcomingQuestion = prepareComponentQuestion(exclusions);
+    }
+
+    // Build previous column content
+    let prevContent = '';
+    if (componentPreviousQuestion) {
+        const prev = componentPreviousQuestion;
+        const prevResultClass = componentPreviousResult === 'correct' ? 'result-correct' :
+                               componentPreviousResult === 'incorrect' ? 'result-incorrect' : '';
+        const prevResultIcon = componentPreviousResult === 'correct' ? '✓' :
+                               componentPreviousResult === 'incorrect' ? '✗' : '•';
+        const prevFeedbackText = componentPreviousResult === 'correct' ? 'Got it right' :
+                                 componentPreviousResult === 'incorrect' ? 'Missed it' : '';
+
+        prevContent = `
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                <div class="column-feedback">
+                    <span class="column-result-icon">${prevResultIcon}</span>
+                    <span class="column-feedback-text">${prevFeedbackText}</span>
+                </div>
+                <div class="column-char">${escapeHtml(prev.question.char)}</div>
+                <div class="column-pinyin">${escapeHtml(prev.question.pinyin)}</div>
+                <div class="column-meaning">${escapeHtml(prev.question.meaning)}</div>
+            </div>`;
+    } else {
+        prevContent = `
+            <div class="column-previous column-card">
+                <div class="column-label">Previous</div>
+                <div class="column-placeholder">Your last answer will appear here</div>
+            </div>`;
+    }
+
+    // Build current column content with partial character
+    const fullWord = currentQuestion.char;
+    const targetChar = currentDecomposition.char;
+    const givenComponent = currentDecomposition.givenComponent;
+
+    let wordDisplay = '';
+    for (let i = 0; i < fullWord.length; i++) {
+        if (fullWord[i] === targetChar) {
+            wordDisplay += `<span id="currentPartialChar" style="display: inline-block; width: 80px; height: 80px; vertical-align: middle;"></span>`;
+        } else {
+            wordDisplay += `<span style="font-size: 5rem; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif; vertical-align: middle; color: #1f2937;">${fullWord[i]}</span>`;
+        }
+    }
+
+    const inlineFeedbackHtml = componentInlineFeedback ? `
+        <div class="column-inline-feedback ${componentInlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+            ${escapeHtml(componentInlineFeedback.message)}
+        </div>` : '';
+
+    const currentContent = `
+        <div class="column-current column-card ${componentInlineFeedback ? (componentInlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+            <div class="column-label">Now</div>
+            <div class="text-xl text-blue-600 font-semibold">${escapeHtml(currentQuestion.pinyin)}</div>
+            <div class="text-sm text-gray-500 mb-2">${escapeHtml(currentQuestion.meaning)}</div>
+            <div class="column-focus-ring" style="min-height: 80px; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
+                ${wordDisplay}
+            </div>
+            <div class="text-base text-gray-600 mt-2">
+                <span class="text-xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
+                <span class="text-gray-400 mx-2">+</span>
+                <span class="text-xl text-blue-500 font-bold">?</span>
+            </div>
+            ${inlineFeedbackHtml}
+        </div>`;
+
+    // Build upcoming column content
+    let upcomingContent = '';
+    if (componentUpcomingQuestion) {
+        const up = componentUpcomingQuestion;
+        upcomingContent = `
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                <div class="column-ondeck">
+                    <div id="upcomingPartialChar" style="display: inline-block; width: 60px; height: 60px;"></div>
+                    <div class="text-sm text-gray-500 mt-1">${escapeHtml(up.question.pinyin)}</div>
+                    <div class="ondeck-note">On deck</div>
+                </div>
+            </div>`;
+    } else {
+        upcomingContent = `
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                <div class="column-placeholder">Next card is loading</div>
+            </div>`;
+    }
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout">
+            ${prevContent}
+            ${currentContent}
+            ${upcomingContent}
+        </div>
+    `;
+
+    // Render partial characters asynchronously
+    const currentPartialEl = document.getElementById('currentPartialChar');
+    if (currentPartialEl && currentDecomposition) {
+        await renderPartialCharacter(
+            currentDecomposition.char,
+            currentDecomposition.data,
+            [currentDecomposition.visibleIndex],
+            currentPartialEl
+        );
+    }
+
+    const upcomingPartialEl = document.getElementById('upcomingPartialChar');
+    if (upcomingPartialEl && componentUpcomingQuestion) {
+        await renderPartialCharacter(
+            componentUpcomingQuestion.decomposition.char,
+            componentUpcomingQuestion.decomposition.data,
+            [componentUpcomingQuestion.decomposition.visibleIndex],
+            upcomingPartialEl
+        );
+    }
+}
 
 // Render a character showing only certain components using Hanzi Writer stroke data
 async function renderPartialCharacter(char, decomposition, visibleComponents, targetElement) {
@@ -8068,15 +8727,27 @@ function generateComponentOptions() {
                 return;
             }
 
-            // Find best match
+            // Find best match - normalize tones for comparison
+            const toneMap = {
+                'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+                'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+                'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+                'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+                'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+                'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v', 'ü': 'v'
+            };
+            const normalizePinyin = (s) => {
+                return s.toLowerCase().split('').map(c => toneMap[c] || c).join('');
+            };
+            const normalizedInput = normalizePinyin(input);
+
             let bestMatch = -1;
             let bestScore = -1;
             componentAllOptions.forEach((opt, idx) => {
-                const pinyinLower = opt.pinyin.toLowerCase().replace(/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/g, c => {
-                    return 'aaaaeeeeiiiiooooüüüü'['āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ'.indexOf(c)] || c;
-                });
-                if (pinyinLower.startsWith(input)) {
-                    const score = input.length;
+                const normalizedPinyin = normalizePinyin(opt.pinyin);
+                // Check if pinyin starts with input OR exact match
+                if (normalizedPinyin.startsWith(normalizedInput) || normalizedPinyin === normalizedInput) {
+                    const score = normalizedInput.length;
                     if (score > bestScore) {
                         bestScore = score;
                         bestMatch = idx;
@@ -8117,47 +8788,95 @@ function generateComponentOptions() {
 
 function checkComponentAnswer(selectedOption) {
     if (answered) return;
-    answered = true;
-    total++;
 
     const isCorrect = selectedOption.isCorrect;
+    const isFirstAttempt = !questionAttemptRecorded;
 
-    // Highlight buttons
-    const buttons = document.querySelectorAll('#componentOptions button');
-    buttons.forEach(btn => {
-        const btnCorrect = btn.dataset.correct === 'true';
-        btn.classList.remove('bg-blue-200');
-        if (btnCorrect) {
-            btn.classList.remove('border-gray-300', 'bg-gray-100');
-            btn.classList.add('bg-green-100', 'border-green-500', 'border-4');
-        } else if (btn.dataset.pinyin === selectedOption.pinyin && !isCorrect) {
-            btn.classList.remove('border-gray-300', 'bg-gray-100');
-            btn.classList.add('bg-red-100', 'border-red-500');
-        }
-    });
-
-    if (isCorrect) {
-        playCorrectSound();
-        score++;
-        feedback.textContent = `✓ Correct! ${currentMissingComponent.char} (${currentMissingComponent.pinyin}) - ${currentMissingComponent.meaning}`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-    } else {
-        playWrongSound();
-        feedback.textContent = `✗ Incorrect. The answer is: ${currentMissingComponent.pinyin} (${currentMissingComponent.char} - ${currentMissingComponent.meaning})`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+    if (isFirstAttempt) {
+        total++;
+        questionAttemptRecorded = true;
     }
-
-    hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
-    hint.className = 'text-center text-xl font-semibold my-4 text-gray-600';
-
-    markSchedulerOutcome(isCorrect);
 
     // Play audio for the word
     const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
     playPinyinAudio(firstPinyin, currentQuestion.char);
 
+    if (isCorrect) {
+        // Record previous question for left column
+        componentPreviousQuestion = {
+            question: currentQuestion,
+            decomposition: currentDecomposition
+        };
+        componentPreviousResult = 'correct';
+        componentInlineFeedback = null;
+
+        playCorrectSound();
+        if (isFirstAttempt) {
+            score++;
+            markSchedulerOutcome(true);
+        }
+
+        updateStats();
+
+        // Move upcoming to current
+        if (componentUpcomingQuestion) {
+            currentQuestion = componentUpcomingQuestion.question;
+            window.currentQuestion = currentQuestion;
+            currentDecomposition = componentUpcomingQuestion.decomposition;
+            currentMissingComponent = componentUpcomingQuestion.decomposition.missingComponent;
+            componentUpcomingQuestion = null;
+        } else {
+            const prepared = prepareComponentQuestion();
+            if (prepared) {
+                currentQuestion = prepared.question;
+                window.currentQuestion = currentQuestion;
+                currentDecomposition = prepared.decomposition;
+                currentMissingComponent = prepared.decomposition.missingComponent;
+            }
+        }
+
+        // Mark the new question as served and update confidence display
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
+
+        // Clear input and immediately show next question
+        if (componentInputEl) {
+            componentInputEl.value = '';
+        }
+
+        // Re-render with updated columns
+        answered = false;
+        questionAttemptRecorded = false;
+        renderThreeColumnComponentLayout();
+        generateComponentOptions();
+        feedback.textContent = '';
+        hint.textContent = '';
+        return;
+    }
+
+    // Incorrect: stay on same card, show inline feedback
+    playWrongSound();
+    if (isFirstAttempt) {
+        markSchedulerOutcome(false);
+    }
+
+    componentInlineFeedback = {
+        message: `✗ Correct: ${currentMissingComponent.char} (${currentMissingComponent.pinyin})`,
+        type: 'incorrect'
+    };
+
     updateStats();
-    scheduleNextQuestion(300); // Instant like other MC modes
+
+    // Clear input and re-render
+    if (componentInputEl) {
+        componentInputEl.value = '';
+        setTimeout(() => componentInputEl.focus(), 0);
+    }
+
+    renderThreeColumnComponentLayout();
+    generateComponentOptions();
+    feedback.textContent = '';
+    hint.textContent = '';
 }
 
 // =============================================================================
@@ -8860,6 +9579,7 @@ function initQuiz(charactersData, userConfig = {}) {
     loadBatchState();
     loadAdaptiveState();
     loadFeedState();
+    loadDecompositionsData(); // Load character decompositions from JSON
 
     reconcileBatchStateWithQueue();
     reconcileAdaptiveStateWithPool();

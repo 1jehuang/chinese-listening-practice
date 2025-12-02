@@ -341,6 +341,7 @@
                 <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
                 <button class="mode-btn" data-mode="handwriting">Handwriting</button>
                 <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn" data-mode="missing-component">Missing Component</button>
                 <button class="mode-btn" data-mode="study">Study Mode</button>
             </nav>
         </aside>
@@ -455,6 +456,12 @@
                     </div>
                     <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Quick list of all vocab. Use search or sorting as needed.</p>
                     <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Missing Component Mode -->
+                <div id="missingComponentMode" style="display: none;">
+                    <input type="text" id="componentInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="componentOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
                 </div>
 
                 <!-- Feedback -->

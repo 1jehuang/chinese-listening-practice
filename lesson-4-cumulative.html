@@ -36,6 +36,7 @@
                 <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="stroke-order">Stroke Order</button>
                 <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="handwriting">Handwriting</button>
                 <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="missing-component">Missing Component</button>
                 <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="radical-practice">Radical Practice</button>
                 <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="study">Study Mode</button>
             </div>
@@ -159,6 +160,12 @@
             <div class="mt-4 text-center">
                 <button id="radicalSubmitBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Submit Answer</button>
             </div>
+        </div>
+
+        <!-- Missing Component Mode -->
+        <div id="missingComponentMode" class="hidden">
+            <input type="text" id="componentInput" placeholder="Type component pinyin..." class="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg text-center mb-4">
+            <div id="componentOptions" class="grid grid-cols-2 gap-3"></div>
         </div>
 
         <!-- Feedback -->
