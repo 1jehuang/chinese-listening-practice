@@ -6455,6 +6455,9 @@ function enterFullscreenDrawing() {
         prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
     }
 
+    // Update confidence display
+    updateFullscreenConfidence();
+
     // Initialize fullscreen canvas
     fullscreenCanvas = document.getElementById('fullscreenDrawCanvas');
     if (!fullscreenCanvas) return;
@@ -6559,6 +6562,15 @@ function exitFullscreenDrawing() {
     if (fullscreenCanvas && fullscreenCtx) {
         fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
     }
+}
+
+function updateFullscreenConfidence() {
+    const confidenceEl = document.getElementById('fullscreenConfidence');
+    if (!confidenceEl || !currentQuestion) return;
+
+    const score = getConfidenceScore(currentQuestion.char);
+    const pct = Math.round(score * 100);
+    confidenceEl.textContent = `Confidence: ${pct}%`;
 }
 
 // Fullscreen Learn Mode - blink current character in center of screen
@@ -6939,6 +6951,9 @@ function nextFullscreenQuestion() {
         prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
     }
 
+    // Update confidence display
+    updateFullscreenConfidence();
+
     // Play character pronunciation audio
     if (currentQuestion && currentQuestion.pinyin) {
         const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
@@ -7244,6 +7259,7 @@ function ensureFullscreenDrawLayout() {
                 <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-lg border border-gray-200">
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Draw</div>
                     <div id="fullscreenPrompt" class="text-3xl font-bold text-gray-900">字</div>
+                    <div id="fullscreenConfidence" class="text-sm text-gray-500 mt-1"></div>
                 </div>
                 <button id="exitFullscreenBtn" type="button" class="pointer-events-auto px-4 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 shadow-lg transition">Exit</button>
             </div>
