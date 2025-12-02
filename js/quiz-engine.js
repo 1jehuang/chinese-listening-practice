@@ -3650,18 +3650,34 @@ function generateQuestion(options = {}) {
         const visibleIndex = missingIndex === 0 ? 1 : 0;
         const givenComponent = components[visibleIndex];
 
-        // Create display with partial character container - show pinyin and meaning, not full character
+        // Create display with partial character container - show pinyin and meaning
+        // For multi-character words, show the other characters fully
+        const fullWord = currentQuestion.char;
+        const targetChar = foundDecomposition.char;
+        const otherChars = fullWord.split('').map(c => c === targetChar ? null : c);
+
+        // Build word display with partial char placeholder
+        let wordDisplay = '';
+        for (let i = 0; i < fullWord.length; i++) {
+            if (fullWord[i] === targetChar) {
+                wordDisplay += `<span id="partialCharDisplay" style="display: inline-block; width: 100px; height: 100px; vertical-align: middle;"></span>`;
+            } else {
+                wordDisplay += `<span class="text-7xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif; vertical-align: middle;">${fullWord[i]}</span>`;
+            }
+        }
+
         questionDisplay.innerHTML = `
-            <div class="text-center my-6">
+            <div class="text-center my-4">
                 <div class="text-2xl text-blue-600 font-semibold mb-1">${currentQuestion.pinyin}</div>
-                <div class="text-lg text-gray-500 mb-4">${currentQuestion.meaning}</div>
-                <div id="partialCharDisplay" style="display: inline-block; width: 120px; height: 120px; margin-bottom: 1rem;"></div>
-                <div class="text-xl text-gray-600 mb-2">
-                    <span class="text-3xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
-                    <span class="text-gray-400 mx-2">+</span>
-                    <span class="text-3xl text-blue-500 font-bold">?</span>
+                <div class="text-lg text-gray-500 mb-3">${currentQuestion.meaning}</div>
+                <div style="min-height: 100px; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
+                    ${wordDisplay}
                 </div>
-                <div class="text-base text-gray-400">Which component completes this character?</div>
+                <div class="text-lg text-gray-600 mt-3">
+                    <span class="text-2xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
+                    <span class="text-gray-400 mx-2">+</span>
+                    <span class="text-2xl text-blue-500 font-bold">?</span>
+                </div>
             </div>`;
 
         // Render partial character using stroke data (show only visible component)
@@ -8017,16 +8033,13 @@ function generateComponentOptions() {
         ...wrongOptions.map(w => ({ ...w, isCorrect: false }))
     ].sort(() => Math.random() - 0.5);
 
-    // Create option buttons - showing character + pinyin
+    // Create option buttons - matching fuzzy mode style
     componentAllOptions.forEach((option, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition flex items-center gap-3';
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition flex items-center gap-3';
         btn.innerHTML = `
-            <span class="text-4xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${option.char}</span>
-            <div class="flex flex-col items-start">
-                <span class="text-xl font-semibold text-blue-600">${option.pinyin}</span>
-                <span class="text-sm text-gray-500">${option.meaning}</span>
-            </div>
+            <span class="text-3xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${option.char}</span>
+            <span class="text-lg text-gray-700">${option.pinyin}</span>
         `;
         btn.dataset.pinyin = option.pinyin;
         btn.dataset.char = option.char;
@@ -8144,7 +8157,7 @@ function checkComponentAnswer(selectedOption) {
     playPinyinAudio(firstPinyin, currentQuestion.char);
 
     updateStats();
-    scheduleNextQuestion(2500);
+    scheduleNextQuestion(300); // Instant like other MC modes
 }
 
 // =============================================================================
