@@ -4041,6 +4041,7 @@ function generateQuestion(options = {}) {
     if (studyMode) studyMode.style.display = 'none';
     if (radicalPracticeMode) radicalPracticeMode.style.display = 'none';
     if (missingComponentMode) missingComponentMode.style.display = 'none';
+    if (charBuildingMode) charBuildingMode.style.display = 'none';
     if (audioSection) audioSection.classList.add('hidden');
     resetDictationState();
 
@@ -4181,6 +4182,38 @@ function generateQuestion(options = {}) {
 
         missingComponentMode.style.display = 'block';
         generateComponentOptions();
+    } else if (mode === 'char-building' && charBuildingMode) {
+        // Character Building mode - build character component by component
+        // Ensure decomposition data is loaded first
+        if (!decompositionsLoaded && decompositionsLoading) {
+            questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
+            decompositionsLoadPromise.then(() => {
+                if (mode === 'char-building') {
+                    generateQuestion();
+                }
+            });
+            return;
+        }
+
+        // Reset building state for new question
+        charBuildingCompletedComponents = [];
+        charBuildingCurrentIndex = 0;
+
+        const prepared = prepareCharBuildingQuestion();
+        if (!prepared) {
+            questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
+            return;
+        }
+
+        currentQuestion = prepared.question;
+        window.currentQuestion = currentQuestion;
+        charBuildingDecomposition = prepared.decomposition;
+
+        // Render the display
+        renderCharBuildingDisplay();
+
+        charBuildingMode.style.display = 'block';
+        generateCharBuildingOptions();
     }
 
     // If we prefilled an answer (user typed during the reveal phase), preserve it
@@ -8880,6 +8913,341 @@ function checkComponentAnswer(selectedOption) {
 }
 
 // =============================================================================
+// CHARACTER BUILDING QUIZ MODE
+// =============================================================================
+
+let charBuildingMode = null;
+let charBuildingDecomposition = null; // { char, data, components }
+let charBuildingCompletedComponents = []; // indices of completed components
+let charBuildingCurrentIndex = 0; // which component we're asking for
+let charBuildingAllOptions = [];
+let charBuildingInputEl = null;
+
+// Prepare a question for character building mode
+function prepareCharBuildingQuestion(exclusions = []) {
+    let attempts = 0;
+    let foundDecomposition = null;
+    let question = null;
+
+    while (!foundDecomposition && attempts < 100) {
+        question = selectNextQuestion(exclusions);
+        if (!question) break;
+
+        const chars = Array.from(question.char);
+        for (const c of chars) {
+            const decomp = CHARACTER_DECOMPOSITIONS[c];
+            if (decomp && decomp.components && decomp.matches && decomp.components.length >= 2) {
+                foundDecomposition = {
+                    char: c,
+                    data: decomp,
+                    components: decomp.components
+                };
+                break;
+            }
+        }
+        attempts++;
+    }
+
+    if (!foundDecomposition || !question) return null;
+
+    return {
+        question: question,
+        decomposition: foundDecomposition
+    };
+}
+
+// Render partial character showing only completed components for char building
+async function renderCharBuildingPartial(container, char, completedIndices) {
+    if (!container) return;
+
+    const cacheKey = `${char}_build_${completedIndices.join(',')}`;
+    if (partialCharacterCache[cacheKey]) {
+        container.innerHTML = partialCharacterCache[cacheKey];
+        return;
+    }
+
+    const decomp = CHARACTER_DECOMPOSITIONS[char];
+    if (!decomp || !decomp.matches) {
+        container.innerHTML = `<span class="text-8xl text-gray-300">?</span>`;
+        return;
+    }
+
+    try {
+        const charData = await HanziWriter.loadCharacterData(char);
+        const strokes = charData.strokes;
+        const matches = decomp.matches;
+
+        // Build SVG showing only strokes belonging to completed components
+        let strokePaths = '';
+        for (let i = 0; i < strokes.length; i++) {
+            const componentIndex = matches[i];
+            if (completedIndices.includes(componentIndex)) {
+                strokePaths += `<path d="${strokes[i]}" fill="#333"></path>`;
+            } else {
+                // Show placeholder/outline for incomplete strokes
+                strokePaths += `<path d="${strokes[i]}" fill="none" stroke="#ddd" stroke-width="2"></path>`;
+            }
+        }
+
+        const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="120" height="120">
+                <g transform="scale(1,-1) translate(0,-900)">
+                    ${strokePaths}
+                </g>
+            </svg>
+        `;
+
+        partialCharacterCache[cacheKey] = svg;
+        container.innerHTML = svg;
+    } catch (err) {
+        console.warn('Error rendering char building partial:', err);
+        container.innerHTML = `<span class="text-8xl text-gray-300">?</span>`;
+    }
+}
+
+// Render the character building mode display
+async function renderCharBuildingDisplay() {
+    if (!questionDisplay || !currentQuestion || !charBuildingDecomposition) return;
+
+    const decomp = charBuildingDecomposition;
+    const totalComponents = decomp.components.length;
+    const currentComp = decomp.components[charBuildingCurrentIndex];
+
+    // Progress indicator
+    const progressDots = decomp.components.map((comp, i) => {
+        if (charBuildingCompletedComponents.includes(i)) {
+            return `<span class="inline-block w-3 h-3 rounded-full bg-green-500 mx-1"></span>`;
+        } else if (i === charBuildingCurrentIndex) {
+            return `<span class="inline-block w-3 h-3 rounded-full bg-blue-500 mx-1 animate-pulse"></span>`;
+        } else {
+            return `<span class="inline-block w-3 h-3 rounded-full bg-gray-300 mx-1"></span>`;
+        }
+    }).join('');
+
+    // Build the display
+    const fullWord = currentQuestion.char;
+    const targetChar = decomp.char;
+
+    let wordDisplay = '';
+    for (let i = 0; i < fullWord.length; i++) {
+        if (fullWord[i] === targetChar) {
+            wordDisplay += `<span id="charBuildingPartial" class="inline-block" style="width: 120px; height: 120px; vertical-align: middle;"></span>`;
+        } else {
+            wordDisplay += `<span class="text-8xl">${fullWord[i]}</span>`;
+        }
+    }
+
+    questionDisplay.innerHTML = `
+        <div class="char-building-layout">
+            <div class="text-center mb-4">
+                <div class="text-sm text-gray-500 uppercase tracking-wider mb-2">Build the Character</div>
+                <div class="text-4xl mb-2">${wordDisplay}</div>
+                <div class="text-lg text-gray-600">${escapeHtml(currentQuestion.pinyin)}</div>
+                <div class="text-base text-gray-500">${escapeHtml(currentQuestion.meaning)}</div>
+            </div>
+            <div class="my-4">${progressDots}</div>
+            <div class="text-center">
+                <div class="text-sm text-gray-400 mb-1">Component ${charBuildingCurrentIndex + 1} of ${totalComponents}</div>
+                <div class="text-xl text-blue-600 font-semibold">Which component comes ${charBuildingCurrentIndex === 0 ? 'first' : 'next'}?</div>
+            </div>
+        </div>
+    `;
+
+    // Render the partial character
+    const partialContainer = document.getElementById('charBuildingPartial');
+    if (partialContainer) {
+        await renderCharBuildingPartial(partialContainer, decomp.char, charBuildingCompletedComponents);
+    }
+}
+
+// Generate options for character building mode
+function generateCharBuildingOptions() {
+    if (!charBuildingMode) return;
+
+    const optionsContainer = document.getElementById('charBuildingOptions');
+    if (!optionsContainer) return;
+
+    const decomp = charBuildingDecomposition;
+    if (!decomp) return;
+
+    const correctComponent = decomp.components[charBuildingCurrentIndex];
+    const allRadicals = CHARACTER_DECOMPOSITIONS['_radicals'] || [];
+
+    // Build options: correct answer + distractors
+    let options = [correctComponent];
+
+    // Add other components from the same character as distractors (if not already completed)
+    for (let i = 0; i < decomp.components.length; i++) {
+        if (i !== charBuildingCurrentIndex && !charBuildingCompletedComponents.includes(i)) {
+            const comp = decomp.components[i];
+            if (!options.some(o => o.char === comp.char)) {
+                options.push(comp);
+            }
+        }
+    }
+
+    // Add random radicals as additional distractors
+    const shuffledRadicals = [...allRadicals].sort(() => Math.random() - 0.5);
+    for (const radical of shuffledRadicals) {
+        if (options.length >= 4) break;
+        if (!options.some(o => o.char === radical.char)) {
+            options.push(radical);
+        }
+    }
+
+    // Shuffle options
+    options = options.sort(() => Math.random() - 0.5);
+    charBuildingAllOptions = options;
+
+    // Setup input element
+    charBuildingInputEl = document.getElementById('charBuildingInput');
+    if (charBuildingInputEl) {
+        charBuildingInputEl.value = '';
+        charBuildingInputEl.oninput = () => filterCharBuildingOptions();
+        setTimeout(() => charBuildingInputEl.focus(), 50);
+    }
+
+    // Render option buttons
+    renderCharBuildingOptionButtons(options);
+}
+
+function renderCharBuildingOptionButtons(options) {
+    const optionsContainer = document.getElementById('charBuildingOptions');
+    if (!optionsContainer) return;
+
+    optionsContainer.innerHTML = '';
+
+    for (const option of options) {
+        const btn = document.createElement('button');
+        btn.className = 'char-building-option px-4 py-3 text-left rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition flex items-center gap-3';
+        btn.innerHTML = `
+            <span class="text-3xl">${escapeHtml(option.char)}</span>
+            <span class="text-gray-600">${escapeHtml(option.pinyin)} - ${escapeHtml(option.meaning)}</span>
+        `;
+        btn.onclick = () => checkCharBuildingAnswer(option);
+        optionsContainer.appendChild(btn);
+    }
+}
+
+function filterCharBuildingOptions() {
+    if (!charBuildingInputEl) return;
+
+    const query = charBuildingInputEl.value.trim().toLowerCase();
+    if (!query) {
+        renderCharBuildingOptionButtons(charBuildingAllOptions);
+        return;
+    }
+
+    // Normalize pinyin for comparison (remove tones)
+    const toneMap = {
+        'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a',
+        'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e',
+        'ī': 'i', 'í': 'i', 'ǐ': 'i', 'ì': 'i',
+        'ō': 'o', 'ó': 'o', 'ǒ': 'o', 'ò': 'o',
+        'ū': 'u', 'ú': 'u', 'ǔ': 'u', 'ù': 'u',
+        'ǖ': 'v', 'ǘ': 'v', 'ǚ': 'v', 'ǜ': 'v', 'ü': 'v'
+    };
+    const normalizePinyin = (s) => {
+        return s.toLowerCase().split('').map(c => toneMap[c] || c).join('');
+    };
+
+    const normalizedQuery = normalizePinyin(query);
+
+    const filtered = charBuildingAllOptions.filter(opt => {
+        const normalizedPinyin = normalizePinyin(opt.pinyin);
+        return normalizedPinyin.startsWith(normalizedQuery) ||
+               opt.char.includes(query) ||
+               opt.meaning.toLowerCase().includes(query);
+    });
+
+    renderCharBuildingOptionButtons(filtered.length > 0 ? filtered : charBuildingAllOptions);
+}
+
+function checkCharBuildingAnswer(selectedOption) {
+    const decomp = charBuildingDecomposition;
+    if (!decomp) return;
+
+    const correctComponent = decomp.components[charBuildingCurrentIndex];
+    const isCorrect = selectedOption.char === correctComponent.char;
+
+    const isFirstAttempt = !questionAttemptRecorded;
+    if (isFirstAttempt) {
+        total++;
+        questionAttemptRecorded = true;
+    }
+
+    if (isCorrect) {
+        playCorrectSound();
+
+        // Mark this component as completed
+        charBuildingCompletedComponents.push(charBuildingCurrentIndex);
+
+        // Check if all components are done
+        if (charBuildingCompletedComponents.length >= decomp.components.length) {
+            // Character complete!
+            if (isFirstAttempt) {
+                score++;
+                markSchedulerOutcome(true);
+            }
+            updateStats();
+
+            // Show completion feedback
+            feedback.innerHTML = `<span class="text-green-600">✓ Complete! ${escapeHtml(decomp.char)}</span>`;
+
+            // Show the full character
+            const partialContainer = document.getElementById('charBuildingPartial');
+            if (partialContainer) {
+                partialContainer.innerHTML = `<span class="text-8xl">${decomp.char}</span>`;
+            }
+
+            // Move to next question after delay
+            setTimeout(() => {
+                charBuildingCompletedComponents = [];
+                charBuildingCurrentIndex = 0;
+                generateQuestion();
+            }, 1500);
+        } else {
+            // Move to next component
+            charBuildingCurrentIndex++;
+            feedback.innerHTML = `<span class="text-green-600">✓ Correct! Next component...</span>`;
+
+            // Update display
+            setTimeout(() => {
+                feedback.textContent = '';
+                renderCharBuildingDisplay();
+                generateCharBuildingOptions();
+            }, 800);
+        }
+    } else {
+        playWrongSound();
+        if (isFirstAttempt) {
+            markSchedulerOutcome(false);
+        }
+        updateStats();
+
+        // Show which one was correct
+        feedback.innerHTML = `<span class="text-red-600">✗ That's ${escapeHtml(selectedOption.char)} (${escapeHtml(selectedOption.pinyin)}). Try again!</span>`;
+
+        // Highlight the wrong button
+        const buttons = document.querySelectorAll('.char-building-option');
+        buttons.forEach(btn => {
+            if (btn.textContent.includes(selectedOption.char)) {
+                btn.classList.add('bg-red-100', 'border-red-400');
+                setTimeout(() => {
+                    btn.classList.remove('bg-red-100', 'border-red-400');
+                }, 500);
+            }
+        });
+    }
+
+    // Clear and refocus input
+    if (charBuildingInputEl) {
+        charBuildingInputEl.value = '';
+        setTimeout(() => charBuildingInputEl.focus(), 50);
+    }
+}
+
+// =============================================================================
 // COMMAND PALETTE SETUP FOR QUIZ PAGES
 // =============================================================================
 
@@ -9616,6 +9984,7 @@ function initQuiz(charactersData, userConfig = {}) {
     studyModeState.shuffleOrder = null;
     radicalPracticeMode = document.getElementById('radicalPracticeMode');
     missingComponentMode = document.getElementById('missingComponentMode');
+    charBuildingMode = document.getElementById('charBuildingMode');
     audioSection = document.getElementById('audioSection');
     fullscreenDrawInitialized = false;
     ensureFullscreenDrawLayout();
