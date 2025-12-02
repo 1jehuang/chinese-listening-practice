@@ -3608,23 +3608,52 @@ function generateQuestion(options = {}) {
         const missingIndex = Math.floor(Math.random() * components.length);
         currentMissingComponent = components[missingIndex];
 
-        // Create the display showing character with missing component indicated
+        // Create the display showing character with missing component visually whited out
         const otherComponents = components.filter((_, i) => i !== missingIndex);
-        const typeLabel = foundDecomposition.data.type === 'lr' ? '←→' :
-                         foundDecomposition.data.type === 'tb' ? '↑↓' :
-                         foundDecomposition.data.type === 'surround' ? '⊡' : '⊕';
+        const charType = foundDecomposition.data.type;
 
-        const componentDisplay = otherComponents.map(c =>
-            `<span class="text-4xl text-gray-700">${c.char}</span>`
-        ).join(' + ');
+        // Determine mask position based on character type and which component is missing
+        let maskStyle = '';
+        if (charType === 'lr') {
+            // Left-right: mask left or right half
+            maskStyle = missingIndex === 0
+                ? 'clip-path: inset(0 50% 0 0);' // Hide left half (first component)
+                : 'clip-path: inset(0 0 0 50%);'; // Hide right half (second component)
+        } else if (charType === 'tb') {
+            // Top-bottom: mask top or bottom half
+            maskStyle = missingIndex === 0
+                ? 'clip-path: inset(0 0 50% 0);' // Hide top half (first component)
+                : 'clip-path: inset(50% 0 0 0);'; // Hide bottom half (second component)
+        } else if (charType === 'surround') {
+            // For surround, hide inner (second component usually)
+            maskStyle = missingIndex === 0
+                ? 'clip-path: inset(25% 25% 25% 25%);' // Hide outer
+                : 'clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 25%, 25% 25%, 25% 75%, 75% 75%, 75% 25%, 0 25%);'; // Hide inner
+        }
+
+        // Show the given component (not the missing one)
+        const givenComponent = otherComponents[0];
 
         questionDisplay.innerHTML = `
-            <div class="text-center my-8">
-                <div class="text-8xl font-normal text-gray-800 mb-4">${foundDecomposition.char}</div>
-                <div class="text-2xl text-gray-500 mb-4">
-                    ${componentDisplay} + <span class="text-4xl text-blue-500 font-bold">?</span>
+            <div class="text-center my-6">
+                <div style="position: relative; display: inline-block; width: 120px; height: 120px; margin-bottom: 1rem;">
+                    <!-- Full character faded in background -->
+                    <div style="position: absolute; inset: 0; font-size: 7rem; line-height: 120px; color: #e5e7eb; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${foundDecomposition.char}</div>
+                    <!-- Character with missing part clipped out -->
+                    <div style="position: absolute; inset: 0; font-size: 7rem; line-height: 120px; color: #1f2937; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif; ${maskStyle}">${foundDecomposition.char}</div>
+                    <!-- Question mark overlay on missing area -->
+                    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 3rem; color: #3b82f6; font-weight: bold; opacity: 0.7;">?</span>
+                    </div>
                 </div>
-                <div class="text-lg text-gray-400">Which component completes this character?</div>
+                <div class="text-xl text-gray-600 mb-2">
+                    <span class="text-3xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
+                    <span class="text-gray-400 mx-2">+</span>
+                    <span class="text-3xl text-blue-500 font-bold">?</span>
+                    <span class="text-gray-400 mx-2">=</span>
+                    <span class="text-3xl text-gray-400" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${foundDecomposition.char}</span>
+                </div>
+                <div class="text-base text-gray-400">Which component is missing?</div>
             </div>`;
 
         missingComponentMode.style.display = 'block';
@@ -7851,11 +7880,19 @@ function checkRadicalAnswer() {
 // MISSING COMPONENT QUIZ MODE
 // =============================================================================
 
+let componentInputEl = null;
+let componentAllOptions = [];
+
 function generateComponentOptions() {
     const componentOptionsDiv = document.getElementById('componentOptions');
+    componentInputEl = document.getElementById('componentInput');
     if (!componentOptionsDiv || !currentMissingComponent) return;
 
     componentOptionsDiv.innerHTML = '';
+    if (componentInputEl) {
+        componentInputEl.value = '';
+        componentInputEl.focus();
+    }
 
     // Get the correct answer pinyin
     const correctPinyin = currentMissingComponent.pinyin;
@@ -7892,25 +7929,94 @@ function generateComponentOptions() {
     }
 
     // Combine correct answer with wrong options
-    const allOptions = [
+    componentAllOptions = [
         { ...currentMissingComponent, isCorrect: true },
         ...wrongOptions.map(w => ({ ...w, isCorrect: false }))
     ].sort(() => Math.random() - 0.5);
 
-    // Create option buttons - showing pinyin as the answer
-    allOptions.forEach(option => {
+    // Create option buttons - showing character + pinyin
+    componentAllOptions.forEach((option, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-6 py-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition flex flex-col items-center min-w-[100px]';
+        btn.className = 'px-4 py-3 bg-gray-100 border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition flex items-center gap-3';
         btn.innerHTML = `
-            <span class="text-2xl font-semibold text-blue-600">${option.pinyin}</span>
-            <span class="text-sm text-gray-500 mt-1">${option.meaning}</span>
+            <span class="text-4xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${option.char}</span>
+            <div class="flex flex-col items-start">
+                <span class="text-xl font-semibold text-blue-600">${option.pinyin}</span>
+                <span class="text-sm text-gray-500">${option.meaning}</span>
+            </div>
         `;
         btn.dataset.pinyin = option.pinyin;
         btn.dataset.char = option.char;
         btn.dataset.correct = option.isCorrect;
+        btn.dataset.index = index;
         btn.onclick = () => checkComponentAnswer(option);
         componentOptionsDiv.appendChild(btn);
     });
+
+    // Setup fuzzy input handler
+    if (componentInputEl) {
+        componentInputEl.oninput = () => {
+            if (answered && lastAnswerCorrect) {
+                nextAnswerBuffer = componentInputEl.value;
+                return;
+            }
+
+            const input = componentInputEl.value.trim().toLowerCase();
+            const buttons = document.querySelectorAll('#componentOptions button');
+
+            if (!input) {
+                buttons.forEach(btn => {
+                    btn.classList.remove('bg-blue-200', 'border-blue-500');
+                    btn.classList.add('bg-gray-100', 'border-gray-300');
+                });
+                return;
+            }
+
+            // Find best match
+            let bestMatch = -1;
+            let bestScore = -1;
+            componentAllOptions.forEach((opt, idx) => {
+                const pinyinLower = opt.pinyin.toLowerCase().replace(/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/g, c => {
+                    return 'aaaaeeeeiiiiooooüüüü'['āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ'.indexOf(c)] || c;
+                });
+                if (pinyinLower.startsWith(input)) {
+                    const score = input.length;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = idx;
+                    }
+                }
+            });
+
+            buttons.forEach((btn, index) => {
+                if (index === bestMatch) {
+                    btn.classList.remove('bg-gray-100', 'border-gray-300');
+                    btn.classList.add('bg-blue-200', 'border-blue-500');
+                } else {
+                    btn.classList.remove('bg-blue-200', 'border-blue-500');
+                    btn.classList.add('bg-gray-100', 'border-gray-300');
+                }
+            });
+        };
+
+        componentInputEl.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                if (answered && lastAnswerCorrect) {
+                    e.preventDefault();
+                    goToNextQuestionAfterCorrect();
+                    return;
+                }
+
+                e.preventDefault();
+                // Find highlighted button and click it
+                const highlighted = document.querySelector('#componentOptions button.bg-blue-200');
+                if (highlighted) {
+                    const idx = parseInt(highlighted.dataset.index);
+                    checkComponentAnswer(componentAllOptions[idx]);
+                }
+            }
+        };
+    }
 }
 
 function checkComponentAnswer(selectedOption) {
@@ -7924,11 +8030,12 @@ function checkComponentAnswer(selectedOption) {
     const buttons = document.querySelectorAll('#componentOptions button');
     buttons.forEach(btn => {
         const btnCorrect = btn.dataset.correct === 'true';
+        btn.classList.remove('bg-blue-200');
         if (btnCorrect) {
-            btn.classList.remove('border-gray-300', 'bg-white');
+            btn.classList.remove('border-gray-300', 'bg-gray-100');
             btn.classList.add('bg-green-100', 'border-green-500', 'border-4');
         } else if (btn.dataset.pinyin === selectedOption.pinyin && !isCorrect) {
-            btn.classList.remove('border-gray-300', 'bg-white');
+            btn.classList.remove('border-gray-300', 'bg-gray-100');
             btn.classList.add('bg-red-100', 'border-red-500');
         }
     });
