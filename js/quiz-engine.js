@@ -7267,7 +7267,7 @@ function ensureFullscreenDrawLayout() {
                     <div class="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-gray-200 flex gap-2">
                         <button id="fullscreenNextSetBtn" type="button" class="px-3 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition text-sm">Next Set</button>
                         <button id="fullscreenShowAnswerBtn" type="button" class="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition text-sm">Show</button>
-                        <button id="fullscreenLearnBtn" type="button" class="hidden px-3 py-2 rounded-xl border border-yellow-400 text-yellow-700 font-semibold bg-yellow-50 hover:bg-yellow-100 transition text-sm">📖 Learn</button>
+                        <button id="fullscreenLearnBtn" type="button" class="px-3 py-2 rounded-xl border border-yellow-400 text-yellow-700 font-semibold bg-yellow-50 hover:bg-yellow-100 transition text-sm">📖 Learn</button>
                         <button id="fullscreenSubmitBtn" type="button" class="px-3 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition text-sm">Submit</button>
                         <button id="fullscreenNextBtn" type="button" class="px-3 py-2 rounded-xl border border-blue-500 text-blue-600 font-semibold hover:bg-blue-50 transition text-sm">Next →</button>
                     </div>
