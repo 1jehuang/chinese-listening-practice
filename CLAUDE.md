@@ -26,6 +26,28 @@
 </a>
 ```
 
+## Default UI Patterns
+
+### Three-Column Layout (Default)
+When implementing new quiz modes, use the **three-column layout** as the default pattern. This layout shows:
+- **Left column (Previous)**: The last completed question with result indicator (✓/✗)
+- **Center column (Current)**: The active question being answered
+- **Right column (Upcoming)**: Preview of the next question (grayed out)
+
+This pattern is used in:
+- `char-to-meaning-type` mode
+- `char-building` mode (Character Building)
+- `audio-to-meaning` mode
+
+Key state variables for three-column layout:
+- `previousQuestion` / `charBuildingPreviousQuestion`
+- `previousQuestionResult` / `charBuildingPreviousResult`
+- `upcomingQuestion` / `charBuildingUpcomingQuestion`
+- `threeColumnInlineFeedback` / `charBuildingInlineFeedback`
+
+### Instant Transitions
+Quiz modes should use **instant transitions** (no setTimeout delays) for smoother UX. When a user answers correctly, immediately advance to the next question without artificial delays.
+
 ## Structure
 
 - `home.html` - Main landing page with links to all exercises

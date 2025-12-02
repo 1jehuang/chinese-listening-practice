@@ -4184,6 +4184,8 @@ function generateQuestion(options = {}) {
         generateComponentOptions();
     } else if (mode === 'char-building' && charBuildingMode) {
         // Character Building mode - build all characters in a word component by component
+        // Uses three-column layout with instant transitions
+
         // Ensure decomposition data is loaded first
         if (!decompositionsLoaded && decompositionsLoading) {
             questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
@@ -4195,13 +4197,15 @@ function generateQuestion(options = {}) {
             return;
         }
 
-        // Reset building state for new question
-        charBuildingWordChars = [];
-        charBuildingCharIndex = 0;
-        charBuildingCompletedComponents = [];
-        charBuildingCurrentIndex = 0;
+        // Use upcoming question if available, otherwise prepare new one
+        let prepared = null;
+        if (charBuildingUpcomingQuestion) {
+            prepared = charBuildingUpcomingQuestion;
+            charBuildingUpcomingQuestion = null;
+        } else {
+            prepared = prepareCharBuildingQuestion();
+        }
 
-        const prepared = prepareCharBuildingQuestion();
         if (!prepared) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
             return;
@@ -4211,6 +4215,12 @@ function generateQuestion(options = {}) {
         window.currentQuestion = currentQuestion;
         charBuildingWordChars = prepared.wordChars;
 
+        // Reset building state
+        charBuildingCharIndex = 0;
+        charBuildingCompletedComponents = [];
+        charBuildingCurrentIndex = 0;
+        charBuildingInlineFeedback = null;
+
         // Set up the first character's decomposition
         const firstChar = charBuildingWordChars[0];
         charBuildingDecomposition = {
@@ -4219,8 +4229,8 @@ function generateQuestion(options = {}) {
             components: firstChar.decomp.components
         };
 
-        // Render the display
-        renderCharBuildingDisplay();
+        // Render three-column layout
+        renderThreeColumnCharBuildingLayout();
 
         charBuildingMode.style.display = 'block';
         generateCharBuildingOptions();
@@ -8936,6 +8946,12 @@ let charBuildingAllOptions = [];
 let charBuildingInputEl = null;
 let charBuildingFilteredOptions = []; // currently visible filtered options
 
+// Three-column layout state for char-building mode
+let charBuildingPreviousQuestion = null; // { question, wordChars }
+let charBuildingPreviousResult = null; // 'correct' or 'incorrect'
+let charBuildingUpcomingQuestion = null; // { question, wordChars }
+let charBuildingInlineFeedback = null; // { message, type: 'correct'|'incorrect' }
+
 // Prepare a question for character building mode - finds ALL decomposable chars in word
 function prepareCharBuildingQuestion(exclusions = []) {
     let attempts = 0;
@@ -9024,93 +9040,149 @@ async function renderCharBuildingPartial(container, char, completedIndices) {
     }
 }
 
-// Render the character building mode display
-async function renderCharBuildingDisplay() {
+// Render three-column layout for character building mode
+async function renderThreeColumnCharBuildingLayout() {
     if (!questionDisplay || !currentQuestion || !charBuildingDecomposition) return;
+
+    // Prepare upcoming question if not already set
+    if (!charBuildingUpcomingQuestion) {
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        charBuildingUpcomingQuestion = prepareCharBuildingQuestion(exclusions);
+    }
 
     const decomp = charBuildingDecomposition;
     const totalComponents = decomp.components.length;
     const totalChars = charBuildingWordChars.length;
 
-    // Progress indicator for current character's components
-    const componentDots = decomp.components.map((comp, i) => {
-        if (charBuildingCompletedComponents.includes(i)) {
-            return `<span class="inline-block w-3 h-3 rounded-full bg-green-500 mx-1"></span>`;
-        } else if (i === charBuildingCurrentIndex) {
-            return `<span class="inline-block w-3 h-3 rounded-full bg-blue-500 mx-1 animate-pulse"></span>`;
-        } else {
-            return `<span class="inline-block w-3 h-3 rounded-full bg-gray-300 mx-1"></span>`;
-        }
-    }).join('');
+    // === PREVIOUS COLUMN ===
+    let prevContent = '';
+    if (charBuildingPreviousQuestion) {
+        const prev = charBuildingPreviousQuestion;
+        const prevResultClass = charBuildingPreviousResult === 'correct' ? 'result-correct' :
+                               charBuildingPreviousResult === 'incorrect' ? 'result-incorrect' : '';
+        const prevResultIcon = charBuildingPreviousResult === 'correct' ? '✓' :
+                               charBuildingPreviousResult === 'incorrect' ? '✗' : '•';
+        const prevFeedbackText = charBuildingPreviousResult === 'correct' ? 'Got it right' :
+                                 charBuildingPreviousResult === 'incorrect' ? 'Missed it' : '';
+        prevContent = `
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                <div class="column-feedback">
+                    <span class="column-result-icon">${prevResultIcon}</span>
+                    <span class="column-feedback-text">${prevFeedbackText}</span>
+                </div>
+                <div class="column-char">${escapeHtml(prev.question.char)}</div>
+                <div class="column-pinyin">${escapeHtml(prev.question.pinyin)}</div>
+                <div class="column-meaning">${escapeHtml(prev.question.meaning)}</div>
+            </div>`;
+    } else {
+        prevContent = `
+            <div class="column-previous column-card">
+                <div class="column-label">Previous</div>
+                <div class="column-placeholder">Your last answer will appear here</div>
+            </div>`;
+    }
 
-    // Character progress (which char in the word)
-    const charProgress = totalChars > 1 ? charBuildingWordChars.map((wc, i) => {
-        if (i < charBuildingCharIndex) {
-            return `<span class="inline-block w-4 h-4 rounded-full bg-green-500 mx-1" title="${wc.char}"></span>`;
-        } else if (i === charBuildingCharIndex) {
-            return `<span class="inline-block w-4 h-4 rounded-full bg-blue-500 mx-1 ring-2 ring-blue-300" title="${wc.char}"></span>`;
-        } else {
-            return `<span class="inline-block w-4 h-4 rounded-full bg-gray-300 mx-1" title="${wc.char}"></span>`;
-        }
-    }).join('') : '';
-
-    // Build the word display - show each character appropriately
+    // === CURRENT COLUMN ===
+    // Build the word display with partial characters
     const fullWord = currentQuestion.char;
     let wordDisplay = '';
-    let partialContainerIndex = 0;
+    let partialIds = [];
 
     for (let i = 0; i < fullWord.length; i++) {
         const char = fullWord[i];
-        // Find if this char is in our wordChars array
         const wordCharIdx = charBuildingWordChars.findIndex(wc => wc.char === char);
 
         if (wordCharIdx === -1) {
-            // Not decomposable - show as-is
-            wordDisplay += `<span class="text-7xl text-gray-400">${char}</span>`;
+            wordDisplay += `<span style="font-size: 4rem; color: #9ca3af;">${char}</span>`;
         } else if (wordCharIdx < charBuildingCharIndex) {
-            // Already completed - show full character
-            wordDisplay += `<span class="text-7xl text-green-600">${char}</span>`;
+            wordDisplay += `<span style="font-size: 4rem; color: #16a34a;">${char}</span>`;
         } else if (wordCharIdx === charBuildingCharIndex) {
-            // Current character being built - show partial
-            wordDisplay += `<span id="charBuildingPartial" class="inline-block" style="width: 100px; height: 100px; vertical-align: middle;"></span>`;
+            wordDisplay += `<span id="charBuildingPartial" style="display: inline-block; width: 70px; height: 70px; vertical-align: middle;"></span>`;
+            partialIds.push({ id: 'charBuildingPartial', char: char, completed: charBuildingCompletedComponents });
         } else {
-            // Future character - show outline
-            wordDisplay += `<span id="charBuildingFuture${wordCharIdx}" class="inline-block" style="width: 100px; height: 100px; vertical-align: middle;"></span>`;
+            const futureId = `charBuildingFuture${wordCharIdx}`;
+            wordDisplay += `<span id="${futureId}" style="display: inline-block; width: 70px; height: 70px; vertical-align: middle;"></span>`;
+            partialIds.push({ id: futureId, char: char, completed: [] });
         }
     }
 
-    const charLabel = totalChars > 1
-        ? `Character ${charBuildingCharIndex + 1}/${totalChars}: ${decomp.char}`
-        : `Building: ${decomp.char}`;
+    // Component progress dots
+    const componentDots = decomp.components.map((comp, i) => {
+        if (charBuildingCompletedComponents.includes(i)) {
+            return `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #16a34a; margin: 0 3px;"></span>`;
+        } else if (i === charBuildingCurrentIndex) {
+            return `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; margin: 0 3px; animation: pulse 1s infinite;"></span>`;
+        } else {
+            return `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; margin: 0 3px;"></span>`;
+        }
+    }).join('');
+
+    // Character progress for multi-char words
+    const charProgressHtml = totalChars > 1 ? `
+        <div style="margin-bottom: 8px;">
+            ${charBuildingWordChars.map((wc, i) => {
+                const bg = i < charBuildingCharIndex ? '#16a34a' : i === charBuildingCharIndex ? '#3b82f6' : '#d1d5db';
+                const ring = i === charBuildingCharIndex ? 'box-shadow: 0 0 0 2px #93c5fd;' : '';
+                return `<span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: ${bg}; margin: 0 2px; ${ring}" title="${wc.char}"></span>`;
+            }).join('')}
+        </div>` : '';
+
+    const inlineFeedbackHtml = charBuildingInlineFeedback ? `
+        <div class="column-inline-feedback ${charBuildingInlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+            ${escapeHtml(charBuildingInlineFeedback.message)}
+        </div>` : '';
+
+    const currentContent = `
+        <div class="column-current column-card ${charBuildingInlineFeedback ? (charBuildingInlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+            <div class="column-label">Now</div>
+            <div style="font-size: 1.1rem; color: #3b82f6; font-weight: 600;">${escapeHtml(currentQuestion.pinyin)}</div>
+            <div style="font-size: 0.9rem; color: #6b7280; margin-bottom: 8px;">${escapeHtml(currentQuestion.meaning)}</div>
+            <div class="column-focus-ring" style="min-height: 70px; display: flex; align-items: center; justify-content: center; gap: 2px;">
+                ${wordDisplay}
+            </div>
+            ${charProgressHtml}
+            <div style="margin: 8px 0;">${componentDots}</div>
+            <div style="font-size: 0.85rem; color: #6b7280;">
+                ${totalChars > 1 ? `Char ${charBuildingCharIndex + 1}/${totalChars} · ` : ''}Component ${charBuildingCurrentIndex + 1}/${totalComponents}
+            </div>
+            ${inlineFeedbackHtml}
+        </div>`;
+
+    // === UPCOMING COLUMN ===
+    let upcomingContent = '';
+    if (charBuildingUpcomingQuestion) {
+        const up = charBuildingUpcomingQuestion;
+        upcomingContent = `
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                <div class="column-ondeck">
+                    <div style="font-size: 2rem; color: #9ca3af;">${escapeHtml(up.question.char)}</div>
+                    <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 4px;">${escapeHtml(up.question.pinyin)}</div>
+                    <div class="ondeck-note">On deck</div>
+                </div>
+            </div>`;
+    } else {
+        upcomingContent = `
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                <div class="column-placeholder">Next word loading</div>
+            </div>`;
+    }
 
     questionDisplay.innerHTML = `
-        <div class="char-building-layout">
-            <div class="text-center mb-4">
-                <div class="text-sm text-gray-500 uppercase tracking-wider mb-2">Build the Word</div>
-                <div class="flex justify-center items-center gap-1 mb-2">${wordDisplay}</div>
-                <div class="text-lg text-gray-600">${escapeHtml(currentQuestion.pinyin)}</div>
-                <div class="text-base text-gray-500">${escapeHtml(currentQuestion.meaning)}</div>
-            </div>
-            ${totalChars > 1 ? `<div class="my-2 text-center"><span class="text-xs text-gray-400">Characters:</span> ${charProgress}</div>` : ''}
-            <div class="my-2">${componentDots}</div>
-            <div class="text-center">
-                <div class="text-sm text-gray-400 mb-1">${charLabel} · Component ${charBuildingCurrentIndex + 1}/${totalComponents}</div>
-                <div class="text-xl text-blue-600 font-semibold">Which component comes ${charBuildingCurrentIndex === 0 ? 'first' : 'next'}?</div>
-            </div>
+        <div class="three-column-meaning-layout">
+            ${prevContent}
+            ${currentContent}
+            ${upcomingContent}
         </div>
     `;
 
-    // Render the current partial character
-    const partialContainer = document.getElementById('charBuildingPartial');
-    if (partialContainer) {
-        await renderCharBuildingPartial(partialContainer, decomp.char, charBuildingCompletedComponents);
-    }
-
-    // Render future characters as outlines (empty)
-    for (let i = charBuildingCharIndex + 1; i < charBuildingWordChars.length; i++) {
-        const futureContainer = document.getElementById(`charBuildingFuture${i}`);
-        if (futureContainer) {
-            await renderCharBuildingPartial(futureContainer, charBuildingWordChars[i].char, []);
+    // Render partial characters asynchronously
+    for (const p of partialIds) {
+        const el = document.getElementById(p.id);
+        if (el) {
+            await renderCharBuildingPartial(el, p.char, p.completed);
         }
     }
 }
@@ -9255,87 +9327,107 @@ function checkCharBuildingAnswer(selectedOption) {
         // Check if all components of current character are done
         if (charBuildingCompletedComponents.length >= decomp.components.length) {
             // Current character complete!
-            feedback.innerHTML = `<span class="text-green-600">✓ ${escapeHtml(decomp.char)} complete!</span>`;
 
             // Check if there are more characters in the word to build
             if (charBuildingCharIndex < charBuildingWordChars.length - 1) {
-                // Move to next character in the word
-                setTimeout(() => {
-                    charBuildingCharIndex++;
-                    charBuildingCompletedComponents = [];
-                    charBuildingCurrentIndex = 0;
-                    // Set up the new character's decomposition
-                    const nextChar = charBuildingWordChars[charBuildingCharIndex];
-                    charBuildingDecomposition = {
-                        char: nextChar.char,
-                        data: nextChar.decomp,
-                        components: nextChar.decomp.components
-                    };
-                    feedback.textContent = '';
-                    renderCharBuildingDisplay();
-                    generateCharBuildingOptions();
-                }, 800);
+                // Move to next character in the word - INSTANT
+                charBuildingCharIndex++;
+                charBuildingCompletedComponents = [];
+                charBuildingCurrentIndex = 0;
+                charBuildingInlineFeedback = null;
+                // Set up the new character's decomposition
+                const nextChar = charBuildingWordChars[charBuildingCharIndex];
+                charBuildingDecomposition = {
+                    char: nextChar.char,
+                    data: nextChar.decomp,
+                    components: nextChar.decomp.components
+                };
+                renderThreeColumnCharBuildingLayout();
+                generateCharBuildingOptions();
             } else {
-                // All characters in word complete!
+                // All characters in word complete! Move to next word - INSTANT
                 if (isFirstAttempt) {
                     score++;
                     markSchedulerOutcome(true);
                 }
                 updateStats();
 
-                feedback.innerHTML = `<span class="text-green-600">✓ Word complete! ${escapeHtml(currentQuestion.char)}</span>`;
+                // Save current as previous
+                charBuildingPreviousQuestion = {
+                    question: currentQuestion,
+                    wordChars: charBuildingWordChars
+                };
+                charBuildingPreviousResult = 'correct';
 
-                // Show all characters as complete
-                renderCharBuildingDisplay();
+                // Move upcoming to current
+                if (charBuildingUpcomingQuestion) {
+                    currentQuestion = charBuildingUpcomingQuestion.question;
+                    window.currentQuestion = currentQuestion;
+                    charBuildingWordChars = charBuildingUpcomingQuestion.wordChars;
+                    charBuildingUpcomingQuestion = null;
+                } else {
+                    const prepared = prepareCharBuildingQuestion();
+                    if (prepared) {
+                        currentQuestion = prepared.question;
+                        window.currentQuestion = currentQuestion;
+                        charBuildingWordChars = prepared.wordChars;
+                    }
+                }
 
-                // Move to next question after delay
-                setTimeout(() => {
-                    charBuildingWordChars = [];
-                    charBuildingCharIndex = 0;
-                    charBuildingCompletedComponents = [];
-                    charBuildingCurrentIndex = 0;
-                    generateQuestion();
-                }, 1500);
+                // Reset for new word
+                charBuildingCharIndex = 0;
+                charBuildingCompletedComponents = [];
+                charBuildingCurrentIndex = 0;
+                charBuildingInlineFeedback = null;
+                answered = false;
+                questionAttemptRecorded = false;
+
+                // Set up first character's decomposition
+                if (charBuildingWordChars.length > 0) {
+                    const firstChar = charBuildingWordChars[0];
+                    charBuildingDecomposition = {
+                        char: firstChar.char,
+                        data: firstChar.decomp,
+                        components: firstChar.decomp.components
+                    };
+                }
+
+                markSchedulerServed(currentQuestion);
+                updateCurrentWordConfidence();
+                renderThreeColumnCharBuildingLayout();
+                generateCharBuildingOptions();
+                feedback.textContent = '';
+                hint.textContent = '';
             }
         } else {
-            // Move to next component of current character
+            // Move to next component of current character - INSTANT
             charBuildingCurrentIndex++;
-            feedback.innerHTML = `<span class="text-green-600">✓ Correct!</span>`;
-
-            // Update display
-            setTimeout(() => {
-                feedback.textContent = '';
-                renderCharBuildingDisplay();
-                generateCharBuildingOptions();
-            }, 500);
+            charBuildingInlineFeedback = null;
+            renderThreeColumnCharBuildingLayout();
+            generateCharBuildingOptions();
         }
     } else {
+        // Incorrect answer
         playWrongSound();
         if (isFirstAttempt) {
             markSchedulerOutcome(false);
         }
         updateStats();
 
-        // Show which one was correct
-        feedback.innerHTML = `<span class="text-red-600">✗ That's ${escapeHtml(selectedOption.char)} (${escapeHtml(selectedOption.pinyin)}). Try again!</span>`;
-
-        // Highlight the wrong button
-        const buttons = document.querySelectorAll('.char-building-option');
-        buttons.forEach(btn => {
-            if (btn.textContent.includes(selectedOption.char)) {
-                btn.classList.add('bg-red-100', 'border-red-400');
-                setTimeout(() => {
-                    btn.classList.remove('bg-red-100', 'border-red-400');
-                }, 500);
-            }
-        });
+        // Show inline feedback
+        charBuildingInlineFeedback = {
+            message: `✗ ${selectedOption.char} (${selectedOption.pinyin}) - try again`,
+            type: 'incorrect'
+        };
+        renderThreeColumnCharBuildingLayout();
+        generateCharBuildingOptions();
     }
 
     // Clear and refocus input
     if (charBuildingInputEl) {
         charBuildingInputEl.value = '';
         charBuildingFilteredOptions = charBuildingAllOptions;
-        setTimeout(() => charBuildingInputEl.focus(), 50);
+        charBuildingInputEl.focus();
     }
 }
 
