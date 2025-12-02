@@ -6979,7 +6979,7 @@ function ensureStudyModeLayout() {
     if (studyModeInitialized) return true;
 
     studyMode.innerHTML = `
-        <div class="space-y-4" style="width: calc(100vw - 2rem); margin-left: calc(-50vw + 50% + 1rem); max-width: 1400px; margin-right: auto;">
+        <div class="study-mode-container space-y-4">
             <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between px-4">
                 <div>
                     <h2 class="text-2xl font-semibold text-gray-900">Study Mode Reference</h2>
@@ -8268,10 +8268,78 @@ function initQuiz(charactersData, userConfig = {}) {
     // Initialize command palette
     initQuizCommandPalette();
 
+    // Setup collapsible sidebars
+    setupCollapsibleSidebars();
+
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         prepareBatchForNextQuestion();
     }
 
     // Start first question
     generateQuestion();
+}
+
+// Setup collapsible sidebars for quiz modes and confidence panel
+function setupCollapsibleSidebars() {
+    // Find the left sidebar (quiz modes)
+    const leftSidebar = document.querySelector('.flex.min-h-screen > .w-64, .flex.min-h-screen > div:first-child.bg-white');
+    if (leftSidebar && !leftSidebar.closest('.sidebar-wrapper')) {
+        wrapSidebarWithToggle(leftSidebar, 'left');
+    }
+
+    // Find the right sidebar (confidence panel) - for experimental layouts
+    const rightSidebar = document.getElementById('confidencePanel');
+    if (rightSidebar && !rightSidebar.closest('.sidebar-wrapper')) {
+        wrapSidebarWithToggle(rightSidebar, 'right');
+    }
+}
+
+function wrapSidebarWithToggle(sidebar, side) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `sidebar-wrapper ${side}`;
+
+    const toggle = document.createElement('button');
+    toggle.className = 'sidebar-toggle';
+    toggle.innerHTML = side === 'left' ? '◀' : '▶';
+    toggle.title = `Toggle ${side} sidebar`;
+
+    // Get stored collapse state
+    const storageKey = `sidebar-${side}-collapsed`;
+    const isCollapsed = localStorage.getItem(storageKey) === 'true';
+
+    sidebar.parentNode.insertBefore(wrapper, sidebar);
+
+    const content = document.createElement('div');
+    content.className = 'sidebar-content';
+
+    // Move sidebar's children to content div
+    while (sidebar.firstChild) {
+        content.appendChild(sidebar.firstChild);
+    }
+
+    // Copy sidebar's relevant classes
+    content.className += ' ' + Array.from(sidebar.classList).filter(c =>
+        !c.startsWith('w-') && c !== 'bg-white' && c !== 'shadow-lg' && c !== 'p-4'
+    ).join(' ');
+
+    wrapper.appendChild(content);
+    wrapper.appendChild(toggle);
+
+    // Remove the original sidebar
+    sidebar.remove();
+
+    // Apply initial collapsed state
+    if (isCollapsed) {
+        wrapper.classList.add('collapsed');
+        toggle.innerHTML = side === 'left' ? '▶' : '◀';
+    }
+
+    toggle.addEventListener('click', () => {
+        wrapper.classList.toggle('collapsed');
+        const nowCollapsed = wrapper.classList.contains('collapsed');
+        toggle.innerHTML = side === 'left'
+            ? (nowCollapsed ? '▶' : '◀')
+            : (nowCollapsed ? '◀' : '▶');
+        localStorage.setItem(storageKey, nowCollapsed);
+    });
 }

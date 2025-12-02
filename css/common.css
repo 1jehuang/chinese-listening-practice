@@ -819,3 +819,87 @@
         font-size: 12px;
     }
 }
+
+/* Study Mode Container - expand to fill available space */
+.study-mode-container {
+    width: 100%;
+    max-width: none;
+    padding: 0 1rem;
+}
+
+#studyMode.active {
+    display: block;
+    width: 100%;
+}
+
+/* Collapsible sidebar styles */
+.sidebar-wrapper {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    transition: width 0.2s ease;
+}
+
+.sidebar-wrapper.collapsed {
+    width: 0;
+}
+
+.sidebar-wrapper.collapsed .sidebar-content {
+    display: none;
+}
+
+.sidebar-content {
+    width: 16rem;
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+    padding: 1rem;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+    height: 3rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0 0.375rem 0.375rem 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 0.75rem;
+    z-index: 45;
+    transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-toggle:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Left sidebar toggle positioning */
+.sidebar-wrapper.left .sidebar-toggle {
+    right: -1.5rem;
+}
+
+.sidebar-wrapper.left.collapsed .sidebar-toggle {
+    right: auto;
+    left: 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+
+/* Right sidebar toggle positioning */
+.sidebar-wrapper.right .sidebar-toggle {
+    left: -1.5rem;
+    border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.sidebar-wrapper.right.collapsed .sidebar-toggle {
+    left: auto;
+    right: 0;
+    border-radius: 0.375rem 0 0 0.375rem;
+}
