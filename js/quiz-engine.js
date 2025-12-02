@@ -7302,12 +7302,17 @@ function ensureFullscreenDrawLayout() {
                 <button id="exitFullscreenBtn" type="button" class="pointer-events-auto px-4 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 shadow-lg transition">Exit</button>
             </div>
 
-            <!-- Center overlay with OCR result (on top of canvas) -->
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <div class="text-center">
-                    <div id="fullscreenOcrResult" class="text-[20vw] font-bold text-blue-600/30 leading-none" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">&nbsp;</div>
-                    <div id="fullscreenOcrPinyin" class="text-4xl font-semibold text-blue-500/50 mt-2">&nbsp;</div>
+            <!-- Left panel with OCR result -->
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200 w-32">
+                    <div class="text-xs uppercase tracking-[0.25em] text-gray-400 mb-2">Match</div>
+                    <div id="fullscreenOcrResult" class="text-6xl font-bold text-blue-600 text-center min-h-[80px]" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">&nbsp;</div>
                 </div>
+            </div>
+
+            <!-- Pinyin display near bottom -->
+            <div class="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+                <div id="fullscreenOcrPinyin" class="text-2xl font-semibold text-blue-600 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200"></div>
             </div>
 
             <!-- Bottom toolbar -->
