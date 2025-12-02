@@ -218,6 +218,330 @@ let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
 
+// Missing Component mode state
+let missingComponentMode = null;
+let currentMissingComponent = null;
+
+// Character decomposition database for missing component quiz
+// Each entry: char -> { components: [{ char, pinyin, meaning }], type: 'lr'|'tb'|'surround'|'other' }
+// type: lr = left-right, tb = top-bottom, surround = enclosure, other = complex
+const CHARACTER_DECOMPOSITIONS = {
+    // Common radicals/components for distractors
+    '_radicals': [
+        { char: '亻', pinyin: 'rén', meaning: 'person' },
+        { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
+        { char: '扌', pinyin: 'shǒu', meaning: 'hand' },
+        { char: '口', pinyin: 'kǒu', meaning: 'mouth' },
+        { char: '木', pinyin: 'mù', meaning: 'wood' },
+        { char: '火', pinyin: 'huǒ', meaning: 'fire' },
+        { char: '土', pinyin: 'tǔ', meaning: 'earth' },
+        { char: '金', pinyin: 'jīn', meaning: 'metal' },
+        { char: '日', pinyin: 'rì', meaning: 'sun' },
+        { char: '月', pinyin: 'yuè', meaning: 'moon' },
+        { char: '心', pinyin: 'xīn', meaning: 'heart' },
+        { char: '女', pinyin: 'nǚ', meaning: 'woman' },
+        { char: '子', pinyin: 'zǐ', meaning: 'child' },
+        { char: '宀', pinyin: 'mián', meaning: 'roof' },
+        { char: '门', pinyin: 'mén', meaning: 'door' },
+        { char: '讠', pinyin: 'yán', meaning: 'speech' },
+        { char: '饣', pinyin: 'shí', meaning: 'food' },
+        { char: '车', pinyin: 'chē', meaning: 'vehicle' },
+        { char: '艹', pinyin: 'cǎo', meaning: 'grass' },
+        { char: '竹', pinyin: 'zhú', meaning: 'bamboo' },
+        { char: '力', pinyin: 'lì', meaning: 'power' },
+        { char: '工', pinyin: 'gōng', meaning: 'work' },
+        { char: '贝', pinyin: 'bèi', meaning: 'shell' },
+        { char: '页', pinyin: 'yè', meaning: 'page' },
+        { char: '走', pinyin: 'zǒu', meaning: 'walk' },
+        { char: '足', pinyin: 'zú', meaning: 'foot' },
+        { char: '目', pinyin: 'mù', meaning: 'eye' },
+        { char: '耳', pinyin: 'ěr', meaning: 'ear' },
+        { char: '田', pinyin: 'tián', meaning: 'field' },
+        { char: '石', pinyin: 'shí', meaning: 'stone' },
+        { char: '山', pinyin: 'shān', meaning: 'mountain' },
+        { char: '禾', pinyin: 'hé', meaning: 'grain' },
+        { char: '米', pinyin: 'mǐ', meaning: 'rice' },
+        { char: '糸', pinyin: 'sī', meaning: 'silk' },
+        { char: '言', pinyin: 'yán', meaning: 'speech' },
+        { char: '食', pinyin: 'shí', meaning: 'food' },
+        { char: '衣', pinyin: 'yī', meaning: 'clothing' },
+        { char: '刂', pinyin: 'dāo', meaning: 'knife' },
+        { char: '阝', pinyin: 'fù', meaning: 'mound' },
+        { char: '冖', pinyin: 'mì', meaning: 'cover' },
+        { char: '厂', pinyin: 'chǎng', meaning: 'factory' },
+        { char: '广', pinyin: 'guǎng', meaning: 'wide' },
+        { char: '户', pinyin: 'hù', meaning: 'door' },
+        { char: '尸', pinyin: 'shī', meaning: 'corpse' },
+        { char: '王', pinyin: 'wáng', meaning: 'king' },
+        { char: '大', pinyin: 'dà', meaning: 'big' },
+        { char: '小', pinyin: 'xiǎo', meaning: 'small' },
+        { char: '人', pinyin: 'rén', meaning: 'person' },
+        { char: '八', pinyin: 'bā', meaning: 'eight' },
+        { char: '十', pinyin: 'shí', meaning: 'ten' },
+        { char: '一', pinyin: 'yī', meaning: 'one' }
+    ],
+    // Lesson 7 characters with decompositions
+    '住': {
+        components: [
+            { char: '亻', pinyin: 'rén', meaning: 'person' },
+            { char: '主', pinyin: 'zhǔ', meaning: 'master' }
+        ],
+        type: 'lr'
+    },
+    '同': {
+        components: [
+            { char: '冂', pinyin: 'jiōng', meaning: 'borders' },
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
+        ],
+        type: 'surround'
+    },
+    '起': {
+        components: [
+            { char: '走', pinyin: 'zǒu', meaning: 'walk' },
+            { char: '己', pinyin: 'jǐ', meaning: 'self' }
+        ],
+        type: 'other'
+    },
+    '期': {
+        components: [
+            { char: '其', pinyin: 'qí', meaning: 'its' },
+            { char: '月', pinyin: 'yuè', meaning: 'moon' }
+        ],
+        type: 'lr'
+    },
+    '寓': {
+        components: [
+            { char: '宀', pinyin: 'mián', meaning: 'roof' },
+            { char: '禺', pinyin: 'yú', meaning: 'area' }
+        ],
+        type: 'tb'
+    },
+    '宿': {
+        components: [
+            { char: '宀', pinyin: 'mián', meaning: 'roof' },
+            { char: '佰', pinyin: 'bǎi', meaning: 'hundred' }
+        ],
+        type: 'tb'
+    },
+    '舍': {
+        components: [
+            { char: '人', pinyin: 'rén', meaning: 'person' },
+            { char: '舌', pinyin: 'shé', meaning: 'tongue' }
+        ],
+        type: 'tb'
+    },
+    '便': {
+        components: [
+            { char: '亻', pinyin: 'rén', meaning: 'person' },
+            { char: '更', pinyin: 'gēng', meaning: 'change' }
+        ],
+        type: 'lr'
+    },
+    '搬': {
+        components: [
+            { char: '扌', pinyin: 'shǒu', meaning: 'hand' },
+            { char: '般', pinyin: 'bān', meaning: 'sort' }
+        ],
+        type: 'lr'
+    },
+    '吃': {
+        components: [
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' },
+            { char: '乞', pinyin: 'qǐ', meaning: 'beg' }
+        ],
+        type: 'lr'
+    },
+    '饭': {
+        components: [
+            { char: '饣', pinyin: 'shí', meaning: 'food' },
+            { char: '反', pinyin: 'fǎn', meaning: 'opposite' }
+        ],
+        type: 'lr'
+    },
+    '问': {
+        components: [
+            { char: '门', pinyin: 'mén', meaning: 'door' },
+            { char: '口', pinyin: 'kǒu', meaning: 'mouth' }
+        ],
+        type: 'surround'
+    },
+    '题': {
+        components: [
+            { char: '是', pinyin: 'shì', meaning: 'is' },
+            { char: '页', pinyin: 'yè', meaning: 'page' }
+        ],
+        type: 'lr'
+    },
+    '厨': {
+        components: [
+            { char: '厂', pinyin: 'chǎng', meaning: 'factory' },
+            { char: '寸', pinyin: 'cùn', meaning: 'inch' }
+        ],
+        type: 'other'
+    },
+    '房': {
+        components: [
+            { char: '户', pinyin: 'hù', meaning: 'door' },
+            { char: '方', pinyin: 'fāng', meaning: 'square' }
+        ],
+        type: 'other'
+    },
+    '定': {
+        components: [
+            { char: '宀', pinyin: 'mián', meaning: 'roof' },
+            { char: '正', pinyin: 'zhèng', meaning: 'correct' }
+        ],
+        type: 'tb'
+    },
+    '堂': {
+        components: [
+            { char: '尚', pinyin: 'shàng', meaning: 'still' },
+            { char: '土', pinyin: 'tǔ', meaning: 'earth' }
+        ],
+        type: 'tb'
+    },
+    '贵': {
+        components: [
+            { char: '中', pinyin: 'zhōng', meaning: 'middle' },
+            { char: '贝', pinyin: 'bèi', meaning: 'shell' }
+        ],
+        type: 'tb'
+    },
+    '好': {
+        components: [
+            { char: '女', pinyin: 'nǚ', meaning: 'woman' },
+            { char: '子', pinyin: 'zǐ', meaning: 'child' }
+        ],
+        type: 'lr'
+    },
+    '每': {
+        components: [
+            { char: '人', pinyin: 'rén', meaning: 'person' },
+            { char: '母', pinyin: 'mǔ', meaning: 'mother' }
+        ],
+        type: 'tb'
+    },
+    '天': {
+        components: [
+            { char: '一', pinyin: 'yī', meaning: 'one' },
+            { char: '大', pinyin: 'dà', meaning: 'big' }
+        ],
+        type: 'tb'
+    },
+    '挑': {
+        components: [
+            { char: '扌', pinyin: 'shǒu', meaning: 'hand' },
+            { char: '兆', pinyin: 'zhào', meaning: 'omen' }
+        ],
+        type: 'lr'
+    },
+    '剔': {
+        components: [
+            { char: '易', pinyin: 'yì', meaning: 'easy' },
+            { char: '刂', pinyin: 'dāo', meaning: 'knife' }
+        ],
+        type: 'lr'
+    },
+    '功': {
+        components: [
+            { char: '工', pinyin: 'gōng', meaning: 'work' },
+            { char: '力', pinyin: 'lì', meaning: 'power' }
+        ],
+        type: 'lr'
+    },
+    '课': {
+        components: [
+            { char: '讠', pinyin: 'yán', meaning: 'speech' },
+            { char: '果', pinyin: 'guǒ', meaning: 'fruit' }
+        ],
+        type: 'lr'
+    },
+    '怎': {
+        components: [
+            { char: '乍', pinyin: 'zhà', meaning: 'suddenly' },
+            { char: '心', pinyin: 'xīn', meaning: 'heart' }
+        ],
+        type: 'tb'
+    },
+    '时': {
+        components: [
+            { char: '日', pinyin: 'rì', meaning: 'sun' },
+            { char: '寸', pinyin: 'cùn', meaning: 'inch' }
+        ],
+        type: 'lr'
+    },
+    '间': {
+        components: [
+            { char: '门', pinyin: 'mén', meaning: 'door' },
+            { char: '日', pinyin: 'rì', meaning: 'sun' }
+        ],
+        type: 'surround'
+    },
+    '菜': {
+        components: [
+            { char: '艹', pinyin: 'cǎo', meaning: 'grass' },
+            { char: '采', pinyin: 'cǎi', meaning: 'pick' }
+        ],
+        type: 'tb'
+    },
+    '轮': {
+        components: [
+            { char: '车', pinyin: 'chē', meaning: 'vehicle' },
+            { char: '仑', pinyin: 'lún', meaning: 'order' }
+        ],
+        type: 'lr'
+    },
+    '流': {
+        components: [
+            { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
+            { char: '㐬', pinyin: 'liú', meaning: 'flow' }
+        ],
+        type: 'lr'
+    },
+    '晚': {
+        components: [
+            { char: '日', pinyin: 'rì', meaning: 'sun' },
+            { char: '免', pinyin: 'miǎn', meaning: 'exempt' }
+        ],
+        type: 'lr'
+    },
+    '早': {
+        components: [
+            { char: '日', pinyin: 'rì', meaning: 'sun' },
+            { char: '十', pinyin: 'shí', meaning: 'ten' }
+        ],
+        type: 'tb'
+    },
+    '明': {
+        components: [
+            { char: '日', pinyin: 'rì', meaning: 'sun' },
+            { char: '月', pinyin: 'yuè', meaning: 'moon' }
+        ],
+        type: 'lr'
+    },
+    '治': {
+        components: [
+            { char: '氵', pinyin: 'shuǐ', meaning: 'water' },
+            { char: '台', pinyin: 'tái', meaning: 'platform' }
+        ],
+        type: 'lr'
+    },
+    '简': {
+        components: [
+            { char: '竹', pinyin: 'zhú', meaning: 'bamboo' },
+            { char: '间', pinyin: 'jiān', meaning: 'between' }
+        ],
+        type: 'tb'
+    },
+    '单': {
+        components: [
+            { char: '十', pinyin: 'shí', meaning: 'ten' },
+            { char: '田', pinyin: 'tián', meaning: 'field' }
+        ],
+        type: 'tb'
+    }
+};
+
 // Layout upgrade state
 let lessonLayoutStylesInjected = false;
 let legacyLessonLayoutUpgraded = false;
@@ -3152,6 +3476,7 @@ function generateQuestion(options = {}) {
     if (drawCharMode) drawCharMode.style.display = 'none';
     if (studyMode) studyMode.style.display = 'none';
     if (radicalPracticeMode) radicalPracticeMode.style.display = 'none';
+    if (missingComponentMode) missingComponentMode.style.display = 'none';
     if (audioSection) audioSection.classList.add('hidden');
     resetDictationState();
 
@@ -3251,6 +3576,59 @@ function generateQuestion(options = {}) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
+    } else if (mode === 'missing-component' && missingComponentMode) {
+        // Find a character that has decomposition data
+        let attempts = 0;
+        let foundDecomposition = null;
+        while (!foundDecomposition && attempts < 100) {
+            // Get all single characters from the current question's char field
+            const chars = Array.from(currentQuestion.char);
+            for (const c of chars) {
+                if (CHARACTER_DECOMPOSITIONS[c] && CHARACTER_DECOMPOSITIONS[c].components) {
+                    foundDecomposition = { char: c, data: CHARACTER_DECOMPOSITIONS[c] };
+                    break;
+                }
+            }
+            if (!foundDecomposition) {
+                const candidate = getRandomQuestion();
+                if (!candidate) break;
+                currentQuestion = candidate;
+                window.currentQuestion = currentQuestion;
+            }
+            attempts++;
+        }
+
+        if (!foundDecomposition) {
+            questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with decomposition data available in this lesson.</div>`;
+            return;
+        }
+
+        // Pick a random component to be "missing"
+        const components = foundDecomposition.data.components;
+        const missingIndex = Math.floor(Math.random() * components.length);
+        currentMissingComponent = components[missingIndex];
+
+        // Create the display showing character with missing component indicated
+        const otherComponents = components.filter((_, i) => i !== missingIndex);
+        const typeLabel = foundDecomposition.data.type === 'lr' ? '←→' :
+                         foundDecomposition.data.type === 'tb' ? '↑↓' :
+                         foundDecomposition.data.type === 'surround' ? '⊡' : '⊕';
+
+        const componentDisplay = otherComponents.map(c =>
+            `<span class="text-4xl text-gray-700">${c.char}</span>`
+        ).join(' + ');
+
+        questionDisplay.innerHTML = `
+            <div class="text-center my-8">
+                <div class="text-8xl font-normal text-gray-800 mb-4">${foundDecomposition.char}</div>
+                <div class="text-2xl text-gray-500 mb-4">
+                    ${componentDisplay} + <span class="text-4xl text-blue-500 font-bold">?</span>
+                </div>
+                <div class="text-lg text-gray-400">Which component completes this character?</div>
+            </div>`;
+
+        missingComponentMode.style.display = 'block';
+        generateComponentOptions();
     }
 
     // If we prefilled an answer (user typed during the reveal phase), preserve it
@@ -7470,6 +7848,116 @@ function checkRadicalAnswer() {
 }
 
 // =============================================================================
+// MISSING COMPONENT QUIZ MODE
+// =============================================================================
+
+function generateComponentOptions() {
+    const componentOptionsDiv = document.getElementById('componentOptions');
+    if (!componentOptionsDiv || !currentMissingComponent) return;
+
+    componentOptionsDiv.innerHTML = '';
+
+    // Get the correct answer pinyin
+    const correctPinyin = currentMissingComponent.pinyin;
+
+    // Build pool of wrong options from the radicals list
+    const allRadicals = CHARACTER_DECOMPOSITIONS['_radicals'] || [];
+    const wrongOptions = [];
+    const usedPinyin = new Set([correctPinyin]);
+
+    // Also add components from other decompositions for variety
+    const otherComponents = [];
+    for (const [char, data] of Object.entries(CHARACTER_DECOMPOSITIONS)) {
+        if (char === '_radicals') continue;
+        if (data.components) {
+            data.components.forEach(c => {
+                if (!usedPinyin.has(c.pinyin)) {
+                    otherComponents.push(c);
+                }
+            });
+        }
+    }
+
+    // Combine radicals and other components
+    const distractorPool = [...allRadicals, ...otherComponents];
+
+    // Shuffle and pick 3 distractors
+    const shuffled = distractorPool.sort(() => Math.random() - 0.5);
+    for (const item of shuffled) {
+        if (wrongOptions.length >= 3) break;
+        if (!usedPinyin.has(item.pinyin)) {
+            wrongOptions.push(item);
+            usedPinyin.add(item.pinyin);
+        }
+    }
+
+    // Combine correct answer with wrong options
+    const allOptions = [
+        { ...currentMissingComponent, isCorrect: true },
+        ...wrongOptions.map(w => ({ ...w, isCorrect: false }))
+    ].sort(() => Math.random() - 0.5);
+
+    // Create option buttons - showing pinyin as the answer
+    allOptions.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-4 bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition flex flex-col items-center min-w-[100px]';
+        btn.innerHTML = `
+            <span class="text-2xl font-semibold text-blue-600">${option.pinyin}</span>
+            <span class="text-sm text-gray-500 mt-1">${option.meaning}</span>
+        `;
+        btn.dataset.pinyin = option.pinyin;
+        btn.dataset.char = option.char;
+        btn.dataset.correct = option.isCorrect;
+        btn.onclick = () => checkComponentAnswer(option);
+        componentOptionsDiv.appendChild(btn);
+    });
+}
+
+function checkComponentAnswer(selectedOption) {
+    if (answered) return;
+    answered = true;
+    total++;
+
+    const isCorrect = selectedOption.isCorrect;
+
+    // Highlight buttons
+    const buttons = document.querySelectorAll('#componentOptions button');
+    buttons.forEach(btn => {
+        const btnCorrect = btn.dataset.correct === 'true';
+        if (btnCorrect) {
+            btn.classList.remove('border-gray-300', 'bg-white');
+            btn.classList.add('bg-green-100', 'border-green-500', 'border-4');
+        } else if (btn.dataset.pinyin === selectedOption.pinyin && !isCorrect) {
+            btn.classList.remove('border-gray-300', 'bg-white');
+            btn.classList.add('bg-red-100', 'border-red-500');
+        }
+    });
+
+    if (isCorrect) {
+        playCorrectSound();
+        score++;
+        feedback.textContent = `✓ Correct! ${currentMissingComponent.char} (${currentMissingComponent.pinyin}) - ${currentMissingComponent.meaning}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+    } else {
+        playWrongSound();
+        feedback.textContent = `✗ Incorrect. The answer is: ${currentMissingComponent.pinyin} (${currentMissingComponent.char} - ${currentMissingComponent.meaning})`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+    }
+
+    hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
+    hint.className = 'text-center text-xl font-semibold my-4 text-gray-600';
+
+    markSchedulerOutcome(isCorrect);
+
+    // Play audio for the word
+    const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+    playPinyinAudio(firstPinyin, currentQuestion.char);
+
+    updateStats();
+    scheduleNextQuestion(2500);
+}
+
+// =============================================================================
 // COMMAND PALETTE SETUP FOR QUIZ PAGES
 // =============================================================================
 
@@ -8204,6 +8692,7 @@ function initQuiz(charactersData, userConfig = {}) {
     studyModeState.sortBy = 'original';
     studyModeState.shuffleOrder = null;
     radicalPracticeMode = document.getElementById('radicalPracticeMode');
+    missingComponentMode = document.getElementById('missingComponentMode');
     audioSection = document.getElementById('audioSection');
     fullscreenDrawInitialized = false;
     ensureFullscreenDrawLayout();

@@ -341,6 +341,7 @@
                 <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
                 <button class="mode-btn" data-mode="handwriting">Handwriting</button>
                 <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn" data-mode="missing-component">Missing Component</button>
                 <button class="mode-btn" data-mode="study">Study Mode</button>
             </nav>
         </aside>
@@ -434,6 +435,11 @@
                     </div>
                     <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Quick list of this lesson's vocab. Use search or sorting as needed.</p>
                     <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Missing Component Mode -->
+                <div id="missingComponentMode" style="display: none;">
+                    <div id="componentOptions" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 1.5rem;"></div>
                 </div>
 
                 <!-- Feedback -->
