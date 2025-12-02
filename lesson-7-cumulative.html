@@ -251,6 +251,21 @@
             display: block;
         }
 
+        /* Study mode needs full width - remove input-section constraint */
+        body.study-mode-active .input-section {
+            max-width: none;
+            flex-direction: column;
+        }
+
+        #studyMode.active {
+            width: 100%;
+        }
+
+        /* Hide feedback in study mode */
+        body.study-mode-active #feedback {
+            display: none;
+        }
+
         /* Home button */
         .home-btn {
             position: fixed;
