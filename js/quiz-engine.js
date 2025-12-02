@@ -9018,10 +9018,8 @@ async function renderCharBuildingPartial(container, char, completedIndices) {
             const componentIndex = matches[i];
             if (completedIndices.includes(componentIndex)) {
                 strokePaths += `<path d="${strokes[i]}" fill="#333"></path>`;
-            } else {
-                // Show placeholder/outline for incomplete strokes
-                strokePaths += `<path d="${strokes[i]}" fill="none" stroke="#ddd" stroke-width="2"></path>`;
             }
+            // Don't show any hint for incomplete strokes
         }
 
         const svg = `
