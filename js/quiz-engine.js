@@ -1668,18 +1668,13 @@ function ensureConfidencePanel() {
     if (typeof document === 'undefined') return;
     if (confidencePanel && confidenceListElement && confidenceSummaryElement) return;
 
-    const firstModeBtn = document.querySelector('.mode-btn');
-    const sidebar = firstModeBtn
-        ? firstModeBtn.closest('.w-64') || firstModeBtn.closest('.bg-white') || firstModeBtn.closest('.shadow-lg')
-        : null;
-
-    if (!sidebar) return;
-
     let panel = document.getElementById('confidencePanel');
     if (!panel) {
         panel = document.createElement('div');
         panel.id = 'confidencePanel';
-        panel.className = 'mt-6 border-t border-gray-200 pt-4';
+        // Fixed right-side panel styling
+        panel.className = 'fixed top-0 right-0 bottom-0 w-60 bg-white border-l border-gray-200 shadow-lg p-4 overflow-hidden flex flex-col z-40';
+        panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem;';
         panel.innerHTML = `
             <div class="flex items-center justify-between gap-2 mb-2">
                 <div>
@@ -1696,9 +1691,9 @@ function ensureConfidencePanel() {
                 </div>
             </div>
             <div id="confidenceSummary" class="text-xs text-gray-500 mb-2"></div>
-            <div id="confidenceList" class="space-y-1 max-h-[68vh] overflow-y-auto pr-1"></div>
+            <div id="confidenceList" class="space-y-1 flex-1 overflow-y-auto pr-1"></div>
         `;
-        sidebar.appendChild(panel);
+        document.body.appendChild(panel);
     }
 
     confidencePanel = panel;
