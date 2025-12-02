@@ -2286,14 +2286,14 @@ function ensureSchedulerToolbar() {
             <div id="batchModeStatus" class="hidden"></div>
             <div id="adaptiveModeStatus" class="hidden"></div>
             <div id="feedModeStatus" class="hidden"></div>
-            <div class="flex flex-wrap gap-2 justify-center items-center">
-                <button id="schedulerRandomBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
-                <button id="schedulerWeightedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
-                <button id="schedulerAdaptiveBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
-                <button id="schedulerFeedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
-                <button id="schedulerFeedSRBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
-                <button id="schedulerBatchBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
-                <button id="schedulerOrderedBtn" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
+            <div class="flex flex-nowrap gap-1 justify-center items-center overflow-x-auto max-w-full px-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+                <button id="schedulerRandomBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Random</button>
+                <button id="schedulerWeightedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Confidence</button>
+                <button id="schedulerAdaptiveBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Adaptive 5</button>
+                <button id="schedulerFeedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed</button>
+                <button id="schedulerFeedSRBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed Grad</button>
+                <button id="schedulerBatchBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">5-Card Sets</button>
+                <button id="schedulerOrderedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">In Order</button>
             </div>
         `;
         // Insert after header on experimental layout, or before question on legacy
@@ -3216,11 +3216,9 @@ function generateQuestion(options = {}) {
         handwritingMode.style.display = 'block';
         initHandwriting();
     } else if (mode === 'draw-char' && drawCharMode) {
-        const charCount = currentQuestion.char.length;
-        const charText = charCount > 1 ? `Draw ${charCount} characters: ` : 'Draw: ';
-        const pinyinParts = currentQuestion.pinyin.split(/[.\s]+/).filter(p => p).join(' + ');
-        const meaningText = currentQuestion.meaning ? ` <span class="text-2xl text-gray-500">(${currentQuestion.meaning})</span>` : '';
-        questionDisplay.innerHTML = `<div class="text-center text-4xl my-8 font-bold text-gray-700">${charText}${pinyinParts}${meaningText}</div>`;
+        const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
+        const meaningText = currentQuestion.meaning ? `<div class="text-lg text-gray-500 mt-1">${currentQuestion.meaning}</div>` : '';
+        questionDisplay.innerHTML = `<div class="text-center my-4"><div class="text-5xl font-bold text-gray-700">${displayPinyin}</div>${meaningText}</div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
