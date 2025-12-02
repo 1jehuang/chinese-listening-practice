@@ -51,6 +51,16 @@
             min-height: 100vh;
         }
 
+        /* Hide confidence panel on smaller screens */
+        @media (max-width: 1024px) {
+            body.experimental-layout #confidencePanel {
+                display: none;
+            }
+            body.experimental-layout .app-container {
+                padding-right: 0;
+            }
+        }
+
         /* Main layout */
         .app-container {
             display: flex;
