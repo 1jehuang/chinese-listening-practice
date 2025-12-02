@@ -7662,22 +7662,30 @@ function handleQuizKeyup(e) {
 }
 
 function handleHandwritingResult(correct) {
-    if (!currentQuestion) return;
+    console.log('[HW] handleHandwritingResult called, correct:', correct);
+    if (!currentQuestion) {
+        console.log('[HW] No currentQuestion, returning');
+        return;
+    }
 
     if (correct) {
-        // Play audio for correct answer
+        // Play correct sound and word audio
+        playCorrectSound();
         if (currentQuestion.pinyin && typeof playPinyinAudio === 'function') {
             const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-            playPinyinAudio(firstPinyin, currentQuestion.char);
+            setTimeout(() => playPinyinAudio(firstPinyin, currentQuestion.char), 200);
         }
         // Record correct answer
         recordBKTResponse(currentQuestion.char, true, 'writing');
     } else {
+        // Play wrong sound
+        playWrongSound();
         // Record wrong answer
         recordBKTResponse(currentQuestion.char, false, 'writing');
     }
 
     // Go to next question
+    console.log('[HW] Calling generateQuestion');
     generateQuestion();
 }
 
