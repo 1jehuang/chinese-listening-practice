@@ -5878,23 +5878,19 @@ function initHandwriting() {
     }
 
     const showAnswer = () => {
-        // Show and animate all characters at once, playing audio for each
-        writers.forEach((w, index) => {
+        // Show and animate all characters
+        writers.forEach((w) => {
             w.showCharacter();
             w.showOutline();
             w.animateCharacter();
-            
-            // Play audio for this character with a small delay to avoid overlap
-            const char = chars[index];
-            const charPinyin = charPinyins[index];
-            if (charPinyin && typeof playPinyinAudio === 'function') {
-                setTimeout(() => {
-                    playPinyinAudio(charPinyin, char);
-                }, index * 300); // Small delay between audio clips to avoid overlap
-            }
         });
 
+        // Play audio for the full word
         const cleanChars = chars.join('');
+        if (typeof playPinyinAudio === 'function') {
+            playPinyinAudio(fullPinyin, cleanChars);
+        }
+
         const displayPinyin = fullPinyin;
         feedback.textContent = `${cleanChars} (${displayPinyin}) - ${currentQuestion.meaning}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
@@ -7594,28 +7590,28 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Space key handling for handwriting mode (keydown - start timeout)
-    if (mode === 'handwriting' && e.key === ' ' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        // Don't interfere if user is typing in an input or textarea
+    // Handwriting mode: after answer shown, space = correct, any other key = wrong
+    if (mode === 'handwriting' && !e.altKey && !e.ctrlKey && !e.metaKey) {
         if (isTypingTarget(target)) return;
-        e.preventDefault();
 
-        if (!handwritingAnswerShown) {
-            // Answer not shown, show it
-            if (window.handwritingShowAnswer) {
-                window.handwritingShowAnswer();
+        if (e.key === ' ') {
+            e.preventDefault();
+            if (!handwritingAnswerShown) {
+                // First space: show the answer
+                if (window.handwritingShowAnswer) {
+                    window.handwritingShowAnswer();
+                }
+            } else {
+                // Space after answer shown = correct
+                handleHandwritingResult(true);
             }
-        } else if (!handwritingHoldTimeout) {
-            // Answer is shown and no timeout running - start hold detection
-            updateHandwritingSpaceHint(true);
-            handwritingHoldTimeout = setTimeout(() => {
-                // Held for 300ms = wrong
-                handwritingHoldTimeout = null;
-                updateHandwritingSpaceHint(false);
-                handleHandwritingResult(false);
-            }, 300);
+            return;
+        } else if (handwritingAnswerShown && e.key.length === 1) {
+            // Any other key after answer shown = wrong
+            e.preventDefault();
+            handleHandwritingResult(false);
+            return;
         }
-        return;
     }
 
     if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === 'Enter' && answered && lastAnswerCorrect) {
@@ -7656,16 +7652,7 @@ function registerQuizHotkeys() {
 }
 
 function handleQuizKeyup(e) {
-    const mode = currentMode;
-
-    // Space key release for handwriting mode - cancel timeout and mark correct
-    if (mode === 'handwriting' && e.key === ' ' && handwritingHoldTimeout) {
-        e.preventDefault();
-        clearTimeout(handwritingHoldTimeout);
-        handwritingHoldTimeout = null;
-        updateHandwritingSpaceHint(false);
-        handleHandwritingResult(true);
-    }
+    // Currently unused, but keeping for potential future use
 }
 
 function handleHandwritingResult(correct) {
@@ -7692,18 +7679,13 @@ function updateHandwritingSpaceHint(holding) {
     const hint = document.getElementById('hwSpaceHint');
     if (!hint) return;
 
-    if (holding) {
+    if (handwritingAnswerShown) {
         hint.innerHTML = `
-            <div class="inline-flex items-center gap-3 px-6 py-3 bg-amber-100 rounded-full border-2 border-amber-400">
-                <kbd class="px-3 py-1.5 bg-white border border-amber-400 rounded-md shadow-sm text-sm font-mono">Space</kbd>
-                <span class="text-amber-700 font-medium">Release → ✓ &nbsp;|&nbsp; Hold → ✗</span>
-            </div>
-        `;
-    } else if (handwritingAnswerShown) {
-        hint.innerHTML = `
-            <div class="inline-flex items-center gap-3 px-6 py-3 bg-blue-50 rounded-full border border-blue-200">
-                <kbd class="px-3 py-1.5 bg-white border border-blue-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
-                <span class="text-blue-700">Tap → ✓ correct &nbsp;|&nbsp; Hold → ✗ wrong</span>
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-green-50 rounded-full border border-green-200">
+                <kbd class="px-3 py-1.5 bg-white border border-green-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
+                <span class="text-green-700">= ✓ correct</span>
+                <span class="text-gray-400 mx-1">|</span>
+                <span class="text-red-600">Any other key = ✗ wrong</span>
             </div>
         `;
     } else {
