@@ -6440,7 +6440,7 @@ function hideDrawNextButton() {
 let fullscreenCanvas, fullscreenCtx;
 let isFullscreenMode = false;
 let isFullscreenLearnMode = false;
-let learnModeCharIndex = 0;
+let learnModeBlinkInterval = null;
 
 function enterFullscreenDrawing() {
     const container = document.getElementById('fullscreenDrawContainer');
@@ -6520,17 +6520,9 @@ function enterFullscreenDrawing() {
     }
     if (exitBtn) exitBtn.onclick = exitFullscreenDrawing;
 
-    // Learn mode buttons
+    // Learn mode button
     const learnBtn = document.getElementById('fullscreenLearnBtn');
-    const learnNextBtn = document.getElementById('fullscreenLearnNextBtn');
-    const learnStopBtn = document.getElementById('fullscreenLearnStopBtn');
-
     if (learnBtn) learnBtn.onclick = enterFullscreenLearnMode;
-    if (learnNextBtn) learnNextBtn.onclick = learnModeNextCharacter;
-    if (learnStopBtn) learnStopBtn.onclick = exitFullscreenLearnMode;
-
-    // Ensure learn mode UI is in correct state
-    updateFullscreenLearnModeUI();
 
     // Reset drawing state
     strokes = [];
@@ -6557,7 +6549,11 @@ function exitFullscreenDrawing() {
         container.classList.add('hidden');
     }
     isFullscreenMode = false;
-    isFullscreenLearnMode = false;
+
+    // Clean up learn mode if active
+    if (isFullscreenLearnMode) {
+        exitFullscreenLearnMode();
+    }
 
     // Clear fullscreen canvas
     if (fullscreenCanvas && fullscreenCtx) {
@@ -6565,86 +6561,73 @@ function exitFullscreenDrawing() {
     }
 }
 
-// Fullscreen Learn Mode - practice drawing repeatedly
+// Fullscreen Learn Mode - blink current character in center of screen
 function enterFullscreenLearnMode() {
     isFullscreenLearnMode = true;
-    learnModeCharIndex = 0;
-    updateFullscreenLearnModeUI();
-    loadLearnModeCharacter();
+
+    // Get current character from the question
+    const char = currentQuestion ? currentQuestion.char : '';
+    if (!char) return;
+
+    // Create or get the blink overlay
+    let overlay = document.getElementById('learnModeOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'learnModeOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20vw;
+            color: rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            z-index: 100;
+            font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            transition: opacity 0.3s ease;
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    overlay.textContent = char;
+    overlay.style.opacity = '1';
+
+    // Start blinking every 2 seconds
+    let visible = true;
+    learnModeBlinkInterval = setInterval(() => {
+        visible = !visible;
+        overlay.style.opacity = visible ? '1' : '0';
+    }, 2000);
+
+    // Update button to show "Stop" instead of "Learn"
+    const learnBtn = document.getElementById('fullscreenLearnBtn');
+    if (learnBtn) {
+        learnBtn.textContent = '⏹ Stop';
+        learnBtn.onclick = exitFullscreenLearnMode;
+    }
 }
 
 function exitFullscreenLearnMode() {
     isFullscreenLearnMode = false;
-    updateFullscreenLearnModeUI();
-}
 
-function updateFullscreenLearnModeUI() {
-    // Normal mode buttons
-    const normalButtons = ['fullscreenUndoBtn', 'fullscreenRedoBtn', 'fullscreenSubmitBtn',
-                           'fullscreenShowAnswerBtn', 'fullscreenNextBtn', 'fullscreenLearnBtn', 'exitFullscreenBtn'];
-    // Learn mode buttons
-    const learnButtons = ['fullscreenLearnNextBtn', 'fullscreenLearnStopBtn'];
-
-    if (isFullscreenLearnMode) {
-        // Hide normal buttons, show learn buttons
-        normalButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.add('hidden');
-        });
-        learnButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.remove('hidden');
-        });
-        // Keep clear button visible
-        const clearBtn = document.getElementById('fullscreenClearBtn');
-        if (clearBtn) clearBtn.classList.remove('hidden');
-    } else {
-        // Show normal buttons, hide learn buttons
-        normalButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.remove('hidden');
-        });
-        learnButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.add('hidden');
-        });
-    }
-}
-
-function loadLearnModeCharacter() {
-    if (!originalQuizCharacters || originalQuizCharacters.length === 0) return;
-
-    // Get character at current index (wraps around)
-    const char = originalQuizCharacters[learnModeCharIndex % originalQuizCharacters.length];
-
-    // Update prompt
-    const prompt = document.getElementById('fullscreenPrompt');
-    if (prompt) {
-        prompt.textContent = `Learn: ${char.pinyin} (${learnModeCharIndex + 1}/${originalQuizCharacters.length})`;
+    // Stop the blink interval
+    if (learnModeBlinkInterval) {
+        clearInterval(learnModeBlinkInterval);
+        learnModeBlinkInterval = null;
     }
 
-    // Clear canvas
-    clearFullscreenCanvas();
-
-    // Clear OCR result
-    const ocrResult = document.getElementById('fullscreenOcrResult');
-    if (ocrResult) {
-        ocrResult.textContent = '';
+    // Hide the overlay
+    const overlay = document.getElementById('learnModeOverlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
     }
 
-    // Play audio
-    if (char.pinyin) {
-        const firstPinyin = char.pinyin.split('/')[0].trim();
-        playPinyinAudio(firstPinyin, char.char);
+    // Restore button to "Learn"
+    const learnBtn = document.getElementById('fullscreenLearnBtn');
+    if (learnBtn) {
+        learnBtn.textContent = '📖 Learn';
+        learnBtn.onclick = enterFullscreenLearnMode;
     }
-}
-
-function learnModeNextCharacter() {
-    learnModeCharIndex++;
-    if (learnModeCharIndex >= originalQuizCharacters.length) {
-        learnModeCharIndex = 0;
-    }
-    loadLearnModeCharacter();
 }
 
 function getFullscreenCanvasCoords(e) {
