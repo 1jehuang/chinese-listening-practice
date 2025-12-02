@@ -3650,18 +3650,18 @@ function generateQuestion(options = {}) {
         const visibleIndex = missingIndex === 0 ? 1 : 0;
         const givenComponent = components[visibleIndex];
 
-        // Create display with partial character container
+        // Create display with partial character container - show pinyin and meaning, not full character
         questionDisplay.innerHTML = `
             <div class="text-center my-6">
+                <div class="text-2xl text-blue-600 font-semibold mb-1">${currentQuestion.pinyin}</div>
+                <div class="text-lg text-gray-500 mb-4">${currentQuestion.meaning}</div>
                 <div id="partialCharDisplay" style="display: inline-block; width: 120px; height: 120px; margin-bottom: 1rem;"></div>
                 <div class="text-xl text-gray-600 mb-2">
                     <span class="text-3xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
                     <span class="text-gray-400 mx-2">+</span>
                     <span class="text-3xl text-blue-500 font-bold">?</span>
-                    <span class="text-gray-400 mx-2">=</span>
-                    <span class="text-3xl text-gray-400" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${foundDecomposition.char}</span>
                 </div>
-                <div class="text-base text-gray-400">Which component is missing?</div>
+                <div class="text-base text-gray-400">Which component completes this character?</div>
             </div>`;
 
         // Render partial character using stroke data (show only visible component)
@@ -7951,10 +7951,8 @@ async function renderPartialCharacter(char, decomposition, visibleComponents, ta
             if (isVisible) {
                 // Show this stroke normally
                 svgContent += `<path d="${strokePath}" fill="#1f2937" />`;
-            } else {
-                // Show as faded/ghost
-                svgContent += `<path d="${strokePath}" fill="#e5e7eb" />`;
             }
+            // Missing component strokes are fully invisible (not rendered)
         });
 
         svgContent += `</g></svg>`;
