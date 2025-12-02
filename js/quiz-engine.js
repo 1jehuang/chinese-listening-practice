@@ -56,6 +56,7 @@ let toneFlowUseFuzzy = false;
 let toneFlowCompleted = [];         // tracks completed tones for progress display
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
 let handwritingAnswerShown = false;
+let handwritingSpaceDownTime = null;
 let studyModeInitialized = false;
 let drawModeInitialized = false;
 let fullscreenDrawInitialized = false;
@@ -3071,6 +3072,7 @@ function generateQuestion(options = {}) {
     }
     questionAttemptRecorded = false;
     handwritingAnswerShown = false; // Reset handwriting answer shown state
+    handwritingSpaceDownTime = null; // Reset space key timing
     lastAnswerCorrect = false;
     clearComponentBreakdown();
     hideDrawNextButton();
@@ -7577,19 +7579,21 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Space key handling for handwriting mode
+    // Space key handling for handwriting mode (keydown - start timing)
     if (mode === 'handwriting' && e.key === ' ' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         // Don't interfere if user is typing in an input or textarea
         if (isTypingTarget(target)) return;
         e.preventDefault();
-        if (handwritingAnswerShown) {
-            // Answer is already shown, go to next question
-            generateQuestion();
-        } else {
+
+        if (!handwritingAnswerShown) {
             // Answer not shown, show it
             if (window.handwritingShowAnswer) {
                 window.handwritingShowAnswer();
             }
+        } else if (handwritingSpaceDownTime === null) {
+            // Answer is shown and this is a new press, start timing
+            handwritingSpaceDownTime = Date.now();
+            updateHandwritingSpaceHint(true);
         }
         return;
     }
@@ -7628,6 +7632,60 @@ function registerQuizHotkeys() {
     if (quizHotkeysRegistered) return;
     quizHotkeysRegistered = true;
     document.addEventListener('keydown', handleQuizHotkeys);
+    document.addEventListener('keyup', handleQuizKeyup);
+}
+
+function handleQuizKeyup(e) {
+    const mode = currentMode;
+
+    // Space key release for handwriting mode
+    if (mode === 'handwriting' && e.key === ' ' && handwritingSpaceDownTime !== null) {
+        e.preventDefault();
+        const holdDuration = Date.now() - handwritingSpaceDownTime;
+        handwritingSpaceDownTime = null;
+        updateHandwritingSpaceHint(false);
+
+        if (holdDuration >= 300) {
+            // Held for 0.3+ seconds = wrong
+            handleHandwritingResult(false);
+        } else {
+            // Quick tap = correct
+            handleHandwritingResult(true);
+        }
+    }
+}
+
+function handleHandwritingResult(correct) {
+    if (!currentQuestion) return;
+
+    if (correct) {
+        // Play audio for correct answer
+        if (currentQuestion.pinyin && typeof playPinyinAudio === 'function') {
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        }
+        // Record correct answer
+        recordBKTResponse(currentQuestion.char, true, 'writing');
+    } else {
+        // Record wrong answer
+        recordBKTResponse(currentQuestion.char, false, 'writing');
+    }
+
+    // Go to next question
+    generateQuestion();
+}
+
+function updateHandwritingSpaceHint(holding) {
+    const hint = document.getElementById('hwSpaceHint');
+    if (!hint) return;
+
+    if (holding) {
+        hint.textContent = 'Release for ✓ correct, keep holding for ✗ wrong...';
+        hint.className = 'text-center text-sm text-amber-600 mt-2';
+    } else {
+        hint.textContent = 'Space: show → tap ✓ correct · hold ✗ wrong';
+        hint.className = 'text-center text-sm text-gray-500 mt-2';
+    }
 }
 
 function initQuizCommandPalette() {

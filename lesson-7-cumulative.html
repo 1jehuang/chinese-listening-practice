@@ -369,12 +369,12 @@
                 <!-- Handwriting Mode -->
                 <div id="handwritingMode">
                     <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer</p>
-                    <p style="text-align: center; font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.5rem;">Audio will play for each character as it appears</p>
-                    <div id="handwritingWriter" style="display: flex; justify-content: center;"></div>
+                    <div id="handwritingWriter" style="display: flex; justify-content: center; gap: 10px;"></div>
                     <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
-                        <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer / Replay</button>
+                        <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer</button>
                         <button id="hwNextBtn" style="padding: 0.75rem 2rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Next</button>
                     </div>
+                    <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
                 </div>
 
                 <!-- Draw Character Mode -->
