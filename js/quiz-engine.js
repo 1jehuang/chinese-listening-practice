@@ -4183,7 +4183,7 @@ function generateQuestion(options = {}) {
         missingComponentMode.style.display = 'block';
         generateComponentOptions();
     } else if (mode === 'char-building' && charBuildingMode) {
-        // Character Building mode - build character component by component
+        // Character Building mode - build all characters in a word component by component
         // Ensure decomposition data is loaded first
         if (!decompositionsLoaded && decompositionsLoading) {
             questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
@@ -4196,6 +4196,8 @@ function generateQuestion(options = {}) {
         }
 
         // Reset building state for new question
+        charBuildingWordChars = [];
+        charBuildingCharIndex = 0;
         charBuildingCompletedComponents = [];
         charBuildingCurrentIndex = 0;
 
@@ -4207,7 +4209,15 @@ function generateQuestion(options = {}) {
 
         currentQuestion = prepared.question;
         window.currentQuestion = currentQuestion;
-        charBuildingDecomposition = prepared.decomposition;
+        charBuildingWordChars = prepared.wordChars;
+
+        // Set up the first character's decomposition
+        const firstChar = charBuildingWordChars[0];
+        charBuildingDecomposition = {
+            char: firstChar.char,
+            data: firstChar.decomp,
+            components: firstChar.decomp.components
+        };
 
         // Render the display
         renderCharBuildingDisplay();
@@ -8917,42 +8927,51 @@ function checkComponentAnswer(selectedOption) {
 // =============================================================================
 
 let charBuildingMode = null;
-let charBuildingDecomposition = null; // { char, data, components }
-let charBuildingCompletedComponents = []; // indices of completed components
-let charBuildingCurrentIndex = 0; // which component we're asking for
+let charBuildingWordChars = []; // array of { char, decomp } for all decomposable chars in word
+let charBuildingCharIndex = 0; // which character in the word we're building
+let charBuildingDecomposition = null; // current character's { char, data, components }
+let charBuildingCompletedComponents = []; // indices of completed components for current char
+let charBuildingCurrentIndex = 0; // which component we're asking for in current char
 let charBuildingAllOptions = [];
 let charBuildingInputEl = null;
+let charBuildingFilteredOptions = []; // currently visible filtered options
 
-// Prepare a question for character building mode
+// Prepare a question for character building mode - finds ALL decomposable chars in word
 function prepareCharBuildingQuestion(exclusions = []) {
     let attempts = 0;
-    let foundDecomposition = null;
     let question = null;
+    let wordChars = [];
 
-    while (!foundDecomposition && attempts < 100) {
+    while (wordChars.length === 0 && attempts < 100) {
         question = selectNextQuestion(exclusions);
         if (!question) break;
 
         const chars = Array.from(question.char);
+        wordChars = [];
+
         for (const c of chars) {
             const decomp = CHARACTER_DECOMPOSITIONS[c];
             if (decomp && decomp.components && decomp.matches && decomp.components.length >= 2) {
-                foundDecomposition = {
+                wordChars.push({
                     char: c,
-                    data: decomp,
-                    components: decomp.components
-                };
-                break;
+                    decomp: decomp
+                });
             }
         }
-        attempts++;
+
+        // Need at least one decomposable character
+        if (wordChars.length === 0) {
+            attempts++;
+            continue;
+        }
+        break;
     }
 
-    if (!foundDecomposition || !question) return null;
+    if (wordChars.length === 0 || !question) return null;
 
     return {
         question: question,
-        decomposition: foundDecomposition
+        wordChars: wordChars
     };
 }
 
@@ -9011,10 +9030,10 @@ async function renderCharBuildingDisplay() {
 
     const decomp = charBuildingDecomposition;
     const totalComponents = decomp.components.length;
-    const currentComp = decomp.components[charBuildingCurrentIndex];
+    const totalChars = charBuildingWordChars.length;
 
-    // Progress indicator
-    const progressDots = decomp.components.map((comp, i) => {
+    // Progress indicator for current character's components
+    const componentDots = decomp.components.map((comp, i) => {
         if (charBuildingCompletedComponents.includes(i)) {
             return `<span class="inline-block w-3 h-3 rounded-full bg-green-500 mx-1"></span>`;
         } else if (i === charBuildingCurrentIndex) {
@@ -9024,39 +9043,75 @@ async function renderCharBuildingDisplay() {
         }
     }).join('');
 
-    // Build the display
-    const fullWord = currentQuestion.char;
-    const targetChar = decomp.char;
-
-    let wordDisplay = '';
-    for (let i = 0; i < fullWord.length; i++) {
-        if (fullWord[i] === targetChar) {
-            wordDisplay += `<span id="charBuildingPartial" class="inline-block" style="width: 120px; height: 120px; vertical-align: middle;"></span>`;
+    // Character progress (which char in the word)
+    const charProgress = totalChars > 1 ? charBuildingWordChars.map((wc, i) => {
+        if (i < charBuildingCharIndex) {
+            return `<span class="inline-block w-4 h-4 rounded-full bg-green-500 mx-1" title="${wc.char}"></span>`;
+        } else if (i === charBuildingCharIndex) {
+            return `<span class="inline-block w-4 h-4 rounded-full bg-blue-500 mx-1 ring-2 ring-blue-300" title="${wc.char}"></span>`;
         } else {
-            wordDisplay += `<span class="text-8xl">${fullWord[i]}</span>`;
+            return `<span class="inline-block w-4 h-4 rounded-full bg-gray-300 mx-1" title="${wc.char}"></span>`;
+        }
+    }).join('') : '';
+
+    // Build the word display - show each character appropriately
+    const fullWord = currentQuestion.char;
+    let wordDisplay = '';
+    let partialContainerIndex = 0;
+
+    for (let i = 0; i < fullWord.length; i++) {
+        const char = fullWord[i];
+        // Find if this char is in our wordChars array
+        const wordCharIdx = charBuildingWordChars.findIndex(wc => wc.char === char);
+
+        if (wordCharIdx === -1) {
+            // Not decomposable - show as-is
+            wordDisplay += `<span class="text-7xl text-gray-400">${char}</span>`;
+        } else if (wordCharIdx < charBuildingCharIndex) {
+            // Already completed - show full character
+            wordDisplay += `<span class="text-7xl text-green-600">${char}</span>`;
+        } else if (wordCharIdx === charBuildingCharIndex) {
+            // Current character being built - show partial
+            wordDisplay += `<span id="charBuildingPartial" class="inline-block" style="width: 100px; height: 100px; vertical-align: middle;"></span>`;
+        } else {
+            // Future character - show outline
+            wordDisplay += `<span id="charBuildingFuture${wordCharIdx}" class="inline-block" style="width: 100px; height: 100px; vertical-align: middle;"></span>`;
         }
     }
+
+    const charLabel = totalChars > 1
+        ? `Character ${charBuildingCharIndex + 1}/${totalChars}: ${decomp.char}`
+        : `Building: ${decomp.char}`;
 
     questionDisplay.innerHTML = `
         <div class="char-building-layout">
             <div class="text-center mb-4">
-                <div class="text-sm text-gray-500 uppercase tracking-wider mb-2">Build the Character</div>
-                <div class="text-4xl mb-2">${wordDisplay}</div>
+                <div class="text-sm text-gray-500 uppercase tracking-wider mb-2">Build the Word</div>
+                <div class="flex justify-center items-center gap-1 mb-2">${wordDisplay}</div>
                 <div class="text-lg text-gray-600">${escapeHtml(currentQuestion.pinyin)}</div>
                 <div class="text-base text-gray-500">${escapeHtml(currentQuestion.meaning)}</div>
             </div>
-            <div class="my-4">${progressDots}</div>
+            ${totalChars > 1 ? `<div class="my-2 text-center"><span class="text-xs text-gray-400">Characters:</span> ${charProgress}</div>` : ''}
+            <div class="my-2">${componentDots}</div>
             <div class="text-center">
-                <div class="text-sm text-gray-400 mb-1">Component ${charBuildingCurrentIndex + 1} of ${totalComponents}</div>
+                <div class="text-sm text-gray-400 mb-1">${charLabel} · Component ${charBuildingCurrentIndex + 1}/${totalComponents}</div>
                 <div class="text-xl text-blue-600 font-semibold">Which component comes ${charBuildingCurrentIndex === 0 ? 'first' : 'next'}?</div>
             </div>
         </div>
     `;
 
-    // Render the partial character
+    // Render the current partial character
     const partialContainer = document.getElementById('charBuildingPartial');
     if (partialContainer) {
         await renderCharBuildingPartial(partialContainer, decomp.char, charBuildingCompletedComponents);
+    }
+
+    // Render future characters as outlines (empty)
+    for (let i = charBuildingCharIndex + 1; i < charBuildingWordChars.length; i++) {
+        const futureContainer = document.getElementById(`charBuildingFuture${i}`);
+        if (futureContainer) {
+            await renderCharBuildingPartial(futureContainer, charBuildingWordChars[i].char, []);
+        }
     }
 }
 
@@ -9098,12 +9153,23 @@ function generateCharBuildingOptions() {
     // Shuffle options
     options = options.sort(() => Math.random() - 0.5);
     charBuildingAllOptions = options;
+    charBuildingFilteredOptions = options; // Initially all options are visible
 
     // Setup input element
     charBuildingInputEl = document.getElementById('charBuildingInput');
     if (charBuildingInputEl) {
         charBuildingInputEl.value = '';
         charBuildingInputEl.oninput = () => filterCharBuildingOptions();
+        // Add Enter key handler
+        charBuildingInputEl.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // Select first visible option
+                if (charBuildingFilteredOptions.length > 0) {
+                    checkCharBuildingAnswer(charBuildingFilteredOptions[0]);
+                }
+            }
+        };
         setTimeout(() => charBuildingInputEl.focus(), 50);
     }
 
@@ -9134,6 +9200,7 @@ function filterCharBuildingOptions() {
 
     const query = charBuildingInputEl.value.trim().toLowerCase();
     if (!query) {
+        charBuildingFilteredOptions = charBuildingAllOptions;
         renderCharBuildingOptionButtons(charBuildingAllOptions);
         return;
     }
@@ -9155,12 +9222,15 @@ function filterCharBuildingOptions() {
 
     const filtered = charBuildingAllOptions.filter(opt => {
         const normalizedPinyin = normalizePinyin(opt.pinyin);
+        // Match if query matches start of pinyin OR exact match OR meaning contains query
         return normalizedPinyin.startsWith(normalizedQuery) ||
+               normalizedPinyin === normalizedQuery ||
                opt.char.includes(query) ||
                opt.meaning.toLowerCase().includes(query);
     });
 
-    renderCharBuildingOptionButtons(filtered.length > 0 ? filtered : charBuildingAllOptions);
+    charBuildingFilteredOptions = filtered.length > 0 ? filtered : charBuildingAllOptions;
+    renderCharBuildingOptionButtons(charBuildingFilteredOptions);
 }
 
 function checkCharBuildingAnswer(selectedOption) {
@@ -9182,41 +9252,62 @@ function checkCharBuildingAnswer(selectedOption) {
         // Mark this component as completed
         charBuildingCompletedComponents.push(charBuildingCurrentIndex);
 
-        // Check if all components are done
+        // Check if all components of current character are done
         if (charBuildingCompletedComponents.length >= decomp.components.length) {
-            // Character complete!
-            if (isFirstAttempt) {
-                score++;
-                markSchedulerOutcome(true);
+            // Current character complete!
+            feedback.innerHTML = `<span class="text-green-600">✓ ${escapeHtml(decomp.char)} complete!</span>`;
+
+            // Check if there are more characters in the word to build
+            if (charBuildingCharIndex < charBuildingWordChars.length - 1) {
+                // Move to next character in the word
+                setTimeout(() => {
+                    charBuildingCharIndex++;
+                    charBuildingCompletedComponents = [];
+                    charBuildingCurrentIndex = 0;
+                    // Set up the new character's decomposition
+                    const nextChar = charBuildingWordChars[charBuildingCharIndex];
+                    charBuildingDecomposition = {
+                        char: nextChar.char,
+                        data: nextChar.decomp,
+                        components: nextChar.decomp.components
+                    };
+                    feedback.textContent = '';
+                    renderCharBuildingDisplay();
+                    generateCharBuildingOptions();
+                }, 800);
+            } else {
+                // All characters in word complete!
+                if (isFirstAttempt) {
+                    score++;
+                    markSchedulerOutcome(true);
+                }
+                updateStats();
+
+                feedback.innerHTML = `<span class="text-green-600">✓ Word complete! ${escapeHtml(currentQuestion.char)}</span>`;
+
+                // Show all characters as complete
+                renderCharBuildingDisplay();
+
+                // Move to next question after delay
+                setTimeout(() => {
+                    charBuildingWordChars = [];
+                    charBuildingCharIndex = 0;
+                    charBuildingCompletedComponents = [];
+                    charBuildingCurrentIndex = 0;
+                    generateQuestion();
+                }, 1500);
             }
-            updateStats();
-
-            // Show completion feedback
-            feedback.innerHTML = `<span class="text-green-600">✓ Complete! ${escapeHtml(decomp.char)}</span>`;
-
-            // Show the full character
-            const partialContainer = document.getElementById('charBuildingPartial');
-            if (partialContainer) {
-                partialContainer.innerHTML = `<span class="text-8xl">${decomp.char}</span>`;
-            }
-
-            // Move to next question after delay
-            setTimeout(() => {
-                charBuildingCompletedComponents = [];
-                charBuildingCurrentIndex = 0;
-                generateQuestion();
-            }, 1500);
         } else {
-            // Move to next component
+            // Move to next component of current character
             charBuildingCurrentIndex++;
-            feedback.innerHTML = `<span class="text-green-600">✓ Correct! Next component...</span>`;
+            feedback.innerHTML = `<span class="text-green-600">✓ Correct!</span>`;
 
             // Update display
             setTimeout(() => {
                 feedback.textContent = '';
                 renderCharBuildingDisplay();
                 generateCharBuildingOptions();
-            }, 800);
+            }, 500);
         }
     } else {
         playWrongSound();
@@ -9243,6 +9334,7 @@ function checkCharBuildingAnswer(selectedOption) {
     // Clear and refocus input
     if (charBuildingInputEl) {
         charBuildingInputEl.value = '';
+        charBuildingFilteredOptions = charBuildingAllOptions;
         setTimeout(() => charBuildingInputEl.focus(), 50);
     }
 }
