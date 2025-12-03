@@ -4145,9 +4145,10 @@ function generateQuestion(options = {}) {
     } else if (mode === 'missing-component' && missingComponentMode) {
         // Use three-column layout for missing component mode
         // Ensure decomposition data is loaded first
-        if (!decompositionsLoaded && decompositionsLoading) {
+        if (!decompositionsLoaded) {
             questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
-            decompositionsLoadPromise.then(() => {
+            // Start loading if not already started, then retry
+            loadDecompositionsData().then(() => {
                 if (mode === 'missing-component') {
                     generateQuestion();
                 }
@@ -4188,9 +4189,10 @@ function generateQuestion(options = {}) {
         // Uses three-column layout with instant transitions
 
         // Ensure decomposition data is loaded first
-        if (!decompositionsLoaded && decompositionsLoading) {
+        if (!decompositionsLoaded) {
             questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
-            decompositionsLoadPromise.then(() => {
+            // Start loading if not already started, then retry
+            loadDecompositionsData().then(() => {
                 if (mode === 'char-building') {
                     generateQuestion();
                 }
