@@ -4467,6 +4467,9 @@ function checkAnswer() {
             const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
             playPinyinAudio(firstPinyin, currentQuestion.char);
 
+            // Clear input so it doesn't get prefilled into the next question
+            if (answerInput) answerInput.value = '';
+
             updateStats();
             scheduleNextQuestion(1500);
         } else {
@@ -4484,6 +4487,9 @@ function checkAnswer() {
             hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
             renderCharacterComponents(currentQuestion);
             renderCharBreakdownSoon();
+
+            // Clear input so it doesn't get prefilled into the next question
+            if (answerInput) answerInput.value = '';
 
             updateStats();
             scheduleNextQuestion(2000);
@@ -4559,6 +4565,9 @@ function handleCorrectFullAnswer() {
     if (mode === 'char-to-pinyin') {
         updateDictationProgress(dictationTotalSyllables || 0);
     }
+
+    // Clear input so it doesn't get prefilled into the next question
+    if (answerInput) answerInput.value = '';
 
     updateStats();
     scheduleNextQuestion(300);
@@ -4902,13 +4911,39 @@ function generateFuzzyPinyinOptions() {
         let bestMatch = null;
         let bestScore = -1;
 
+        // First pass: check for exact match after stripping tone marks
         allOptions.forEach((option, index) => {
-            const score = fuzzyMatch(input, option.toLowerCase());
-            if (score > bestScore) {
-                bestScore = score;
+            const optionNoTones = stripToneMarks(option).toLowerCase();
+            if (input === optionNoTones) {
                 bestMatch = index;
+                bestScore = 2000; // Higher than any fuzzy score
             }
         });
+
+        // Second pass: check for prefix match after stripping tone marks
+        if (bestMatch === null) {
+            allOptions.forEach((option, index) => {
+                const optionNoTones = stripToneMarks(option).toLowerCase();
+                if (optionNoTones.startsWith(input)) {
+                    const score = 1000 + input.length;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = index;
+                    }
+                }
+            });
+        }
+
+        // Third pass: fall back to fuzzy matching only if no exact/prefix match
+        if (bestMatch === null) {
+            allOptions.forEach((option, index) => {
+                const score = fuzzyMatch(input, option.toLowerCase());
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = index;
+                }
+            });
+        }
 
         document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
             if (index === bestMatch) {
@@ -5458,13 +5493,39 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
         let bestMatch = null;
         let bestScore = -1;
 
+        // First pass: check for exact match after stripping tone marks
         allOptions.forEach((option, index) => {
-            const score = fuzzyMatch(input, option.toLowerCase());
-            if (score > bestScore) {
-                bestScore = score;
+            const optionNoTones = stripToneMarks(option).toLowerCase();
+            if (input === optionNoTones) {
                 bestMatch = index;
+                bestScore = 2000; // Higher than any fuzzy score
             }
         });
+
+        // Second pass: check for prefix match after stripping tone marks
+        if (bestMatch === null) {
+            allOptions.forEach((option, index) => {
+                const optionNoTones = stripToneMarks(option).toLowerCase();
+                if (optionNoTones.startsWith(input)) {
+                    const score = 1000 + input.length;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = index;
+                    }
+                }
+            });
+        }
+
+        // Third pass: fall back to fuzzy matching only if no exact/prefix match
+        if (bestMatch === null) {
+            allOptions.forEach((option, index) => {
+                const score = fuzzyMatch(input, option.toLowerCase());
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = index;
+                }
+            });
+        }
 
         document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
             if (index === bestMatch) {
