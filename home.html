@@ -5,373 +5,274 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese Learning Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/command-palette.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'JetBrains Mono', monospace; font-weight: 300; }
+        h1, h2, h3, .font-medium { font-weight: 400; }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-6" onload="initCommandPalette()">
-    <div class="max-w-6xl mx-auto py-6">
-        <!-- Hidden cards - accessible via command palette -->
-        <!-- Context Listening Comprehension (hidden from home page, accessible via command palette) -->
-        <!--
-        <a href="listening-context.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-500">
-            <div class="text-4xl mb-3">🧠</div>
-            <h2 class="text-lg font-semibold mb-2 text-gray-800">Context Listening Comprehension</h2>
-            <p class="text-sm text-gray-600">
-                Read a sentence, focus on the highlighted chunk, and recall what it means in that exact context.
-            </p>
-        </a>
-        -->
-
-        <!-- Context Listening · Easy Mode (hidden from home page, accessible via command palette) -->
-        <!--
-        <a href="listening-context-easy.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-400">
-            <div class="text-4xl mb-3">✨</div>
-            <h2 class="text-lg font-semibold mb-2 text-gray-800">Context Listening · Easy Mode</h2>
-            <p class="text-sm text-gray-600">
-                Smaller set with gentler sentences, instant advance on correct answers, and the same audio + fuzzy typing practice.
-            </p>
-        </a>
-        -->
-
-        <!-- Sentence Meaning Drill (hidden from home page, accessible via command palette) -->
-        <!--
-        <a href="context-sentence.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-300">
-            <div class="text-4xl mb-3">📝</div>
-            <h2 class="text-lg font-semibold mb-2 text-gray-800">Sentence Meaning Drill</h2>
-            <p class="text-sm text-gray-600">
-                Replay the sentence audio and summarise the entire line in English, then compare with a suggested meaning.
-            </p>
-        </a>
-        -->
-
-        <!-- Phrase Meaning Drill (hidden from home page, accessible via command palette) -->
-        <!--
-        <a href="phrase-meaning-quiz.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-200">
-            <div class="text-4xl mb-3">🧠</div>
-            <h2 class="text-lg font-semibold mb-2 text-gray-800">Phrase Meaning Drill</h2>
-            <p class="text-sm text-gray-600">
-                Short fragments pulled into the modular quiz engine: choose or type the English gloss for each phrase.
-            </p>
-        </a>
-        -->
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- ========== FUNDAMENTALS ========== -->
-
-            <!-- Pinyin Practice -->
-            <a href="pinyin-practice.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-blue-500">
-                <div class="text-4xl mb-3">🔊</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Pinyin Practice</h2>
-                <p class="text-sm text-gray-600">
-                    Listen and type, multiple choice, or practice tone 2 vs 4 distinctions
-                </p>
-            </a>
-
-            <!-- Pinyin Chart -->
-            <a href="pinyin-chart.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-red-500">
-                <div class="text-4xl mb-3">📋</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Pinyin Chart</h2>
-                <p class="text-sm text-gray-600">
-                    Interactive pinyin chart with audio for all syllables
-                </p>
-            </a>
-
-            <!-- Common 2500 Characters -->
-            <a href="common-characters.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-500">
-                <div class="text-4xl mb-3">常</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Most Common 2500 Characters</h2>
-                <p class="text-sm text-gray-600">
-                    Practice the most frequently used Chinese characters by frequency range (1-250, 251-500, etc.)
-                </p>
-            </a>
-
-            <!-- ========== LESSON 1: TWO MAPS ========== -->
-
-            <!-- Lesson 1 -->
-            <a href="lesson-1-quiz.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-teal-500">
-                <div class="text-4xl mb-3">📖</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 1: Two Maps</h2>
-                <p class="text-sm text-gray-600">
-                    Learn 59 vocabulary words from Lesson 1 (两张地图)
-                </p>
-            </a>
-
-            <!-- Lesson 1 Hard Subset -->
-            <a href="lesson-1-hard-subset.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-red-600">
-                <div class="text-4xl mb-3">🔥</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 1: Hard Subset</h2>
-                <p class="text-sm text-gray-600">
-                    Practice 33 medium-to-hard difficulty words from Lesson 1
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 1 -->
-            <a href="lesson-1-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-teal-600">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 1</h2>
-                <p class="text-sm text-gray-600">
-                    Full-sentence dictation from the Lesson 1 textbook text
-                </p>
-            </a>
-
-            <!-- ========== LESSON 2: WHERE IS MY HOME? ========== -->
-
-            <!-- Lesson 2 Part 1 -->
-            <a href="lesson-2-part-1.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-cyan-500">
-                <div class="text-4xl mb-3">📖</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 2 Part 1: Where is My Home?</h2>
-                <p class="text-sm text-gray-600">
-                    Learn 35 vocabulary words from Lesson 2 (我的家在哪儿?) - Pages 18-19
-                </p>
-            </a>
-
-            <!-- Lesson 2 Part 2 -->
-            <a href="lesson-2-part-2.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-cyan-600">
-                <div class="text-4xl mb-3">📖</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 2 Part 2: Where is My Home?</h2>
-                <p class="text-sm text-gray-600">
-                    Learn 18 vocabulary words from Lesson 2 (我的家在哪儿?) - Page 20
-                </p>
-            </a>
-
-            <!-- Lesson 2 Cumulative -->
-            <a href="lesson-2-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-cyan-700">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 2 Cumulative: Where is My Home?</h2>
-                <p class="text-sm text-gray-600">
-                    Practice all 53 vocabulary words from Lesson 2 (我的家在哪儿?) - Pages 18-20
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 2 -->
-            <a href="lesson-2-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-cyan-700">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 2</h2>
-                <p class="text-sm text-gray-600">
-                    Full-sentence dictation from the Lesson 2 textbook text (我的家在哪儿?)
-                </p>
-            </a>
-
-            <!-- ========== LESSON 3: WE ARE ALL AMERICANS ========== -->
-
-            <!-- Lesson 3 Part 1 -->
-            <a href="lesson-3-part-1.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-teal-500">
-                <div class="text-4xl mb-3">📖</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 3 Part 1: We Are All Americans</h2>
-                <p class="text-sm text-gray-600">
-                    Learn 19 vocabulary words from Lesson 3 (我们都是美国人) - Pages 32-33
-                </p>
-            </a>
-
-            <!-- Lesson 3 Part 2 -->
-            <a href="lesson-3-part-2.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-teal-600">
-                <div class="text-4xl mb-3">📖</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 3 Part 2: We Are All Americans</h2>
-                <p class="text-sm text-gray-600">
-                    Learn 15 vocabulary words from Lesson 3 (我们都是美国人) - Pages 34-35
-                </p>
-            </a>
-
-            <!-- Lesson 3 Cumulative -->
-            <a href="lesson-3-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-teal-700">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 3 Cumulative: We Are All Americans</h2>
-                <p class="text-sm text-gray-600">
-                    Practice all 34 vocabulary words from Lesson 3 (我们都是美国人) - Pages 32-35
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 3 -->
-            <a href="lesson-3-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-teal-700">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 3</h2>
-                <p class="text-sm text-gray-600">
-                    Full-sentence dictation from the Lesson 3 dialogue (我们都是美国人)
-                </p>
-            </a>
-
-            <!-- ========== LESSON 4: AMERICANS STUDY CHINESE ========== -->
-
-            <!-- Lesson 4 Part 1 -->
-            <a href="lesson-4-part-1.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-500">
-                <div class="text-4xl mb-3">📘</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 4 Part 1: Americans Study Chinese</h2>
-                <p class="text-sm text-gray-600">
-                    Vocabulary and patterns from Pages 46-48 (世界各地、越来越…)
-                </p>
-            </a>
-
-            <!-- Lesson 4 Part 2 -->
-            <a href="lesson-4-part-2.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-600">
-                <div class="text-4xl mb-3">📗</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 4 Part 2: Americans Study Chinese</h2>
-                <p class="text-sm text-gray-600">
-                    Dialogue opener vocabulary from Pages 44-45 (注册、讨厌、逼得太紧…)
-                </p>
-            </a>
-
-            <!-- Lesson 4 Cumulative -->
-            <a href="lesson-4-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-700">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 4 Cumulative: Americans Study Chinese</h2>
-                <p class="text-sm text-gray-600">
-                    Practice the full Lesson 4 set (Pages 44-48) in one mixed quiz
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 4 -->
-            <a href="lesson-4-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-700">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 4</h2>
-                <p class="text-sm text-gray-600">
-                    Full-sentence dictation from the Lesson 4 textbook text (美国人学中文)
-                </p>
-            </a>
-
-            <!-- Lessons 1-4 Dialogue Vocab -->
-            <a href="lesson-1-4-dialogue-vocab.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-amber-600">
-                <div class="text-4xl mb-3">💬</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lessons 1-4: Dialogue Vocabulary</h2>
-                <p class="text-sm text-gray-600">
-                    Practice vocabulary words used in dialogues from Lessons 1-4 (其实, 虽然, 政府, etc.)
-                </p>
-            </a>
-
-            <!-- Lesson 5 Part 1 -->
-            <a href="lesson-5-part-1.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-500">
-                <div class="text-4xl mb-3">📘</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 5 Part 1: Am I from Sichuan?</h2>
-                <p class="text-sm text-gray-600">
-                    Vocabulary from Pages 62-63 (名字、出生、起名字…)
-                </p>
-            </a>
-
-            <!-- Lesson 5 Part 2 -->
-            <a href="lesson-5-part-2.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-600">
-                <div class="text-4xl mb-3">📗</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 5 Part 2: Am I from Sichuan?</h2>
-                <p class="text-sm text-gray-600">
-                    Vocabulary from Page 64 (连、能、会、电话、明天…)
-                </p>
-            </a>
-
-            <!-- Lesson 5 Cumulative -->
-            <a href="lesson-5-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-700">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 5 Cumulative: Am I from Sichuan?</h2>
-                <p class="text-sm text-gray-600">
-                    Practice the full Lesson 5 vocabulary set (我是四川人？) - Pages 62-64
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 5 -->
-            <a href="lesson-5-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-purple-800">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 5</h2>
-                <p class="text-sm text-gray-600">
-                    Full-sentence dictation from the Lesson 5 dialogue (我是四川人？)
-                </p>
-            </a>
-
-            <!-- Lesson 6 Part 1 -->
-            <a href="lesson-6-part-1.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-rose-500">
-                <div class="text-4xl mb-3">📘</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 6 Part 1: Don't Worry</h2>
-                <p class="text-sm text-gray-600">
-                    Vocabulary from Pages 76-77 (电话录音、姓名、整天、男朋友…)
-                </p>
-            </a>
-
-            <!-- Lesson 6 Part 2 -->
-            <a href="lesson-6-part-2.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-rose-600">
-                <div class="text-4xl mb-3">📗</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 6 Part 2: Don't Worry</h2>
-                <p class="text-sm text-gray-600">
-                    Vocabulary from Pages 78-79 (何必、怀孕、避孕、外国人…)
-                </p>
-            </a>
-
-            <!-- Lesson 6 Cumulative -->
-            <a href="lesson-6-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-rose-700">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 6 Cumulative: Don't Worry</h2>
-                <p class="text-sm text-gray-600">
-                    Practice the full Lesson 6 vocabulary set (别担心) - Pages 76-79
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 6 -->
-            <a href="lesson-6-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-rose-800">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 6</h2>
-                <p class="text-sm text-gray-600">
-                    Full-sentence dictation from the Lesson 6 dialogue (别担心)
-                </p>
-            </a>
-
-            <!-- Lesson 7 Part 1 -->
-            <a href="lesson-7-part-1.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-500">
-                <div class="text-4xl mb-3">📘</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 7 Part 1: 男女同住</h2>
-                <p class="text-sm text-gray-600">
-                    Pages 88–89 vocabulary quiz
-                </p>
-            </a>
-
-            <!-- Lesson 7 Part 2 -->
-            <a href="lesson-7-part-2.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-600">
-                <div class="text-4xl mb-3">📗</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 7 Part 2: 男女同住</h2>
-                <p class="text-sm text-gray-600">
-                    Pages 90–92 vocabulary quiz
-                </p>
-            </a>
-
-            <!-- Lesson 7 Cumulative -->
-            <a href="lesson-7-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-700">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Lesson 7 Cumulative: 男女同住</h2>
-                <p class="text-sm text-gray-600">
-                    Review all Lesson 7 content together (Pages 87–92)
-                </p>
-            </a>
-
-            <!-- Dictation: Lesson 7 -->
-            <a href="lesson-7-dictation.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-indigo-800">
-                <div class="text-4xl mb-3">📝</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Dictation: Lesson 7</h2>
-                <p class="text-sm text-gray-600">
-                    Practice dictation using the Lesson 7 textbook pages (男女同住)
-                </p>
-            </a>
-
-            <!-- Textbook Reference -->
-            <a href="textbook-reference.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-gray-500">
-                <div class="text-4xl mb-3">📸</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">Textbook Reference</h2>
-                <p class="text-sm text-gray-600">
-                    Browse scanned textbook pages for each lesson.
-                </p>
-            </a>
-
-            <!-- ========== CUMULATIVE PRACTICE ========== -->
-
-            <!-- All Lessons Cumulative -->
-            <a href="all-lessons-cumulative.html" class="block bg-white rounded-lg shadow hover:shadow-md transition p-5 border-l-4 border-amber-500">
-                <div class="text-4xl mb-3">📚</div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-800">All Lessons Cumulative (1-7)</h2>
-                <p class="text-sm text-gray-600">
-                    Practice all vocabulary from Lessons 1-7 combined in one comprehensive quiz
-                </p>
-            </a>
-
+<body class="bg-gray-100 min-h-screen" onload="lucide.createIcons();">
+    <div class="max-w-6xl mx-auto py-8 px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Chinese Learning Hub</h1>
         </div>
 
-        <div class="text-center mt-12 text-gray-600">
-            Keep practicing! 加油！💪
+        <!-- Tools Section -->
+        <div class="mb-8">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Tools</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="pinyin-practice.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-blue-500">
+                    <i data-lucide="volume-2" class="w-6 h-6 mb-2 text-blue-500"></i>
+                    <div class="font-medium text-gray-800">Pinyin Practice</div>
+                </a>
+                <a href="pinyin-chart.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-red-500">
+                    <i data-lucide="table" class="w-6 h-6 mb-2 text-red-500"></i>
+                    <div class="font-medium text-gray-800">Pinyin Chart</div>
+                </a>
+                <a href="common-characters.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-500">
+                    <i data-lucide="languages" class="w-6 h-6 mb-2 text-indigo-500"></i>
+                    <div class="font-medium text-gray-800">Common 2500</div>
+                </a>
+                <a href="textbook-reference.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="image" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Textbook</div>
+                </a>
+            </div>
         </div>
 
-        <div class="text-center mt-4 text-sm text-gray-500">
-            Press <kbd class="px-2 py-1 bg-gray-200 rounded border border-gray-300 font-mono">Ctrl+K</kbd> or <kbd class="px-2 py-1 bg-gray-200 rounded border border-gray-300 font-mono">:</kbd> to open command palette
+        <!-- Lesson 1 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-teal-600">Lesson 1</span> · 两张地图 · Two Maps
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <a href="lesson-1-quiz.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-teal-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-teal-500"></i>
+                    <div class="font-medium text-gray-800">Vocabulary</div>
+                    <div class="text-xs text-gray-500">59 words</div>
+                </a>
+                <a href="lesson-1-hard-subset.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-red-500">
+                    <i data-lucide="flame" class="w-6 h-6 mb-2 text-red-500"></i>
+                    <div class="font-medium text-gray-800">Hard Subset</div>
+                    <div class="text-xs text-gray-500">33 difficult words</div>
+                </a>
+                <a href="lesson-1-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Lesson 2 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-cyan-600">Lesson 2</span> · 我的家在哪儿? · Where is My Home?
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-2-part-1.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-cyan-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-cyan-500"></i>
+                    <div class="font-medium text-gray-800">Part 1</div>
+                    <div class="text-xs text-gray-500">Pages 18-19</div>
+                </a>
+                <a href="lesson-2-part-2.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-cyan-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-cyan-500"></i>
+                    <div class="font-medium text-gray-800">Part 2</div>
+                    <div class="text-xs text-gray-500">Page 20</div>
+                </a>
+                <a href="lesson-2-cumulative.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-cyan-700">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-cyan-700"></i>
+                    <div class="font-medium text-gray-800">All Vocab</div>
+                    <div class="text-xs text-gray-500">53 words</div>
+                </a>
+                <a href="lesson-2-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Lesson 3 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-teal-600">Lesson 3</span> · 我们都是美国人 · We Are All Americans
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-3-part-1.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-teal-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-teal-500"></i>
+                    <div class="font-medium text-gray-800">Part 1</div>
+                    <div class="text-xs text-gray-500">Pages 32-33</div>
+                </a>
+                <a href="lesson-3-part-2.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-teal-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-teal-500"></i>
+                    <div class="font-medium text-gray-800">Part 2</div>
+                    <div class="text-xs text-gray-500">Pages 34-35</div>
+                </a>
+                <a href="lesson-3-cumulative.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-teal-700">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-teal-700"></i>
+                    <div class="font-medium text-gray-800">All Vocab</div>
+                    <div class="text-xs text-gray-500">34 words</div>
+                </a>
+                <a href="lesson-3-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Lesson 4 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-indigo-600">Lesson 4</span> · 美国人学中文 · Americans Study Chinese
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-4-part-1.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-indigo-500"></i>
+                    <div class="font-medium text-gray-800">Part 1</div>
+                    <div class="text-xs text-gray-500">Pages 44-45</div>
+                </a>
+                <a href="lesson-4-part-2.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-indigo-500"></i>
+                    <div class="font-medium text-gray-800">Part 2</div>
+                    <div class="text-xs text-gray-500">Pages 46-48</div>
+                </a>
+                <a href="lesson-4-cumulative.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-700">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-indigo-700"></i>
+                    <div class="font-medium text-gray-800">All Vocab</div>
+                    <div class="text-xs text-gray-500">55 words</div>
+                </a>
+                <a href="lesson-4-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Milestone: Lessons 1-4 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-amber-600 uppercase tracking-wider mb-3 px-1">
+                Milestone · Lessons 1-4
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-1-4-dialogue-vocab.html" class="bg-amber-50 rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-amber-500">
+                    <i data-lucide="message-circle" class="w-6 h-6 mb-2 text-amber-600"></i>
+                    <div class="font-medium text-gray-800">Dialogue Vocab</div>
+                    <div class="text-xs text-gray-500">137 words</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Lesson 5 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-purple-600">Lesson 5</span> · 我是四川人？ · Am I from Sichuan?
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-5-part-1.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-purple-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-purple-500"></i>
+                    <div class="font-medium text-gray-800">Part 1</div>
+                    <div class="text-xs text-gray-500">Pages 62-63</div>
+                </a>
+                <a href="lesson-5-part-2.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-purple-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-purple-500"></i>
+                    <div class="font-medium text-gray-800">Part 2</div>
+                    <div class="text-xs text-gray-500">Page 64</div>
+                </a>
+                <a href="lesson-5-cumulative.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-purple-700">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-purple-700"></i>
+                    <div class="font-medium text-gray-800">All Vocab</div>
+                    <div class="text-xs text-gray-500">All words</div>
+                </a>
+                <a href="lesson-5-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Lesson 6 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-rose-600">Lesson 6</span> · 别担心 · Don't Worry
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-6-part-1.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-rose-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-rose-500"></i>
+                    <div class="font-medium text-gray-800">Part 1</div>
+                    <div class="text-xs text-gray-500">Pages 76-77</div>
+                </a>
+                <a href="lesson-6-part-2.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-rose-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-rose-500"></i>
+                    <div class="font-medium text-gray-800">Part 2</div>
+                    <div class="text-xs text-gray-500">Pages 78-79</div>
+                </a>
+                <a href="lesson-6-cumulative.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-rose-700">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-rose-700"></i>
+                    <div class="font-medium text-gray-800">All Vocab</div>
+                    <div class="text-xs text-gray-500">All words</div>
+                </a>
+                <a href="lesson-6-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Lesson 7 -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                <span class="text-indigo-600">Lesson 7</span> · 男女同住 · Coed Dorms
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="lesson-7-part-1.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-indigo-500"></i>
+                    <div class="font-medium text-gray-800">Part 1</div>
+                    <div class="text-xs text-gray-500">Pages 88-89</div>
+                </a>
+                <a href="lesson-7-part-2.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-500">
+                    <i data-lucide="book-open" class="w-6 h-6 mb-2 text-indigo-500"></i>
+                    <div class="font-medium text-gray-800">Part 2</div>
+                    <div class="text-xs text-gray-500">Pages 90-92</div>
+                </a>
+                <a href="lesson-7-cumulative.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-indigo-700">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-indigo-700"></i>
+                    <div class="font-medium text-gray-800">All Vocab</div>
+                    <div class="text-xs text-gray-500">All words</div>
+                </a>
+                <a href="lesson-7-dictation.html" class="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-gray-400">
+                    <i data-lucide="pen-line" class="w-6 h-6 mb-2 text-gray-500"></i>
+                    <div class="font-medium text-gray-800">Dictation</div>
+                    <div class="text-xs text-gray-500">Full sentences</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- All Lessons Cumulative -->
+        <div class="mb-6">
+            <h2 class="text-sm font-semibold text-amber-600 uppercase tracking-wider mb-3 px-1">
+                Cumulative · All Lessons
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <a href="all-lessons-cumulative.html" class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg shadow-sm hover:shadow-md transition p-4 border-l-4 border-amber-500">
+                    <i data-lucide="library" class="w-6 h-6 mb-2 text-amber-600"></i>
+                    <div class="font-medium text-gray-800">All Lessons 1-7</div>
+                    <div class="text-xs text-gray-500">Full review</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-400">
+            加油!
         </div>
     </div>
 </body>
