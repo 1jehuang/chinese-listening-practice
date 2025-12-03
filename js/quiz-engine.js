@@ -5079,10 +5079,12 @@ function checkFuzzyAnswer(answer) {
 
     const correct = answer === currentQuestion.meaning;
 
-    // Play audio for the character
-    const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
-    if (window.playPinyinAudio) {
-        playPinyinAudio(firstPinyin, currentQuestion.char);
+    // Play audio for the character (skip for audio-to-meaning since they already heard it)
+    if (mode !== 'audio-to-meaning') {
+        const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+        if (window.playPinyinAudio) {
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        }
     }
 
     // For 3-column layout in char-to-meaning-type: immediately advance
