@@ -55,6 +55,17 @@ let toneFlowIndex = 0;              // current syllable index
 let toneFlowUseFuzzy = false;
 let toneFlowCompleted = [];         // tracks completed tones for progress display
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
+
+// Char-to-tones MC mode state (three-column layout with tone buttons)
+let charToTonesMcIndex = 0;             // current character index
+let charToTonesMcExpected = [];         // array of expected tone numbers (as strings)
+let charToTonesMcChars = [];            // array of characters
+let charToTonesMcPinyin = [];           // array of pinyin syllables
+let charToTonesMcCompleted = [];        // completed tones so far
+let charToTonesMcPreviousQuestion = null;
+let charToTonesMcPreviousResult = null;  // 'correct' | 'incorrect'
+let charToTonesMcUpcomingQuestion = null;
+let charToTonesMcInlineFeedback = null;
 let handwritingAnswerShown = false;
 let handwritingSpaceDownTime = null;
 let handwritingHoldTimeout = null;
@@ -4057,11 +4068,9 @@ function generateQuestion(options = {}) {
         renderDictationSentence(currentQuestion);
         typeMode.style.display = 'block';
         setTimeout(() => answerInput.focus(), 100);
-    } else if (mode === 'char-to-tones') {
-        const expectedTones = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim());
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div style="text-align: center; color: #999; font-size: 14px; margin-top: -20px;">Type tone numbers (1-5). Need ${expectedTones.length} tone${expectedTones.length > 1 ? 's' : ''}. Enter/Ctrl+C to clear.</div>`;
-        typeMode.style.display = 'block';
-        setTimeout(() => answerInput.focus(), 100);
+    } else if (mode === 'char-to-tones' && choiceMode) {
+        // Use MC mode with tone buttons and three-column layout
+        initCharToTonesMc();
     } else if (mode === 'audio-to-pinyin' && audioSection) {
         questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div>`;
         typeMode.style.display = 'block';
@@ -6616,6 +6625,241 @@ function renderThreeColumnPinyinLayout() {
             </div>
         </div>
     `;
+}
+
+// ============================================================
+// Char-to-Tones MC Mode (three-column layout with tone buttons)
+// ============================================================
+
+function initCharToTonesMc() {
+    if (!currentQuestion) return;
+
+    const pinyin = currentQuestion.pinyin.split('/')[0].trim();
+    const syllables = splitPinyinSyllables(pinyin);
+    const tones = extractToneSequence(pinyin);
+    const chars = currentQuestion.char.split('');
+
+    charToTonesMcIndex = 0;
+    charToTonesMcExpected = tones.split('');
+    charToTonesMcChars = chars;
+    charToTonesMcPinyin = syllables;
+    charToTonesMcCompleted = [];
+    charToTonesMcInlineFeedback = null;
+
+    // Get upcoming question
+    if (!charToTonesMcUpcomingQuestion) {
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        charToTonesMcUpcomingQuestion = selectNextQuestion(exclusions);
+    }
+
+    renderCharToTonesMcLayout();
+    generateToneButtons();
+}
+
+function renderCharToTonesMcLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    const prevChar = charToTonesMcPreviousQuestion ? escapeHtml(charToTonesMcPreviousQuestion.char || '') : '';
+    const prevPinyin = charToTonesMcPreviousQuestion ? escapeHtml(charToTonesMcPreviousQuestion.pinyin || '') : '';
+    const prevMeaning = charToTonesMcPreviousQuestion ? escapeHtml(charToTonesMcPreviousQuestion.meaning || '') : '';
+    const prevResultClass = charToTonesMcPreviousResult === 'correct' ? 'result-correct' :
+                           charToTonesMcPreviousResult === 'incorrect' ? 'result-incorrect' : '';
+    const prevResultIcon = charToTonesMcPreviousResult === 'correct' ? '✓' :
+                           charToTonesMcPreviousResult === 'incorrect' ? '✗' : '•';
+    const prevFeedbackText = charToTonesMcPreviousResult === 'correct' ? 'Got it right' :
+                             charToTonesMcPreviousResult === 'incorrect' ? 'Missed it' : 'Reviewed';
+
+    // Build current character display with progress indication
+    let currentDisplay = '';
+    const chars = charToTonesMcChars;
+    const completed = charToTonesMcCompleted;
+    const pinyin = charToTonesMcPinyin;
+    const idx = charToTonesMcIndex;
+
+    for (let i = 0; i < chars.length; i++) {
+        if (i < idx) {
+            // Completed character - show with tone number
+            currentDisplay += `<span class="text-green-600">${escapeHtml(chars[i])}<sub class="text-lg">${completed[i]}</sub></span>`;
+        } else if (i === idx) {
+            // Current character - just show normally (no underline)
+            currentDisplay += `<span class="text-gray-800">${escapeHtml(chars[i])}</span>`;
+        } else {
+            // Upcoming character - grayed
+            currentDisplay += `<span class="text-gray-400">${escapeHtml(chars[i])}</span>`;
+        }
+    }
+
+    const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
+
+    const upcomingChar = charToTonesMcUpcomingQuestion ? escapeHtml(charToTonesMcUpcomingQuestion.char || '') : '';
+    const upcomingPinyin = charToTonesMcUpcomingQuestion ? escapeHtml(charToTonesMcUpcomingQuestion.pinyin || '') : '';
+
+    const inlineFeedback = charToTonesMcInlineFeedback;
+    const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
+
+    // Progress display
+    const progressText = chars.length > 1 ? `Char ${idx + 1}/${chars.length}` : '';
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                ${charToTonesMcPreviousQuestion ? `
+                    <div class="column-feedback">
+                        <span class="column-result-icon">${prevResultIcon}</span>
+                        <span class="column-feedback-text">${prevFeedbackText}</span>
+                    </div>
+                    <div class="column-char">${prevChar}</div>
+                    <div class="column-pinyin">${prevPinyin}</div>
+                    <div class="column-meaning">${prevMeaning}</div>
+                ` : `
+                    <div class="column-placeholder">Your last answer will appear here</div>
+                `}
+            </div>
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+                <div class="column-label">Now</div>
+                <div class="column-focus-ring">
+                    <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentDisplay}</div>
+                </div>
+                ${progressText ? `<div class="text-sm text-gray-500 mt-2">${progressText}</div>` : ''}
+                ${inlineFeedback ? `
+                    <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+                        ${inlineFeedbackMessage}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                ${charToTonesMcUpcomingQuestion ? `
+                    <div class="column-ondeck">
+                        <div class="column-char">${upcomingChar}</div>
+                        <div class="column-pinyin text-sm text-gray-400">${upcomingPinyin}</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
+                ` : `
+                    <div class="column-placeholder">Next card is loading</div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function generateToneButtons() {
+    if (!choiceMode) return;
+
+    const optionsDiv = document.getElementById('options');
+    if (!optionsDiv) return;
+
+    const toneLabels = [
+        { num: '1', name: 'First (ˉ)', desc: 'high level' },
+        { num: '2', name: 'Second (ˊ)', desc: 'rising' },
+        { num: '3', name: 'Third (ˇ)', desc: 'dipping' },
+        { num: '4', name: 'Fourth (ˋ)', desc: 'falling' },
+        { num: '5', name: 'Fifth (neutral)', desc: 'light' }
+    ];
+
+    optionsDiv.innerHTML = '';
+    optionsDiv.className = 'grid grid-cols-5 gap-2';
+
+    toneLabels.forEach(tone => {
+        const btn = document.createElement('button');
+        btn.className = 'tone-btn px-4 py-6 text-center bg-gray-100 hover:bg-blue-100 border-2 border-gray-300 hover:border-blue-400 rounded-lg transition-all';
+        btn.innerHTML = `
+            <div class="text-3xl font-bold">${tone.num}</div>
+            <div class="text-xs text-gray-500 mt-1">${tone.desc}</div>
+        `;
+        btn.dataset.tone = tone.num;
+        btn.onclick = () => handleToneChoice(tone.num);
+        optionsDiv.appendChild(btn);
+    });
+
+    choiceMode.style.display = 'block';
+}
+
+function handleToneChoice(toneNum) {
+    if (answered && lastAnswerCorrect) return; // Already answered correctly
+
+    const expected = charToTonesMcExpected[charToTonesMcIndex];
+    const currentChar = charToTonesMcChars[charToTonesMcIndex];
+    const currentPinyin = charToTonesMcPinyin[charToTonesMcIndex];
+
+    if (toneNum === expected) {
+        // Correct tone for this character
+        charToTonesMcCompleted.push(toneNum);
+        charToTonesMcIndex++;
+
+        // Play the syllable audio
+        playPinyinAudio(currentPinyin, currentChar);
+
+        if (charToTonesMcIndex >= charToTonesMcExpected.length) {
+            // All tones completed correctly
+            playCorrectSound();
+            if (!answered) {
+                answered = true;
+                total++;
+                score++;
+            }
+            lastAnswerCorrect = true;
+            markSchedulerOutcome(true);
+
+            // Update previous question state
+            charToTonesMcPreviousQuestion = currentQuestion;
+            charToTonesMcPreviousResult = 'correct';
+
+            // Set up next upcoming
+            const exclusions = [currentQuestion.char];
+            if (charToTonesMcUpcomingQuestion) exclusions.push(charToTonesMcUpcomingQuestion.char);
+            const nextUpcoming = selectNextQuestion(exclusions);
+
+            feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${charToTonesMcExpected.join('')}`;
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+            hint.textContent = `${currentQuestion.pinyin} - ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-lg my-2 text-gray-600';
+
+            updateStats();
+
+            // Move to next question instantly
+            charToTonesMcUpcomingQuestion = nextUpcoming;
+            generateQuestion();
+        } else {
+            // More characters to go - update display
+            renderCharToTonesMcLayout();
+            highlightCurrentToneButton();
+        }
+    } else {
+        // Wrong tone - let user retry
+        playWrongSound();
+
+        // Briefly highlight correct button, then reset for retry
+        const buttons = document.querySelectorAll('#options .tone-btn');
+        buttons.forEach(btn => {
+            if (btn.dataset.tone === expected) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-green-100', 'border-green-500');
+            } else if (btn.dataset.tone === toneNum) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-red-100', 'border-red-500');
+            }
+        });
+
+        feedback.textContent = `✗ Try again! That was tone ${toneNum}`;
+        feedback.className = 'text-center text-xl font-semibold my-2 text-red-600';
+
+        // Reset buttons after brief flash
+        setTimeout(() => {
+            highlightCurrentToneButton();
+            feedback.textContent = '';
+        }, 300);
+    }
+}
+
+function highlightCurrentToneButton() {
+    // Reset all buttons to default state
+    const buttons = document.querySelectorAll('#options .tone-btn');
+    buttons.forEach(btn => {
+        btn.classList.remove('bg-blue-100', 'border-blue-400', 'opacity-50', 'bg-green-100', 'border-green-500');
+        btn.classList.add('bg-gray-100', 'border-gray-300');
+    });
 }
 
 function updateMeaningChoicesVisibility() {
@@ -9646,6 +9890,16 @@ function handleQuizHotkeys(e) {
             focusInputElement(input);
         }
         return;
+    }
+
+    // Char-to-tones mode: number keys 1-5 select tone directly
+    if (mode === 'char-to-tones' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        if (isTypingTarget(target)) return;
+        if (/^[1-5]$/.test(e.key)) {
+            e.preventDefault();
+            handleToneChoice(e.key);
+            return;
+        }
     }
 
     // Handwriting mode: after answer shown, space = correct, any other key = wrong
