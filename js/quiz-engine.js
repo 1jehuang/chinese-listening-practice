@@ -3963,7 +3963,8 @@ function generateQuestion(options = {}) {
     hint.className = 'text-center text-2xl font-semibold my-4';
     threeColumnInlineFeedback = null;
     if (answerInput) {
-        answerInput.value = prefillAnswer;
+        // Don't prefill for char-to-tones mode - tones from previous answer don't carry over
+        answerInput.value = (mode === 'char-to-tones') ? '' : prefillAnswer;
     }
     questionAttemptRecorded = false;
     handwritingAnswerShown = false; // Reset handwriting answer shown state
@@ -4066,12 +4067,12 @@ function generateQuestion(options = {}) {
         typeMode.style.display = 'block';
         audioSection.classList.remove('hidden');
         setupAudioMode({ focusAnswer: true });
-    } else if (mode === 'audio-to-meaning' && audioSection && choiceMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div><div class="text-center text-lg text-gray-500 -mt-4">Choose the matching meaning</div>`;
+    } else if (mode === 'audio-to-meaning' && audioSection && fuzzyMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div><div class="text-center text-lg text-gray-500 -mt-4">Type to filter meanings</div>`;
         audioSection.classList.remove('hidden');
-        generateMeaningOptions();
-        choiceMode.style.display = 'block';
-        setupAudioMode({ focusAnswer: false });
+        generateFuzzyMeaningOptions();
+        fuzzyMode.style.display = 'block';
+        setupAudioMode({ focusAnswer: true });
     } else if (mode === 'char-to-pinyin-mc' && choiceMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generatePinyinOptions();
@@ -10237,7 +10238,8 @@ function initQuiz(charactersData, userConfig = {}) {
         }
 
         // While in the post-answer phase (correct), keep anything typed so it can prefill the next item
-        if (answered && lastAnswerCorrect) {
+        // Skip for char-to-tones mode since tone numbers don't carry over meaningfully
+        if (answered && lastAnswerCorrect && mode !== 'char-to-tones') {
             nextAnswerBuffer = answerInput.value;
         } else {
             nextAnswerBuffer = '';
