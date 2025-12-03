@@ -49,7 +49,7 @@ const DEFAULT_PAGES = [
     { name: 'Textbook Lesson 1', url: 'textbook-lesson1.html', type: 'page', keywords: 'textbook scans lesson 1 pages14 15 16 17 两张地图' },
     { name: 'Textbook Lesson 2', url: 'textbook-lesson2.html', type: 'page', keywords: 'textbook scans lesson 2 pages18 19 20 21 我的家在哪儿' },
     { name: 'Textbook Lesson 3', url: 'textbook-lesson3.html', type: 'page', keywords: 'textbook scans lesson 3 pages32 33 34 35 我们都是美国人' },
-    { name: 'Textbook Lesson 4', url: 'textbook-lesson4.html', type: 'page', keywords: 'textbook scans lesson 4 pages44 45 46 47 48 49 50 51 52 53 54 55 56 美国人学中文' },
+    { name: 'Textbook Lesson 4', url: 'textbook-lesson4.html', type: 'page', keywords: 'textbook scans lesson 4 pages44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 美国人学中文' },
     { name: 'Textbook Lesson 5', url: 'textbook-lesson5.html', type: 'page', keywords: 'textbook scans lesson 5 pages62 63 64 65 66 67 68 我是不是黑人' },
     { name: 'Textbook Lesson 6', url: 'textbook-lesson6.html', type: 'page', keywords: 'textbook scans lesson 6 pages76 77 78 79 别担心' },
     { name: 'Textbook Lesson 7', url: 'textbook-lesson7.html', type: 'page', keywords: 'textbook scans lesson 7 pages87 88 89 90 91 92 男女同住' },
