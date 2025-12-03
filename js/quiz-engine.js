@@ -4117,13 +4117,13 @@ function generateQuestion(options = {}) {
         initStrokeOrder();
     } else if (mode === 'handwriting' && handwritingMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">${displayPinyin}</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-4xl mt-4 mb-2 font-bold text-gray-700">${displayPinyin}</div>`;
         handwritingMode.style.display = 'block';
         initHandwriting();
     } else if (mode === 'draw-char' && drawCharMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
         const meaningText = currentQuestion.meaning ? `<div class="text-lg text-gray-500 mt-1">${currentQuestion.meaning}</div>` : '';
-        questionDisplay.innerHTML = `<div class="text-center my-4"><div class="text-5xl font-bold text-gray-700">${displayPinyin}</div>${meaningText}</div>`;
+        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div>${meaningText}</div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
