@@ -5256,7 +5256,8 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        scheduleNextQuestion(800);
+        // Instant transition for audio-to-meaning, normal delay for others
+        scheduleNextQuestion(mode === 'audio-to-meaning' ? 0 : 800);
     } else {
         playWrongSound();
         feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
@@ -5280,7 +5281,8 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        scheduleNextQuestion(1500);
+        // Shorter delay for audio-to-meaning wrong answers
+        scheduleNextQuestion(mode === 'audio-to-meaning' ? 800 : 1500);
     }
 
     updateStats();
