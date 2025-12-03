@@ -4012,7 +4012,9 @@ function generateQuestion(options = {}) {
     }
 
     if (!nextQuestion) {
-        nextQuestion = selectNextQuestion();
+        // Exclude the current question to avoid showing the same word twice in a row
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        nextQuestion = selectNextQuestion(exclusions);
     }
 
     if (!nextQuestion) {
