@@ -1226,7 +1226,7 @@ function upgradeLegacyLessonLayoutIfNeeded() {
 
     const inputSection = document.createElement('section');
     inputSection.className = 'input-section';
-    ['typeMode', 'choiceMode', 'fuzzyMode', 'strokeOrderMode', 'handwritingMode', 'drawCharMode', 'studyMode', 'radicalPracticeMode'].forEach(id => {
+    ['typeMode', 'choiceMode', 'fuzzyMode', 'strokeOrderMode', 'handwritingMode', 'drawCharMode', 'studyMode', 'radicalPracticeMode', 'missingComponentMode', 'charBuildingMode'].forEach(id => {
         const el = document.getElementById(id);
         if (el) inputSection.appendChild(el);
     });
