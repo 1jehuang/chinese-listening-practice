@@ -832,6 +832,13 @@
     width: 100%;
 }
 
+/* Study mode: remove max-width constraint on parent containers */
+body.study-mode-active .max-w-3xl,
+body.study-mode-active .max-w-4xl,
+body.study-mode-active .max-w-2xl {
+    max-width: none !important;
+}
+
 /* Study Mode: widen and prevent overlap */
 body.study-mode-active .quiz-display {
     display: none;
