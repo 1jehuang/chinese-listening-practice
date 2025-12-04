@@ -1074,7 +1074,7 @@ Evaluate the student's translation. Is it correct? Explain briefly.`
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
             // Flow mode space handling
             if (currentMode === 'flow' && e.key === ' ') {
