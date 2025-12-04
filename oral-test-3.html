@@ -15,14 +15,14 @@
 
         // Global TTS state - prevents ALL overlap
         let currentAudio = null;
-        let ttsLock = false;
+        let ttsRequestId = 0;
 
         // TTS speed (default 1.0)
         window.ttsSpeed = parseFloat(localStorage.getItem('ttsSpeed') || '1');
 
         // Stop all audio immediately
         window.stopAllTTS = function() {
-            ttsLock = false;
+            ttsRequestId++; // Invalidate any pending requests
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio.currentTime = 0;
@@ -37,9 +37,8 @@
             // Always stop any existing audio first
             window.stopAllTTS();
 
-            // Set lock to prevent race conditions
-            ttsLock = true;
-            const myLock = ttsLock;
+            // Capture current request ID to check if still valid
+            const myRequestId = ttsRequestId;
 
             return new Promise(async (resolve) => {
                 try {
@@ -52,15 +51,14 @@
                     const tts = new EdgeTTS(cleanText, voice, { rate: rateStr });
                     const result = await tts.synthesize();
 
-                    // Check if we're still the active request
-                    if (!ttsLock || myLock !== ttsLock) { resolve(); return; }
+                    // Check if we're still the active request (not cancelled)
+                    if (myRequestId !== ttsRequestId) { resolve(); return; }
 
                     const audio = new Audio(URL.createObjectURL(new Blob([result.audio], { type: 'audio/mp3' })));
                     currentAudio = audio;
                     audio.onended = () => {
                         if (currentAudio === audio) {
                             currentAudio = null;
-                            ttsLock = false;
                         }
                         resolve();
                     };
@@ -69,13 +67,13 @@
                 } catch (err) {
                     console.error('Edge TTS error:', err);
                     // Fallback to browser TTS
-                    if (!ttsLock) { resolve(); return; }
+                    if (myRequestId !== ttsRequestId) { resolve(); return; }
                     speechSynthesis.cancel();
                     const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
                     const utterance = new SpeechSynthesisUtterance(cleanText);
                     utterance.lang = 'zh-CN';
                     utterance.rate = window.ttsSpeed * 0.85;
-                    utterance.onend = () => { ttsLock = false; resolve(); };
+                    utterance.onend = () => resolve();
                     utterance.onerror = () => resolve();
                     speechSynthesis.speak(utterance);
                 }
@@ -1213,17 +1211,27 @@ Grade this translation with a percentage and brief feedback.`
                 return;
             }
 
-            // Translate mode space after feedback
-            if (currentMode === 'translate' && e.key === ' ') {
+            // Translate mode shortcuts
+            if (currentMode === 'translate') {
                 const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
-                if (feedbackVisible) {
+
+                // Space after feedback advances to next
+                if (e.key === ' ' && feedbackVisible) {
                     e.preventDefault();
                     if (currentIndex < currentData.length - 1) {
                         currentIndex++;
                         updateDisplay();
                     }
+                    return;
                 }
-                return;
+
+                // 'r' or Enter replays audio
+                if (e.key === 'r' || e.key === 'Enter') {
+                    e.preventDefault();
+                    const item = currentData[currentIndex];
+                    speakChinese(item.chinese);
+                    return;
+                }
             }
 
             if (e.key === 'ArrowLeft') {
