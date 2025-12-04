@@ -1188,16 +1188,18 @@ Grade this translation with a percentage and brief feedback.`
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Allow typing in inputs/textareas, except for specific shortcuts
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                // Escape replays audio in translate mode (works in textbox)
-                if (currentMode === 'translate' && e.key === 'Escape') {
-                    e.preventDefault();
+            // Ctrl+. replays audio (works everywhere, not a browser shortcut)
+            if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+                e.preventDefault();
+                if (currentMode === 'translate' || currentMode === 'english-to-chinese' || currentMode === 'role-jeremy') {
                     const item = currentData[currentIndex];
                     speakChinese(item.chinese);
-                    return;
                 }
+                return;
+            }
 
+            // Allow typing in inputs/textareas, except for specific shortcuts
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 // In translate mode, space after feedback advances to next
                 if (currentMode === 'translate' && e.key === ' ') {
                     const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
@@ -1221,14 +1223,6 @@ Grade this translation with a percentage and brief feedback.`
 
             // Translate mode shortcuts
             if (currentMode === 'translate') {
-                // Escape replays audio
-                if (e.key === 'Escape') {
-                    e.preventDefault();
-                    const item = currentData[currentIndex];
-                    speakChinese(item.chinese);
-                    return;
-                }
-
                 const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
 
                 // Space after feedback advances to next
