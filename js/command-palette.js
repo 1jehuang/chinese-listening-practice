@@ -1,6 +1,7 @@
 // Command Palette - works on all pages and can be customized per page
 
 const EXPERIMENTAL_UI_KEY = 'experimental_ui_enabled';
+const GROQ_API_KEY_STORAGE = 'groq_api_key';
 
 const DEFAULT_PAGES = [
     { name: 'Home', url: 'home.html', type: 'page', keywords: 'dashboard start overview' },
@@ -61,7 +62,8 @@ const DEFAULT_PAGES = [
     { name: 'Pinyin Input Tester', url: 'test-pinyin-input.html', type: 'page', keywords: 'pinyin input ime tester' },
     { name: 'Syllable Entry Harness', url: 'test-syllable-entry.html', type: 'page', keywords: 'syllable entry experiment' },
     { name: 'Char → Pinyin → Tones (MC)', url: 'char-to-pinyin-tones-mc.html', type: 'page', keywords: 'pinyin tones multiple choice two step' },
-    { name: 'Experimental Layout', url: 'experimental-layout.html', type: 'page', keywords: 'experimental layout flat test sandbox' }
+    { name: 'Experimental Layout', url: 'experimental-layout.html', type: 'page', keywords: 'experimental layout flat test sandbox' },
+    { name: 'Oral Test 3', url: 'oral-test-3.html', type: 'page', keywords: 'oral test 3 dialogue sam daniel jeremy chin 111 cooking takeout' }
 ];
 
 const PALETTE_INPUT_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
@@ -922,9 +924,54 @@ function initCommandPalette(config = []) {
                 },
                 available: () => isExperimentalUIEnabled(),
                 scope: 'Global'
+            },
+            {
+                name: 'Set Groq API Key',
+                type: 'action',
+                description: 'Configure your Groq API key for Whisper speech recognition',
+                keywords: 'groq api key whisper speech recognition settings configure',
+                action: () => {
+                    const current = getGroqApiKey();
+                    const masked = current ? `${current.slice(0, 8)}...${current.slice(-4)}` : '(not set)';
+                    const newKey = prompt(`Enter your Groq API key:\n\nCurrent: ${masked}\n\nGet one at https://console.groq.com/keys`);
+                    if (newKey !== null) {
+                        if (newKey.trim()) {
+                            setGroqApiKey(newKey.trim());
+                            alert('API key saved!');
+                        } else {
+                            setGroqApiKey('');
+                            alert('API key cleared.');
+                        }
+                    }
+                },
+                scope: 'Global'
             }
         ];
     }
+
+    function getGroqApiKey() {
+        try {
+            return localStorage.getItem(GROQ_API_KEY_STORAGE) || '';
+        } catch {
+            return '';
+        }
+    }
+
+    function setGroqApiKey(key) {
+        try {
+            if (key) {
+                localStorage.setItem(GROQ_API_KEY_STORAGE, key);
+            } else {
+                localStorage.removeItem(GROQ_API_KEY_STORAGE);
+            }
+        } catch {
+            // ignore storage errors
+        }
+    }
+
+    // Expose for other scripts
+    window.getGroqApiKey = getGroqApiKey;
+    window.setGroqApiKey = setGroqApiKey;
 
     function isExperimentalUIEnabled() {
         try {
@@ -1033,5 +1080,14 @@ function initCommandPalette(config = []) {
         const spreadPenalty = Math.max(0, lastIndex - (query.length - 1));
         score -= Math.min(spreadPenalty, 20);
         return score;
+    }
+}
+
+// Auto-initialize command palette when DOM is ready
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initCommandPalette(), { once: true });
+    } else {
+        initCommandPalette();
     }
 }

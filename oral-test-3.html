@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Oral Test 3 - Dialogue Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Oral Test 3</h1>
+        <p class="text-center text-gray-600 mb-1">CHIN 111 - Dec 4, 11:30 AM</p>
+        <p class="text-center text-gray-500 text-sm mb-6">Sam, Daniel, Jeremy - 17 sentences, 15 patterns</p>
+
+        <!-- Mode Selector -->
+        <div class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study All</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active" data-mode="english-to-chinese">English → Chinese</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="role-jeremy">Practice Jeremy</button>
+            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="fill-blank">Fill Pattern</button>
+        </div>
+
+        <!-- Study Mode -->
+        <div id="studyMode" class="hidden">
+            <div id="dialogueList" class="space-y-3"></div>
+        </div>
+
+        <!-- Practice Mode -->
+        <div id="practiceMode" class="hidden">
+            <!-- Line Number -->
+            <div id="lineNumber" class="text-center text-sm text-gray-500 mb-2"></div>
+
+            <!-- Speaker -->
+            <div id="speaker" class="text-center text-lg font-bold mb-4"></div>
+
+            <!-- Question Display -->
+            <div id="questionDisplay" class="text-center text-2xl mb-6 p-6 bg-gray-50 rounded-lg min-h-[100px] flex items-center justify-center"></div>
+
+            <!-- Pattern Hint -->
+            <div id="patternHint" class="text-center text-sm text-purple-600 mb-4"></div>
+
+            <!-- Audio Button -->
+            <div class="text-center mb-4 flex flex-wrap gap-2 justify-center">
+                <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">
+                    🔊 Play Audio
+                </button>
+                <button id="recordBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition">
+                    🎤 Record
+                </button>
+                <button id="showAnswerBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition">
+                    👁 Show Answer
+                </button>
+            </div>
+
+            <!-- Transcription Display -->
+            <div id="transcriptionDisplay" class="hidden text-center p-4 bg-blue-50 rounded-lg mb-4">
+                <div class="text-sm text-gray-500 mb-1">Your speech:</div>
+                <div id="transcriptionText" class="text-xl mb-2"></div>
+                <div id="transcriptionFeedback" class="text-sm"></div>
+            </div>
+
+            <!-- Answer Display -->
+            <div id="answerDisplay" class="hidden text-center p-4 bg-green-50 rounded-lg mb-4">
+                <div id="answerChinese" class="text-2xl mb-2"></div>
+                <div id="answerPinyin" class="text-gray-600"></div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between items-center mt-6">
+                <button id="prevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">← Prev</button>
+                <span id="progress" class="text-gray-600"></span>
+                <button id="nextBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">Next →</button>
+            </div>
+        </div>
+
+        <!-- Fill Pattern Mode -->
+        <div id="fillMode" class="hidden">
+            <div id="fillLineNumber" class="text-center text-sm text-gray-500 mb-2"></div>
+            <div id="fillSpeaker" class="text-center text-lg font-bold mb-4"></div>
+            <div id="fillQuestion" class="text-center text-2xl mb-4 p-6 bg-gray-50 rounded-lg"></div>
+            <div id="fillEnglish" class="text-center text-gray-600 mb-4"></div>
+
+            <input type="text" id="fillInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg text-center mb-4" placeholder="Type the pattern word(s)...">
+
+            <div class="flex gap-2 justify-center mb-4">
+                <button id="fillCheckBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition">Check</button>
+                <button id="fillAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊</button>
+            </div>
+
+            <div id="fillFeedback" class="text-center text-xl font-semibold mb-4 min-h-[28px]"></div>
+
+            <div class="flex justify-between items-center">
+                <button id="fillPrevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">← Prev</button>
+                <span id="fillProgress" class="text-gray-600"></span>
+                <button id="fillNextBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">Next →</button>
+            </div>
+        </div>
+
+        <!-- Pattern Reference -->
+        <div class="mt-8 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
+            <h3 class="font-bold mb-2">📚 Grammar Patterns Used (15 total)</h3>
+            <div class="text-xs grid grid-cols-2 gap-1 text-gray-700">
+                <div><span class="font-semibold">1.</span> A 比 B adj. 得多/多了</div>
+                <div><span class="font-semibold">3.</span> 到底</div>
+                <div><span class="font-semibold">5.</span> V 起来</div>
+                <div><span class="font-semibold">13.</span> 才...呢 (emphasis)</div>
+                <div><span class="font-semibold">14.</span> 只要...就...</div>
+                <div><span class="font-semibold">16.</span> 其实...并不...</div>
+                <div><span class="font-semibold">19.</span> 连...都...</div>
+                <div><span class="font-semibold">20.</span> A 也好，B 也好，都...</div>
+                <div><span class="font-semibold">22.</span> 难道...吗？</div>
+                <div><span class="font-semibold">23.</span> 要是...怎么办？</div>
+                <div><span class="font-semibold">25.</span> 不想再...了</div>
+                <div><span class="font-semibold">26.</span> adj. 是 adj.，可是...</div>
+                <div><span class="font-semibold">28.</span> adj. 得很</div>
+                <div><span class="font-semibold">29.</span> Time 没 V 了</div>
+                <div><span class="font-semibold">30.</span> 最好 + V</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dialogue data
+        const dialogue = [
+            {
+                line: 1,
+                speaker: 'Sam',
+                chinese: '我不想再在食堂吃饭了，你们到底想吃什么呢？',
+                pinyin: 'Wǒ bù xiǎng zài zài shítáng chīfàn le, nǐmen dàodǐ xiǎng chī shénme ne?',
+                english: "I don't want to eat at the cafeteria anymore, what do you guys actually want to eat?",
+                patterns: ['不想再...了', '到底'],
+                patternWords: '不想再/了, 到底'
+            },
+            {
+                line: 2,
+                speaker: 'Daniel',
+                chinese: '我觉得在家做饭比点外卖好多了。',
+                pinyin: 'Wǒ juéde zài jiā zuòfàn bǐ diǎn wàimài hǎo duō le.',
+                english: 'I think cooking at home is way better than ordering takeout.',
+                patterns: ['A 比 B adj. 多了'],
+                patternWords: '比/好多了'
+            },
+            {
+                line: 3,
+                speaker: 'Jeremy',
+                chinese: '难道你想做饭吗？',
+                pinyin: 'Nándào nǐ xiǎng zuòfàn ma?',
+                english: "Don't tell me you actually want to cook?",
+                patterns: ['难道...吗？'],
+                patternWords: '难道/吗'
+            },
+            {
+                line: 4,
+                speaker: 'Sam',
+                chinese: '只要我做饭就行。',
+                pinyin: 'Zhǐyào wǒ zuòfàn jiù xíng.',
+                english: "As long as I'm the one cooking, it'll be fine.",
+                patterns: ['只要...就...'],
+                patternWords: '只要/就'
+            },
+            {
+                line: 5,
+                speaker: 'Daniel',
+                chinese: '我才不信呢，让我做吧。',
+                pinyin: 'Wǒ cái bù xìn ne, ràng wǒ zuò ba.',
+                english: "I don't believe you at all, let me cook instead.",
+                patterns: ['才...呢'],
+                patternWords: '才/呢'
+            },
+            {
+                line: 6,
+                speaker: 'Sam',
+                chinese: '我才不想吃你们做的饭呢。',
+                pinyin: 'Wǒ cái bù xiǎng chī nǐmen zuò de fàn ne.',
+                english: "I don't want to eat the food you guys make at all.",
+                patterns: ['才...呢'],
+                patternWords: '才/呢'
+            },
+            {
+                line: 7,
+                speaker: 'Jeremy',
+                chinese: '要是你们做的不好吃，那怎么办呢？',
+                pinyin: 'Yàoshi nǐmen zuò de bù hǎochī, nà zěnme bàn ne?',
+                english: "If what you guys make doesn't taste good, then what are we going to do?",
+                patterns: ['要是...怎么办？'],
+                patternWords: '要是/怎么办'
+            },
+            {
+                line: 8,
+                speaker: 'Sam',
+                chinese: '放心吧！',
+                pinyin: 'Fàngxīn ba!',
+                english: "Don't worry!",
+                patterns: [],
+                patternWords: ''
+            },
+            {
+                line: '⏰',
+                speaker: '',
+                chinese: '〈time lapse cooking〉',
+                pinyin: '',
+                english: '〈time lapse cooking〉',
+                patterns: [],
+                patternWords: '',
+                isStageDirection: true
+            },
+            {
+                line: 9,
+                speaker: 'Sam',
+                chinese: '好，饭做完了，你们吃吧。',
+                pinyin: 'Hǎo, fàn zuò wán le, nǐmen chī ba.',
+                english: "Alright, the food is ready, go ahead and eat.",
+                patterns: [],
+                patternWords: ''
+            },
+            {
+                line: 10,
+                speaker: 'Daniel',
+                chinese: '闻起来很香，可是吃起来难吃得很。',
+                pinyin: 'Wén qǐlái hěn xiāng, kěshì chī qǐlái nánchī de hěn.',
+                english: 'It smells really good, but it tastes really bad.',
+                patterns: ['V 起来', 'adj. 得很'],
+                patternWords: '起来, 得很'
+            },
+            {
+                line: 11,
+                speaker: 'Daniel',
+                chinese: '我好久没吃过这么难吃的饭了！',
+                pinyin: 'Wǒ hǎojiǔ méi chīguò zhème nánchī de fàn le!',
+                english: "I haven't eaten food this bad in a long time!",
+                patterns: ['Time 没 V 了'],
+                patternWords: '好久没/了'
+            },
+            {
+                line: 12,
+                speaker: 'Jeremy',
+                chinese: '其实你的饭并不难吃，*spits*，是超级难吃！',
+                pinyin: 'Qíshí nǐ de fàn bìng bù nánchī, *spits*, shì chāojí nánchī!',
+                english: "Actually, your food isn't bad... *spits* ...it's SUPER bad!",
+                patterns: ['其实...并不...'],
+                patternWords: '其实/并不'
+            },
+            {
+                line: 13,
+                speaker: 'Daniel',
+                chinese: '你做的菜连狗都不会吃。',
+                pinyin: 'Nǐ zuò de cài lián gǒu dōu bù huì chī.',
+                english: "Even dogs wouldn't eat the food you make.",
+                patterns: ['连...都...'],
+                patternWords: '连/都'
+            },
+            {
+                line: 14,
+                speaker: 'Sam',
+                chinese: '以后我才不想给你们做饭。',
+                pinyin: 'Yǐhòu wǒ cái bù xiǎng gěi nǐmen zuòfàn.',
+                english: "From now on, I definitely won't cook for you guys.",
+                patterns: ['才'],
+                patternWords: '才'
+            },
+            {
+                line: 15,
+                speaker: 'Jeremy',
+                chinese: '那最好买外卖吧。',
+                pinyin: 'Nà zuìhǎo mǎi wàimài ba.',
+                english: "Then we'd better just get takeout.",
+                patterns: ['最好 + V'],
+                patternWords: '最好'
+            },
+            {
+                line: 16,
+                speaker: 'Daniel',
+                chinese: '外卖也好，狗屎也好，都比你做的菜好吃多了。',
+                pinyin: 'Wàimài yě hǎo, gǒushǐ yě hǎo, dōu bǐ nǐ zuò de cài hǎochī duō le.',
+                english: "Takeout is fine, dog shit is fine too, anything is better than the food you make.",
+                patterns: ['A 也好，B 也好，都...', 'A 比 B adj. 多了'],
+                patternWords: '也好/也好/都, 比/多了'
+            },
+            {
+                line: 17,
+                speaker: 'Jeremy',
+                chinese: '外卖贵是贵，可是还是比你的菜好吃！',
+                pinyin: 'Wàimài guì shì guì, kěshì háishi bǐ nǐ de cài hǎochī!',
+                english: "Takeout is expensive, sure, but it's still tastier than your cooking!",
+                patterns: ['adj. 是 adj.，可是...'],
+                patternWords: '贵是贵/可是'
+            }
+        ];
+
+        // Filter out stage directions for practice
+        const practiceDialogue = dialogue.filter(d => !d.isStageDirection);
+        const jeremyLines = practiceDialogue.filter(d => d.speaker === 'Jeremy');
+        const patternLines = practiceDialogue.filter(d => d.patterns.length > 0);
+
+        let currentMode = 'english-to-chinese';
+        let currentIndex = 0;
+        let currentData = practiceDialogue;
+        let answerShown = false;
+
+        // Speaker colors
+        const speakerColors = {
+            'Sam': 'text-blue-600',
+            'Daniel': 'text-green-600',
+            'Jeremy': 'text-purple-600'
+        };
+
+        // Mode buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active', 'bg-blue-500', 'text-white', 'border-blue-500'));
+                btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+                currentMode = btn.dataset.mode;
+                currentIndex = 0;
+                answerShown = false;
+
+                // Update current data based on mode
+                if (currentMode === 'role-jeremy') {
+                    currentData = jeremyLines;
+                } else if (currentMode === 'fill-blank') {
+                    currentData = patternLines;
+                } else {
+                    currentData = practiceDialogue;
+                }
+
+                updateDisplay();
+            });
+        });
+
+        // Initialize with first mode selected
+        document.querySelector('.mode-btn[data-mode="english-to-chinese"]').classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+
+        function updateDisplay() {
+            const studyMode = document.getElementById('studyMode');
+            const practiceMode = document.getElementById('practiceMode');
+            const fillMode = document.getElementById('fillMode');
+
+            studyMode.classList.add('hidden');
+            practiceMode.classList.add('hidden');
+            fillMode.classList.add('hidden');
+
+            if (currentMode === 'study') {
+                studyMode.classList.remove('hidden');
+                renderStudyMode();
+            } else if (currentMode === 'fill-blank') {
+                fillMode.classList.remove('hidden');
+                renderFillMode();
+            } else {
+                practiceMode.classList.remove('hidden');
+                renderPracticeMode();
+            }
+        }
+
+        function renderStudyMode() {
+            const list = document.getElementById('dialogueList');
+            list.innerHTML = dialogue.map((d, idx) => {
+                if (d.isStageDirection) {
+                    return `<div class="text-center text-gray-400 italic py-2">${d.chinese}</div>`;
+                }
+                const colorClass = speakerColors[d.speaker] || 'text-gray-800';
+                const patternBadges = d.patterns.length > 0
+                    ? `<div class="text-xs text-purple-500 mt-1">${d.patterns.join(' · ')}</div>`
+                    : '';
+                return `
+                    <div class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <div class="flex items-start gap-3">
+                            <span class="font-bold ${colorClass} w-16 flex-shrink-0">${d.line}. ${d.speaker}</span>
+                            <div class="flex-1">
+                                <div class="text-xl mb-1">${d.chinese}</div>
+                                <div class="text-gray-500 text-sm">${d.pinyin}</div>
+                                <div class="text-gray-600 text-sm mt-1">${d.english}</div>
+                                ${patternBadges}
+                                <div id="study-transcription-${idx}" class="hidden mt-2 p-2 bg-blue-50 rounded text-sm"></div>
+                            </div>
+                            <div class="flex gap-1 flex-shrink-0">
+                                <button class="study-play-btn bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded text-sm" data-idx="${idx}">🔊</button>
+                                <button class="study-record-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" data-idx="${idx}">🎤</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Attach event listeners
+            list.querySelectorAll('.study-play-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.idx);
+                    speakChinese(dialogue[idx].chinese);
+                });
+            });
+
+            list.querySelectorAll('.study-record-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.idx);
+                    toggleStudyRecording(btn, idx);
+                });
+            });
+        }
+
+        // Study mode recording state
+        let studyRecordingBtn = null;
+        let studyRecordingIdx = null;
+
+        async function toggleStudyRecording(btn, idx) {
+            // If already recording this line, stop it
+            if (studyRecordingBtn === btn && isRecording) {
+                stopStudyRecording();
+                return;
+            }
+
+            // If recording a different line, stop that first
+            if (isRecording && studyRecordingBtn) {
+                stopStudyRecording();
+            }
+
+            // Start new recording
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await transcribeStudyAudio(audioBlob, idx);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                studyRecordingBtn = btn;
+                studyRecordingIdx = idx;
+                btn.textContent = '⏹';
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+
+                // Hide previous transcription for this line
+                document.getElementById(`study-transcription-${idx}`).classList.add('hidden');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('Could not access microphone.');
+            }
+        }
+
+        function stopStudyRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                if (studyRecordingBtn) {
+                    studyRecordingBtn.textContent = '🎤';
+                    studyRecordingBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+                    studyRecordingBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                }
+                studyRecordingBtn = null;
+            }
+        }
+
+        async function transcribeStudyAudio(audioBlob, idx) {
+            const apiKey = window.getGroqApiKey();
+            const item = dialogue[idx];
+            const btn = document.querySelector(`.study-record-btn[data-idx="${idx}"]`);
+            const transcriptionEl = document.getElementById(`study-transcription-${idx}`);
+
+            if (btn) {
+                btn.textContent = '⏳';
+                btn.disabled = true;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.webm');
+                formData.append('model', 'whisper-large-v3-turbo');
+                formData.append('language', 'zh');
+                formData.append('response_format', 'json');
+
+                const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}` },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const transcription = result.text || '';
+
+                // Compare with expected
+                const expected = item.chinese.replace(/\*[^*]+\*/g, '').replace(/[，。！？、]/g, '');
+                const actual = transcription.replace(/[，。！？、]/g, '');
+
+                let feedback;
+                if (actual === expected || transcription.includes(expected) || expected.includes(actual)) {
+                    feedback = `<span class="text-green-600 font-semibold">✓ "${transcription}"</span>`;
+                } else {
+                    const diff = compareStrings(expected, actual);
+                    feedback = `You said: ${diff}`;
+                }
+
+                transcriptionEl.innerHTML = feedback;
+                transcriptionEl.classList.remove('hidden');
+
+            } catch (err) {
+                transcriptionEl.innerHTML = `<span class="text-red-600">Error: ${err.message}</span>`;
+                transcriptionEl.classList.remove('hidden');
+            } finally {
+                if (btn) {
+                    btn.textContent = '🎤';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        function renderPracticeMode() {
+            const item = currentData[currentIndex];
+            const colorClass = speakerColors[item.speaker] || 'text-gray-800';
+
+            document.getElementById('lineNumber').textContent = `Line ${item.line} of ${dialogue.length - 1}`;
+            document.getElementById('speaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
+            document.getElementById('questionDisplay').textContent = item.english;
+
+            if (item.patterns.length > 0) {
+                document.getElementById('patternHint').textContent = `Patterns: ${item.patterns.join(', ')}`;
+            } else {
+                document.getElementById('patternHint').textContent = '';
+            }
+
+            document.getElementById('answerChinese').textContent = item.chinese;
+            document.getElementById('answerPinyin').textContent = item.pinyin;
+            document.getElementById('answerDisplay').classList.add('hidden');
+            answerShown = false;
+
+            document.getElementById('progress').textContent = `${currentIndex + 1} / ${currentData.length}`;
+        }
+
+        function renderFillMode() {
+            const item = currentData[currentIndex];
+            const colorClass = speakerColors[item.speaker] || 'text-gray-800';
+
+            // Create blanked version of Chinese text
+            let blanked = item.chinese;
+            const words = item.patternWords.split(', ');
+            words.forEach(w => {
+                const parts = w.split('/');
+                parts.forEach(p => {
+                    blanked = blanked.replace(p, '___');
+                });
+            });
+
+            document.getElementById('fillLineNumber').textContent = `Line ${item.line}`;
+            document.getElementById('fillSpeaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
+            document.getElementById('fillQuestion').innerHTML = blanked;
+            document.getElementById('fillEnglish').textContent = item.english;
+            document.getElementById('fillInput').value = '';
+            document.getElementById('fillFeedback').textContent = '';
+            document.getElementById('fillProgress').textContent = `${currentIndex + 1} / ${currentData.length}`;
+        }
+
+        // Navigation
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateDisplay();
+            }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentIndex < currentData.length - 1) {
+                currentIndex++;
+                updateDisplay();
+            }
+        });
+
+        document.getElementById('fillPrevBtn').addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateDisplay();
+            }
+        });
+
+        document.getElementById('fillNextBtn').addEventListener('click', () => {
+            if (currentIndex < currentData.length - 1) {
+                currentIndex++;
+                updateDisplay();
+            }
+        });
+
+        // Show answer
+        document.getElementById('showAnswerBtn').addEventListener('click', () => {
+            const display = document.getElementById('answerDisplay');
+            if (answerShown) {
+                display.classList.add('hidden');
+                answerShown = false;
+            } else {
+                display.classList.remove('hidden');
+                answerShown = true;
+            }
+        });
+
+        // Audio playback
+        function speakChinese(text) {
+            // Remove stage directions and English from text
+            const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.85;
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utterance);
+        }
+
+        document.getElementById('playAudioBtn').addEventListener('click', () => {
+            const item = currentData[currentIndex];
+            speakChinese(item.chinese);
+        });
+
+        document.getElementById('fillAudioBtn').addEventListener('click', () => {
+            const item = currentData[currentIndex];
+            speakChinese(item.chinese);
+        });
+
+        // Fill mode check
+        document.getElementById('fillCheckBtn').addEventListener('click', checkFillAnswer);
+        document.getElementById('fillInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkFillAnswer();
+        });
+
+        function checkFillAnswer() {
+            const item = currentData[currentIndex];
+            const input = document.getElementById('fillInput').value.trim();
+            const feedback = document.getElementById('fillFeedback');
+
+            // Get all pattern words
+            const expectedWords = item.patternWords.split(', ').flatMap(w => w.split('/'));
+            const inputWords = input.replace(/[,，/]/g, ' ').split(/\s+/).filter(w => w);
+
+            // Check if input contains the key pattern words
+            const allFound = expectedWords.every(exp =>
+                inputWords.some(inp => inp === exp || exp.includes(inp) || inp.includes(exp))
+            );
+
+            if (allFound || input === item.patternWords.replace(/[,/]/g, ' ')) {
+                feedback.innerHTML = `<span class="text-green-600">✓ Correct!</span> <span class="text-gray-600">${item.patternWords}</span>`;
+            } else {
+                feedback.innerHTML = `<span class="text-red-600">✗</span> Expected: <span class="text-gray-800">${item.patternWords}</span>`;
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            if (e.key === 'ArrowLeft') {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateDisplay();
+                }
+            } else if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                if (currentIndex < currentData.length - 1) {
+                    currentIndex++;
+                    updateDisplay();
+                }
+            } else if (e.key === 'Enter') {
+                const item = currentData[currentIndex];
+                speakChinese(item.chinese);
+            } else if (e.key === 's') {
+                document.getElementById('showAnswerBtn').click();
+            }
+        });
+
+        // Initialize command palette
+        if (typeof initCommandPalette === 'function') {
+            initCommandPalette();
+        }
+
+        // Initial render
+        updateDisplay();
+
+        // ========== Recording & Transcription ==========
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const recordBtn = document.getElementById('recordBtn');
+
+        recordBtn.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        async function startRecording() {
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await transcribeAudio(audioBlob);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.textContent = '⏹ Stop';
+                recordBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                recordBtn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+
+                // Hide previous transcription
+                document.getElementById('transcriptionDisplay').classList.add('hidden');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('Could not access microphone. Please allow microphone access.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = '🎤 Record';
+                recordBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+                recordBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+            }
+        }
+
+        async function transcribeAudio(audioBlob) {
+            const apiKey = window.getGroqApiKey();
+            const item = currentData[currentIndex];
+
+            recordBtn.textContent = '⏳ Transcribing...';
+            recordBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.webm');
+                formData.append('model', 'whisper-large-v3-turbo');
+                formData.append('language', 'zh');
+                formData.append('response_format', 'json');
+
+                const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`API error: ${response.status} - ${errText}`);
+                }
+
+                const result = await response.json();
+                const transcription = result.text || '';
+
+                // Display transcription
+                document.getElementById('transcriptionText').textContent = transcription;
+                document.getElementById('transcriptionDisplay').classList.remove('hidden');
+
+                // Compare with expected
+                const expected = item.chinese.replace(/\*[^*]+\*/g, '').replace(/[，。！？、]/g, '');
+                const actual = transcription.replace(/[，。！？、]/g, '');
+
+                const feedbackEl = document.getElementById('transcriptionFeedback');
+                if (actual === expected || transcription.includes(expected) || expected.includes(actual)) {
+                    feedbackEl.innerHTML = '<span class="text-green-600 font-semibold">✓ Great match!</span>';
+                } else {
+                    // Show character-by-character comparison
+                    const diff = compareStrings(expected, actual);
+                    feedbackEl.innerHTML = `<span class="text-gray-600">Expected: ${item.chinese}</span><br>${diff}`;
+                }
+
+            } catch (err) {
+                console.error('Transcription error:', err);
+                document.getElementById('transcriptionText').textContent = 'Error: ' + err.message;
+                document.getElementById('transcriptionFeedback').textContent = '';
+                document.getElementById('transcriptionDisplay').classList.remove('hidden');
+            } finally {
+                recordBtn.textContent = '🎤 Record';
+                recordBtn.disabled = false;
+            }
+        }
+
+        function compareStrings(expected, actual) {
+            let result = '';
+            const maxLen = Math.max(expected.length, actual.length);
+            for (let i = 0; i < actual.length; i++) {
+                if (i < expected.length && actual[i] === expected[i]) {
+                    result += `<span class="text-green-600">${actual[i]}</span>`;
+                } else {
+                    result += `<span class="text-red-600">${actual[i]}</span>`;
+                }
+            }
+            return result;
+        }
+
+        // Keyboard shortcut for recording
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+                recordBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
