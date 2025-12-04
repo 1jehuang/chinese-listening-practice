@@ -13,14 +13,26 @@
     <script type="module">
         import { EdgeTTS } from 'https://cdn.jsdelivr.net/npm/edge-tts-universal/dist/browser.js';
 
+        // Track current audio to prevent overlap
+        let currentAudio = null;
+
         // Chinese voices: zh-CN-XiaoxiaoNeural (female), zh-CN-YunxiNeural (male)
         window.edgeTTS = async function(text, voice = 'zh-CN-XiaoxiaoNeural') {
+            // Stop any currently playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            speechSynthesis.cancel();
+
             try {
                 const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
                 const tts = new EdgeTTS(cleanText, voice);
                 const result = await tts.synthesize();
                 const audio = new Audio(URL.createObjectURL(new Blob([result.audio], { type: 'audio/mp3' })));
+                currentAudio = audio;
                 audio.play();
+                audio.onended = () => { currentAudio = null; };
             } catch (err) {
                 console.error('Edge TTS error:', err);
                 // Fallback to browser TTS
@@ -29,6 +41,14 @@
                 utterance.rate = 0.85;
                 speechSynthesis.speak(utterance);
             }
+        };
+
+        window.stopTTS = function() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            speechSynthesis.cancel();
         };
     </script>
 </head>
