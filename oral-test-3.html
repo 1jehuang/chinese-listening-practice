@@ -10,6 +10,27 @@
     <script src="js/utils.js"></script>
     <script src="js/command-palette.js"></script>
     <script src="js/pinyin-utils.js"></script>
+    <script type="module">
+        import { EdgeTTS } from 'https://cdn.jsdelivr.net/npm/edge-tts-universal/dist/browser.js';
+
+        // Chinese voices: zh-CN-XiaoxiaoNeural (female), zh-CN-YunxiNeural (male)
+        window.edgeTTS = async function(text, voice = 'zh-CN-XiaoxiaoNeural') {
+            try {
+                const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                const tts = new EdgeTTS(cleanText, voice);
+                const result = await tts.synthesize();
+                const audio = new Audio(URL.createObjectURL(new Blob([result.audio], { type: 'audio/mp3' })));
+                audio.play();
+            } catch (err) {
+                console.error('Edge TTS error:', err);
+                // Fallback to browser TTS
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.85;
+                speechSynthesis.speak(utterance);
+            }
+        };
+    </script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8">
     <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
@@ -34,6 +55,12 @@
 
         <!-- Practice Mode -->
         <div id="practiceMode" class="hidden">
+            <!-- Context (preceding lines) -->
+            <div id="contextDisplay" class="hidden mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div class="text-xs text-amber-600 mb-2 font-semibold">Context (what comes before):</div>
+                <div id="contextLines" class="space-y-2 text-sm"></div>
+            </div>
+
             <!-- Line Number -->
             <div id="lineNumber" class="text-center text-sm text-gray-500 mb-2"></div>
 
@@ -533,6 +560,34 @@
             const item = currentData[currentIndex];
             const colorClass = speakerColors[item.speaker] || 'text-gray-800';
 
+            // Show context (preceding lines) in role-jeremy mode
+            const contextDisplay = document.getElementById('contextDisplay');
+            const contextLines = document.getElementById('contextLines');
+
+            if (currentMode === 'role-jeremy') {
+                // Find this item's position in the full dialogue
+                const dialogueIdx = dialogue.findIndex(d => d.line === item.line);
+                if (dialogueIdx > 0) {
+                    // Get up to 3 preceding lines
+                    const startIdx = Math.max(0, dialogueIdx - 3);
+                    const precedingLines = dialogue.slice(startIdx, dialogueIdx).filter(d => !d.isStageDirection);
+
+                    if (precedingLines.length > 0) {
+                        contextLines.innerHTML = precedingLines.map(d => {
+                            const color = speakerColors[d.speaker] || 'text-gray-800';
+                            return `<div><span class="font-semibold ${color}">${d.speaker}:</span> ${d.chinese}</div>`;
+                        }).join('');
+                        contextDisplay.classList.remove('hidden');
+                    } else {
+                        contextDisplay.classList.add('hidden');
+                    }
+                } else {
+                    contextDisplay.classList.add('hidden');
+                }
+            } else {
+                contextDisplay.classList.add('hidden');
+            }
+
             document.getElementById('lineNumber').textContent = `Line ${item.line} of ${dialogue.length - 1}`;
             document.getElementById('speaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
             document.getElementById('questionDisplay').textContent = item.english;
@@ -546,6 +601,7 @@
             document.getElementById('answerChinese').textContent = item.chinese;
             document.getElementById('answerPinyin').textContent = item.pinyin;
             document.getElementById('answerDisplay').classList.add('hidden');
+            document.getElementById('transcriptionDisplay').classList.add('hidden');
             answerShown = false;
 
             document.getElementById('progress').textContent = `${currentIndex + 1} / ${currentData.length}`;
@@ -617,13 +673,17 @@
 
         // Audio playback
         function speakChinese(text) {
-            // Remove stage directions and English from text
-            const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 0.85;
-            speechSynthesis.cancel();
-            speechSynthesis.speak(utterance);
+            // Use Edge TTS if available (natural sounding), fallback to browser TTS
+            if (window.edgeTTS) {
+                window.edgeTTS(text);
+            } else {
+                const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.85;
+                speechSynthesis.cancel();
+                speechSynthesis.speak(utterance);
+            }
         }
 
         document.getElementById('playAudioBtn').addEventListener('click', () => {
