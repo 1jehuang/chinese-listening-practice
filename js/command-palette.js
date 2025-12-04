@@ -148,6 +148,12 @@ function maybeShowCommandPaletteToast() {
 
 function attachCommandableBadges(items) {
     whenDocumentReady(() => {
+        // Don't show badges on home page - too cluttered
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        if (currentPage === 'home.html' || currentPage === 'index.html' || currentPage === '') {
+            return;
+        }
+
         const pageUrls = new Set(
             items
                 .filter(item => item && item.type === 'page' && item.url)
@@ -165,13 +171,13 @@ function attachCommandableBadges(items) {
 
         candidates.forEach(el => {
             if (el.getAttribute(COMMAND_HINT_ATTR) === 'true') return;
-            
+
             // Skip badges for home.html links
             const href = el.getAttribute('href');
             if (href && normalizeLinkTarget(href) === 'home.html') {
                 return;
             }
-            
+
             el.setAttribute(COMMAND_HINT_ATTR, 'true');
             el.classList.add('commandable-hinted');
 
