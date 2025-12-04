@@ -231,6 +231,21 @@
             </div>
         </div>
 
+        <!-- Chat Panel -->
+        <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+            <button id="chatToggle" class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left font-semibold flex justify-between items-center">
+                <span>💬 Ask a Question</span>
+                <span id="chatToggleIcon" class="text-gray-400">▼</span>
+            </button>
+            <div id="chatPanel" class="hidden">
+                <div id="chatMessages" class="h-48 overflow-y-auto p-4 bg-white space-y-3 text-sm"></div>
+                <div class="p-3 bg-gray-50 border-t flex gap-2">
+                    <input type="text" id="chatInput" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm" placeholder="Ask about vocabulary, grammar, meaning...">
+                    <button id="chatSendBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Send</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Pattern Reference -->
         <div class="mt-8 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
             <h3 class="font-bold mb-2">📚 Grammar Patterns Used (15 total)</h3>
@@ -1225,6 +1240,123 @@ Grade this translation with a percentage and brief feedback.`
             });
             activeBtn.classList.remove('border-gray-300', 'hover:bg-gray-100');
             activeBtn.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+        }
+
+        // ========== Chat ==========
+        let chatHistory = [];
+
+        document.getElementById('chatToggle').addEventListener('click', () => {
+            const panel = document.getElementById('chatPanel');
+            const icon = document.getElementById('chatToggleIcon');
+            panel.classList.toggle('hidden');
+            icon.textContent = panel.classList.contains('hidden') ? '▼' : '▲';
+        });
+
+        document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            // Add user message to UI
+            addChatMessage('user', message);
+            input.value = '';
+
+            // Get current context
+            const item = currentData[currentIndex];
+            const context = `
+The student is practicing a Chinese dialogue for an oral test (CHIN 111).
+Current mode: ${currentMode}
+Current line being studied:
+- Speaker: ${item.speaker}
+- Chinese: ${item.chinese}
+- Pinyin: ${item.pinyin}
+- English: ${item.english}
+- Grammar patterns: ${item.patterns.join(', ') || 'none'}
+
+Full dialogue context (17 lines between Sam, Daniel, and Jeremy about cooking vs ordering takeout).
+`;
+
+            // Build messages
+            const messages = [
+                {
+                    role: 'system',
+                    content: `You are a helpful Chinese language tutor. The student is practicing a dialogue for their Chinese class.
+${context}
+Help them understand vocabulary, grammar, pronunciation, or anything else about the dialogue.
+Keep answers concise but helpful. Use pinyin when mentioning Chinese words.`
+                },
+                ...chatHistory.slice(-6), // Keep last 6 messages for context
+                { role: 'user', content: message }
+            ];
+
+            // Show typing indicator
+            const typingId = addChatMessage('assistant', '...');
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'moonshotai/kimi-k2-instruct-0905',
+                        messages: messages,
+                        max_tokens: 300,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+                const result = await response.json();
+                const reply = result.choices[0]?.message?.content || 'Sorry, no response.';
+
+                // Update typing indicator with actual response
+                updateChatMessage(typingId, reply);
+
+                // Save to history
+                chatHistory.push({ role: 'user', content: message });
+                chatHistory.push({ role: 'assistant', content: reply });
+
+            } catch (err) {
+                console.error('Chat error:', err);
+                updateChatMessage(typingId, 'Error: ' + err.message);
+            }
+        }
+
+        function addChatMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            const id = 'msg-' + Date.now();
+            const isUser = role === 'user';
+            const html = `
+                <div id="${id}" class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="${isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'} px-3 py-2 rounded-lg max-w-[80%]">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+
+        function updateChatMessage(id, content) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.querySelector('div').innerHTML = content.replace(/\n/g, '<br>');
+            }
         }
 
         // Initial render
