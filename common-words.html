@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Common Words & Connectives - Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
+
+    <div class="flex min-h-screen">
+        <!-- Mode Selector Sidebar -->
+        <div class="w-64 bg-white shadow-lg p-4 overflow-y-auto">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Quiz Modes</h2>
+            <div class="flex flex-col gap-2">
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500 text-left text-sm" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-tones-mc">Char → Pinyin (Tones MC)</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="study">Study Mode</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-4 md:p-8">
+            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Common Words & Connectives</h1>
+                <p class="text-center text-gray-500 text-sm mb-6">High-frequency words for dictation practice</p>
+
+                <!-- Question Display -->
+                <div id="questionDisplay" class="text-center"></div>
+
+                <!-- Upcoming Preview (below question) -->
+                <div id="upcomingCharacters" class="hidden text-center mt-4">
+                    <div class="preview-list flex justify-center gap-4 text-4xl text-gray-300"></div>
+                    <div class="text-xs uppercase tracking-widest text-gray-400 mt-2">Upcoming</div>
+                </div>
+
+                <!-- Hint -->
+                <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+                <!-- Audio Section -->
+                <div id="audioSection" class="text-center my-4 hidden">
+                    <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+                </div>
+
+                <!-- Type Mode -->
+                <div id="typeMode" class="space-y-4">
+                    <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+                    <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+                </div>
+
+                <!-- Choice Mode -->
+                <div id="choiceMode" class="hidden">
+                    <div id="options" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Fuzzy Mode -->
+                <div id="fuzzyMode" class="hidden space-y-4">
+                    <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Stroke Order Mode -->
+                <div id="strokeOrderMode" class="hidden">
+                    <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
+                </div>
+
+                <!-- Handwriting Mode -->
+                <div id="handwritingMode" class="hidden">
+                    <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
+                    <div id="handwritingWriter" class="flex justify-center gap-2 my-8"></div>
+                    <div class="flex justify-center gap-3">
+                        <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer</button>
+                        <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+                    </div>
+                    <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-3">Space: show → tap ✓ correct · hold ✗ wrong</p>
+                </div>
+
+                <!-- Draw Character Mode -->
+                <div id="drawCharMode" class="hidden">
+                    <div class="text-center mb-4">
+                        <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold"></div>
+                        <div class="text-sm text-gray-500">Real-time recognition</div>
+                    </div>
+                    <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
+                    <div class="flex gap-3 justify-center mt-4">
+                        <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">Clear</button>
+                        <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">Submit</button>
+                        <button id="fullscreenDrawBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">Fullscreen</button>
+                    </div>
+                </div>
+
+                <!-- Study Mode -->
+                <div id="studyMode" class="hidden">
+                    <div class="text-center text-gray-600 mb-4">Study common words organized by category</div>
+                    <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+                </div>
+
+                <!-- Missing Component Mode -->
+                <div id="missingComponentMode" class="hidden">
+                    <input type="text" id="componentInput" placeholder="Type component pinyin..." class="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg text-center mb-4">
+                    <div id="componentOptions" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Character Building Mode -->
+                <div id="charBuildingMode" class="hidden">
+                    <input type="text" id="charBuildingInput" placeholder="Type component pinyin..." class="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg text-center mb-4">
+                    <div id="charBuildingOptions" class="grid grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Feedback -->
+                <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+                <!-- Stats -->
+                <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+                    <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+                    <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const characters = [
+            // === CONJUNCTIONS & CONNECTIVES ===
+            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but', category: 'Connectives' },
+            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because; since', category: 'Connectives' },
+            { char: '虽然', pinyin: 'suīrán', meaning: 'although', category: 'Connectives' },
+            { char: '那么', pinyin: 'nà.me', meaning: 'well then; then', category: 'Connectives' },
+            { char: '而', pinyin: 'ér', meaning: 'and; yet', category: 'Connectives' },
+            { char: '但是', pinyin: 'dàn.shì', meaning: 'but', category: 'Connectives' },
+            { char: '却', pinyin: 'què', meaning: 'but; however', category: 'Connectives' },
+            { char: '所以', pinyin: 'suǒ.yǐ', meaning: 'therefore', category: 'Connectives' },
+            { char: '只要', pinyin: 'zhǐyào', meaning: 'as long as; provided that', category: 'Connectives' },
+            { char: '和', pinyin: 'hé', meaning: 'and', category: 'Connectives' },
+            { char: '跟', pinyin: 'gēn', meaning: 'and; with; to', category: 'Connectives' },
+
+            // === PARTICLES ===
+            { char: '的', pinyin: 'de', meaning: 'particle for modification', category: 'Particles' },
+            { char: '了', pinyin: 'le', meaning: 'particle for new situation / completed action', category: 'Particles' },
+            { char: '呢', pinyin: 'ne', meaning: 'particle for follow-up questions', category: 'Particles' },
+            { char: '吗', pinyin: '.ma', meaning: 'particle for simple questions', category: 'Particles' },
+            { char: '啊', pinyin: '.a', meaning: 'particle showing obviousness', category: 'Particles' },
+            { char: '着', pinyin: '.zhe', meaning: 'keep on V-ing (aspect particle)', category: 'Particles' },
+            { char: '得', pinyin: '.de', meaning: 'predicative complement marker', category: 'Particles' },
+
+            // === ADVERBS ===
+            { char: '也', pinyin: 'yě', meaning: 'also; too', category: 'Adverbs' },
+            { char: '都', pinyin: 'dōu', meaning: 'in all cases; all', category: 'Adverbs' },
+            { char: '还', pinyin: 'hái', meaning: 'still; also', category: 'Adverbs' },
+            { char: '很', pinyin: 'hěn', meaning: 'very', category: 'Adverbs' },
+            { char: '就', pinyin: 'jiù', meaning: 'sooner than expected; as early as', category: 'Adverbs' },
+            { char: '才', pinyin: 'cái', meaning: 'later than expected; only then', category: 'Adverbs' },
+            { char: '又', pinyin: 'yòu', meaning: 'again', category: 'Adverbs' },
+            { char: '并', pinyin: 'bìng', meaning: 'actually (not); used for emphasis', category: 'Adverbs' },
+            { char: '只是', pinyin: 'zhǐ.shì', meaning: 'only; just', category: 'Adverbs' },
+            { char: '常', pinyin: 'cháng', meaning: 'often', category: 'Adverbs' },
+            { char: '太', pinyin: 'tài', meaning: 'too; excessively', category: 'Adverbs' },
+            { char: '真', pinyin: 'zhēn', meaning: 'really', category: 'Adverbs' },
+            { char: '完全', pinyin: 'wánquán', meaning: 'completely; entirely', category: 'Adverbs' },
+
+            // === COMMON VERBS ===
+            { char: '是', pinyin: 'shì', meaning: 'is; am; are', category: 'Common Verbs' },
+            { char: '有', pinyin: 'yǒu', meaning: 'have; there be', category: 'Common Verbs' },
+            { char: '没有', pinyin: 'méiyǒu', meaning: 'have not; there is not', category: 'Common Verbs' },
+            { char: '在', pinyin: 'zài', meaning: 'be located in; at; on', category: 'Common Verbs' },
+            { char: '说', pinyin: 'shuō', meaning: 'speak; say; talk', category: 'Common Verbs' },
+            { char: '来', pinyin: 'lái', meaning: 'come', category: 'Common Verbs' },
+            { char: '去', pinyin: 'qù', meaning: 'go', category: 'Common Verbs' },
+            { char: '想', pinyin: 'xiǎng', meaning: 'think; want', category: 'Common Verbs' },
+            { char: '知道', pinyin: 'zhīdao', meaning: 'know', category: 'Common Verbs' },
+            { char: '觉得', pinyin: 'jué.de', meaning: 'think; feel', category: 'Common Verbs' },
+            { char: '会', pinyin: 'huì', meaning: 'could; would; can', category: 'Common Verbs' },
+            { char: '可以', pinyin: 'kěyǐ', meaning: 'can; may', category: 'Common Verbs' },
+            { char: '得', pinyin: 'děi', meaning: 'have to; must', category: 'Common Verbs' },
+            { char: '给', pinyin: 'gěi', meaning: 'give; for; to', category: 'Common Verbs' },
+            { char: '问', pinyin: 'wèn', meaning: 'ask', category: 'Common Verbs' },
+            { char: '回答', pinyin: 'huídá', meaning: 'answer; respond', category: 'Common Verbs' },
+            { char: '请', pinyin: 'qǐng', meaning: 'please; request', category: 'Common Verbs' },
+            { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' },
+            { char: '懂', pinyin: 'dǒng', meaning: 'understand', category: 'Common Verbs' },
+            { char: '看', pinyin: 'kàn', meaning: 'see; look', category: 'Common Verbs' },
+            { char: '听', pinyin: 'tīng', meaning: 'listen; hear', category: 'Common Verbs' },
+            { char: '写', pinyin: 'xiě', meaning: 'write', category: 'Common Verbs' },
+            { char: '叫', pinyin: 'jiào', meaning: 'call; be called; tell', category: 'Common Verbs' },
+            { char: '包括', pinyin: 'bāokuò', meaning: 'include', category: 'Common Verbs' },
+
+            // === TIME WORDS ===
+            { char: '现在', pinyin: 'xiànzài', meaning: 'now', category: 'Time Words' },
+            { char: '以前', pinyin: 'yǐqián', meaning: 'before', category: 'Time Words' },
+            { char: '后来', pinyin: 'hòulái', meaning: 'later', category: 'Time Words' },
+            { char: '那时', pinyin: 'nàshí', meaning: 'that time', category: 'Time Words' },
+            { char: '时候', pinyin: 'shí.hou', meaning: 'time', category: 'Time Words' },
+            { char: '今天', pinyin: 'jīntiān', meaning: 'today', category: 'Time Words' },
+            { char: '有时', pinyin: 'yǒushí', meaning: 'sometimes', category: 'Time Words' },
+            { char: '每天', pinyin: 'měitiān', meaning: 'every day', category: 'Time Words' },
+            { char: '下次', pinyin: 'xiàcì', meaning: 'next time', category: 'Time Words' },
+            { char: '从小', pinyin: 'cóngxiǎo', meaning: "from one's childhood", category: 'Time Words' },
+            { char: '整天', pinyin: 'zhěngtiān', meaning: 'all day long; always', category: 'Time Words' },
+            { char: '时间', pinyin: 'shíjiān', meaning: 'time', category: 'Time Words' },
+
+            // === QUESTION WORDS ===
+            { char: '什么', pinyin: 'shén.me', meaning: 'what', category: 'Question Words' },
+            { char: '哪儿', pinyin: 'nǎr', meaning: 'where', category: 'Question Words' },
+            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why', category: 'Question Words' },
+            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come', category: 'Question Words' },
+            { char: '几', pinyin: 'jǐ', meaning: 'several; a few; how many', category: 'Question Words' },
+            { char: '有没有', pinyin: 'yǒu méiyǒu', meaning: 'have or not? are there?', category: 'Question Words' },
+            { char: '对不对', pinyin: 'duì.bu.duì', meaning: 'Is it correct?', category: 'Question Words' },
+
+            // === PRONOUNS ===
+            { char: '我', pinyin: 'wǒ', meaning: 'I; me', category: 'Pronouns' },
+            { char: '你', pinyin: 'nǐ', meaning: 'you', category: 'Pronouns' },
+            { char: '他', pinyin: 'tā', meaning: 'he; him', category: 'Pronouns' },
+            { char: '她', pinyin: 'tā', meaning: 'she; her', category: 'Pronouns' },
+            { char: '我们', pinyin: 'wǒ.men', meaning: 'we; us', category: 'Pronouns' },
+            { char: '他们', pinyin: 'tā.men', meaning: 'they; them', category: 'Pronouns' },
+            { char: '这', pinyin: 'zhè', meaning: 'this; these', category: 'Pronouns' },
+            { char: '那', pinyin: 'nà', meaning: 'that; those', category: 'Pronouns' },
+            { char: '有的', pinyin: 'yǒu.de', meaning: 'some', category: 'Pronouns' },
+
+            // === PREPOSITIONS ===
+            { char: '从', pinyin: 'cóng', meaning: 'from', category: 'Prepositions' },
+            { char: '到', pinyin: 'dào', meaning: 'to; arrive', category: 'Prepositions' },
+            { char: '比', pinyin: 'bǐ', meaning: 'compare (than)', category: 'Prepositions' },
+            { char: '照', pinyin: 'zhào', meaning: 'according to', category: 'Prepositions' },
+
+            // === COMMON PHRASES & PATTERNS ===
+            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little', category: 'Common Phrases' },
+            { char: '一样', pinyin: 'yīyàng', meaning: 'same', category: 'Common Phrases' },
+            { char: '不一定', pinyin: 'bùyīdìng', meaning: 'not necessarily', category: 'Common Phrases' },
+            { char: '对了', pinyin: 'duì.le', meaning: "that's right", category: 'Common Phrases' },
+            { char: '一定', pinyin: 'yídìng', meaning: 'certainly; for sure; must', category: 'Common Phrases' },
+            { char: '不好意思', pinyin: 'bùhǎoyì.si', meaning: 'embarrassing; sorry', category: 'Common Phrases' },
+            { char: '没法', pinyin: 'méi.fǎ', meaning: "no way; can't", category: 'Common Phrases' },
+            { char: '很难说', pinyin: 'hěnnánshuō', meaning: "It's hard to say", category: 'Common Phrases' },
+            { char: '就是', pinyin: 'jiù.shì', meaning: 'be exactly', category: 'Common Phrases' },
+            { char: '只有', pinyin: 'zhǐyǒu', meaning: "there's only", category: 'Common Phrases' },
+            { char: '到底', pinyin: 'dàodǐ', meaning: 'after all (emphatic use)', category: 'Common Phrases' },
+            { char: '还是', pinyin: 'háishì', meaning: 'or; still', category: 'Common Phrases' },
+            { char: '看起来', pinyin: 'kàn.qi.lái', meaning: 'look like, seem', category: 'Common Phrases' },
+            { char: '看不出来', pinyin: 'kàn.bù.chū.lái', meaning: "can't figure out by looking", category: 'Common Phrases' },
+
+            // === MEASURE WORDS ===
+            { char: '个', pinyin: 'gè', meaning: 'general measure word', category: 'Measure Words' },
+            { char: '张', pinyin: 'zhāng', meaning: 'measure word for flat things', category: 'Measure Words' },
+            { char: '门', pinyin: 'mén', meaning: 'measure word for courses', category: 'Measure Words' },
+            { char: '些', pinyin: 'xiē', meaning: '"plural" measure word', category: 'Measure Words' },
+            { char: '次', pinyin: 'cì', meaning: 'measure word for time/instance', category: 'Measure Words' },
+            { char: '点', pinyin: 'diǎn', meaning: 'measure word for hours on clock', category: 'Measure Words' },
+
+            // === NEGATION ===
+            { char: '不', pinyin: 'bù', meaning: 'no; not', category: 'Negation' },
+            { char: '没', pinyin: 'méi', meaning: 'have not; did not', category: 'Negation' },
+            { char: '别', pinyin: 'bié', meaning: "don't (imperative)", category: 'Negation' },
+
+            // === DIRECTION/LOCATION ===
+            { char: '上', pinyin: 'shàng', meaning: 'in; on; up', category: 'Direction' },
+            { char: '里', pinyin: 'lǐ', meaning: 'inside', category: 'Direction' },
+            { char: '边', pinyin: 'biān', meaning: 'side', category: 'Direction' },
+            { char: '附近', pinyin: 'fùjìn', meaning: 'nearby; vicinity', category: 'Direction' }
+        ];
+
+        // Initialize the quiz with the modular engine
+        initQuiz(characters, {
+            enablePreviewQueue: true,
+            previewQueueSize: 1,
+            previewElementId: 'upcomingCharacters',
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+        });
+    </script>
+</body>
+</html>
