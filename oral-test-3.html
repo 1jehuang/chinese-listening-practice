@@ -32,6 +32,7 @@
         };
 
         // Chinese voices: zh-CN-XiaoxiaoNeural (female), zh-CN-YunxiNeural (male)
+        // Returns a promise that resolves when audio finishes
         window.edgeTTS = async function(text, voice = 'zh-CN-XiaoxiaoNeural') {
             // Always stop any existing audio first
             window.stopAllTTS();
@@ -40,40 +41,45 @@
             ttsLock = true;
             const myLock = ttsLock;
 
-            try {
-                const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
-                if (!cleanText.trim()) return;
+            return new Promise(async (resolve) => {
+                try {
+                    const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                    if (!cleanText.trim()) { resolve(); return; }
 
-                // Edge TTS uses rate like "+20%" or "-30%"
-                const ratePercent = Math.round((window.ttsSpeed - 1) * 100);
-                const rateStr = ratePercent >= 0 ? `+${ratePercent}%` : `${ratePercent}%`;
-                const tts = new EdgeTTS(cleanText, voice, { rate: rateStr });
-                const result = await tts.synthesize();
+                    // Edge TTS uses rate like "+20%" or "-30%"
+                    const ratePercent = Math.round((window.ttsSpeed - 1) * 100);
+                    const rateStr = ratePercent >= 0 ? `+${ratePercent}%` : `${ratePercent}%`;
+                    const tts = new EdgeTTS(cleanText, voice, { rate: rateStr });
+                    const result = await tts.synthesize();
 
-                // Check if we're still the active request
-                if (!ttsLock || myLock !== ttsLock) return;
+                    // Check if we're still the active request
+                    if (!ttsLock || myLock !== ttsLock) { resolve(); return; }
 
-                const audio = new Audio(URL.createObjectURL(new Blob([result.audio], { type: 'audio/mp3' })));
-                currentAudio = audio;
-                audio.play();
-                audio.onended = () => {
-                    if (currentAudio === audio) {
-                        currentAudio = null;
-                        ttsLock = false;
-                    }
-                };
-            } catch (err) {
-                console.error('Edge TTS error:', err);
-                // Fallback to browser TTS
-                if (!ttsLock) return;
-                speechSynthesis.cancel();
-                const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
-                const utterance = new SpeechSynthesisUtterance(cleanText);
-                utterance.lang = 'zh-CN';
-                utterance.rate = window.ttsSpeed * 0.85;
-                utterance.onend = () => { ttsLock = false; };
-                speechSynthesis.speak(utterance);
-            }
+                    const audio = new Audio(URL.createObjectURL(new Blob([result.audio], { type: 'audio/mp3' })));
+                    currentAudio = audio;
+                    audio.onended = () => {
+                        if (currentAudio === audio) {
+                            currentAudio = null;
+                            ttsLock = false;
+                        }
+                        resolve();
+                    };
+                    audio.onerror = () => resolve();
+                    audio.play();
+                } catch (err) {
+                    console.error('Edge TTS error:', err);
+                    // Fallback to browser TTS
+                    if (!ttsLock) { resolve(); return; }
+                    speechSynthesis.cancel();
+                    const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                    const utterance = new SpeechSynthesisUtterance(cleanText);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = window.ttsSpeed * 0.85;
+                    utterance.onend = () => { ttsLock = false; resolve(); };
+                    utterance.onerror = () => resolve();
+                    speechSynthesis.speak(utterance);
+                }
+            });
         };
 
         window.stopTTS = window.stopAllTTS;
@@ -792,17 +798,17 @@ Grade this translation with a percentage and brief feedback.`
                         document.getElementById('flowStatus').innerHTML = '<span class="text-red-600">❌ Missed! That was your line!</span>';
                         document.getElementById('flowTimer').classList.add('hidden');
 
-                        // Play the line anyway, then continue
-                        speakChinese(item.chinese);
-                        setTimeout(() => playFlowLine(dialogueIndex + 1), 3000);
+                        // Play the line anyway, then continue when done
+                        speakChinese(item.chinese).then(() => {
+                            if (flowRunning) playFlowLine(dialogueIndex + 1);
+                        });
                     }
                 }, FLOW_WAIT_TIME);
             } else {
-                // Other speaker - play audio and continue
-                speakChinese(item.chinese);
-                // Estimate speech duration (rough: 300ms per character)
-                const duration = Math.max(1500, item.chinese.length * 300);
-                setTimeout(() => playFlowLine(dialogueIndex + 1), duration);
+                // Other speaker - play audio and continue when done
+                speakChinese(item.chinese).then(() => {
+                    if (flowRunning) playFlowLine(dialogueIndex + 1);
+                });
             }
         }
 
@@ -822,9 +828,10 @@ Grade this translation with a percentage and brief feedback.`
             const currentItem = dialogue[flowIndex];
             const jeremyIdx = dialogue.findIndex((d, i) => i >= flowIndex && d.speaker === 'Jeremy');
             if (jeremyIdx >= 0) {
-                // Play Jeremy's line, then continue
-                speakChinese(dialogue[jeremyIdx].chinese);
-                setTimeout(() => playFlowLine(jeremyIdx + 1), 3000);
+                // Play Jeremy's line, then continue when done
+                speakChinese(dialogue[jeremyIdx].chinese).then(() => {
+                    if (flowRunning) playFlowLine(jeremyIdx + 1);
+                });
             }
         }
 
@@ -1122,21 +1129,25 @@ Grade this translation with a percentage and brief feedback.`
             }
         });
 
-        // Audio playback
-        function speakChinese(text) {
+        // Audio playback - returns promise that resolves when done
+        async function speakChinese(text) {
             // Always stop any existing audio first (synchronous)
             if (window.stopAllTTS) window.stopAllTTS();
 
             // Use Edge TTS if available (natural sounding), fallback to browser TTS
             if (window.edgeTTS) {
-                window.edgeTTS(text);
+                return window.edgeTTS(text);
             } else {
-                const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
-                const utterance = new SpeechSynthesisUtterance(cleanText);
-                utterance.lang = 'zh-CN';
-                utterance.rate = 0.85;
-                speechSynthesis.cancel();
-                speechSynthesis.speak(utterance);
+                return new Promise((resolve) => {
+                    const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                    const utterance = new SpeechSynthesisUtterance(cleanText);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.85;
+                    utterance.onend = resolve;
+                    utterance.onerror = resolve;
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(utterance);
+                });
             }
         }
 
