@@ -1188,8 +1188,8 @@ Grade this translation with a percentage and brief feedback.`
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Ctrl+. replays audio (works everywhere, not a browser shortcut)
-            if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+            // Ctrl+J replays audio (works everywhere)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
                 e.preventDefault();
                 if (currentMode === 'translate' || currentMode === 'english-to-chinese' || currentMode === 'role-jeremy') {
                     const item = currentData[currentIndex];
