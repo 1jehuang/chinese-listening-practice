@@ -1190,6 +1190,14 @@ Grade this translation with a percentage and brief feedback.`
         document.addEventListener('keydown', (e) => {
             // Allow typing in inputs/textareas, except for specific shortcuts
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                // Escape replays audio in translate mode (works in textbox)
+                if (currentMode === 'translate' && e.key === 'Escape') {
+                    e.preventDefault();
+                    const item = currentData[currentIndex];
+                    speakChinese(item.chinese);
+                    return;
+                }
+
                 // In translate mode, space after feedback advances to next
                 if (currentMode === 'translate' && e.key === ' ') {
                     const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
@@ -1213,6 +1221,14 @@ Grade this translation with a percentage and brief feedback.`
 
             // Translate mode shortcuts
             if (currentMode === 'translate') {
+                // Escape replays audio
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    const item = currentData[currentIndex];
+                    speakChinese(item.chinese);
+                    return;
+                }
+
                 const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
 
                 // Space after feedback advances to next
@@ -1222,14 +1238,6 @@ Grade this translation with a percentage and brief feedback.`
                         currentIndex++;
                         updateDisplay();
                     }
-                    return;
-                }
-
-                // 'r' or Enter replays audio
-                if (e.key === 'r' || e.key === 'Enter') {
-                    e.preventDefault();
-                    const item = currentData[currentIndex];
-                    speakChinese(item.chinese);
                     return;
                 }
             }
