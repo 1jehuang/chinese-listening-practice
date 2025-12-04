@@ -638,7 +638,11 @@ Grade this translation with a percentage and brief feedback.`
                 }
 
                 explanationEl.textContent = explanation;
-                referenceEl.innerHTML = `<strong>Reference:</strong> ${item.english}`;
+                referenceEl.innerHTML = `
+                    <div class="mb-1"><strong>Chinese:</strong> ${item.chinese}</div>
+                    <div class="text-xs text-gray-400 mb-1">${item.pinyin}</div>
+                    <div><strong>Reference:</strong> ${item.english}</div>
+                `;
                 feedbackEl.classList.remove('hidden');
 
             } catch (err) {
