@@ -4069,6 +4069,7 @@ function generateQuestion(options = {}) {
     if (mode === 'char-to-pinyin') {
         renderDictationSentence(currentQuestion);
         typeMode.style.display = 'block';
+        if (answerInput) answerInput.placeholder = 'Type your answer...';
         setTimeout(() => answerInput.focus(), 100);
     } else if (mode === 'char-to-tones' && choiceMode) {
         // Use MC mode with tone buttons and three-column layout
@@ -4076,13 +4077,16 @@ function generateQuestion(options = {}) {
     } else if (mode === 'audio-to-pinyin' && audioSection) {
         questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div>`;
         typeMode.style.display = 'block';
+        if (answerInput) answerInput.placeholder = 'Type your answer...';
         audioSection.classList.remove('hidden');
         setupAudioMode({ focusAnswer: true });
-    } else if (mode === 'audio-to-meaning' && audioSection && fuzzyMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div><div class="text-center text-lg text-gray-500 -mt-4">Type to filter meanings</div>`;
+    } else if (mode === 'audio-to-meaning' && audioSection && typeMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div><div class="text-center text-lg text-gray-500 -mt-4">Type your English translation</div>`;
         audioSection.classList.remove('hidden');
-        generateFuzzyMeaningOptions();
-        fuzzyMode.style.display = 'block';
+        typeMode.style.display = 'block';
+        if (answerInput) {
+            answerInput.placeholder = 'Type your translation...';
+        }
         setupAudioMode({ focusAnswer: true });
     } else if (mode === 'char-to-pinyin-mc' && choiceMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
@@ -4542,6 +4546,135 @@ function checkAnswer() {
 
         if (!syllableMatched) {
             handleWrongAnswer();
+        }
+    } else if (mode === 'audio-to-meaning') {
+        // Use Groq API with Kimi K2 to grade the translation
+        checkTranslationWithGroq(userAnswer);
+        return;
+    }
+}
+
+async function checkTranslationWithGroq(userTranslation) {
+    const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+    if (!apiKey) {
+        feedback.innerHTML = '<span class="text-red-600">Please set your Groq API key first.</span><br><span class="text-sm text-gray-500">Press Ctrl+K and search for "Set Groq API Key"</span>';
+        feedback.className = 'text-center text-lg font-semibold my-4';
+        return;
+    }
+
+    // Show loading state
+    if (checkBtn) {
+        checkBtn.textContent = 'Grading...';
+        checkBtn.disabled = true;
+    }
+    feedback.textContent = '⏳ Grading your translation...';
+    feedback.className = 'text-center text-xl font-semibold my-4 text-gray-500';
+
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'moonshotai/kimi-k2-instruct',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are a Chinese language teacher evaluating English translations of Chinese sentences.
+IMPORTANT: Ignore grammar mistakes, spelling errors, and typos in the English. Only grade the ACCURACY of the translation meaning.
+Give a percentage grade (0-100%) and a brief explanation.
+Format: Start with "GRADE: X%" on its own line, then explain in 1-2 sentences.
+90-100%: Excellent, captures meaning accurately
+70-89%: Good, minor issues or missing nuance
+50-69%: Partial, gets main idea but significant issues
+Below 50%: Needs work, meaning not conveyed`
+                    },
+                    {
+                        role: 'user',
+                        content: `Chinese: ${currentQuestion.char}
+Reference translation: ${currentQuestion.meaning}
+Student's translation: ${userTranslation}
+
+Grade this translation with a percentage and brief feedback.`
+                    }
+                ],
+                max_tokens: 150,
+                temperature: 0.3
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const feedbackText = result.choices[0]?.message?.content || 'No feedback received.';
+
+        // Parse result
+        const gradeMatch = feedbackText.match(/GRADE:\s*(\d+)%/i) || feedbackText.match(/(\d+)%/);
+        const grade = gradeMatch ? parseInt(gradeMatch[1]) : null;
+        const explanation = feedbackText.replace(/GRADE:\s*\d+%\s*/gi, '').trim();
+
+        // Update stats based on grade
+        if (!answered) {
+            answered = true;
+            total++;
+            if (grade !== null && grade >= 70) {
+                score++;
+                lastAnswerCorrect = true;
+                playCorrectSound();
+            } else {
+                lastAnswerCorrect = false;
+                playWrongSound();
+            }
+        }
+
+        // Display feedback
+        if (grade !== null) {
+            let colorClass, emoji;
+            if (grade >= 90) {
+                colorClass = 'text-green-600';
+                emoji = '✓';
+            } else if (grade >= 70) {
+                colorClass = 'text-yellow-600';
+                emoji = '○';
+            } else if (grade >= 50) {
+                colorClass = 'text-orange-600';
+                emoji = '△';
+            } else {
+                colorClass = 'text-red-600';
+                emoji = '✗';
+            }
+
+            feedback.innerHTML = `<span class="${colorClass} text-2xl font-bold">${emoji} ${grade}%</span><br><span class="text-base text-gray-700">${explanation}</span>`;
+            feedback.className = 'text-center my-4';
+        } else {
+            feedback.innerHTML = `<span class="text-gray-600">${feedbackText}</span>`;
+            feedback.className = 'text-center text-lg my-4';
+        }
+
+        // Show reference
+        hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${currentQuestion.pinyin})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
+        hint.className = 'text-center my-2';
+
+        updateStats();
+
+        // Clear input
+        if (answerInput) answerInput.value = '';
+
+        // Schedule next question
+        scheduleNextQuestion(grade >= 70 ? 2000 : 3000);
+
+    } catch (error) {
+        console.error('Groq API error:', error);
+        feedback.innerHTML = `<span class="text-red-600">Error grading translation: ${error.message}</span>`;
+        feedback.className = 'text-center text-lg font-semibold my-4';
+    } finally {
+        if (checkBtn) {
+            checkBtn.textContent = 'Check Answer';
+            checkBtn.disabled = false;
         }
     }
 }
