@@ -1077,12 +1077,39 @@ Evaluate the student's translation. Is it correct? Explain briefly.`
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            // Allow typing in inputs/textareas, except for specific shortcuts
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                // In translate mode, space after feedback advances to next
+                if (currentMode === 'translate' && e.key === ' ') {
+                    const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
+                    if (feedbackVisible) {
+                        e.preventDefault();
+                        if (currentIndex < currentData.length - 1) {
+                            currentIndex++;
+                            updateDisplay();
+                        }
+                    }
+                }
+                return;
+            }
 
             // Flow mode space handling
             if (currentMode === 'flow' && e.key === ' ') {
                 e.preventDefault();
                 handleFlowSpace();
+                return;
+            }
+
+            // Translate mode space after feedback
+            if (currentMode === 'translate' && e.key === ' ') {
+                const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
+                if (feedbackVisible) {
+                    e.preventDefault();
+                    if (currentIndex < currentData.length - 1) {
+                        currentIndex++;
+                        updateDisplay();
+                    }
+                }
                 return;
             }
 
