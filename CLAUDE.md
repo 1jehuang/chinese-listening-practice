@@ -28,6 +28,23 @@
 
 ## Default UI Patterns
 
+### Page Layout (Sidebar + Main Content)
+When creating new practice/quiz pages, use the **sidebar layout** pattern from `lesson-7-part-1.html` as the default. This layout includes:
+- **Left sidebar** (16rem width): Mode buttons, settings, speed controls
+- **Main content area**: Header, quiz display, input section
+- Full viewport height (`100vh`), no scroll on body
+- Responsive: sidebar hides on mobile
+
+Key CSS structure:
+```css
+.app-container { display: flex; height: 100vh; }
+.sidebar { width: 16rem; flex-shrink: 0; }
+.main-content { flex: 1; display: flex; flex-direction: column; }
+.quiz-display { flex: 1; overflow-y: auto; }
+```
+
+Reference: `lesson-7-part-1.html` for complete implementation.
+
 ### Three-Column Layout (Default)
 When implementing new quiz modes, use the **three-column layout** as the default pattern. This layout shows:
 - **Left column (Previous)**: The last completed question with result indicator (✓/✗)
