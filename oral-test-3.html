@@ -466,6 +466,9 @@
             document.getElementById('translateInput').value = '';
             document.getElementById('translateFeedback').classList.add('hidden');
             document.getElementById('translateProgress').textContent = `${currentIndex + 1} / ${currentData.length}`;
+
+            // Auto-play audio
+            setTimeout(() => speakChinese(item.chinese), 300);
         }
 
         document.getElementById('translatePrompt').addEventListener('click', () => {
