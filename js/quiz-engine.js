@@ -322,6 +322,30 @@ const BKT_MASTERY_THRESHOLD = 0.85;  // P(Learned) >= this means "mastered"
 
 // Hanzi Writer
 let writer = null;
+const HANZI_WRITER_CDN = 'https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js';
+let hanziWriterReadyPromise = null;
+
+function ensureHanziWriterLoaded() {
+    if (typeof HanziWriter !== 'undefined') return Promise.resolve();
+    if (hanziWriterReadyPromise) return hanziWriterReadyPromise;
+
+    hanziWriterReadyPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = HANZI_WRITER_CDN;
+        script.async = true;
+        script.onload = () => {
+            if (typeof HanziWriter !== 'undefined') {
+                resolve();
+            } else {
+                reject(new Error('Hanzi Writer script loaded but window.HanziWriter is missing'));
+            }
+        };
+        script.onerror = () => reject(new Error('Failed to load Hanzi Writer script'));
+        document.head.appendChild(script);
+    });
+
+    return hanziWriterReadyPromise;
+}
 
 // Canvas drawing variables
 let canvas, ctx;
@@ -8541,9 +8565,17 @@ function scheduleNextQuestion(delay) {
 // SPECIAL MODES (Stroke Order, Handwriting, Draw, Study)
 // =============================================================================
 
-function initStrokeOrder() {
+async function initStrokeOrder() {
     const writerDiv = document.getElementById('strokeOrderWriter');
-    if (!writerDiv || typeof HanziWriter === 'undefined') return;
+    if (!writerDiv) return;
+
+    // Make touch input reliable on mobile (prevent scroll/selection from eating strokes)
+    writerDiv.style.touchAction = 'none';
+    writerDiv.style.userSelect = 'none';
+    writerDiv.style.webkitUserSelect = 'none';
+    writerDiv.style.msUserSelect = 'none';
+    writerDiv.style.webkitTapHighlightColor = 'transparent';
+    writerDiv.setAttribute('aria-label', 'Stroke order tracing area');
 
     writerDiv.innerHTML = '';
 
@@ -8557,13 +8589,25 @@ function initStrokeOrder() {
     if (!statusEl) {
         statusEl = document.createElement('div');
         statusEl.id = 'strokeOrderStatus';
-        statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
         strokeOrderMode.appendChild(statusEl);
-    } else {
-        statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
     }
+    statusEl.className = 'text-center text-xl font-semibold my-4 text-blue-600';
+    statusEl.textContent = 'Loading strokes…';
 
-    statusEl.textContent = 'Trace each stroke in order';
+    const showError = (msg) => {
+        statusEl.textContent = msg;
+        statusEl.className = 'text-center text-xl font-semibold my-4 text-red-600';
+        feedback.textContent = msg;
+        feedback.className = 'text-center text-lg font-semibold my-4 text-red-600';
+    };
+
+    try {
+        await ensureHanziWriterLoaded();
+    } catch (err) {
+        console.warn(err);
+        showError('Could not load the stroke-order engine. Check your connection and retry.');
+        return;
+    }
 
     feedback.textContent = characters.length > 1
         ? 'Draw the strokes for each character in order.'
@@ -8597,6 +8641,7 @@ function initStrokeOrder() {
                 initializeCharacter();
                 return;
             }
+            showError('Could not start stroke-order quiz. Try another word or refresh.');
             scheduleNextQuestion(0);
             return;
         }
@@ -8608,7 +8653,11 @@ function initStrokeOrder() {
 
         let completed = false;
 
+        // Slightly more lenient + allow backwards strokes to reduce false negatives
         writer.quiz({
+            leniency: 1.2,
+            showHintAfterMisses: 2,
+            acceptBackwardsStrokes: true,
             onMistake: () => {
                 if (statusEl) {
                     statusEl.textContent = `✗ Wrong stroke. Try again. (${currentIndex + 1}/${characters.length})`;
