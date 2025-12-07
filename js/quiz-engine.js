@@ -5518,13 +5518,14 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
 
         // For non-chunk translation modes, use three-column instant transition
         if (mode === 'audio-to-meaning' || mode === 'text-to-meaning') {
-            // Store the current question as previous
+            // Store the current question as previous with explanation and reference
             translationPreviousQuestion = currentQuestion;
             translationPreviousResult = {
                 grade: grade || 0,
-                explanation: explanation,
+                explanation: explanation || '',
                 userAnswer: userTranslation,
-                colorCodedAnswer: colorCodedAnswer || escapeHtml(userTranslation)
+                colorCodedAnswer: colorCodedAnswer || escapeHtml(userTranslation),
+                reference: currentQuestion.meaning || ''
             };
 
             // Clear feedback and hint - they're now shown in the three-column layout
@@ -5553,12 +5554,14 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
 
         // For chunk modes, use three-column layout with instant transitions
         if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
-            // Store previous chunk info
+            // Store previous chunk info with explanation and reference
             chunksPreviousChunk = currentQuestion;
             chunksPreviousResult = {
                 grade: grade || 0,
                 userAnswer: userTranslation,
-                colorCodedAnswer: colorCodedAnswer || escapeHtml(userTranslation)
+                colorCodedAnswer: colorCodedAnswer || escapeHtml(userTranslation),
+                explanation: explanation || '',
+                reference: currentQuestion.meaning || ''
             };
 
             // Clear feedback and hint - shown in three-column layout
@@ -7953,6 +7956,30 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
     let prevColumnContent = '';
     if (prev && prevResult) {
         const userAnswerHtml = prevResult.colorCodedAnswer || escapeHtml(prevResult.userAnswer || '');
+        const isCorrect = prevResult.grade >= 70;
+
+        // Build explanation section if there are errors
+        let explanationHtml = '';
+        if (!isCorrect && prevResult.explanation) {
+            explanationHtml = `
+                <div style="font-size: 11px; margin-top: 6px; padding: 4px 6px; background: #fef3c7; border-radius: 4px; color: #92400e; max-width: 200px; line-height: 1.3;">
+                    ${escapeHtml(prevResult.explanation)}
+                </div>
+            `;
+        }
+
+        // Build reference (correct answer) section
+        let referenceHtml = '';
+        const refMeaning = prevResult.reference || prevMeaning;
+        if (refMeaning) {
+            referenceHtml = `
+                <div style="font-size: 11px; margin-top: 4px; padding: 4px 6px; background: #ecfdf5; border-radius: 4px; max-width: 200px;">
+                    <div style="color: #047857; font-size: 9px; text-transform: uppercase; margin-bottom: 2px;">Correct:</div>
+                    <div style="color: #065f46; line-height: 1.3;">${escapeHtml(refMeaning)}</div>
+                </div>
+            `;
+        }
+
         prevColumnContent = `
             <div class="column-feedback">
                 <span class="column-result-icon">${prevResultIcon}</span>
@@ -7964,7 +7991,8 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
                 <div style="color: #64748b; font-size: 11px; text-transform: uppercase; margin-bottom: 2px;">Your answer:</div>
                 <div style="color: #334155; line-height: 1.4;">${userAnswerHtml}</div>
             </div>
-            <div class="column-meaning" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${prevMeaning}</div>
+            ${explanationHtml}
+            ${referenceHtml}
         `;
     } else {
         prevColumnContent = '<div class="column-placeholder">Your last answer will appear here</div>';
@@ -8151,6 +8179,29 @@ function renderThreeColumnChunksLayout(isAudioMode = false) {
     let prevColumnContent = '';
     if (prev && prevResult) {
         const userAnswerHtml = prevResult.colorCodedAnswer || escapeHtml(prevResult.userAnswer || '');
+        const isCorrect = prevResult.grade >= 70;
+
+        // Build explanation section if there are errors
+        let explanationHtml = '';
+        if (!isCorrect && prevResult.explanation) {
+            explanationHtml = `
+                <div style="font-size: 11px; margin-top: 6px; padding: 4px 6px; background: #fef3c7; border-radius: 4px; color: #92400e; max-width: 180px; line-height: 1.3;">
+                    ${escapeHtml(prevResult.explanation)}
+                </div>
+            `;
+        }
+
+        // Build reference (correct answer) section
+        let referenceHtml = '';
+        if (prevResult.reference) {
+            referenceHtml = `
+                <div style="font-size: 11px; margin-top: 4px; padding: 4px 6px; background: #ecfdf5; border-radius: 4px; max-width: 180px;">
+                    <div style="color: #047857; font-size: 9px; text-transform: uppercase; margin-bottom: 2px;">Correct:</div>
+                    <div style="color: #065f46; line-height: 1.3;">${escapeHtml(prevResult.reference)}</div>
+                </div>
+            `;
+        }
+
         prevColumnContent = `
             <div class="column-feedback">
                 <span class="column-result-icon">${prevResultIcon}</span>
@@ -8161,6 +8212,8 @@ function renderThreeColumnChunksLayout(isAudioMode = false) {
                 <div style="color: #64748b; font-size: 10px; text-transform: uppercase; margin-bottom: 2px;">Your answer:</div>
                 <div style="color: #334155; line-height: 1.3;">${userAnswerHtml}</div>
             </div>
+            ${explanationHtml}
+            ${referenceHtml}
         `;
     } else {
         prevColumnContent = '<div class="column-placeholder">Your last answer will appear here</div>';
