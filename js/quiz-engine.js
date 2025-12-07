@@ -2813,7 +2813,7 @@ function setChatPanelVisible(visible) {
     createChatPanel();
 
     const pullTab = document.getElementById('confidencePullTab');
-    const appContainer = document.querySelector('.app-container');
+    const mainContent = document.querySelector('.main-content');
     const chatPanelWidth = 320; // w-80 = 20rem = 320px
 
     if (chatPanelVisible) {
@@ -2821,9 +2821,9 @@ function setChatPanelVisible(visible) {
         // Hide confidence panel (chat replaces it on the right)
         setConfidencePanelVisible(false);
         if (pullTab) pullTab.style.display = 'none';
-        // Add padding so content doesn't go under chat
-        if (appContainer) {
-            appContainer.style.paddingRight = `${chatPanelWidth + 16}px`;
+        // Add margin so content doesn't go under chat
+        if (mainContent) {
+            mainContent.style.marginRight = `${chatPanelWidth}px`;
         }
         // Focus chat input
         setTimeout(() => {
@@ -2838,11 +2838,9 @@ function setChatPanelVisible(visible) {
         chatPanel.style.transform = 'translateX(100%)';
         // Restore pull tab
         if (pullTab) pullTab.style.display = '';
-        // Remove padding (let confidence panel manage it if visible)
-        if (appContainer && !confidencePanelVisible) {
-            appContainer.style.paddingRight = '0px';
-        } else if (appContainer && confidencePanelVisible) {
-            updateConfidenceLayoutSpacing(confidencePanel?.offsetWidth || 240);
+        // Remove margin (let confidence panel manage spacing if visible)
+        if (mainContent) {
+            mainContent.style.marginRight = confidencePanelVisible ? `${(confidencePanel?.offsetWidth || 240) + 16}px` : '0px';
         }
         // Focus quiz input
         focusQuizInput();
