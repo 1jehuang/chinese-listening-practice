@@ -8640,6 +8640,8 @@ async function initStrokeOrder() {
                 delayBetweenStrokes: 0,
                 renderer: 'canvas' // canvas is more reliable for touch/pointer tracing across browsers
             });
+            // Expose for debugging/automation (e.g., Playwright checks)
+            try { window.writer = writer; } catch (_) {}
 
             // Ensure the drawing surface itself ignores scrolling/selection quirks on touch devices
             const surface = writerDiv.querySelector('canvas, svg');
