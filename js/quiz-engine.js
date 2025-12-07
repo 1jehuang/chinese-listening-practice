@@ -2955,7 +2955,16 @@ async function sendChatMessage() {
         document.getElementById('chatTyping')?.remove();
 
         if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+            const errorBody = await response.text();
+            let errorMsg = `API error ${response.status}`;
+            try {
+                const errorJson = JSON.parse(errorBody);
+                errorMsg = errorJson.error?.message || errorMsg;
+            } catch {}
+            if (response.status === 401) {
+                errorMsg = 'Invalid API key. Please set a valid Groq API key (Ctrl+K → "Set Groq API Key")';
+            }
+            throw new Error(errorMsg);
         }
 
         const result = await response.json();

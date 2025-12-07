@@ -34,9 +34,8 @@ body.experimental-layout #confidencePanel #confidenceList {
     max-height: none !important;
 }
 
-/* Add breathing room so content doesn't sit under the right pane */
+/* Padding is managed by JS based on whether confidence panel is visible */
 body.experimental-layout .app-container {
-    padding-right: 16rem;
     min-height: 100vh;
 }
 
