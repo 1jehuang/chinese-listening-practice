@@ -2519,10 +2519,29 @@ function saveConfidencePanelVisibility() {
 
 function setConfidencePanelVisible(visible) {
     confidencePanelVisible = Boolean(visible);
-    if (confidencePanel) {
-        confidencePanel.classList.toggle('hidden', !confidencePanelVisible);
-    }
     const toggleBtn = document.getElementById('confidenceToggleBtn');
+    const list = document.getElementById('confidenceList');
+    const summary = document.getElementById('confidenceSummary');
+    const header = confidencePanel?.querySelector('.text-sm.font-semibold');
+    const goalBadge = document.getElementById('confidenceGoalBadge');
+
+    if (confidencePanel) {
+        // Toggle between full width and collapsed
+        if (confidencePanelVisible) {
+            confidencePanel.classList.remove('w-12');
+            confidencePanel.classList.add('w-60');
+        } else {
+            confidencePanel.classList.remove('w-60');
+            confidencePanel.classList.add('w-12');
+        }
+    }
+
+    // Hide/show content elements
+    if (list) list.classList.toggle('hidden', !confidencePanelVisible);
+    if (summary) summary.classList.toggle('hidden', !confidencePanelVisible);
+    if (header) header.classList.toggle('hidden', !confidencePanelVisible);
+    if (goalBadge && !confidencePanelVisible) goalBadge.classList.add('hidden');
+
     if (toggleBtn) {
         toggleBtn.textContent = confidencePanelVisible ? 'Hide' : 'Show';
         toggleBtn.setAttribute('aria-pressed', confidencePanelVisible ? 'true' : 'false');
