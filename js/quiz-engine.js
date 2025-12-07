@@ -8670,55 +8670,67 @@ async function initStrokeOrder() {
         let completed = false;
 
         // Slightly more lenient + allow backwards strokes to reduce false negatives
-        writer.quiz({
-            leniency: 1.2,
-            showHintAfterMisses: 2,
-            acceptBackwardsStrokes: true,
-            onMistake: () => {
-                if (statusEl) {
-                    statusEl.textContent = `✗ Wrong stroke. Try again. (${currentIndex + 1}/${characters.length})`;
-                    statusEl.className = 'text-center text-xl font-semibold my-4 text-red-600';
-                }
-            },
-            onCorrectStroke: (strokeData) => {
-                if (!statusEl) return;
-                const currentStroke = strokeData.strokeNum + 1;
-                const totalStrokes = strokeData.strokesRemaining + currentStroke;
-                statusEl.textContent = `✓ Stroke ${currentStroke}/${totalStrokes} (${currentIndex + 1}/${characters.length})`;
-                statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
-            },
-            onComplete: () => {
-                if (completed) return;
-                completed = true;
+        const startQuiz = async () => {
+            try {
+                await writer.quiz({
+                    leniency: 1.2,
+                    showHintAfterMisses: 2,
+                    acceptBackwardsStrokes: true,
+                    onMistake: () => {
+                        if (statusEl) {
+                            statusEl.textContent = `✗ Wrong stroke. Try again. (${currentIndex + 1}/${characters.length})`;
+                            statusEl.className = 'text-center text-xl font-semibold my-4 text-red-600';
+                        }
+                    },
+                    onCorrectStroke: (strokeData) => {
+                        if (!statusEl) return;
+                        const currentStroke = strokeData.strokeNum + 1;
+                        const totalStrokes = strokeData.strokesRemaining + currentStroke;
+                        statusEl.textContent = `✓ Stroke ${currentStroke}/${totalStrokes} (${currentIndex + 1}/${characters.length})`;
+                        statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+                    },
+                    onComplete: () => {
+                        if (completed) return;
+                        completed = true;
 
-                if (currentIndex < characters.length - 1) {
-                    currentIndex++;
-                    statusEl.textContent = `✓ Character complete! (${currentIndex}/${characters.length})`;
-                    statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
-                    setTimeout(() => initializeCharacter(), 400);
-                    return;
-                }
+                        if (currentIndex < characters.length - 1) {
+                            currentIndex++;
+                            statusEl.textContent = `✓ Character complete! (${currentIndex}/${characters.length})`;
+                            statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+                            setTimeout(() => initializeCharacter(), 400);
+                            return;
+                        }
 
-                playCorrectSound();
-                lastAnswerCorrect = true;
-                if (!answered) {
-                    answered = true;
-                    total++;
-                    score++;
-                }
+                        playCorrectSound();
+                        lastAnswerCorrect = true;
+                        if (!answered) {
+                            answered = true;
+                            total++;
+                            score++;
+                        }
 
-                statusEl.textContent = '✓ All characters complete!';
-                statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
+                        statusEl.textContent = '✓ All characters complete!';
+                        statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
 
-                feedback.textContent = `Great job! ${currentQuestion.char} (${currentQuestion.pinyin})`;
-                feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-                hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-                hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+                        feedback.textContent = `Great job! ${currentQuestion.char} (${currentQuestion.pinyin})`;
+                        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+                        hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+                        hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
 
-                updateStats();
-                scheduleNextQuestion(1500);
+                        updateStats();
+                        scheduleNextQuestion(1500);
+                    }
+                });
+            } catch (quizErr) {
+                console.warn('Stroke-order quiz failed to start', quizErr);
+                showError('Could not start stroke-order quiz. Try another word or refresh.');
             }
-        });
+        };
+
+        startQuiz();
+
+        return; // end initializeCharacter
+
     };
 
     initializeCharacter();
