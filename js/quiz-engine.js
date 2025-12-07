@@ -211,6 +211,17 @@ let chatPanel = null;
 let chatMessages = [];
 const CHAT_PANEL_KEY = 'quiz_chat_panel_visible';
 
+// Global debug function - call window.testChat() in browser console
+window.testChat = function() {
+    console.log('=== Chat Debug ===');
+    console.log('chatPanelVisible:', chatPanelVisible);
+    console.log('toggleChatPanel exists:', typeof toggleChatPanel === 'function');
+    console.log('setChatPanelVisible exists:', typeof setChatPanelVisible === 'function');
+    console.log('Calling setChatPanelVisible(true)...');
+    setChatPanelVisible(true);
+    console.log('Done');
+};
+
 // BKT (Bayesian Knowledge Tracing) parameters
 // These model within-session learning probability
 const BKT_PARAMS = {
