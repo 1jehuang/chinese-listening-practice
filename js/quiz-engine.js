@@ -11073,6 +11073,7 @@ function initQuizCommandPalette() {
         });
 
         // Chat panel toggle
+        console.log('[DEBUG] Adding chat action, toggleChatPanel exists:', typeof toggleChatPanel === 'function');
         actions.push({
             name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
             type: 'action',
