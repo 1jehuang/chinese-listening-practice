@@ -205,6 +205,12 @@ const CONFIDENCE_FORMULAS = {
 };
 let confidenceFormula = CONFIDENCE_FORMULAS.BKT;
 
+// Chat panel state
+let chatPanelVisible = false;
+let chatPanel = null;
+let chatMessages = [];
+const CHAT_PANEL_KEY = 'quiz_chat_panel_visible';
+
 // BKT (Bayesian Knowledge Tracing) parameters
 // These model within-session learning probability
 const BKT_PARAMS = {
@@ -2561,6 +2567,241 @@ function setHideMeaningChoices(value, options = {}) {
 
 function toggleHideMeaningChoices() {
     setHideMeaningChoices(!hideMeaningChoices);
+}
+
+// ============================================================================
+// CHAT PANEL
+// ============================================================================
+
+function createChatPanel() {
+    if (chatPanel) return chatPanel;
+
+    chatPanel = document.createElement('div');
+    chatPanel.id = 'chatPanel';
+    chatPanel.className = 'fixed top-0 left-0 bottom-0 w-80 bg-white border-r border-gray-200 shadow-lg flex flex-col z-50';
+    chatPanel.style.cssText = 'transform: translateX(-100%); transition: transform 0.2s ease;';
+    chatPanel.innerHTML = `
+        <div class="p-3 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <div class="text-sm font-semibold text-gray-900">Quiz Chat</div>
+                <div class="text-xs text-gray-500">Ask about the current question</div>
+            </div>
+            <button id="chatCloseBtn" class="text-gray-400 hover:text-gray-600 p-1" title="Close (Ctrl+H)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+        <div class="p-3 border-t border-gray-200">
+            <div class="flex gap-2">
+                <input type="text" id="chatInput" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none" placeholder="Ask a question... (Enter to send)">
+                <button id="chatSendBtn" class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition">Send</button>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">Ctrl+L to focus quiz • Ctrl+H to focus chat</div>
+        </div>
+    `;
+    document.body.appendChild(chatPanel);
+
+    // Event listeners
+    const closeBtn = document.getElementById('chatCloseBtn');
+    const sendBtn = document.getElementById('chatSendBtn');
+    const chatInput = document.getElementById('chatInput');
+
+    closeBtn?.addEventListener('click', () => setChatPanelVisible(false));
+    sendBtn?.addEventListener('click', sendChatMessage);
+    chatInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+
+    return chatPanel;
+}
+
+function setChatPanelVisible(visible) {
+    chatPanelVisible = Boolean(visible);
+    createChatPanel();
+
+    const sidebar = document.querySelector('.sidebar');
+    const pullTab = document.getElementById('confidencePullTab');
+
+    if (chatPanelVisible) {
+        chatPanel.style.transform = 'translateX(0)';
+        // Hide left sidebar and confidence panel
+        if (sidebar) sidebar.style.display = 'none';
+        setConfidencePanelVisible(false);
+        if (pullTab) pullTab.style.display = 'none';
+        // Focus chat input
+        setTimeout(() => {
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput) chatInput.focus();
+        }, 200);
+        // Add context message if empty
+        if (chatMessages.length === 0) {
+            addChatContext();
+        }
+    } else {
+        chatPanel.style.transform = 'translateX(-100%)';
+        // Restore sidebar
+        if (sidebar) sidebar.style.display = '';
+        if (pullTab) pullTab.style.display = '';
+        // Focus quiz input
+        focusQuizInput();
+    }
+
+    saveChatPanelVisibility();
+}
+
+function toggleChatPanel() {
+    setChatPanelVisible(!chatPanelVisible);
+}
+
+function focusQuizInput() {
+    const input = document.getElementById('answerInput') || document.getElementById('fuzzyInput');
+    if (input) {
+        setTimeout(() => input.focus(), 100);
+    }
+}
+
+function focusChatInput() {
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) chatInput.focus();
+}
+
+function addChatContext() {
+    const contextMsg = buildQuizContext();
+    chatMessages.push({
+        role: 'system',
+        content: contextMsg
+    });
+    // Show context summary to user
+    appendChatMessage('assistant', `I have context about your quiz. Current question: "${currentQuestion?.char || 'None'}".\n\nAsk me anything about vocabulary, grammar, or the current sentence!`);
+}
+
+function buildQuizContext() {
+    const context = [];
+    context.push('You are a helpful Chinese language tutor assistant. The user is practicing Chinese.');
+
+    if (currentQuestion) {
+        context.push(`\nCurrent question:`);
+        context.push(`- Chinese: ${currentQuestion.char}`);
+        if (currentQuestion.pinyin) context.push(`- Pinyin: ${currentQuestion.pinyin}`);
+        if (currentQuestion.meaning) context.push(`- Meaning: ${currentQuestion.meaning}`);
+    }
+
+    if (currentFullSentence && currentFullSentence !== currentQuestion) {
+        context.push(`\nFull sentence context:`);
+        context.push(`- Chinese: ${currentFullSentence.char}`);
+        if (currentFullSentence.meaning) context.push(`- Meaning: ${currentFullSentence.meaning}`);
+    }
+
+    context.push(`\nQuiz mode: ${mode}`);
+    context.push(`Score: ${score}/${total}`);
+
+    // Add some vocabulary context
+    const recentWords = quizCharacters.slice(0, 10).map(w => `${w.char} (${w.pinyin || ''}) - ${w.meaning || ''}`).join('\n');
+    if (recentWords) {
+        context.push(`\nSome vocabulary from this lesson:\n${recentWords}`);
+    }
+
+    context.push('\nHelp the user understand the Chinese. Explain grammar, vocabulary, or cultural context as needed. Keep responses concise.');
+
+    return context.join('\n');
+}
+
+function appendChatMessage(role, content) {
+    const messagesEl = document.getElementById('chatMessages');
+    if (!messagesEl) return;
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = role === 'user'
+        ? 'ml-8 p-2 bg-blue-50 rounded-lg text-sm text-gray-800'
+        : 'mr-8 p-2 bg-gray-100 rounded-lg text-sm text-gray-800';
+
+    msgDiv.innerHTML = `<div class="text-xs text-gray-500 mb-1">${role === 'user' ? 'You' : 'Assistant'}</div><div class="whitespace-pre-wrap">${escapeHtml(content)}</div>`;
+    messagesEl.appendChild(msgDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function sendChatMessage() {
+    const chatInput = document.getElementById('chatInput');
+    if (!chatInput) return;
+
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    chatInput.value = '';
+    appendChatMessage('user', message);
+
+    // Add to messages history
+    chatMessages.push({ role: 'user', content: message });
+
+    // Call Groq API
+    const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+    if (!apiKey) {
+        appendChatMessage('assistant', 'Please set your Groq API key first. Press Ctrl+K and search for "Set Groq API Key".');
+        return;
+    }
+
+    // Show typing indicator
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'mr-8 p-2 bg-gray-100 rounded-lg text-sm text-gray-500';
+    typingDiv.innerHTML = 'Thinking...';
+    typingDiv.id = 'chatTyping';
+    document.getElementById('chatMessages')?.appendChild(typingDiv);
+
+    try {
+        const systemMsg = chatMessages.find(m => m.role === 'system');
+        const userMsgs = chatMessages.filter(m => m.role !== 'system').slice(-10); // Last 10 messages
+
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-70b-versatile',
+                messages: [
+                    { role: 'system', content: systemMsg?.content || buildQuizContext() },
+                    ...userMsgs
+                ],
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+
+        document.getElementById('chatTyping')?.remove();
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const reply = result.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+
+        chatMessages.push({ role: 'assistant', content: reply });
+        appendChatMessage('assistant', reply);
+
+    } catch (error) {
+        document.getElementById('chatTyping')?.remove();
+        appendChatMessage('assistant', `Error: ${error.message}`);
+    }
+}
+
+function saveChatPanelVisibility() {
+    try {
+        localStorage.setItem(CHAT_PANEL_KEY, chatPanelVisible ? '1' : '0');
+    } catch (e) {}
+}
+
+function loadChatPanelVisibility() {
+    try {
+        const stored = localStorage.getItem(CHAT_PANEL_KEY);
+        if (stored === '1') {
+            setChatPanelVisible(true);
+        }
+    } catch (e) {}
 }
 
 // Setup keyboard shortcut hints that appear when inputs are not focused
@@ -6347,9 +6588,9 @@ function loadTimerSettings() {
 
     try {
         const storedEnabled = window.localStorage.getItem(TIMER_ENABLED_KEY);
-        // Default to enabled if not set
+        // Default to disabled if not set
         if (storedEnabled === null) {
-            timerEnabled = true;
+            timerEnabled = false;
         } else if (storedEnabled === '1') {
             timerEnabled = true;
         } else if (storedEnabled === '0') {
@@ -10273,6 +10514,27 @@ function handleQuizHotkeys(e) {
         return;
     }
 
+    // Ctrl+H: Focus chat / toggle chat panel
+    if (!e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        if (chatPanelVisible) {
+            focusChatInput();
+        } else {
+            setChatPanelVisible(true);
+        }
+        return;
+    }
+
+    // Ctrl+L: Focus quiz input / close chat if open
+    if (!e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        if (chatPanelVisible) {
+            setChatPanelVisible(false);
+        }
+        focusQuizInput();
+        return;
+    }
+
     // Char-to-tones mode: number keys 1-5 select tone directly
     if (mode === 'char-to-tones' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         if (isTypingTarget(target)) return;
@@ -10786,6 +11048,61 @@ function initQuizCommandPalette() {
             },
             available: () => schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR,
             scope: 'Feed mode only'
+        });
+
+        // Chat panel toggle
+        actions.push({
+            name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
+            type: 'action',
+            description: chatPanelVisible
+                ? 'Close the quiz chat panel (Ctrl+L)'
+                : 'Open chat to ask questions about the current quiz (Ctrl+H)',
+            keywords: 'chat ask question help tutor assistant open close toggle',
+            action: () => toggleChatPanel(),
+            available: () => true,
+            scope: 'This page only'
+        });
+
+        // Timer controls
+        actions.push({
+            name: timerEnabled ? 'Disable Timer' : 'Enable Timer',
+            type: 'action',
+            description: timerEnabled
+                ? 'Turn off the auto-submit timer'
+                : `Enable auto-submit timer (${timerSeconds} seconds)`,
+            keywords: 'timer auto submit countdown enable disable toggle',
+            action: () => {
+                timerEnabled = !timerEnabled;
+                saveTimerSettings();
+                updateTimerDisplay();
+                if (timerEnabled && !answered) {
+                    startTimer();
+                } else {
+                    stopTimer();
+                }
+            },
+            available: () => true,
+            scope: 'All pages'
+        });
+
+        actions.push({
+            name: 'Set Timer Duration',
+            type: 'action',
+            description: `Change the auto-submit timer duration (currently ${timerSeconds}s)`,
+            keywords: 'timer duration seconds time limit set configure',
+            action: () => {
+                const input = prompt(`Enter timer duration in seconds (current: ${timerSeconds}):`, timerSeconds.toString());
+                if (input) {
+                    const val = parseInt(input, 10);
+                    if (val > 0 && val <= 300) {
+                        timerSeconds = val;
+                        saveTimerSettings();
+                        updateTimerDisplay();
+                    }
+                }
+            },
+            available: () => true,
+            scope: 'All pages'
         });
 
         return actions;
