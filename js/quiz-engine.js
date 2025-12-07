@@ -2656,13 +2656,19 @@ function renderConfidenceRow(entry, isBKT, minScore, maxScore) {
         ? '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">✓</span>'
         : '';
 
+    // For long text (sentences), use smaller font and truncate
+    const charText = item.char || '?';
+    const isLongText = charText.length > 6;
+    const displayChar = isLongText ? charText.slice(0, 12) + (charText.length > 12 ? '…' : '') : charText;
+    const charClass = isLongText ? 'text-sm' : 'text-2xl';
+
     return `
         <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
-            <div class="flex items-center gap-2 min-w-0">
-                <span class="text-2xl font-semibold text-gray-900">${escapeHtml(item.char || '?')}</span>
-                <div class="min-w-0">
-                    ${pinyin ? `<div class="text-xs text-gray-600 truncate">${escapeHtml(pinyin)}</div>` : ''}
-                    <div class="text-[11px] text-gray-500">${served ? `${accPct}% · ${served} seen` : 'new'}</div>
+            <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+                <span class="${charClass} font-semibold text-gray-900 truncate" title="${escapeHtml(charText)}">${escapeHtml(displayChar)}</span>
+                <div class="min-w-0 shrink-0">
+                    ${pinyin ? `<div class="text-xs text-gray-600 truncate max-w-[60px]">${escapeHtml(pinyin.slice(0, 8))}${pinyin.length > 8 ? '…' : ''}</div>` : ''}
+                    <div class="text-[11px] text-gray-500 whitespace-nowrap">${served ? `${accPct}% · ${served}` : 'new'}</div>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
