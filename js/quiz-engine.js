@@ -7738,6 +7738,64 @@ function renderThreeColumnPinyinLayout() {
 }
 
 // ============================================================
+// Display Question (re-render current question without selecting a new one)
+// ============================================================
+
+function displayQuestion() {
+    if (!currentQuestion) return;
+
+    // Mark this question as served in the scheduler
+    window.currentQuestion = currentQuestion;
+    markSchedulerServed(currentQuestion);
+
+    // Clear input fields
+    if (answerInput) answerInput.value = '';
+    if (fuzzyInput) fuzzyInput.value = '';
+
+    // Reset dictation state
+    resetDictationState();
+
+    // Render based on mode
+    if (mode === 'char-to-pinyin') {
+        renderThreeColumnPinyinDictationLayout(false);
+        if (typeMode) typeMode.style.display = 'block';
+        if (answerInput) {
+            answerInput.placeholder = 'Type pinyin...';
+            setTimeout(() => answerInput.focus(), 50);
+        }
+    } else if (mode === 'audio-to-pinyin') {
+        renderThreeColumnPinyinDictationLayout(true);
+        if (typeMode) typeMode.style.display = 'block';
+        if (audioSection) audioSection.classList.remove('hidden');
+        if (answerInput) {
+            answerInput.placeholder = 'Type pinyin...';
+            setTimeout(() => answerInput.focus(), 50);
+        }
+        // Re-setup audio mode for the new question
+        setupAudioMode({ focusAnswer: true });
+    } else if (mode === 'audio-to-meaning') {
+        renderThreeColumnTranslationLayout(true);
+        if (typeMode) typeMode.style.display = 'block';
+        if (audioSection) audioSection.classList.remove('hidden');
+        if (answerInput) {
+            answerInput.placeholder = 'Type your translation...';
+            setTimeout(() => answerInput.focus(), 50);
+        }
+        setupAudioMode({ focusAnswer: true });
+    } else if (mode === 'text-to-meaning') {
+        renderThreeColumnTranslationLayout(false);
+        if (typeMode) typeMode.style.display = 'block';
+        if (answerInput) {
+            answerInput.placeholder = 'Type your translation...';
+            setTimeout(() => answerInput.focus(), 50);
+        }
+    } else {
+        // Fallback: for other modes, just call generateQuestion
+        generateQuestion();
+    }
+}
+
+// ============================================================
 // Three-Column Translation Layout (audio-to-meaning, text-to-meaning)
 // ============================================================
 
