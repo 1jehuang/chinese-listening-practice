@@ -1182,7 +1182,7 @@ function upgradeLegacyLessonLayoutIfNeeded() {
     appContainer.className = 'app-container';
 
     const aside = document.createElement('aside');
-    aside.className = 'sidebar w-64 bg-white shadow-lg';
+    aside.className = 'sidebar w-52 bg-white shadow-lg text-sm';
 
     let sidebarTitle = sidebarWrapper?.querySelector('h2');
     if (sidebarTitle) {
@@ -2528,11 +2528,11 @@ function setConfidencePanelVisible(visible) {
     if (confidencePanel) {
         // Toggle between full width and collapsed
         if (confidencePanelVisible) {
-            confidencePanel.classList.remove('w-12');
-            confidencePanel.classList.add('w-60');
+            confidencePanel.classList.remove('w-10');
+            confidencePanel.classList.add('w-52');
         } else {
-            confidencePanel.classList.remove('w-60');
-            confidencePanel.classList.add('w-12');
+            confidencePanel.classList.remove('w-52');
+            confidencePanel.classList.add('w-10');
         }
     }
 
@@ -2604,7 +2604,7 @@ function ensureConfidencePanel() {
         panel = document.createElement('div');
         panel.id = 'confidencePanel';
         // Fixed right-side panel styling
-        panel.className = 'fixed top-0 right-0 bottom-0 w-60 bg-white border-l border-gray-200 shadow-lg p-4 overflow-hidden flex flex-col z-40';
+        panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 overflow-hidden flex flex-col z-40';
         panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem;';
         panel.innerHTML = `
             <div class="flex items-center justify-between gap-2 mb-2">
@@ -2687,10 +2687,10 @@ function renderConfidenceRow(entry, isBKT, minScore, maxScore) {
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-                <div class="w-14 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div class="h-full ${barColor}" style="width: ${pct}%;"></div>
                 </div>
-                <span class="text-[11px] font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
+                <span class="text-[10px] font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
             </div>
         </div>
     `;
