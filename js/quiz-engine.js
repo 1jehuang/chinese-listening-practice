@@ -21,6 +21,12 @@ let previousQuestionResult = null; // 'correct' or 'incorrect'
 let upcomingQuestion = null;
 let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
+// 3-column layout state for translation modes (audio-to-meaning, text-to-meaning)
+let translationPreviousQuestion = null;
+let translationPreviousResult = null; // { grade: number, explanation: string, userAnswer: string }
+let translationUpcomingQuestion = null;
+let translationInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
+
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
 let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
@@ -292,17 +298,6 @@ let chatPanelVisible = false;
 let chatPanel = null;
 let chatMessages = [];
 const CHAT_PANEL_KEY = 'quiz_chat_panel_visible';
-
-// Global debug function - call window.testChat() in browser console
-window.testChat = function() {
-    console.log('=== Chat Debug ===');
-    console.log('chatPanelVisible:', chatPanelVisible);
-    console.log('toggleChatPanel exists:', typeof toggleChatPanel === 'function');
-    console.log('setChatPanelVisible exists:', typeof setChatPanelVisible === 'function');
-    console.log('Calling setChatPanelVisible(true)...');
-    setChatPanelVisible(true);
-    console.log('Done');
-};
 
 // BKT (Bayesian Knowledge Tracing) parameters
 // These model within-session learning probability
@@ -7580,6 +7575,121 @@ function renderThreeColumnPinyinLayout() {
 }
 
 // ============================================================
+// Three-Column Translation Layout (audio-to-meaning, text-to-meaning)
+// ============================================================
+
+function getTranslationFontSize(text) {
+    const len = (text || '').length;
+    if (len <= 10) return '36px';
+    if (len <= 20) return '28px';
+    if (len <= 40) return '22px';
+    return '18px';
+}
+
+function renderThreeColumnTranslationLayout(isAudioMode = false) {
+    if (!questionDisplay || !currentQuestion) return;
+
+    // Get upcoming question
+    if (!translationUpcomingQuestion) {
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        translationUpcomingQuestion = selectNextQuestion(exclusions);
+    }
+
+    const prev = translationPreviousQuestion;
+    const prevResult = translationPreviousResult;
+    const prevChar = prev ? escapeHtml(prev.char || '') : '';
+    const prevPinyin = prev ? escapeHtml(prev.pinyin || '') : '';
+    const prevMeaning = prev ? escapeHtml(prev.meaning || '') : '';
+
+    // Determine result styling
+    let prevResultClass = '';
+    let prevResultIcon = '•';
+    let prevFeedbackText = 'Reviewed';
+    if (prevResult) {
+        if (prevResult.grade >= 70) {
+            prevResultClass = 'result-correct';
+            prevResultIcon = '✓';
+            prevFeedbackText = `${prevResult.grade}%`;
+        } else {
+            prevResultClass = 'result-incorrect';
+            prevResultIcon = '✗';
+            prevFeedbackText = `${prevResult.grade}%`;
+        }
+    }
+
+    const currentChar = escapeHtml(currentQuestion.char || '');
+    const currentFontSize = getTranslationFontSize(currentQuestion.char);
+
+    const upcomingChar = translationUpcomingQuestion ? escapeHtml(translationUpcomingQuestion.char || '') : '';
+    const upcomingFontSize = getTranslationFontSize(translationUpcomingQuestion?.char);
+
+    const inlineFeedback = translationInlineFeedback;
+
+    // Build previous column content - show user's answer with color-coded feedback
+    let prevColumnContent = '';
+    if (prev && prevResult) {
+        const userAnswerHtml = prevResult.colorCodedAnswer || escapeHtml(prevResult.userAnswer || '');
+        prevColumnContent = `
+            <div class="column-feedback">
+                <span class="column-result-icon">${prevResultIcon}</span>
+                <span class="column-feedback-text">${prevFeedbackText}</span>
+            </div>
+            <div class="column-char" style="font-size: 28px;">${prevChar}</div>
+            <div class="column-pinyin" style="font-size: 13px;">${prevPinyin}</div>
+            <div class="translation-user-answer" style="font-size: 14px; margin-top: 8px; padding: 6px 8px; background: #f8fafc; border-radius: 4px; max-width: 200px;">
+                <div style="color: #64748b; font-size: 11px; text-transform: uppercase; margin-bottom: 2px;">Your answer:</div>
+                <div style="color: #334155; line-height: 1.4;">${userAnswerHtml}</div>
+            </div>
+            <div class="column-meaning" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${prevMeaning}</div>
+        `;
+    } else {
+        prevColumnContent = '<div class="column-placeholder">Your last answer will appear here</div>';
+    }
+
+    // Build current column - show Chinese text or audio icon
+    let currentContent = '';
+    if (isAudioMode) {
+        currentContent = `
+            <div style="font-size: 64px; margin-bottom: 8px;">🔊</div>
+            <div style="font-size: 14px; color: #64748b;">Listen and translate</div>
+        `;
+    } else {
+        currentContent = `<div class="column-char-large" style="font-size: ${currentFontSize}; line-height: 1.3; max-width: 260px; word-wrap: break-word;">${currentChar}</div>`;
+    }
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout three-column-translation-layout">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                ${prevColumnContent}
+            </div>
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+                <div class="column-label">Now</div>
+                <div class="column-focus-ring" style="padding: 12px;">
+                    ${currentContent}
+                </div>
+                ${inlineFeedback ? `
+                    <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+                        ${escapeHtml(inlineFeedback.message || '')}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                ${translationUpcomingQuestion ? `
+                    <div class="column-ondeck">
+                        <div class="column-char" style="font-size: ${upcomingFontSize}; max-width: 180px; word-wrap: break-word; line-height: 1.2;">${upcomingChar}</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
+                ` : `
+                    <div class="column-placeholder">Next card is loading</div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
 // Char-to-Tones MC Mode (three-column layout with tone buttons)
 // ============================================================
 
@@ -11056,7 +11166,6 @@ function updateHandwritingSpaceHint(holding) {
 }
 
 function initQuizCommandPalette() {
-    console.log('[DEBUG] initQuizCommandPalette called');
     const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-type', type: 'mode' },
@@ -11453,23 +11562,17 @@ function initQuizCommandPalette() {
         });
 
         // Chat panel toggle
-        try {
-            console.log('[DEBUG] Adding chat action, chatPanelVisible:', chatPanelVisible, 'toggleChatPanel exists:', typeof toggleChatPanel);
-            actions.push({
-                name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
-                type: 'action',
-                description: chatPanelVisible
-                    ? 'Close the quiz chat panel (Ctrl+L)'
-                    : 'Open chat to ask questions about the current quiz (Ctrl+H)',
-                keywords: 'chat ask question help tutor assistant open close toggle',
-                action: () => { console.log('[DEBUG] chat action clicked'); toggleChatPanel(); },
-                available: () => true,
-                scope: 'This page only'
-            });
-            console.log('[DEBUG] Chat action added successfully');
-        } catch (e) {
-            console.error('[DEBUG] Failed to add chat action:', e);
-        }
+        actions.push({
+            name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
+            type: 'action',
+            description: chatPanelVisible
+                ? 'Close the quiz chat panel (Ctrl+L)'
+                : 'Open chat to ask questions about the current quiz (Ctrl+H)',
+            keywords: 'chat ask question help tutor assistant open close toggle',
+            action: toggleChatPanel,
+            available: () => true,
+            scope: 'This page only'
+        });
 
         // Timer controls
         actions.push({
@@ -11513,7 +11616,6 @@ function initQuizCommandPalette() {
             scope: 'All pages'
         });
 
-        console.log('[DEBUG] getQuizPaletteActions returning', actions.length, 'actions:', actions.map(a => a.name));
         return actions;
     }
 

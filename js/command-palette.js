@@ -561,7 +561,6 @@ function initCommandPalette(config = []) {
 
     window.__commandPaletteState = {
         updateConfig(newConfig) {
-            console.log('[DEBUG] updateConfig called with', newConfig.items?.length, 'items:', newConfig.items?.map(i => i.name));
             baseItems = newConfig.items;
             if (typeof newConfig.searchPlaceholder === 'string') {
                 search.placeholder = newConfig.searchPlaceholder;
@@ -1090,11 +1089,17 @@ function initCommandPalette(config = []) {
     }
 }
 
-// Auto-initialize command palette when DOM is ready
+// Auto-initialize command palette when DOM is ready (only if not already initialized)
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => initCommandPalette(), { once: true });
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.__commandPaletteState) {
+                initCommandPalette();
+            }
+        }, { once: true });
     } else {
-        initCommandPalette();
+        if (!window.__commandPaletteState) {
+            initCommandPalette();
+        }
     }
 }
