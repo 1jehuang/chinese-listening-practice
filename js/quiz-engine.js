@@ -2523,6 +2523,13 @@ function saveConfidencePanelVisibility() {
     }
 }
 
+function positionConfidencePullTab() {
+    const pullTab = document.getElementById('confidencePullTab');
+    if (!pullTab) return;
+    const panelWidth = confidencePanel?.offsetWidth || 208; // default w-52
+    pullTab.style.right = confidencePanelVisible ? `${panelWidth}px` : '0';
+}
+
 function setConfidencePanelVisible(visible) {
     confidencePanelVisible = Boolean(visible);
     const pullTab = document.getElementById('confidencePullTab');
@@ -2534,7 +2541,7 @@ function setConfidencePanelVisible(visible) {
             confidencePanel.style.transform = 'translateX(0)';
         }
         if (pullTab) {
-            pullTab.style.right = '13rem'; // w-52 = 13rem
+            positionConfidencePullTab();
             pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
         }
         if (content) content.classList.remove('hidden');
