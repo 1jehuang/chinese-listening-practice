@@ -27,6 +27,12 @@ let translationPreviousResult = null; // { grade: number, explanation: string, u
 let translationUpcomingQuestion = null;
 let translationInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
+// 3-column layout state for pinyin dictation modes (audio-to-pinyin, char-to-pinyin)
+let pinyinDictationPreviousQuestion = null;
+let pinyinDictationPreviousResult = null; // 'correct' | 'incorrect'
+let pinyinDictationPreviousUserAnswer = null;
+let pinyinDictationUpcomingQuestion = null;
+
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
 let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
@@ -2807,12 +2813,18 @@ function setChatPanelVisible(visible) {
     createChatPanel();
 
     const pullTab = document.getElementById('confidencePullTab');
+    const appContainer = document.querySelector('.app-container');
+    const chatPanelWidth = 320; // w-80 = 20rem = 320px
 
     if (chatPanelVisible) {
         chatPanel.style.transform = 'translateX(0)';
         // Hide confidence panel (chat replaces it on the right)
         setConfidencePanelVisible(false);
         if (pullTab) pullTab.style.display = 'none';
+        // Add padding so content doesn't go under chat
+        if (appContainer) {
+            appContainer.style.paddingRight = `${chatPanelWidth + 16}px`;
+        }
         // Focus chat input
         setTimeout(() => {
             const chatInput = document.getElementById('chatInput');
@@ -2826,6 +2838,12 @@ function setChatPanelVisible(visible) {
         chatPanel.style.transform = 'translateX(100%)';
         // Restore pull tab
         if (pullTab) pullTab.style.display = '';
+        // Remove padding (let confidence panel manage it if visible)
+        if (appContainer && !confidencePanelVisible) {
+            appContainer.style.paddingRight = '0px';
+        } else if (appContainer && confidencePanelVisible) {
+            updateConfidenceLayoutSpacing(confidencePanel?.offsetWidth || 240);
+        }
         // Focus quiz input
         focusQuizInput();
     }
@@ -2942,7 +2960,7 @@ async function sendChatMessage() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.1-70b-versatile',
+                model: 'moonshotai/kimi-k2-instruct',
                 messages: [
                     { role: 'system', content: systemMsg?.content || buildQuizContext() },
                     ...userMsgs
