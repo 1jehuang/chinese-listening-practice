@@ -84,6 +84,11 @@ const studyModeState = {
     shuffleOrder: null
 };
 
+// Composer (multi-stage) mode state
+let composerEnabled = false;
+let composerStageIndex = 0;
+let composerPipeline = [];
+
 // Ensure a mode button exists; if missing, append one using an existing button as a style template
 function ensureModeButton(mode, label) {
     if (!mode) return;
@@ -104,6 +109,61 @@ function ensureModeButton(mode, label) {
     btn.dataset.mode = mode;
     btn.textContent = label || mode;
     container.appendChild(btn);
+}
+
+// Composer helpers -----------------------------------------------------------
+const DEFAULT_COMPOSER_PIPELINE = [
+    { mode: 'char-to-meaning-type', label: 'Meaning (type)' },
+    { mode: 'char-to-pinyin-type', label: 'Pinyin (MC)' },
+    { mode: 'char-to-pinyin-tones-mc', label: 'Pinyin → Tones' },
+    { mode: 'audio-to-meaning', label: 'Audio → Meaning' },
+    { mode: 'char-to-tones', label: 'Char → Tones' }
+];
+
+function getComposerStageKey() {
+    return `composerStage::${getAdaptivePageKey()}`;
+}
+
+function getComposerEnabledKey() {
+    return `composerEnabled::${getAdaptivePageKey()}`;
+}
+
+function loadComposerState() {
+    try {
+        composerEnabled = localStorage.getItem(getComposerEnabledKey()) === '1';
+        const stage = parseInt(localStorage.getItem(getComposerStageKey()), 10);
+        composerStageIndex = Number.isFinite(stage) ? Math.max(0, stage) : 0;
+    } catch (e) {
+        composerEnabled = false;
+        composerStageIndex = 0;
+    }
+}
+
+function saveComposerState() {
+    try {
+        localStorage.setItem(getComposerEnabledKey(), composerEnabled ? '1' : '0');
+        localStorage.setItem(getComposerStageKey(), String(composerStageIndex));
+    } catch (e) {}
+}
+
+function buildComposerPipeline() {
+    const availableModes = new Set(Array.from(document.querySelectorAll('.mode-btn[data-mode]')).map(b => b.dataset.mode));
+    composerPipeline = DEFAULT_COMPOSER_PIPELINE.filter(step => availableModes.has(step.mode));
+    if (!composerPipeline.length && DEFAULT_COMPOSER_PIPELINE.length) {
+        composerPipeline = DEFAULT_COMPOSER_PIPELINE.slice(0, 1);
+    }
+    composerStageIndex = Math.min(composerStageIndex, Math.max(0, composerPipeline.length - 1));
+}
+
+function getComposerCurrentStage() {
+    if (!composerPipeline.length) return null;
+    return composerPipeline[Math.min(composerStageIndex, composerPipeline.length - 1)];
+}
+
+function setComposerEnabled(enabled) {
+    composerEnabled = enabled;
+    saveComposerState();
+    updateComposerStatusDisplay();
 }
 
 function syncModeLayoutState() {
@@ -1420,7 +1480,16 @@ function loadQuizMode() {
             // Verify the mode button exists on this page
             const btn = document.querySelector(`[data-mode="${stored}"]`);
             if (btn) {
-                mode = stored;
+                if (stored === 'composer') {
+                    composerEnabled = true;
+                    saveComposerState();
+                    const stage = getComposerCurrentStage();
+                    mode = stage ? stage.mode : mode;
+                } else {
+                    mode = stored;
+                    composerEnabled = false;
+                    saveComposerState();
+                }
             }
         }
     } catch (e) {
@@ -1878,6 +1947,29 @@ function getAdaptiveReadiness(char) {
         servedOk, streakOk, confidenceOk, cooldownOk,
         ready: servedOk && streakOk && confidenceOk && cooldownOk
     };
+}
+
+// Composer progression helpers (per-mode mastery)
+function isCharMasteredForMode(char, modeName) {
+    if (!char || !modeName) return false;
+    const skillKey = getCurrentSkillKey(modeName);
+    const stats = getSchedulerStats(char, skillKey);
+    const served = stats.served || 0;
+    const streak = stats.streak || 0;
+    const score = getConfidenceScoreForMode(char, modeName);
+    const threshold = getConfidenceMasteryThreshold();
+    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
+    const servedOk = served >= ADAPTIVE_GRAD_MIN_SERVED;
+    const streakOk = streak >= ADAPTIVE_GRAD_MIN_STREAK;
+    const confidenceOk = Number.isFinite(score) && score >= threshold;
+    const cooldownOk = lastWrongAgo >= ADAPTIVE_RECENT_WRONG_COOLDOWN;
+    return servedOk && streakOk && confidenceOk && cooldownOk;
+}
+
+function isModeFullyMastered(modeName) {
+    if (!modeName || !Array.isArray(quizCharacters)) return false;
+    if (!quizCharacters.length) return false;
+    return quizCharacters.every(q => isCharMasteredForMode(q.char, modeName));
 }
 
 // Debug function - call debugAdaptiveGraduation() in console to see why cards aren't graduating
@@ -2355,6 +2447,15 @@ function getConfidenceScore(char) {
     return getHeuristicConfidenceScore(char);
 }
 
+function getConfidenceScoreForMode(char, modeName) {
+    const skillKey = getCurrentSkillKey(modeName);
+    const stats = getSchedulerStats(char, skillKey);
+    if (confidenceFormula === CONFIDENCE_FORMULAS.BKT) {
+        return stats.bktPLearned ?? BKT_PARAMS.P_L0;
+    }
+    return getHeuristicConfidenceScoreFromStats(stats);
+}
+
 function getConfidenceMasteryThreshold() {
     return confidenceFormula === CONFIDENCE_FORMULAS.BKT
         ? BKT_MASTERY_THRESHOLD
@@ -2367,8 +2468,18 @@ function isConfidenceHighEnough(char) {
     return Number.isFinite(score) && score >= threshold;
 }
 
+function isConfidenceHighEnoughForMode(char, modeName) {
+    const score = getConfidenceScoreForMode(char, modeName);
+    const threshold = getConfidenceMasteryThreshold();
+    return Number.isFinite(score) && score >= threshold;
+}
+
 function getHeuristicConfidenceScore(char) {
     const stats = getSchedulerStats(char);
+    return getHeuristicConfidenceScoreFromStats(stats);
+}
+
+function getHeuristicConfidenceScoreFromStats(stats) {
     const served = stats.served || 0;
     const correct = stats.correct || 0;
     const wrong = stats.wrong || 0;
@@ -3414,6 +3525,75 @@ function updateAdaptiveStatusDisplay() {
     `;
 }
 
+function updateComposerStatusDisplay() {
+    const statusEl = document.getElementById('composerModeStatus');
+    if (!statusEl) return;
+
+    if (!composerEnabled || !composerPipeline.length) {
+        statusEl.innerHTML = '';
+        statusEl.className = 'hidden';
+        return;
+    }
+
+    const currentStage = getComposerCurrentStage();
+    const total = composerPipeline.length;
+    const itemsHtml = composerPipeline.map((step, idx) => {
+        const mastered = isModeFullyMastered(step.mode);
+        const active = idx === composerStageIndex;
+        const cls = mastered ? 'composer-step mastered' : active ? 'composer-step active' : 'composer-step';
+        const readyIcon = mastered ? '✓' : active ? '›' : '';
+        return `<div class="${cls}"><span class="composer-step-icon">${readyIcon}</span><span class="composer-step-label">${step.label}</span></div>`;
+    }).join('');
+
+    // Progress for current stage
+    let masteredCount = 0;
+    let totalChars = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
+    if (currentStage && totalChars) {
+        masteredCount = quizCharacters.filter(q => isCharMasteredForMode(q.char, currentStage.mode)).length;
+    }
+
+    statusEl.className = 'mt-1 text-xs text-emerald-800';
+    statusEl.innerHTML = `
+        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-500">Composer</div>
+        <div class="text-sm text-emerald-900">Stage ${composerStageIndex + 1}/${total}: ${currentStage ? currentStage.label : ''}</div>
+        <div class="text-[11px] text-emerald-700">Mastered ${masteredCount}/${totalChars}</div>
+        <div class="composer-steps">${itemsHtml}</div>
+    `;
+}
+
+function checkComposerAdvance() {
+    if (!composerEnabled) return;
+    const currentStage = getComposerCurrentStage();
+    if (!currentStage) return;
+
+    if (isModeFullyMastered(currentStage.mode)) {
+        if (composerStageIndex < composerPipeline.length - 1) {
+            composerStageIndex++;
+            saveComposerState();
+            const nextStage = getComposerCurrentStage();
+            if (nextStage) {
+                mode = nextStage.mode;
+                saveQuizMode('composer');
+                updateComposerStatusDisplay();
+                // keep composer button highlighted; regenerate
+                generateQuestion();
+                // Give user a visual cue
+                hint.textContent = `Composer → ${nextStage.label}`;
+                hint.className = 'text-center text-lg font-semibold my-2 text-emerald-600';
+            }
+        } else {
+            // Completed all stages
+            updateComposerStatusDisplay();
+            if (hint) {
+                hint.textContent = 'Composer complete — all stages mastered!';
+                hint.className = 'text-center text-lg font-semibold my-2 text-emerald-600';
+            }
+        }
+    } else {
+        updateComposerStatusDisplay();
+    }
+}
+
 function setSchedulerMode(mode) {
     if (!Object.values(SCHEDULER_MODES).includes(mode)) return;
     const switchingToBatch = mode === SCHEDULER_MODES.BATCH_5 && schedulerMode !== SCHEDULER_MODES.BATCH_5;
@@ -3547,6 +3727,7 @@ function ensureSchedulerToolbar() {
             <div id="schedulerModeDescription" class="hidden"></div>
             <div id="batchModeStatus" class="hidden"></div>
             <div id="adaptiveModeStatus" class="hidden"></div>
+            <div id="composerModeStatus" class="hidden"></div>
             <div id="feedModeStatus" class="hidden"></div>
             <div class="flex flex-nowrap gap-1 justify-center items-center overflow-x-auto max-w-full px-2" style="scrollbar-width: none; -ms-overflow-style: none;">
                 <button id="schedulerRandomBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Random</button>
@@ -3637,6 +3818,7 @@ function updateSchedulerToolbar() {
 
     updateBatchStatusDisplay();
     updateAdaptiveStatusDisplay();
+    updateComposerStatusDisplay();
     updateFeedStatusDisplay();
     updateFullscreenNextSetButton();
 }
@@ -6691,6 +6873,7 @@ function updateStats() {
     if (accuracyEl) accuracyEl.textContent = percentage + '%';
 
     updateTimerDisplay();
+    checkComposerAdvance();
 }
 
 function updateTimerDisplay() {
@@ -10889,6 +11072,7 @@ function initQuizCommandPalette() {
         { name: 'Handwriting', mode: 'handwriting', type: 'mode' },
         { name: 'Draw Character', mode: 'draw-char', type: 'mode' },
         { name: 'Draw Missing Component', mode: 'draw-missing-component', type: 'mode' },
+        { name: 'Composer (auto progression)', mode: 'composer', type: 'mode' },
         { name: 'Study Mode', mode: 'study', type: 'mode' }
     ];
 
@@ -11375,7 +11559,10 @@ function initQuiz(charactersData, userConfig = {}) {
     loadAdaptiveState();
     loadFeedState();
     loadDecompositionsData(); // Load character decompositions from JSON
+    loadComposerState();
     ensureModeButton('draw-missing-component', 'Draw Missing Component');
+    ensureModeButton('composer', 'Composer');
+    buildComposerPipeline();
 
     reconcileBatchStateWithQueue();
     reconcileAdaptiveStateWithPool();
@@ -11453,6 +11640,7 @@ function initQuiz(charactersData, userConfig = {}) {
         : null;
     setPreviewQueueEnabled(config.enablePreviewQueue && previewElement);
     ensureSchedulerToolbar();
+    updateSchedulerToolbar();
     if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         prepareAdaptiveForNextQuestion();
     }
@@ -11553,19 +11741,38 @@ function initQuiz(charactersData, userConfig = {}) {
                 b.classList.remove('active', 'bg-blue-500', 'text-white', 'border-blue-500');
                 b.classList.add('border-gray-300');
             });
-            btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
-            btn.classList.remove('border-gray-300');
-            mode = btn.dataset.mode;
-            saveQuizMode(mode);
+            const selectedMode = btn.dataset.mode;
+
+            if (selectedMode === 'composer') {
+                composerEnabled = true;
+                buildComposerPipeline();
+                saveComposerState();
+                saveQuizMode('composer');
+                const stage = getComposerCurrentStage();
+                mode = stage ? stage.mode : mode;
+                btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+                btn.classList.remove('border-gray-300');
+            } else {
+                composerEnabled = false;
+                saveComposerState();
+                mode = selectedMode;
+                saveQuizMode(mode);
+                btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+                btn.classList.remove('border-gray-300');
+            }
+
             score = 0;
             total = 0;
             updateStats();
             generateQuestion();
+            updateComposerStatusDisplay();
         });
     });
 
     // Set initial active button
-    const initialBtn = document.querySelector(`[data-mode="${mode}"]`);
+    const initialBtn = composerEnabled
+        ? document.querySelector(`[data-mode="composer"]`)
+        : document.querySelector(`[data-mode="${mode}"]`);
     if (initialBtn) {
         initialBtn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
         initialBtn.classList.remove('border-gray-300');

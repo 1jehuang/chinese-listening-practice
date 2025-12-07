@@ -515,6 +515,42 @@
     font-weight: 600;
 }
 
+/* Composer mode status */
+.composer-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.composer-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.composer-step.active {
+    border-color: #10b981;
+    background: #ecfdf3;
+    font-weight: 700;
+}
+
+.composer-step.mastered {
+    border-color: #22c55e;
+    background: #dcfce7;
+    color: #065f46;
+    font-weight: 700;
+}
+
+.composer-step-icon {
+    font-weight: 900;
+}
+
 /* Command palette discovery helpers */
 .command-palette-toast {
     position: fixed;
