@@ -33,6 +33,11 @@ let pinyinDictationPreviousResult = null; // 'correct' | 'incorrect'
 let pinyinDictationPreviousUserAnswer = null;
 let pinyinDictationUpcomingQuestion = null;
 
+// 3-column layout state for chunks modes (audio-to-meaning-chunks, text-to-meaning-chunks)
+let chunksPreviousChunk = null;
+let chunksPreviousResult = null; // { grade: number, userAnswer: string, colorCodedAnswer: string }
+let chunksUpcomingChunk = null; // pre-computed next chunk
+
 // DOM elements (initialized in initQuiz)
 let questionDisplay, answerInput, checkBtn, feedback, hint, componentBreakdown;
 let typeMode, choiceMode, fuzzyMode, fuzzyInput, strokeOrderMode, handwritingMode, drawCharMode, studyMode, radicalPracticeMode;
@@ -1474,8 +1479,51 @@ function getQuizModeKey() {
     return QUIZ_MODE_KEY_PREFIX + pageName;
 }
 
+function getModeFromUrl() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('mode');
+    } catch (e) {
+        return null;
+    }
+}
+
+function updateUrlWithMode(newMode) {
+    try {
+        const url = new URL(window.location);
+        if (newMode) {
+            url.searchParams.set('mode', newMode);
+        } else {
+            url.searchParams.delete('mode');
+        }
+        history.replaceState({}, '', url);
+    } catch (e) {
+        console.warn('Failed to update URL with mode', e);
+    }
+}
+
 function loadQuizMode() {
     try {
+        // URL parameter takes priority over localStorage
+        const urlMode = getModeFromUrl();
+        if (urlMode) {
+            const btn = document.querySelector(`[data-mode="${urlMode}"]`);
+            if (btn) {
+                if (urlMode === 'composer') {
+                    composerEnabled = true;
+                    saveComposerState();
+                    const stage = getComposerCurrentStage();
+                    mode = stage ? stage.mode : mode;
+                } else {
+                    mode = urlMode;
+                    composerEnabled = false;
+                    saveComposerState();
+                }
+                return; // URL mode found and valid
+            }
+        }
+
+        // Fall back to localStorage
         const stored = localStorage.getItem(getQuizModeKey());
         if (stored) {
             // Verify the mode button exists on this page
@@ -1496,11 +1544,15 @@ function loadQuizMode() {
     } catch (e) {
         console.warn('Failed to load quiz mode', e);
     }
+
+    // Update URL to reflect current mode (after a short delay to let page settle)
+    setTimeout(() => updateUrlWithMode(mode), 100);
 }
 
 function saveQuizMode(newMode) {
     try {
         localStorage.setItem(getQuizModeKey(), newMode);
+        updateUrlWithMode(newMode);
     } catch (e) {
         console.warn('Failed to save quiz mode', e);
     }
@@ -4621,27 +4673,21 @@ function generateQuestion(options = {}) {
             currentQuestion = sentenceChunks[currentChunkIndex];
             window.currentQuestion = currentQuestion;
 
-            // Show chunk with progress indicator
-            const chunkNum = currentChunkIndex + 1;
-            const totalChunks = sentenceChunks.length;
-            const progressText = `Chunk ${chunkNum}/${totalChunks}`;
+            // Pre-compute upcoming chunk for three-column layout
+            if (currentChunkIndex + 1 < sentenceChunks.length) {
+                chunksUpcomingChunk = sentenceChunks[currentChunkIndex + 1];
+            } else {
+                chunksUpcomingChunk = null;
+            }
 
+            // Render three-column layout
             if (mode === 'audio-to-meaning-chunks') {
-                questionDisplay.innerHTML = `
-                    <div class="text-center text-sm text-gray-400 mb-2">${progressText}</div>
-                    <div class="text-center text-4xl my-4 font-bold text-gray-700">🔊 Listen</div>
-                    <div class="text-center text-2xl my-4 text-gray-600">${currentQuestion.char}</div>
-                    <div class="text-center text-xs text-gray-400 mt-2">Full: ${currentFullSentence.char}</div>
-                `;
+                renderThreeColumnChunksLayout(true);
                 if (audioSection) audioSection.classList.remove('hidden');
                 setupChunkAudioMode(currentQuestion.char);
             } else {
-                // text-to-meaning-chunks - just show the text
-                questionDisplay.innerHTML = `
-                    <div class="text-center text-sm text-gray-400 mb-2">${progressText}</div>
-                    <div class="text-center text-3xl my-6 font-normal text-gray-800">${currentQuestion.char}</div>
-                    <div class="text-center text-xs text-gray-400 mt-2">Full: ${currentFullSentence.char}</div>
-                `;
+                // text-to-meaning-chunks
+                renderThreeColumnChunksLayout(false);
             }
 
             if (typeMode) typeMode.style.display = 'block';
@@ -5481,7 +5527,49 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
             return;
         }
 
-        // For chunk modes, use the old behavior with feedback display
+        // For chunk modes, use three-column layout with instant transitions
+        if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
+            // Store previous chunk info
+            chunksPreviousChunk = currentQuestion;
+            chunksPreviousResult = {
+                grade: grade || 0,
+                userAnswer: userTranslation,
+                colorCodedAnswer: colorCodedAnswer || escapeHtml(userTranslation)
+            };
+
+            // Clear feedback and hint - shown in three-column layout
+            if (feedback) { feedback.textContent = ''; feedback.className = ''; }
+            if (hint) { hint.textContent = ''; hint.className = ''; }
+            if (answerInput) answerInput.value = '';
+
+            // Advance to next chunk
+            currentChunkIndex++;
+
+            // If more chunks, render next; otherwise, start new sentence
+            if (currentChunkIndex < sentenceChunks.length) {
+                currentQuestion = sentenceChunks[currentChunkIndex];
+                window.currentQuestion = currentQuestion;
+
+                // Pre-compute upcoming
+                if (currentChunkIndex + 1 < sentenceChunks.length) {
+                    chunksUpcomingChunk = sentenceChunks[currentChunkIndex + 1];
+                } else {
+                    chunksUpcomingChunk = null;
+                }
+
+                renderThreeColumnChunksLayout(mode === 'audio-to-meaning-chunks');
+                if (mode === 'audio-to-meaning-chunks') {
+                    setupChunkAudioMode(currentQuestion.char);
+                }
+                if (answerInput) setTimeout(() => answerInput.focus(), 50);
+            } else {
+                // All chunks done, get new sentence
+                generateQuestion();
+            }
+            return;
+        }
+
+        // For other translation modes (non-chunks), show old feedback style
         let colorClass, emoji;
         if (grade !== null) {
             if (grade >= 90) {
@@ -5506,20 +5594,11 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
         }
 
         // Show reference
-        if ((mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') && currentFullSentence) {
-            hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chunk:</strong> ${currentQuestion.char}<br><strong>Full sentence:</strong> ${currentFullSentence.meaning}</div>`;
-        } else {
-            hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${currentQuestion.pinyin})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
-        }
+        hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${currentQuestion.pinyin})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
         hint.className = 'text-center my-2';
 
         // Clear input
         if (answerInput) answerInput.value = '';
-
-        // For chunk mode, advance to next chunk
-        if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
-            currentChunkIndex++;
-        }
 
         // Schedule next question (faster turnaround for dictation flow)
         scheduleNextQuestion(grade >= 70 ? 1000 : 1600);
@@ -8005,6 +8084,108 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
                     </div>
                 ` : `
                     <div class="column-placeholder">Next card is loading</div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// Three-Column Chunks Layout (audio-to-meaning-chunks, text-to-meaning-chunks)
+// ============================================================
+
+function renderThreeColumnChunksLayout(isAudioMode = false) {
+    if (!questionDisplay || !currentQuestion || !currentFullSentence) return;
+
+    const chunkNum = currentChunkIndex + 1;
+    const totalChunks = sentenceChunks.length;
+
+    // Compute upcoming chunk if not set
+    if (!chunksUpcomingChunk && currentChunkIndex + 1 < sentenceChunks.length) {
+        chunksUpcomingChunk = sentenceChunks[currentChunkIndex + 1];
+    }
+
+    // Previous column
+    const prev = chunksPreviousChunk;
+    const prevResult = chunksPreviousResult;
+    let prevResultClass = '';
+    let prevResultIcon = '•';
+    let prevFeedbackText = 'Reviewed';
+
+    if (prevResult) {
+        if (prevResult.grade >= 70) {
+            prevResultClass = 'result-correct';
+            prevResultIcon = '✓';
+            prevFeedbackText = `${prevResult.grade}%`;
+        } else {
+            prevResultClass = 'result-incorrect';
+            prevResultIcon = '✗';
+            prevFeedbackText = `${prevResult.grade}%`;
+        }
+    }
+
+    let prevColumnContent = '';
+    if (prev && prevResult) {
+        const userAnswerHtml = prevResult.colorCodedAnswer || escapeHtml(prevResult.userAnswer || '');
+        prevColumnContent = `
+            <div class="column-feedback">
+                <span class="column-result-icon">${prevResultIcon}</span>
+                <span class="column-feedback-text">${prevFeedbackText}</span>
+            </div>
+            <div class="column-char" style="font-size: 22px; max-width: 180px; word-wrap: break-word;">${escapeHtml(prev.char || '')}</div>
+            <div class="translation-user-answer" style="font-size: 13px; margin-top: 6px; padding: 4px 8px; background: #f8fafc; border-radius: 4px; max-width: 180px;">
+                <div style="color: #64748b; font-size: 10px; text-transform: uppercase; margin-bottom: 2px;">Your answer:</div>
+                <div style="color: #334155; line-height: 1.3;">${userAnswerHtml}</div>
+            </div>
+        `;
+    } else {
+        prevColumnContent = '<div class="column-placeholder">Your last answer will appear here</div>';
+    }
+
+    // Current column
+    const currentChar = escapeHtml(currentQuestion.char || '');
+    const currentFontSize = getTranslationFontSize(currentQuestion.char);
+
+    let currentContent = '';
+    if (isAudioMode) {
+        currentContent = `
+            <div style="font-size: 48px; margin-bottom: 4px;">🔊</div>
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">Listen and translate</div>
+            <div class="column-char" style="font-size: ${currentFontSize}; max-width: 220px; word-wrap: break-word; line-height: 1.3;">${currentChar}</div>
+        `;
+    } else {
+        currentContent = `<div class="column-char-large" style="font-size: ${currentFontSize}; line-height: 1.3; max-width: 220px; word-wrap: break-word;">${currentChar}</div>`;
+    }
+
+    // Upcoming column
+    const upcomingChunk = chunksUpcomingChunk;
+    const upcomingChar = upcomingChunk ? escapeHtml(upcomingChunk.char || '') : '';
+    const upcomingFontSize = getTranslationFontSize(upcomingChunk?.char);
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout three-column-chunks-layout">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                ${prevColumnContent}
+            </div>
+            <div class="column-current column-card">
+                <div class="column-label">Chunk ${chunkNum}/${totalChunks}</div>
+                <div class="column-focus-ring" style="padding: 10px;">
+                    ${currentContent}
+                </div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 6px; max-width: 200px; word-wrap: break-word;">
+                    Full: ${escapeHtml(currentFullSentence.char)}
+                </div>
+            </div>
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                ${upcomingChunk ? `
+                    <div class="column-ondeck">
+                        <div class="column-char" style="font-size: ${upcomingFontSize}; max-width: 160px; word-wrap: break-word; line-height: 1.2;">${upcomingChar}</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
+                ` : `
+                    <div class="column-placeholder">${currentChunkIndex + 1 >= totalChunks ? 'Last chunk!' : 'Loading...'}</div>
                 `}
             </div>
         </div>
@@ -12194,6 +12375,9 @@ function initQuiz(charactersData, userConfig = {}) {
             pinyinDictationPreviousResult = null;
             pinyinDictationPreviousUserAnswer = null;
             pinyinDictationUpcomingQuestion = null;
+            chunksPreviousChunk = null;
+            chunksPreviousResult = null;
+            chunksUpcomingChunk = null;
 
             score = 0;
             total = 0;
