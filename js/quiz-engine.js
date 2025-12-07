@@ -4548,6 +4548,7 @@ function generateQuestion(options = {}) {
     hint.textContent = '';
     hint.className = 'text-center text-2xl font-semibold my-4';
     threeColumnInlineFeedback = null;
+    translationInlineFeedback = null;
     if (answerInput) {
         // Don't prefill for char-to-tones mode - tones from previous answer don't carry over
         answerInput.value = (mode === 'char-to-tones') ? '' : prefillAnswer;
@@ -4708,7 +4709,7 @@ function generateQuestion(options = {}) {
         audioSection.classList.remove('hidden');
         setupAudioMode({ focusAnswer: true });
     } else if (mode === 'audio-to-meaning' && audioSection && typeMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div><div class="text-center text-lg text-gray-500 -mt-4">Type your English translation</div>`;
+        renderThreeColumnTranslationLayout(true); // true = audio mode
         audioSection.classList.remove('hidden');
         typeMode.style.display = 'block';
         if (answerInput) {
@@ -4716,7 +4717,7 @@ function generateQuestion(options = {}) {
         }
         setupAudioMode({ focusAnswer: true });
     } else if (mode === 'text-to-meaning' && typeMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-3xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-lg text-gray-500 -mt-4">Type your English translation</div>`;
+        renderThreeColumnTranslationLayout(false); // false = text mode
         typeMode.style.display = 'block';
         if (answerInput) {
             answerInput.placeholder = 'Type your translation...';
@@ -5328,12 +5329,25 @@ async function checkTranslationWithGroq(userTranslation) {
                         role: 'system',
                         content: `You are a Chinese language teacher evaluating English translations of Chinese sentences.
 IMPORTANT: Ignore grammar mistakes, spelling errors, and typos in the English. Only grade the ACCURACY of the translation meaning.
-Give a percentage grade (0-100%) and a brief explanation.
-Format: Start with "GRADE: X%" on its own line, then explain in 1-2 sentences.
+
+Your response MUST follow this exact format:
+1. First line: GRADE: X%
+2. Second line: Brief explanation (1 sentence)
+3. Third line: MARKUP: followed by the student's EXACT text with annotations
+   - Wrap CORRECT parts in [OK:word/phrase]
+   - Wrap INCORRECT/WRONG parts in [ERR:word/phrase]
+   - Keep punctuation and spacing exactly as the student wrote
+
+Grading scale:
 90-100%: Excellent, captures meaning accurately
 70-89%: Good, minor issues or missing nuance
 50-69%: Partial, gets main idea but significant issues
-Below 50%: Needs work, meaning not conveyed`
+Below 50%: Needs work, meaning not conveyed
+
+Example response:
+GRADE: 75%
+Good translation but "happy" should be "glad" for better nuance.
+MARKUP: [OK:I am] [ERR:happy] [OK:to meet you]`
                     },
                     {
                         role: 'user',
@@ -5341,10 +5355,10 @@ Below 50%: Needs work, meaning not conveyed`
 Reference translation: ${currentQuestion.meaning}
 Student's translation: ${userTranslation}
 
-Grade this translation with a percentage and brief feedback.`
+Grade this translation with percentage, feedback, and word-by-word markup.`
                     }
                 ],
-                max_tokens: 150,
+                max_tokens: 300,
                 temperature: 0.3
             })
         });
@@ -5359,7 +5373,31 @@ Grade this translation with a percentage and brief feedback.`
         // Parse result
         const gradeMatch = feedbackText.match(/GRADE:\s*(\d+)%/i) || feedbackText.match(/(\d+)%/);
         const grade = gradeMatch ? parseInt(gradeMatch[1]) : null;
-        const explanation = feedbackText.replace(/GRADE:\s*\d+%\s*/gi, '').trim();
+
+        // Extract explanation (line after GRADE, before MARKUP)
+        const lines = feedbackText.split('\n').map(l => l.trim()).filter(l => l);
+        let explanation = '';
+        let markup = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.match(/^GRADE:/i)) continue;
+            if (line.match(/^MARKUP:/i)) {
+                markup = line.replace(/^MARKUP:\s*/i, '');
+                break;
+            }
+            if (!explanation) {
+                explanation = line;
+            }
+        }
+
+        // Convert markup to color-coded HTML
+        let colorCodedAnswer = '';
+        if (markup) {
+            colorCodedAnswer = markup
+                .replace(/\[OK:([^\]]+)\]/g, '<span style="color: #16a34a; font-weight: 600;">$1</span>')
+                .replace(/\[ERR:([^\]]+)\]/g, '<span style="color: #dc2626; font-weight: 600; text-decoration: underline wavy #dc2626;">$1</span>');
+        }
 
         // Update stats based on grade
         if (!answered) {
@@ -5375,9 +5413,46 @@ Grade this translation with a percentage and brief feedback.`
             }
         }
 
-        // Display feedback
+        updateStats();
+
+        // For non-chunk translation modes, use three-column instant transition
+        if (mode === 'audio-to-meaning' || mode === 'text-to-meaning') {
+            // Store the current question as previous
+            translationPreviousQuestion = currentQuestion;
+            translationPreviousResult = {
+                grade: grade || 0,
+                explanation: explanation,
+                userAnswer: userTranslation,
+                colorCodedAnswer: colorCodedAnswer || escapeHtml(userTranslation)
+            };
+
+            // Clear feedback and hint - they're now shown in the three-column layout
+            if (feedback) {
+                feedback.textContent = '';
+                feedback.className = '';
+            }
+            if (hint) {
+                hint.textContent = '';
+                hint.className = '';
+            }
+
+            // Clear input
+            if (answerInput) answerInput.value = '';
+
+            // Advance the upcoming question to become current
+            if (translationUpcomingQuestion) {
+                currentQuestion = translationUpcomingQuestion;
+                translationUpcomingQuestion = null;
+            }
+
+            // Instant transition to next question
+            displayQuestion();
+            return;
+        }
+
+        // For chunk modes, use the old behavior with feedback display
+        let colorClass, emoji;
         if (grade !== null) {
-            let colorClass, emoji;
             if (grade >= 90) {
                 colorClass = 'text-green-600';
                 emoji = '✓';
@@ -5406,8 +5481,6 @@ Grade this translation with a percentage and brief feedback.`
             hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${currentQuestion.pinyin})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
         }
         hint.className = 'text-center my-2';
-
-        updateStats();
 
         // Clear input
         if (answerInput) answerInput.value = '';
@@ -11862,6 +11935,12 @@ function initQuiz(charactersData, userConfig = {}) {
                 btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
                 btn.classList.remove('border-gray-300');
             }
+
+            // Reset three-column state for translation modes when switching
+            translationPreviousQuestion = null;
+            translationPreviousResult = null;
+            translationUpcomingQuestion = null;
+            translationInlineFeedback = null;
 
             score = 0;
             total = 0;
