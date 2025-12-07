@@ -2522,23 +2522,27 @@ function setConfidencePanelVisible(visible) {
     const pullTab = document.getElementById('confidencePullTab');
     const content = document.getElementById('confidencePanelContent');
 
-    if (confidencePanel) {
-        if (confidencePanelVisible) {
-            // Show panel
+    if (confidencePanelVisible) {
+        // Show panel
+        if (confidencePanel) {
             confidencePanel.style.transform = 'translateX(0)';
-            if (pullTab) {
-                pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
-            }
-        } else {
-            // Hide panel (slide off screen, keep pull tab visible)
-            confidencePanel.style.transform = 'translateX(calc(100% - 1.25rem))';
-            if (pullTab) {
-                pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>';
-            }
         }
+        if (pullTab) {
+            pullTab.style.right = '13rem'; // w-52 = 13rem
+            pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
+        }
+        if (content) content.classList.remove('hidden');
+    } else {
+        // Hide panel
+        if (confidencePanel) {
+            confidencePanel.style.transform = 'translateX(100%)';
+        }
+        if (pullTab) {
+            pullTab.style.right = '0';
+            pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>';
+        }
+        if (content) content.classList.add('hidden');
     }
-
-    if (content) content.classList.toggle('hidden', !confidencePanelVisible);
 
     saveConfidencePanelVisibility();
 }
@@ -2601,9 +2605,6 @@ function ensureConfidencePanel() {
         panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 flex flex-col z-40';
         panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem; transition: transform 0.2s ease;';
         panel.innerHTML = `
-            <button id="confidencePullTab" type="button" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full w-5 h-16 bg-white border border-r-0 border-gray-200 rounded-l-md shadow-sm hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 transition" title="Toggle confidence panel">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-            </button>
             <div id="confidencePanelContent">
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <div>
@@ -2617,6 +2618,16 @@ function ensureConfidencePanel() {
             </div>
         `;
         document.body.appendChild(panel);
+
+        // Create pull tab as separate fixed element
+        const pullTab = document.createElement('button');
+        pullTab.id = 'confidencePullTab';
+        pullTab.type = 'button';
+        pullTab.className = 'fixed top-1/2 -translate-y-1/2 w-5 h-16 bg-white border border-gray-200 rounded-l-md shadow-sm hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 z-50';
+        pullTab.style.cssText = 'right: 13rem; transition: right 0.2s ease;';
+        pullTab.title = 'Toggle confidence panel';
+        pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
+        document.body.appendChild(pullTab);
     }
 
     confidencePanel = panel;
@@ -4533,12 +4544,29 @@ function ensureTtsSpeedControl() {
     return ttsSpeedSelect;
 }
 
+function addKeyboardHints() {
+    // Add hint for Ctrl+Enter to show answer
+    let hintEl = document.getElementById('keyboardHints');
+    if (!hintEl) {
+        hintEl = document.createElement('div');
+        hintEl.id = 'keyboardHints';
+        hintEl.className = 'text-center text-xs text-gray-400 mt-2';
+        hintEl.innerHTML = '<kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px]">Ctrl+Enter</kbd> show answer';
+
+        const typeMode = document.getElementById('typeMode');
+        if (typeMode) {
+            typeMode.appendChild(hintEl);
+        }
+    }
+}
+
 function setupAudioMode(options = {}) {
     const { focusAnswer = true } = options;
     const playBtn = document.getElementById('playAudioBtn');
     if (!playBtn || !currentQuestion) return;
 
     ensureTtsSpeedControl();
+    addKeyboardHints();
 
     const pinyinOptions = (currentQuestion.pinyin || '').split('/');
     const firstPinyin = (pinyinOptions[0] || '').trim();
@@ -4553,6 +4581,7 @@ function setupAudioMode(options = {}) {
 
     window.currentAudioPlayFunc = playCurrentPrompt;
     playBtn.onclick = playCurrentPrompt;
+    playBtn.innerHTML = '🔊 Play Sentence <span class="text-xs opacity-75 ml-1">(Ctrl+J)</span>';
 
     if (focusAnswer && answerInput && isElementReallyVisible(answerInput)) {
         setTimeout(() => answerInput.focus(), 100);
@@ -4569,6 +4598,7 @@ function setupChunkAudioMode(chunkText) {
     if (!playBtn) return;
 
     ensureTtsSpeedControl();
+    addKeyboardHints();
 
     const playChunk = () => {
         playSentenceAudio(chunkText);
@@ -4576,6 +4606,7 @@ function setupChunkAudioMode(chunkText) {
 
     window.currentAudioPlayFunc = playChunk;
     playBtn.onclick = playChunk;
+    playBtn.innerHTML = '🔊 Play Sentence <span class="text-xs opacity-75 ml-1">(Ctrl+J)</span>';
 
     if (answerInput && isElementReallyVisible(answerInput)) {
         setTimeout(() => answerInput.focus(), 100);
