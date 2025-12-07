@@ -8625,6 +8625,11 @@ async function initStrokeOrder() {
         writerDiv.innerHTML = '';
 
         try {
+            // Clean up any previous writer instance so pointer listeners don't stack
+            if (writer && typeof writer.cancelQuiz === 'function') {
+                writer.cancelQuiz();
+            }
+
             writer = HanziWriter.create(writerDiv, targetChar, {
                 width: 320,
                 height: 320,
@@ -8632,8 +8637,19 @@ async function initStrokeOrder() {
                 showOutline: true,
                 showCharacter: false,
                 strokeAnimationSpeed: 1,
-                delayBetweenStrokes: 0
+                delayBetweenStrokes: 0,
+                renderer: 'canvas' // canvas is more reliable for touch/pointer tracing across browsers
             });
+
+            // Ensure the drawing surface itself ignores scrolling/selection quirks on touch devices
+            const surface = writerDiv.querySelector('canvas, svg');
+            if (surface) {
+                surface.style.touchAction = 'none';
+                surface.style.userSelect = 'none';
+                surface.style.webkitUserSelect = 'none';
+                surface.style.msUserSelect = 'none';
+                surface.style.webkitTapHighlightColor = 'transparent';
+            }
         } catch (error) {
             console.warn('Failed to initialize stroke order quiz for character:', targetChar, error);
             if (currentIndex < characters.length - 1) {
