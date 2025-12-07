@@ -101,6 +101,97 @@ const studyModeState = {
     shuffleOrder: null
 };
 
+// Word marking state
+// Markings: { [char]: 'learned' | 'needs-work' }
+// Stored in localStorage per-page
+let wordMarkings = {};
+const WORD_MARKINGS_KEY_PREFIX = 'wordMarkings_';
+
+function getWordMarkingsKey() {
+    // Use page identifier from config or pathname
+    const pageId = config?.pageId || window.location.pathname.replace(/\//g, '_').replace('.html', '');
+    return WORD_MARKINGS_KEY_PREFIX + pageId;
+}
+
+function loadWordMarkings() {
+    try {
+        const key = getWordMarkingsKey();
+        const stored = localStorage.getItem(key);
+        if (stored) {
+            wordMarkings = JSON.parse(stored);
+        } else {
+            wordMarkings = {};
+        }
+    } catch (e) {
+        console.warn('Failed to load word markings:', e);
+        wordMarkings = {};
+    }
+}
+
+function saveWordMarkings() {
+    try {
+        const key = getWordMarkingsKey();
+        localStorage.setItem(key, JSON.stringify(wordMarkings));
+    } catch (e) {
+        console.warn('Failed to save word markings:', e);
+    }
+}
+
+function markWord(char, marking) {
+    if (!char) return;
+    if (marking === null || marking === undefined) {
+        delete wordMarkings[char];
+    } else {
+        wordMarkings[char] = marking;
+    }
+    saveWordMarkings();
+    // Refresh UI to show marking indicator
+    refreshMarkingIndicator();
+}
+
+function getWordMarking(char) {
+    return wordMarkings[char] || null;
+}
+
+function refreshMarkingIndicator() {
+    // Update the marking indicator in the current question display
+    const indicator = document.querySelector('.word-marking-indicator');
+    if (!indicator && currentQuestion) {
+        // Will be added when question is rendered
+        return;
+    }
+    if (indicator && currentQuestion) {
+        const marking = getWordMarking(currentQuestion.char);
+        if (marking === 'learned') {
+            indicator.textContent = '✓ Learned';
+            indicator.className = 'word-marking-indicator marking-learned';
+            indicator.style.display = 'inline-block';
+        } else if (marking === 'needs-work') {
+            indicator.textContent = '⚠ Needs Work';
+            indicator.className = 'word-marking-indicator marking-needs-work';
+            indicator.style.display = 'inline-block';
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
+}
+
+function showMarkingToast(message, type = 'info') {
+    // Show a brief toast notification for marking actions
+    let toast = document.querySelector('.marking-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'marking-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.className = `marking-toast toast-${type}`;
+    toast.style.opacity = '1';
+    setTimeout(() => {
+        toast.style.opacity = '0';
+    }, 1500);
+}
+
 // Composer (multi-stage) mode state
 let composerEnabled = false;
 let composerStageIndex = 0;
@@ -2199,6 +2290,11 @@ function getFeedUCBScore(char) {
     const totalPulls = feedModeState.totalPulls || 1;
     const useSRConfidence = schedulerMode === SCHEDULER_MODES.FEED_SR;
 
+    // Get user word marking for this character
+    const marking = getWordMarking(char);
+    const MARKING_NEEDS_WORK_BOOST = 1.5;  // Boost score for needs-work words
+    const MARKING_LEARNED_PENALTY = 2.0;   // Reduce score for learned words
+
     if (!stats || stats.attempts === 0) {
         // Unseen cards get high priority, especially early on
         // Score scales with how much we've explored - less explored = higher unseen priority
@@ -2212,6 +2308,13 @@ function getFeedUCBScore(char) {
             // Low SR confidence = higher priority
             const srBoost = Math.max(0, (threshold - srScore) / threshold);
             baseScore += srBoost * 1.5;
+        }
+
+        // Apply user marking modifiers
+        if (marking === 'needs-work') {
+            baseScore += MARKING_NEEDS_WORK_BOOST;
+        } else if (marking === 'learned') {
+            baseScore -= MARKING_LEARNED_PENALTY;
         }
 
         return baseScore + Math.random() * 0.5;
@@ -2231,6 +2334,13 @@ function getFeedUCBScore(char) {
         // Low SR confidence = higher priority (boost score)
         const srBoost = Math.max(0, (threshold - srScore) / threshold);
         score += srBoost * 0.5;
+    }
+
+    // Apply user marking modifiers
+    if (marking === 'needs-work') {
+        score += MARKING_NEEDS_WORK_BOOST;
+    } else if (marking === 'learned') {
+        score -= MARKING_LEARNED_PENALTY;
     }
 
     return score;
@@ -7705,6 +7815,18 @@ function getCharLargeFontSize(charText) {
     return '56px'; // 5+ characters
 }
 
+// Helper function to generate marking badge HTML
+function getMarkingBadgeHtml(char) {
+    const marking = getWordMarking(char);
+    if (!marking) return '';
+    if (marking === 'learned') {
+        return '<div class="word-marking-badge marking-badge-learned">✓ Learned</div>';
+    } else if (marking === 'needs-work') {
+        return '<div class="word-marking-badge marking-badge-needs-work">⚠ Needs Work</div>';
+    }
+    return '';
+}
+
 function renderThreeColumnMeaningLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
@@ -7726,6 +7848,7 @@ function renderThreeColumnMeaningLayout() {
 
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
+    const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -7748,8 +7871,9 @@ function renderThreeColumnMeaningLayout() {
                     <div class="column-placeholder">Your last answer will appear here</div>
                 `}
             </div>
-            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
+                ${currentMarkingBadge}
                 <div class="column-focus-ring">
                     <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                 </div>
@@ -7795,6 +7919,7 @@ function renderThreeColumnPinyinLayout() {
 
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
+    const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -7817,8 +7942,9 @@ function renderThreeColumnPinyinLayout() {
                     <div class="column-placeholder">Your last answer will appear here</div>
                 `}
             </div>
-            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
+                ${currentMarkingBadge}
                 <div class="column-focus-ring">
                     <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                 </div>
@@ -7999,6 +8125,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
     }
 
     // Build current column - show Chinese text or audio icon
+    const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
     let currentContent = '';
     if (isAudioMode) {
         currentContent = `
@@ -8015,8 +8142,9 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
                 <div class="column-label">Previous</div>
                 ${prevColumnContent}
             </div>
-            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}">
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
+                ${currentMarkingBadge}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -8078,6 +8206,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
 
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentFontSize = getTranslationFontSize(currentQuestion.char);
+    const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
 
     const upcomingChar = pinyinDictationUpcomingQuestion ? escapeHtml(pinyinDictationUpcomingQuestion.char || '') : '';
     const upcomingFontSize = getTranslationFontSize(pinyinDictationUpcomingQuestion?.char);
@@ -8121,8 +8250,9 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
                 <div class="column-label">Previous</div>
                 ${prevColumnContent}
             </div>
-            <div class="column-current column-card">
+            <div class="column-current column-card" style="position: relative;">
                 <div class="column-label">Now</div>
+                ${currentMarkingBadge}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -8222,6 +8352,8 @@ function renderThreeColumnChunksLayout(isAudioMode = false) {
     // Current column
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentFontSize = getTranslationFontSize(currentQuestion.char);
+    // For chunks, show marking badge for the full sentence character
+    const currentMarkingBadge = currentFullSentence ? getMarkingBadgeHtml(currentFullSentence.char) : '';
 
     let currentContent = '';
     if (isAudioMode) {
@@ -8245,8 +8377,9 @@ function renderThreeColumnChunksLayout(isAudioMode = false) {
                 <div class="column-label">Previous</div>
                 ${prevColumnContent}
             </div>
-            <div class="column-current column-card">
+            <div class="column-current column-card" style="position: relative;">
                 <div class="column-label">Chunk ${chunkNum}/${totalChunks}</div>
+                ${currentMarkingBadge}
                 <div class="column-focus-ring" style="padding: 10px;">
                     ${currentContent}
                 </div>
@@ -11734,6 +11867,28 @@ function handleQuizHotkeys(e) {
         return;
     }
 
+    // Word marking keybinds: [ = needs work, ] = learned, \ = unmark
+    if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        if (isTypingTarget(target)) {
+            // Skip if in input field
+        } else if (e.key === '[' && currentQuestion?.char) {
+            e.preventDefault();
+            markWord(currentQuestion.char, 'needs-work');
+            showMarkingToast(`"${currentQuestion.char}" marked as needs work`, 'warning');
+            return;
+        } else if (e.key === ']' && currentQuestion?.char) {
+            e.preventDefault();
+            markWord(currentQuestion.char, 'learned');
+            showMarkingToast(`"${currentQuestion.char}" marked as learned`, 'success');
+            return;
+        } else if (e.key === '\\' && currentQuestion?.char) {
+            e.preventDefault();
+            markWord(currentQuestion.char, null);
+            showMarkingToast(`"${currentQuestion.char}" unmarked`, 'info');
+            return;
+        }
+    }
+
     if (copyComboActive) {
         e.preventDefault();
         const prompt = getCurrentPromptText();
@@ -12297,6 +12452,7 @@ function initQuiz(charactersData, userConfig = {}) {
     loadFeedState();
     loadDecompositionsData(); // Load character decompositions from JSON
     loadComposerState();
+    loadWordMarkings(); // Load user word markings
     ensureModeButton('draw-missing-component', 'Draw Missing Component');
     ensureModeButton('composer', 'Composer');
     buildComposerPipeline();
