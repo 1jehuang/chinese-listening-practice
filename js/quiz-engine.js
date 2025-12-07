@@ -2523,10 +2523,21 @@ function saveConfidencePanelVisibility() {
     }
 }
 
+function updateConfidenceLayoutSpacing(panelWidth) {
+    const appContainer = document.querySelector('.app-container');
+    if (!appContainer) return;
+    const gutter = 16; // small breathing room between content and pull tab
+    if (confidencePanelVisible) {
+        appContainer.style.paddingRight = `${(panelWidth || 0) + gutter}px`;
+    } else {
+        appContainer.style.paddingRight = '0px';
+    }
+}
+
 function positionConfidencePullTab() {
     const pullTab = document.getElementById('confidencePullTab');
     if (!pullTab) return;
-    const panelWidth = confidencePanel?.offsetWidth || 208; // default w-52
+    const panelWidth = confidencePanel?.offsetWidth || 240; // default width (w-60-ish)
     pullTab.style.right = confidencePanelVisible ? `${panelWidth}px` : '0';
 }
 
@@ -2534,11 +2545,13 @@ function setConfidencePanelVisible(visible) {
     confidencePanelVisible = Boolean(visible);
     const pullTab = document.getElementById('confidencePullTab');
     const content = document.getElementById('confidencePanelContent');
+    const panelWidth = confidencePanel?.offsetWidth || 240;
 
     if (confidencePanelVisible) {
         // Show panel
         if (confidencePanel) {
             confidencePanel.style.transform = 'translateX(0)';
+            confidencePanel.style.visibility = 'visible';
         }
         if (pullTab) {
             positionConfidencePullTab();
@@ -2549,6 +2562,7 @@ function setConfidencePanelVisible(visible) {
         // Hide panel
         if (confidencePanel) {
             confidencePanel.style.transform = 'translateX(100%)';
+            confidencePanel.style.visibility = 'hidden';
         }
         if (pullTab) {
             pullTab.style.right = '0';
@@ -2557,6 +2571,7 @@ function setConfidencePanelVisible(visible) {
         if (content) content.classList.add('hidden');
     }
 
+    updateConfidenceLayoutSpacing(panelWidth);
     saveConfidencePanelVisibility();
 }
 
