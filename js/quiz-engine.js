@@ -2762,15 +2762,15 @@ function createChatPanel() {
 
     chatPanel = document.createElement('div');
     chatPanel.id = 'chatPanel';
-    chatPanel.className = 'fixed top-0 left-0 bottom-0 w-80 bg-white border-r border-gray-200 shadow-lg flex flex-col z-50';
-    chatPanel.style.cssText = 'transform: translateX(-100%); transition: transform 0.2s ease;';
+    chatPanel.className = 'fixed top-0 right-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-lg flex flex-col z-50';
+    chatPanel.style.cssText = 'transform: translateX(100%); transition: transform 0.2s ease;';
     chatPanel.innerHTML = `
         <div class="p-3 border-b border-gray-200 flex items-center justify-between">
             <div>
                 <div class="text-sm font-semibold text-gray-900">Quiz Chat</div>
                 <div class="text-xs text-gray-500">Ask about the current question</div>
             </div>
-            <button id="chatCloseBtn" class="text-gray-400 hover:text-gray-600 p-1" title="Close (Ctrl+H)">
+            <button id="chatCloseBtn" class="text-gray-400 hover:text-gray-600 p-1" title="Close (Ctrl+H or Esc)">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
@@ -2780,7 +2780,7 @@ function createChatPanel() {
                 <input type="text" id="chatInput" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none" placeholder="Ask a question... (Enter to send)">
                 <button id="chatSendBtn" class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition">Send</button>
             </div>
-            <div class="text-xs text-gray-400 mt-1">Ctrl+L to focus quiz • Ctrl+H to focus chat</div>
+            <div class="text-xs text-gray-400 mt-1">Ctrl+H to focus quiz • Ctrl+L to focus chat</div>
         </div>
     `;
     document.body.appendChild(chatPanel);
@@ -2806,13 +2806,11 @@ function setChatPanelVisible(visible) {
     chatPanelVisible = Boolean(visible);
     createChatPanel();
 
-    const sidebar = document.querySelector('.sidebar');
     const pullTab = document.getElementById('confidencePullTab');
 
     if (chatPanelVisible) {
         chatPanel.style.transform = 'translateX(0)';
-        // Hide left sidebar and confidence panel
-        if (sidebar) sidebar.style.display = 'none';
+        // Hide confidence panel (chat replaces it on the right)
         setConfidencePanelVisible(false);
         if (pullTab) pullTab.style.display = 'none';
         // Focus chat input
@@ -2825,9 +2823,8 @@ function setChatPanelVisible(visible) {
             addChatContext();
         }
     } else {
-        chatPanel.style.transform = 'translateX(-100%)';
-        // Restore sidebar
-        if (sidebar) sidebar.style.display = '';
+        chatPanel.style.transform = 'translateX(100%)';
+        // Restore pull tab
         if (pullTab) pullTab.style.display = '';
         // Focus quiz input
         focusQuizInput();
@@ -11096,24 +11093,24 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Ctrl+H: Focus chat / toggle chat panel
+    // Ctrl+H: Focus quiz (vim left) / close chat if open
     if (!e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        if (chatPanelVisible) {
+            setChatPanelVisible(false);
+        }
+        focusQuizInput();
+        return;
+    }
+
+    // Ctrl+L: Focus chat (vim right) / open chat panel
+    if (!e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         if (chatPanelVisible) {
             focusChatInput();
         } else {
             setChatPanelVisible(true);
         }
-        return;
-    }
-
-    // Ctrl+L: Focus quiz input / close chat if open
-    if (!e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        if (chatPanelVisible) {
-            setChatPanelVisible(false);
-        }
-        focusQuizInput();
         return;
     }
 
@@ -11639,8 +11636,8 @@ function initQuizCommandPalette() {
             name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
             type: 'action',
             description: chatPanelVisible
-                ? 'Close the quiz chat panel (Ctrl+L)'
-                : 'Open chat to ask questions about the current quiz (Ctrl+H)',
+                ? 'Close the quiz chat panel (Ctrl+H)'
+                : 'Open chat to ask questions about the current quiz (Ctrl+L)',
             keywords: 'chat ask question help tutor assistant open close toggle',
             action: toggleChatPanel,
             available: () => true,
