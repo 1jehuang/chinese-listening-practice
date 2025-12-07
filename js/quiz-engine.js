@@ -2519,33 +2519,27 @@ function saveConfidencePanelVisibility() {
 
 function setConfidencePanelVisible(visible) {
     confidencePanelVisible = Boolean(visible);
-    const toggleBtn = document.getElementById('confidenceToggleBtn');
-    const list = document.getElementById('confidenceList');
-    const summary = document.getElementById('confidenceSummary');
-    const header = confidencePanel?.querySelector('.text-sm.font-semibold');
-    const goalBadge = document.getElementById('confidenceGoalBadge');
+    const pullTab = document.getElementById('confidencePullTab');
+    const content = document.getElementById('confidencePanelContent');
 
     if (confidencePanel) {
-        // Toggle between full width and collapsed
         if (confidencePanelVisible) {
-            confidencePanel.classList.remove('w-10');
-            confidencePanel.classList.add('w-52');
+            // Show panel
+            confidencePanel.style.transform = 'translateX(0)';
+            if (pullTab) {
+                pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
+            }
         } else {
-            confidencePanel.classList.remove('w-52');
-            confidencePanel.classList.add('w-10');
+            // Hide panel (slide off screen, keep pull tab visible)
+            confidencePanel.style.transform = 'translateX(calc(100% - 1.25rem))';
+            if (pullTab) {
+                pullTab.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>';
+            }
         }
     }
 
-    // Hide/show content elements
-    if (list) list.classList.toggle('hidden', !confidencePanelVisible);
-    if (summary) summary.classList.toggle('hidden', !confidencePanelVisible);
-    if (header) header.classList.toggle('hidden', !confidencePanelVisible);
-    if (goalBadge && !confidencePanelVisible) goalBadge.classList.add('hidden');
+    if (content) content.classList.toggle('hidden', !confidencePanelVisible);
 
-    if (toggleBtn) {
-        toggleBtn.textContent = confidencePanelVisible ? 'Hide' : 'Show';
-        toggleBtn.setAttribute('aria-pressed', confidencePanelVisible ? 'true' : 'false');
-    }
     saveConfidencePanelVisibility();
 }
 
@@ -2605,20 +2599,22 @@ function ensureConfidencePanel() {
         panel.id = 'confidencePanel';
         // Fixed right-side panel styling
         panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 overflow-hidden flex flex-col z-40';
-        panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem;';
+        panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem; transition: transform 0.2s ease;';
         panel.innerHTML = `
-            <div class="flex items-center justify-between gap-2 mb-2">
-                <div>
-                    <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
-                    <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
-                    <div id="confidenceGoalBadge" class="hidden inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">All ≥ ${CONFIDENCE_GOAL}</div>
+            <button id="confidencePullTab" type="button" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full w-5 h-16 bg-white border border-r-0 border-gray-200 rounded-l-md shadow-sm hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 transition" title="Toggle confidence panel">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+            <div id="confidencePanelContent">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
+                        <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
+                        <div id="confidenceGoalBadge" class="hidden inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">All ≥ ${CONFIDENCE_GOAL}</div>
+                    </div>
                 </div>
-                <div class="flex flex-col items-end gap-1">
-                    <button id="confidenceToggleBtn" type="button" class="text-[11px] font-semibold text-blue-600 px-2 py-1 rounded hover:bg-blue-50 border border-transparent hover:border-blue-200" aria-pressed="true">Hide</button>
-                </div>
+                <div id="confidenceSummary" class="text-xs text-gray-500 mb-2"></div>
+                <div id="confidenceList" class="space-y-1 flex-1 overflow-y-auto pr-1"></div>
             </div>
-            <div id="confidenceSummary" class="text-xs text-gray-500 mb-2"></div>
-            <div id="confidenceList" class="space-y-1 flex-1 overflow-y-auto pr-1"></div>
         `;
         document.body.appendChild(panel);
     }
@@ -2627,10 +2623,10 @@ function ensureConfidencePanel() {
     confidenceListElement = panel.querySelector('#confidenceList');
     confidenceSummaryElement = panel.querySelector('#confidenceSummary');
 
-    const toggleBtn = document.getElementById('confidenceToggleBtn');
-    if (toggleBtn && !toggleBtn.dataset.bound) {
-        toggleBtn.dataset.bound = 'true';
-        toggleBtn.addEventListener('click', toggleConfidencePanel);
+    const pullTab = document.getElementById('confidencePullTab');
+    if (pullTab && !pullTab.dataset.bound) {
+        pullTab.dataset.bound = 'true';
+        pullTab.addEventListener('click', toggleConfidencePanel);
     }
 
     const trackingToggle = document.getElementById('confidenceTrackingToggle');
