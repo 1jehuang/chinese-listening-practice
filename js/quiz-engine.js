@@ -7750,7 +7750,6 @@ function getTranslationFontSize(text) {
 }
 
 function renderThreeColumnTranslationLayout(isAudioMode = false) {
-    console.log('[DEBUG] renderThreeColumnTranslationLayout called, isAudioMode:', isAudioMode, 'questionDisplay:', !!questionDisplay, 'currentQuestion:', !!currentQuestion);
     if (!questionDisplay || !currentQuestion) return;
 
     // Get upcoming question
@@ -7858,7 +7857,6 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
 // ============================================================
 
 function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
-    console.log('[DEBUG] renderThreeColumnPinyinDictationLayout called, isAudioMode:', isAudioMode, 'questionDisplay:', !!questionDisplay, 'currentQuestion:', !!currentQuestion);
     if (!questionDisplay || !currentQuestion) return;
 
     // Get upcoming question
