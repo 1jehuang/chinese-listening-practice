@@ -4036,8 +4036,8 @@ function generateQuestion(options = {}) {
         prepareAdaptiveForNextQuestion();
     }
 
-    // Handle chunk mode - iterate through sentence chunks
-    if (mode === 'audio-to-meaning-chunks') {
+    // Handle chunk modes - iterate through sentence chunks
+    if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
         // Check if we need a new sentence or can use the next chunk
         if (sentenceChunks.length === 0 || currentChunkIndex >= sentenceChunks.length) {
             // Need a new sentence - select one and split into chunks
@@ -4059,19 +4059,29 @@ function generateQuestion(options = {}) {
             const totalChunks = sentenceChunks.length;
             const progressText = `Chunk ${chunkNum}/${totalChunks}`;
 
-            questionDisplay.innerHTML = `
-                <div class="text-center text-sm text-gray-400 mb-2">${progressText}</div>
-                <div class="text-center text-4xl my-4 font-bold text-gray-700">🔊 Listen</div>
-                <div class="text-center text-2xl my-4 text-gray-600">${currentQuestion.char}</div>
-                <div class="text-center text-xs text-gray-400 mt-2">Full: ${currentFullSentence.char}</div>
-            `;
+            if (mode === 'audio-to-meaning-chunks') {
+                questionDisplay.innerHTML = `
+                    <div class="text-center text-sm text-gray-400 mb-2">${progressText}</div>
+                    <div class="text-center text-4xl my-4 font-bold text-gray-700">🔊 Listen</div>
+                    <div class="text-center text-2xl my-4 text-gray-600">${currentQuestion.char}</div>
+                    <div class="text-center text-xs text-gray-400 mt-2">Full: ${currentFullSentence.char}</div>
+                `;
+                if (audioSection) audioSection.classList.remove('hidden');
+                setupChunkAudioMode(currentQuestion.char);
+            } else {
+                // text-to-meaning-chunks - just show the text
+                questionDisplay.innerHTML = `
+                    <div class="text-center text-sm text-gray-400 mb-2">${progressText}</div>
+                    <div class="text-center text-3xl my-6 font-normal text-gray-800">${currentQuestion.char}</div>
+                    <div class="text-center text-xs text-gray-400 mt-2">Full: ${currentFullSentence.char}</div>
+                `;
+            }
 
-            if (audioSection) audioSection.classList.remove('hidden');
             if (typeMode) typeMode.style.display = 'block';
-            if (answerInput) answerInput.placeholder = 'Type your translation...';
-
-            // Set up audio for this chunk
-            setupChunkAudioMode(currentQuestion.char);
+            if (answerInput) {
+                answerInput.placeholder = 'Type your translation...';
+                setTimeout(() => answerInput.focus(), 100);
+            }
 
             startTimer();
             return;
@@ -4170,6 +4180,14 @@ function generateQuestion(options = {}) {
             answerInput.placeholder = 'Type your translation...';
         }
         setupAudioMode({ focusAnswer: true });
+    } else if (mode === 'text-to-meaning' && typeMode) {
+        questionDisplay.innerHTML = `<div class="text-center text-3xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-lg text-gray-500 -mt-4">Type your English translation</div>`;
+        typeMode.style.display = 'block';
+        if (answerInput) {
+            answerInput.placeholder = 'Type your translation...';
+            setTimeout(() => answerInput.focus(), 100);
+        }
+        startTimer();
     } else if (mode === 'char-to-pinyin-mc' && choiceMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generatePinyinOptions();
@@ -4652,7 +4670,7 @@ function checkAnswer() {
         if (!syllableMatched) {
             handleWrongAnswer();
         }
-    } else if (mode === 'audio-to-meaning' || mode === 'audio-to-meaning-chunks') {
+    } else if (mode === 'audio-to-meaning' || mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning' || mode === 'text-to-meaning-chunks') {
         // Use Groq API with Kimi K2 to grade the translation
         checkTranslationWithGroq(userAnswer);
         return;
@@ -4761,7 +4779,7 @@ Grade this translation with a percentage and brief feedback.`
         }
 
         // Show reference
-        if (mode === 'audio-to-meaning-chunks' && currentFullSentence) {
+        if ((mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') && currentFullSentence) {
             hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chunk:</strong> ${currentQuestion.char}<br><strong>Full sentence:</strong> ${currentFullSentence.meaning}</div>`;
         } else {
             hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${currentQuestion.pinyin})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
@@ -4774,7 +4792,7 @@ Grade this translation with a percentage and brief feedback.`
         if (answerInput) answerInput.value = '';
 
         // For chunk mode, advance to next chunk
-        if (mode === 'audio-to-meaning-chunks') {
+        if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
             currentChunkIndex++;
         }
 
@@ -4930,9 +4948,9 @@ function giveUpAndShowAnswer() {
     // Show correct answer based on mode
     if (mode === 'audio-to-pinyin') {
         feedback.textContent = `✗ Answer: ${currentQuestion.pinyin} (${currentQuestion.char})`;
-    } else if (mode === 'audio-to-meaning') {
+    } else if (mode === 'audio-to-meaning' || mode === 'text-to-meaning') {
         feedback.textContent = `✗ Answer: ${currentQuestion.meaning}`;
-    } else if (mode === 'audio-to-meaning-chunks' && currentFullSentence) {
+    } else if ((mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') && currentFullSentence) {
         feedback.textContent = `✗ Full meaning: ${currentFullSentence.meaning}`;
     } else if (mode === 'char-to-meaning' || mode === 'char-to-meaning-type') {
         feedback.textContent = `✗ Answer: ${currentQuestion.meaning}`;
@@ -4942,11 +4960,11 @@ function giveUpAndShowAnswer() {
     feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
 
     // Show meaning hint for pinyin modes
-    if (mode === 'audio-to-meaning-chunks' && currentFullSentence) {
+    if ((mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') && currentFullSentence) {
         hint.textContent = `Chunk: ${currentQuestion.char}`;
         hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         currentChunkIndex++; // Advance to next chunk
-    } else if (mode !== 'audio-to-meaning' && mode !== 'char-to-meaning' && mode !== 'char-to-meaning-type') {
+    } else if (mode !== 'audio-to-meaning' && mode !== 'text-to-meaning' && mode !== 'char-to-meaning' && mode !== 'char-to-meaning-type') {
         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     } else {
@@ -4957,7 +4975,7 @@ function giveUpAndShowAnswer() {
     renderCharacterComponents(currentQuestion);
 
     // Play audio
-    if (mode === 'audio-to-meaning-chunks') {
+    if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
         // For chunks, use TTS on the chunk text
         playSentenceAudio(currentQuestion.char);
     } else if (currentQuestion.pinyin) {
