@@ -4801,6 +4801,53 @@ function handleWrongAnswer() {
     }, 0);
 }
 
+function giveUpAndShowAnswer() {
+    if (!currentQuestion) return;
+    if (answered) return; // Already answered
+    if (mode === 'study') return; // Not applicable in study mode
+
+    stopTimer();
+    lastAnswerCorrect = false;
+    playWrongSound();
+    answered = true;
+    total++;
+    markSchedulerOutcome(false);
+
+    // Show correct answer based on mode
+    if (mode === 'audio-to-pinyin') {
+        feedback.textContent = `✗ Answer: ${currentQuestion.pinyin} (${currentQuestion.char})`;
+    } else if (mode === 'audio-to-meaning') {
+        feedback.textContent = `✗ Answer: ${currentQuestion.meaning}`;
+    } else if (mode === 'char-to-meaning' || mode === 'char-to-meaning-type') {
+        feedback.textContent = `✗ Answer: ${currentQuestion.meaning}`;
+    } else {
+        feedback.textContent = `✗ Answer: ${currentQuestion.pinyin}`;
+    }
+    feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+
+    // Show meaning hint for pinyin modes
+    if (mode !== 'audio-to-meaning' && mode !== 'char-to-meaning' && mode !== 'char-to-meaning-type') {
+        hint.textContent = `Meaning: ${currentQuestion.meaning}`;
+        hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+    } else {
+        hint.textContent = `Chinese: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+    }
+
+    renderCharacterComponents(currentQuestion);
+
+    // Play audio
+    const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+    playPinyinAudio(firstPinyin, currentQuestion.char);
+
+    updateStats();
+
+    // Clear input
+    if (answerInput) answerInput.value = '';
+
+    scheduleNextQuestion(2500);
+}
+
 // =============================================================================
 // MULTIPLE CHOICE FUNCTIONS
 // =============================================================================
@@ -10024,6 +10071,14 @@ function handleQuizHotkeys(e) {
         if (input) {
             focusInputElement(input);
         }
+        return;
+    }
+
+    // Ctrl+Enter: Give up and show answer
+    const giveUpCombo = !e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key === 'Enter';
+    if (giveUpCombo) {
+        e.preventDefault();
+        giveUpAndShowAnswer();
         return;
     }
 
