@@ -12420,11 +12420,10 @@ function setupCollapsibleSidebars() {
         wrapSidebarWithToggle(leftSidebar, 'left');
     }
 
-    // Find the right sidebar (confidence panel) - for experimental layouts
-    const rightSidebar = document.getElementById('confidencePanel');
-    if (rightSidebar && !rightSidebar.closest('.sidebar-wrapper')) {
-        wrapSidebarWithToggle(rightSidebar, 'right');
-    }
+    // Don't wrap the confidence panel. It is a fixed-position drawer with its own
+    // pull-tab toggle; wrapping it moves the element out of the DOM and strips the
+    // id/styles, which hides the panel entirely. Keep it as-is so its fixed layout
+    // and stored visibility state keep working.
 }
 
 function wrapSidebarWithToggle(sidebar, side) {
