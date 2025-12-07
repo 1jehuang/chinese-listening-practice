@@ -4719,17 +4719,17 @@ function generateQuestion(options = {}) {
 
     // Show appropriate UI based on mode
     if (mode === 'char-to-pinyin') {
-        renderDictationSentence(currentQuestion);
+        renderThreeColumnPinyinDictationLayout(false); // false = text mode
         typeMode.style.display = 'block';
-        if (answerInput) answerInput.placeholder = 'Type your answer...';
+        if (answerInput) answerInput.placeholder = 'Type pinyin...';
         setTimeout(() => answerInput.focus(), 100);
     } else if (mode === 'char-to-tones' && choiceMode) {
         // Use MC mode with tone buttons and three-column layout
         initCharToTonesMc();
     } else if (mode === 'audio-to-pinyin' && audioSection) {
-        questionDisplay.innerHTML = `<div class="text-center text-6xl my-8 font-bold text-gray-700">🔊 Listen</div>`;
+        renderThreeColumnPinyinDictationLayout(true); // true = audio mode
         typeMode.style.display = 'block';
-        if (answerInput) answerInput.placeholder = 'Type your answer...';
+        if (answerInput) answerInput.placeholder = 'Type pinyin...';
         audioSection.classList.remove('hidden');
         setupAudioMode({ focusAnswer: true });
     } else if (mode === 'audio-to-meaning' && audioSection && typeMode) {
@@ -5529,7 +5529,7 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
     }
 }
 
-function handleCorrectFullAnswer() {
+function handleCorrectFullAnswer(userAnswer = '') {
     if (mode === 'char-to-pinyin') {
         const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
         playPinyinAudio(firstPinyin, currentQuestion.char);
@@ -5543,6 +5543,28 @@ function handleCorrectFullAnswer() {
     }
     lastAnswerCorrect = true;
     markSchedulerOutcome(true);
+    updateStats();
+
+    // For pinyin dictation modes, use three-column instant transition
+    if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
+        pinyinDictationPreviousQuestion = currentQuestion;
+        pinyinDictationPreviousResult = 'correct';
+        pinyinDictationPreviousUserAnswer = userAnswer || answerInput?.value || '';
+
+        // Clear feedback and hint
+        if (feedback) { feedback.textContent = ''; feedback.className = ''; }
+        if (hint) { hint.textContent = ''; hint.className = ''; }
+        if (answerInput) answerInput.value = '';
+
+        // Advance upcoming to current
+        if (pinyinDictationUpcomingQuestion) {
+            currentQuestion = pinyinDictationUpcomingQuestion;
+            pinyinDictationUpcomingQuestion = null;
+        }
+
+        displayQuestion();
+        return;
+    }
 
     if (mode === 'audio-to-pinyin') {
         feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
@@ -5556,14 +5578,10 @@ function handleCorrectFullAnswer() {
     if (mode === 'char-to-meaning') {
         renderCharBreakdownSoon();
     }
-    if (mode === 'char-to-pinyin') {
-        updateDictationProgress(dictationTotalSyllables || 0);
-    }
 
     // Clear input so it doesn't get prefilled into the next question
     if (answerInput) answerInput.value = '';
 
-    updateStats();
     scheduleNextQuestion(300);
 }
 
@@ -5588,6 +5606,28 @@ function handleCorrectSyllable(syllables, fullPinyin) {
         }
         lastAnswerCorrect = true;
         markSchedulerOutcome(true);
+        updateStats();
+
+        // For pinyin dictation modes, use three-column instant transition
+        if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
+            pinyinDictationPreviousQuestion = currentQuestion;
+            pinyinDictationPreviousResult = 'correct';
+            pinyinDictationPreviousUserAnswer = enteredSyllables.join(' ');
+
+            // Clear feedback and hint
+            if (feedback) { feedback.textContent = ''; feedback.className = ''; }
+            if (hint) { hint.textContent = ''; hint.className = ''; }
+            if (answerInput) answerInput.value = '';
+
+            // Advance upcoming to current
+            if (pinyinDictationUpcomingQuestion) {
+                currentQuestion = pinyinDictationUpcomingQuestion;
+                pinyinDictationUpcomingQuestion = null;
+            }
+
+            displayQuestion();
+            return;
+        }
 
         if (mode === 'audio-to-pinyin') {
             feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
@@ -5598,11 +5638,7 @@ function handleCorrectSyllable(syllables, fullPinyin) {
         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
         hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         renderCharacterComponents(currentQuestion);
-        if (mode === 'char-to-pinyin') {
-            updateDictationProgress(dictationTotalSyllables || enteredSyllables.length);
-        }
 
-        updateStats();
         scheduleNextQuestion(300);
     } else {
         // More syllables needed - show progress without revealing remaining syllables
@@ -5662,6 +5698,31 @@ function giveUpAndShowAnswer() {
     answered = true;
     total++;
     markSchedulerOutcome(false);
+    updateStats();
+
+    // For pinyin dictation modes with three-column layout, use instant transition
+    if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
+        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+
+        pinyinDictationPreviousQuestion = currentQuestion;
+        pinyinDictationPreviousResult = 'incorrect';
+        pinyinDictationPreviousUserAnswer = answerInput?.value || '(gave up)';
+
+        // Clear feedback and hint
+        if (feedback) { feedback.textContent = ''; feedback.className = ''; }
+        if (hint) { hint.textContent = ''; hint.className = ''; }
+        if (answerInput) answerInput.value = '';
+
+        // Advance upcoming to current
+        if (pinyinDictationUpcomingQuestion) {
+            currentQuestion = pinyinDictationUpcomingQuestion;
+            pinyinDictationUpcomingQuestion = null;
+        }
+
+        displayQuestion();
+        return;
+    }
 
     // Show correct answer based on mode
     if (mode === 'audio-to-pinyin') {
@@ -5700,8 +5761,6 @@ function giveUpAndShowAnswer() {
         const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
         playPinyinAudio(firstPinyin, currentQuestion.char);
     }
-
-    updateStats();
 
     // Clear input
     if (answerInput) answerInput.value = '';
@@ -7774,6 +7833,107 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
             <div class="column-upcoming column-card">
                 <div class="column-label">Upcoming</div>
                 ${translationUpcomingQuestion ? `
+                    <div class="column-ondeck">
+                        <div class="column-char" style="font-size: ${upcomingFontSize}; max-width: 180px; word-wrap: break-word; line-height: 1.2;">${upcomingChar}</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
+                ` : `
+                    <div class="column-placeholder">Next card is loading</div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// Three-Column Pinyin Dictation Layout (audio-to-pinyin, char-to-pinyin)
+// ============================================================
+
+function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
+    if (!questionDisplay || !currentQuestion) return;
+
+    // Get upcoming question
+    if (!pinyinDictationUpcomingQuestion) {
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        pinyinDictationUpcomingQuestion = selectNextQuestion(exclusions);
+    }
+
+    const prev = pinyinDictationPreviousQuestion;
+    const prevResult = pinyinDictationPreviousResult;
+    const prevUserAnswer = pinyinDictationPreviousUserAnswer;
+    const prevChar = prev ? escapeHtml(prev.char || '') : '';
+    const prevPinyin = prev ? escapeHtml(prev.pinyin || '') : '';
+
+    // Determine result styling
+    let prevResultClass = '';
+    let prevResultIcon = '•';
+    let prevFeedbackText = 'Reviewed';
+    if (prevResult) {
+        if (prevResult === 'correct') {
+            prevResultClass = 'result-correct';
+            prevResultIcon = '✓';
+            prevFeedbackText = 'Correct';
+        } else {
+            prevResultClass = 'result-incorrect';
+            prevResultIcon = '✗';
+            prevFeedbackText = 'Incorrect';
+        }
+    }
+
+    const currentChar = escapeHtml(currentQuestion.char || '');
+    const currentFontSize = getTranslationFontSize(currentQuestion.char);
+
+    const upcomingChar = pinyinDictationUpcomingQuestion ? escapeHtml(pinyinDictationUpcomingQuestion.char || '') : '';
+    const upcomingFontSize = getTranslationFontSize(pinyinDictationUpcomingQuestion?.char);
+
+    // Build previous column content
+    let prevColumnContent = '';
+    if (prev && prevResult) {
+        const userAnswerDisplay = prevUserAnswer ? escapeHtml(prevUserAnswer) : '';
+        const isCorrect = prevResult === 'correct';
+        prevColumnContent = `
+            <div class="column-feedback">
+                <span class="column-result-icon">${prevResultIcon}</span>
+                <span class="column-feedback-text">${prevFeedbackText}</span>
+            </div>
+            <div class="column-char" style="font-size: 28px;">${prevChar}</div>
+            <div class="column-pinyin" style="font-size: 15px; color: #1d4ed8;">${prevPinyin}</div>
+            ${userAnswerDisplay ? `
+                <div style="font-size: 13px; margin-top: 6px; padding: 4px 8px; background: ${isCorrect ? '#dcfce7' : '#fee2e2'}; border-radius: 4px; color: ${isCorrect ? '#166534' : '#991b1b'};">
+                    Your answer: ${userAnswerDisplay}
+                </div>
+            ` : ''}
+        `;
+    } else {
+        prevColumnContent = '<div class="column-placeholder">Your last answer will appear here</div>';
+    }
+
+    // Build current column - show Chinese text or audio icon
+    let currentContent = '';
+    if (isAudioMode) {
+        currentContent = `
+            <div style="font-size: 64px; margin-bottom: 8px;">🔊</div>
+            <div style="font-size: 14px; color: #64748b;">Listen and type pinyin</div>
+        `;
+    } else {
+        currentContent = `<div class="column-char-large" style="font-size: ${currentFontSize}; line-height: 1.3; max-width: 260px; word-wrap: break-word;">${currentChar}</div>`;
+    }
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                ${prevColumnContent}
+            </div>
+            <div class="column-current column-card">
+                <div class="column-label">Now</div>
+                <div class="column-focus-ring" style="padding: 12px;">
+                    ${currentContent}
+                </div>
+            </div>
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                ${pinyinDictationUpcomingQuestion ? `
                     <div class="column-ondeck">
                         <div class="column-char" style="font-size: ${upcomingFontSize}; max-width: 180px; word-wrap: break-word; line-height: 1.2;">${upcomingChar}</div>
                         <div class="ondeck-note">On deck</div>
@@ -11960,11 +12120,15 @@ function initQuiz(charactersData, userConfig = {}) {
                 btn.classList.remove('border-gray-300');
             }
 
-            // Reset three-column state for translation modes when switching
+            // Reset three-column state when switching modes
             translationPreviousQuestion = null;
             translationPreviousResult = null;
             translationUpcomingQuestion = null;
             translationInlineFeedback = null;
+            pinyinDictationPreviousQuestion = null;
+            pinyinDictationPreviousResult = null;
+            pinyinDictationPreviousUserAnswer = null;
+            pinyinDictationUpcomingQuestion = null;
 
             score = 0;
             total = 0;

@@ -266,6 +266,12 @@ body.experimental-layout .app-container {
     width: 100%;
 }
 
+/* When study mode is active, expand input-section to full width */
+.input-section:has(#studyMode.active) {
+    max-width: none;
+    padding: 0;
+}
+
 /* Collapsible sidebar styles */
 .sidebar-wrapper {
     position: relative;
