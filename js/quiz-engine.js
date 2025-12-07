@@ -5107,8 +5107,8 @@ Grade this translation with a percentage and brief feedback.`
             currentChunkIndex++;
         }
 
-        // Schedule next question
-        scheduleNextQuestion(grade >= 70 ? 2000 : 3000);
+        // Schedule next question (faster turnaround for dictation flow)
+        scheduleNextQuestion(grade >= 70 ? 1000 : 1600);
 
     } catch (error) {
         console.error('Groq API error:', error);
@@ -5299,7 +5299,7 @@ function giveUpAndShowAnswer() {
     // Clear input
     if (answerInput) answerInput.value = '';
 
-    scheduleNextQuestion(2500);
+    scheduleNextQuestion(1400);
 }
 
 // =============================================================================
@@ -5940,8 +5940,8 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        // Instant transition for audio-to-meaning, normal delay for others
-        scheduleNextQuestion(mode === 'audio-to-meaning' ? 0 : 800);
+        // Instant transition for audio-to-meaning, tighter delay for others
+        scheduleNextQuestion(mode === 'audio-to-meaning' ? 0 : 600);
     } else {
         playWrongSound();
         feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
@@ -5966,7 +5966,7 @@ function checkMultipleChoice(answer) {
         }
 
         // Shorter delay for audio-to-meaning wrong answers
-        scheduleNextQuestion(mode === 'audio-to-meaning' ? 800 : 1500);
+        scheduleNextQuestion(mode === 'audio-to-meaning' ? 500 : 1200);
     }
 
     updateStats();
@@ -11074,18 +11074,23 @@ function initQuizCommandPalette() {
         });
 
         // Chat panel toggle
-        console.log('[DEBUG] Adding chat action, toggleChatPanel exists:', typeof toggleChatPanel === 'function');
-        actions.push({
-            name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
-            type: 'action',
-            description: chatPanelVisible
-                ? 'Close the quiz chat panel (Ctrl+L)'
-                : 'Open chat to ask questions about the current quiz (Ctrl+H)',
-            keywords: 'chat ask question help tutor assistant open close toggle',
-            action: () => toggleChatPanel(),
-            available: () => true,
-            scope: 'This page only'
-        });
+        try {
+            console.log('[DEBUG] Adding chat action, chatPanelVisible:', chatPanelVisible, 'toggleChatPanel exists:', typeof toggleChatPanel);
+            actions.push({
+                name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
+                type: 'action',
+                description: chatPanelVisible
+                    ? 'Close the quiz chat panel (Ctrl+L)'
+                    : 'Open chat to ask questions about the current quiz (Ctrl+H)',
+                keywords: 'chat ask question help tutor assistant open close toggle',
+                action: () => { console.log('[DEBUG] chat action clicked'); toggleChatPanel(); },
+                available: () => true,
+                scope: 'This page only'
+            });
+            console.log('[DEBUG] Chat action added successfully');
+        } catch (e) {
+            console.error('[DEBUG] Failed to add chat action:', e);
+        }
 
         // Timer controls
         actions.push({
