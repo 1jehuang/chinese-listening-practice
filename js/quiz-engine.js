@@ -2691,15 +2691,32 @@ function saveConfidencePanelVisibility() {
     }
 }
 
-function updateConfidenceLayoutSpacing(panelWidth) {
+function updateRightSideSpacing() {
     const appContainer = document.querySelector('.app-container');
+    const mainContent = document.querySelector('.main-content');
     if (!appContainer) return;
-    const gutter = 16; // small breathing room between content and pull tab
-    if (confidencePanelVisible) {
-        appContainer.style.paddingRight = `${(panelWidth || 0) + gutter}px`;
+    const gutter = 16;
+
+    // Clear any leftover margin from old approach
+    if (mainContent) {
+        mainContent.style.marginRight = '';
+    }
+
+    // Chat panel takes priority when visible
+    if (chatPanelVisible) {
+        const chatPanelWidth = 320; // w-80 = 20rem
+        appContainer.style.paddingRight = `${chatPanelWidth + gutter}px`;
+    } else if (confidencePanelVisible) {
+        const panelWidth = confidencePanel?.offsetWidth || 240;
+        appContainer.style.paddingRight = `${panelWidth + gutter}px`;
     } else {
         appContainer.style.paddingRight = '0px';
     }
+}
+
+// Keep this for backward compatibility
+function updateConfidenceLayoutSpacing(panelWidth) {
+    updateRightSideSpacing();
 }
 
 function positionConfidencePullTab() {
@@ -2813,18 +2830,12 @@ function setChatPanelVisible(visible) {
     createChatPanel();
 
     const pullTab = document.getElementById('confidencePullTab');
-    const mainContent = document.querySelector('.main-content');
-    const chatPanelWidth = 320; // w-80 = 20rem = 320px
 
     if (chatPanelVisible) {
         chatPanel.style.transform = 'translateX(0)';
         // Hide confidence panel (chat replaces it on the right)
         setConfidencePanelVisible(false);
         if (pullTab) pullTab.style.display = 'none';
-        // Add margin so content doesn't go under chat
-        if (mainContent) {
-            mainContent.style.marginRight = `${chatPanelWidth}px`;
-        }
         // Focus chat input
         setTimeout(() => {
             const chatInput = document.getElementById('chatInput');
@@ -2838,14 +2849,12 @@ function setChatPanelVisible(visible) {
         chatPanel.style.transform = 'translateX(100%)';
         // Restore pull tab
         if (pullTab) pullTab.style.display = '';
-        // Remove margin (let confidence panel manage spacing if visible)
-        if (mainContent) {
-            mainContent.style.marginRight = confidencePanelVisible ? `${(confidencePanel?.offsetWidth || 240) + 16}px` : '0px';
-        }
         // Focus quiz input
         focusQuizInput();
     }
 
+    // Update spacing using unified function
+    updateRightSideSpacing();
     saveChatPanelVisibility();
 }
 

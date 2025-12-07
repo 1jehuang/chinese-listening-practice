@@ -44,6 +44,7 @@ body.experimental-layout .app-container {
     display: flex;
     height: 100vh;
     width: 100vw;
+    box-sizing: border-box;
 }
 
 /* Sidebar (match updated lesson pages) */
