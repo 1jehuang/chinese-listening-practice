@@ -774,9 +774,49 @@
             { char: '考试', pinyin: 'kǎoshì', meaning: 'examination; test' }
         ];
 
+        // Lesson 8: Watching Movies (看电影)
+        const lesson8part1 = [
+            { char: '电影', pinyin: 'diànyǐng', meaning: 'movie' },
+            { char: '把', pinyin: 'bǎ', meaning: 'pretransitive marker' },
+            { char: '盒', pinyin: 'hé', meaning: 'AN for boxes' },
+            { char: '卫生纸', pinyin: 'wèishēngzhǐ', meaning: 'facial tissue; toilet paper' },
+            { char: '拿', pinyin: 'ná', meaning: 'take with hand; bring; carry' },
+            { char: '已经', pinyin: 'yǐjīng', meaning: 'already' },
+            { char: '至少', pinyin: 'zhìshǎo', meaning: 'at least' },
+            { char: '哭', pinyin: 'kū', meaning: 'cry' },
+            { char: '样子', pinyin: 'yàng.zi', meaning: 'state; appearance' },
+            { char: '主角', pinyin: 'zhǔjiǎo/zhǔjué', meaning: 'leading role in a story' },
+            { char: '可怜', pinyin: 'kělián', meaning: 'pitiful; pitiable' },
+            { char: '又…又…', pinyin: 'yòu...yòu...', meaning: 'both ... and ...' },
+            { char: '爱', pinyin: 'ài', meaning: 'love' },
+            { char: '故事', pinyin: 'gùshi', meaning: 'story' },
+            { char: '许多', pinyin: 'xǔduō', meaning: 'many; much' },
+            { char: '烦', pinyin: 'fán', meaning: 'be tired of; annoyed' },
+            { char: '好玩儿', pinyin: 'hǎowánr', meaning: 'fun; amusing' },
+            { char: '受罪', pinyin: 'shòuzuì', meaning: 'suffer; endure hardship' }
+        ];
+
+        const lesson8part2 = [
+            { char: '胡闹', pinyin: 'húnào', meaning: 'behave crazily; act ridiculous' },
+            { char: '稍微', pinyin: 'shāowēi', meaning: 'a little; slightly' },
+            { char: '严肃', pinyin: 'yánsù', meaning: 'serious; solemn' },
+            { char: '认真', pinyin: 'rènzhēn', meaning: 'conscientious; earnest' },
+            { char: '无聊', pinyin: 'wúliáo', meaning: 'boring' },
+            { char: '教', pinyin: 'jiāo', meaning: 'teach' },
+            { char: '做人', pinyin: 'zuòrén', meaning: 'be a (proper) person' },
+            { char: '应该', pinyin: 'yīnggāi', meaning: 'should; ought to' },
+            { char: '最', pinyin: 'zuì', meaning: 'most' },
+            { char: '愿意', pinyin: 'yuànyì', meaning: 'willing' },
+            { char: '向…学', pinyin: 'xiàng...xué', meaning: 'learn from ...' },
+            { char: '教堂', pinyin: 'jiàotáng', meaning: 'church' },
+            { char: '轻松', pinyin: 'qīngsōng', meaning: 'relaxed; relaxing' },
+            { char: '吵', pinyin: 'chǎo', meaning: 'argue; quarrel' },
+            { char: '怎么回事', pinyin: 'zěn.me huí shì', meaning: 'what's the matter?' }
+        ];
+
         // Merge all lessons and de-duplicate by character
         const combinedMap = new Map();
-        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2].forEach(item => {
+        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2, ...lesson8part1, ...lesson8part2].forEach(item => {
             if (!combinedMap.has(item.char)) {
                 combinedMap.set(item.char, item);
             }

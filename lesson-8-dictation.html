@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 8 (看电影)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/lesson-layout.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+</head>
+<body class="experimental-layout">
+    <a href="home.html" class="home-btn">← Home</a>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Dictation Modes</h2>
+            <p class="mode-desc">Hear a line, type the pinyin or meaning. Enter submits instantly; Space replays audio.</p>
+            <nav>
+                <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin">Text → Pinyin</button>
+                <button class="mode-btn" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn" data-mode="audio-to-meaning-chunks">Audio → Meaning (Chunks)</button>
+                <button class="mode-btn" data-mode="text-to-meaning">Text → Meaning</button>
+                <button class="mode-btn" data-mode="text-to-meaning-chunks">Text → Meaning (Chunks)</button>
+                <button class="mode-btn" data-mode="study">Study Mode</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>Dictation: Lesson 8 看电影</h1>
+            </header>
+
+            <section class="quiz-display">
+                <div id="questionDisplay"></div>
+
+                <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
+                    <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
+                </div>
+
+                <div id="hint" style="font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0;"></div>
+
+                <div id="audioSection" class="hidden" style="margin: 1rem 0;">
+                    <button id="playAudioBtn">🔊 Play Sentence</button>
+                </div>
+            </section>
+
+            <section class="input-section">
+                <div id="typeMode">
+                    <input type="text" id="answerInput" placeholder="Type your answer...">
+                    <button id="checkBtn" style="display: none;">Check Answer</button>
+                </div>
+
+                <div id="choiceMode">
+                    <div id="options" class="choice-grid"></div>
+                </div>
+
+                <div id="fuzzyMode">
+                    <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+
+                <div id="studyMode">
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+                    <div id="studyList" style="max-height: 420px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="feedback"></div>
+            </section>
+
+            <footer class="stats-bar" id="stats">
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div id="timerDisplay"></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const dictationSentences = [
+            { char: '美生，把那盒卫生纸递给我。这个电影真是太好了！', pinyin: 'měi shēng, bǎ nà hé wèi shēng zhǐ dì gěi wǒ. zhè ge diànyǐng zhēn shì tài hǎo le', meaning: 'Meisheng, hand me that box of tissues. This movie is so good!' },
+            { char: '妈，您已经用了半盒卫生纸了。这个电影您至少已经看了三次了，每次看都哭成这个样子，我真不懂您为什么还要看！', pinyin: 'mā, nín yǐjīng yòng le bàn hé wèi shēng zhǐ le. zhè ge diànyǐng nín zhìshǎo yǐjīng kàn le sān cì le, měi cì kàn dōu kū chéng zhè ge yàng.zi, wǒ zhēn bù dǒng nín wèi shénme hái yào kàn', meaning: 'Mom, you've already used half a box of tissues. You've watched this movie at least three times; every time you cry like this—I really don't get why you still want to watch it!' },
+            { char: '你看这个女主角太可怜了，又没有爸爸，又没有妈妈，又没有人爱她……', pinyin: 'nǐ kàn zhè ge nǚ zhǔjiǎo tài kělián le, yòu méi yǒu bà.ba, yòu méi yǒu mā.ma, yòu méi yǒu rén ài tā', meaning: 'Look at this heroine—she's so pitiful: no dad, no mom, nobody loves her…' },
+            { char: '妈，这个故事您已经说过许多次了，我已经听烦了。看电影是为了好玩儿，像您这样看电影真是受罪。', pinyin: 'mā, zhè ge gùshi nín yǐjīng shuō guo xǔduō cì le, wǒ yǐjīng tīng fán le. kàn diànyǐng shì wèi le hǎowánr, xiàng nín zhè yàng kàn diànyǐng zhēn shì shòuzuì', meaning: 'Mom, you've told this story many times; I'm already sick of it. Movies are for fun—watching them like you do is pure suffering.' },
+            { char: '你懂什么！你们就只喜欢看胡闹的故事，稍微严肃认真的电影就说无聊。你看这个电影不但教你怎么做人，而且还教你怎么做事，你真应该看看。', pinyin: 'nǐ dǒng shénme! nǐ.men jiù zhǐ xǐhuān kàn húnào .de gùshi, shāowēi yánsù rènzhēn .de diànyǐng jiù shuō wúliáo. nǐ kàn zhè ge diànyǐng bùdàn jiāo nǐ zěn.me zuòrén, érqiě hái jiāo nǐ zěn.me zuòshì, nǐ zhēn yīnggāi kàn kan', meaning: 'What do you know! You only like silly stories; you call slightly serious movies boring. This movie not only teaches you how to be a person, it also teaches you how to do things—you really should watch it.' },
+            { char: '对您来说，只要看了能哭的电影就是好电影，我最讨厌这样的故事。', pinyin: 'duì nín lái shuō, zhǐyào kàn le néng kū .de diànyǐng jiù shì hǎo diànyǐng, wǒ zuì tǎoyàn zhè yàng .de gùshi', meaning: 'For you, as long as a movie makes you cry it's a good movie. I hate stories like that most.' },
+            { char: '你看，你就不愿意向这个女主角学学……', pinyin: 'nǐ kàn, nǐ jiù bù yuànyì xiàng zhè ge nǚ zhǔjiǎo xué.xue', meaning: 'See—you just won't learn from this heroine…' },
+            { char: '妈，看电影又不是去教堂！我并不想从电影里学怎么做人。看电影的时候我只想轻松一下，好玩的电影就是好电影。', pinyin: 'mā, kàn diànyǐng yòu bú.shì qù jiàotáng! wǒ bìng bù xiǎng cóng diànyǐng lǐ xué zěn.me zuòrén. kàn diànyǐng .de shíhou wǒ zhǐ xiǎng qīngsōng yì xià, hǎowánr .de diànyǐng jiù shì hǎo diànyǐng', meaning: 'Mom, watching a movie isn't going to church! I don't want to learn how to be a person from movies. When I watch, I just want to relax; a fun movie is a good movie.' },
+            { char: '好！好！好！不跟你吵了，快把卫生纸递给我。', pinyin: 'hǎo! hǎo! hǎo! bù gēn nǐ chǎo .le, kuài bǎ wèi shēng zhǐ dì gěi wǒ', meaning: 'Fine, fine! I won't argue with you—hurry and pass me the tissues.' },
+            { char: '又爱看，又要哭！真不懂是怎么回事！', pinyin: 'yòu ài kàn, yòu yào kū! zhēn bù dǒng shì zěn.me huí shì', meaning: 'Loving to watch yet needing to cry—I really don't understand what's going on!' }
+        ];
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning (Chunks)', mode: 'audio-to-meaning-chunks', type: 'mode' },
+            { name: 'Dictation: Text → Meaning', mode: 'text-to-meaning', type: 'mode' },
+            { name: 'Dictation: Text → Meaning (Chunks)', mode: 'text-to-meaning-chunks', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-meaning',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>
