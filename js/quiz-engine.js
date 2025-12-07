@@ -10679,6 +10679,7 @@ function updateHandwritingSpaceHint(holding) {
 }
 
 function initQuizCommandPalette() {
+    console.log('[DEBUG] initQuizCommandPalette called');
     const defaultModes = [
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-type', type: 'mode' },
@@ -11128,6 +11129,7 @@ function initQuizCommandPalette() {
             scope: 'All pages'
         });
 
+        console.log('[DEBUG] getQuizPaletteActions returning', actions.length, 'actions:', actions.map(a => a.name));
         return actions;
     }
 
