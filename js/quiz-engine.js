@@ -2598,7 +2598,7 @@ function ensureConfidencePanel() {
         panel = document.createElement('div');
         panel.id = 'confidencePanel';
         // Fixed right-side panel styling
-        panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 overflow-hidden flex flex-col z-40';
+        panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 flex flex-col z-40';
         panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem; transition: transform 0.2s ease;';
         panel.innerHTML = `
             <button id="confidencePullTab" type="button" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full w-5 h-16 bg-white border border-r-0 border-gray-200 rounded-l-md shadow-sm hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 transition" title="Toggle confidence panel">
