@@ -7,62 +7,82 @@
     <title>Dictation – Lesson 7 (男女同住)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/lesson-layout.css">
     <script src="js/utils.js"></script>
     <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
     <script src="js/pinyin-utils.js"></script>
     <script src="js/quiz-engine.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8">
-    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm">← Home</a>
+<body class="experimental-layout">
+    <a href="home.html" class="home-btn">← Home</a>
 
-    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 mt-16 md:mt-0">
-        <h1 class="text-3xl font-bold text-center mb-2 text-gray-800">Dictation: Lesson 7 男女同住</h1>
-        <p class="text-center text-gray-600 mb-6">Listen first, then type the pinyin (or meaning). Study Mode lets you preview every line with quick audio playback.</p>
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Dictation Modes</h2>
+            <p class="mode-desc">Hear a line, type the pinyin or meaning. Enter submits instantly; Space replays audio.</p>
+            <nav>
+                <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin">Text → Pinyin</button>
+                <button class="mode-btn" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn" data-mode="audio-to-meaning-chunks">Audio → Meaning (Chunks)</button>
+                <button class="mode-btn" data-mode="text-to-meaning">Text → Meaning</button>
+                <button class="mode-btn" data-mode="text-to-meaning-chunks">Text → Meaning (Chunks)</button>
+                <button class="mode-btn" data-mode="study">Study Mode</button>
+            </nav>
+        </aside>
 
-        <div class="flex flex-wrap gap-2 justify-center mb-6">
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-pinyin">Audio → Pinyin</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="char-to-pinyin">Text → Pinyin</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning">Audio → Meaning</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="audio-to-meaning-chunks">Audio → Meaning (Chunks)</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="text-to-meaning">Text → Meaning</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="text-to-meaning-chunks">Text → Meaning (Chunks)</button>
-            <button class="mode-btn px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition" data-mode="study">Study Mode</button>
-        </div>
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>Dictation: Lesson 7 男女同住</h1>
+            </header>
 
-        <div id="questionDisplay" class="text-center"></div>
-        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+            <section class="quiz-display">
+                <div id="questionDisplay"></div>
 
-        <div id="audioSection" class="text-center my-4 hidden">
-            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sentence</button>
-        </div>
+                <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
+                    <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
+                </div>
 
-        <div id="typeMode" class="space-y-4">
-            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
-            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
-        </div>
+                <div id="hint" style="font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0;"></div>
 
-        <div id="choiceMode" class="hidden">
-            <div id="options" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-        </div>
-        <div id="fuzzyMode" class="hidden"></div>
-        <div id="strokeOrderMode" class="hidden"></div>
-        <div id="handwritingMode" class="hidden"></div>
-        <div id="drawCharMode" class="hidden"></div>
+                <div id="audioSection" class="hidden" style="margin: 1rem 0;">
+                    <button id="playAudioBtn">🔊 Play Sentence</button>
+                </div>
+            </section>
 
-        <div id="studyMode" class="hidden">
-            <div class="text-center text-gray-600 mb-4">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
-            <div id="studyList" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
-        </div>
+            <section class="input-section">
+                <div id="typeMode">
+                    <input type="text" id="answerInput" placeholder="Type your answer...">
+                    <button id="checkBtn" style="display: none;">Check Answer</button>
+                </div>
 
-        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+                <div id="choiceMode">
+                    <div id="options" class="choice-grid"></div>
+                </div>
 
-        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
-            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
-            <span id="timerDisplay" class="text-sm"></span>
-            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
-        </div>
+                <div id="fuzzyMode">
+                    <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+
+                <div id="studyMode">
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+                    <div id="studyList" style="max-height: 420px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="feedback"></div>
+            </section>
+
+            <footer class="stats-bar" id="stats">
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div id="timerDisplay"></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
+            </footer>
+        </main>
     </div>
 
     <script>

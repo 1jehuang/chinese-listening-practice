@@ -394,21 +394,15 @@
                 </div>
 
                 <!-- Handwriting Mode -->
-                <div id="handwritingMode" class="py-8">
-                    <!-- Character display area -->
-                    <div id="handwritingWriter" class="flex justify-center items-center gap-4 min-h-[200px]"></div>
+                <div id="handwritingMode">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer</p>
 
-                    <!-- Space bar hint -->
-                    <div id="hwSpaceHint" class="text-center mt-8">
-                        <div class="inline-flex items-center gap-3 px-6 py-3 bg-gray-100 rounded-full">
-                            <kbd class="px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
-                            <span class="text-gray-600">Press to reveal</span>
-                        </div>
+                    <div id="handwritingWriter" style="display: flex; justify-content: center; gap: 10px;"></div>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer</button>
+                        <button id="hwNextBtn" style="padding: 0.75rem 2rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Next</button>
                     </div>
-
-                    <!-- Hidden buttons for JS compatibility -->
-                    <button id="hwShowBtn" class="hidden">Show</button>
-                    <button id="hwNextBtn" class="hidden">Next</button>
+                                    <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
                 </div>
 
                 <!-- Draw Character Mode -->

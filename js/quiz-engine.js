@@ -70,19 +70,41 @@ let handwritingAnswerShown = false;
 let handwritingSpaceDownTime = null;
 let handwritingHoldTimeout = null;
 let studyModeInitialized = false;
+let drawModeInitialized = false;
+let fullscreenDrawInitialized = false;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
 let currentChunkIndex = 0;
 let currentFullSentence = null;    // the full sentence object being chunked
-let drawModeInitialized = false;
-let fullscreenDrawInitialized = false;
 const studyModeState = {
     searchRaw: '',
     searchQuery: '',
     sortBy: 'original',
     shuffleOrder: null
 };
+
+// Ensure a mode button exists; if missing, append one using an existing button as a style template
+function ensureModeButton(mode, label) {
+    if (!mode) return;
+    const existing = document.querySelector(`.mode-btn[data-mode="${mode}"]`);
+    if (existing) return;
+
+    const container = document.querySelector('.sidebar nav') ||
+        document.querySelector('nav') ||
+        document.querySelector('.flex.flex-col.gap-2') ||
+        document.querySelector('.flex.flex-wrap.gap-2');
+    if (!container) return;
+
+    const template = document.querySelector('.mode-btn');
+    const btn = document.createElement('button');
+    btn.className = template
+        ? template.className.replace(/\bactive\b/g, '')
+        : 'mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm';
+    btn.dataset.mode = mode;
+    btn.textContent = label || mode;
+    container.appendChild(btn);
+}
 
 function syncModeLayoutState() {
     const root = document.body;
@@ -1462,7 +1484,7 @@ function getCurrentSkillKey(customMode = mode) {
     if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
         return 'pinyin';
     }
-    if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char') {
+    if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char' || m === 'draw-missing-component') {
         return 'writing';
     }
     return 'general';
@@ -1835,6 +1857,27 @@ function shouldGraduateAdaptiveChar(char) {
     if (!confidenceOk) return false;
     if (lastWrongAgo < ADAPTIVE_RECENT_WRONG_COOLDOWN) return false;
     return true;
+}
+
+// Return detailed readiness so we can surface why graduation is blocked
+function getAdaptiveReadiness(char) {
+    const stats = getSchedulerStats(char);
+    const served = stats.served || 0;
+    const streak = stats.streak || 0;
+    const score = getConfidenceScore(char);
+    const threshold = getConfidenceMasteryThreshold();
+    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
+
+    const servedOk = served >= ADAPTIVE_GRAD_MIN_SERVED;
+    const streakOk = streak >= ADAPTIVE_GRAD_MIN_STREAK;
+    const confidenceOk = score >= threshold;
+    const cooldownOk = lastWrongAgo >= ADAPTIVE_RECENT_WRONG_COOLDOWN;
+
+    return {
+        served, streak, score, threshold, lastWrongAgo,
+        servedOk, streakOk, confidenceOk, cooldownOk,
+        ready: servedOk && streakOk && confidenceOk && cooldownOk
+    };
 }
 
 // Debug function - call debugAdaptiveGraduation() in console to see why cards aren't graduating
@@ -2241,7 +2284,8 @@ function updateFeedStatusDisplay() {
     }
 
     const hand = feedModeState.hand || [];
-    const seenCount = Object.keys(feedModeState.seen || {}).length;
+    const seenKeys = Object.keys(feedModeState.seen || {});
+    const seenCount = seenKeys.length;
     const poolSize = Array.isArray(quizCharacters) ? quizCharacters.length : 0;
     const explorationPct = poolSize > 0 ? Math.round((seenCount / poolSize) * 100) : 0;
     const threshold = getConfidenceMasteryThreshold();
@@ -2249,7 +2293,7 @@ function updateFeedStatusDisplay() {
     // Count weak cards and mastered cards
     let weakCount = 0;
     let masteredCount = 0;
-    for (const char of Object.keys(feedModeState.seen || {})) {
+    for (const char of seenKeys) {
         const stats = feedModeState.seen[char];
         if (stats && stats.attempts > 0 && (stats.correct / stats.attempts) < FEED_WEAK_THRESHOLD) {
             weakCount++;
@@ -2282,7 +2326,7 @@ function updateFeedStatusDisplay() {
 
     const modeLabel = isFeedSR ? 'Feed Graduate Mode' : 'Feed Mode';
     const statsLine = isFeedSR
-        ? `${explorationPct}% explored · ${masteredCount} mastered · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`
+        ? `${explorationPct}% explored · ${masteredCount} ready ≥ ${threshold.toFixed(2)} · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`
         : `${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`;
 
     statusEl.className = 'mt-1 text-xs text-purple-800';
@@ -2290,6 +2334,7 @@ function updateFeedStatusDisplay() {
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
         <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
         <div class="text-[11px] text-purple-700">${statsLine}</div>
+        ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduation: ready ${masteredCount}/${seenCount || 1} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
     `;
 }
 
@@ -3344,17 +3389,28 @@ function updateAdaptiveStatusDisplay() {
 
     const deckBadges = deckItems.length
         ? deckItems.map(item => {
-            const ready = shouldGraduateAdaptiveChar(item.char);
-            const cls = ready ? 'text-emerald-700 font-semibold' : 'text-gray-900';
-            return `<span class="${cls}">${escapeHtml(item.char)}</span>`;
-        }).join(' ')
-        : '—';
+            const r = getAdaptiveReadiness(item.char);
+            const statusColor = r.ready ? 'text-emerald-700 font-semibold' : 'text-gray-900';
+            const pill = `
+                <div class="adaptive-pill">
+                    <span class="${statusColor}">${escapeHtml(item.char)}</span>
+                    <span class="${r.servedOk ? 'badge-ok' : 'badge-miss'}">Seen ${r.served}/${ADAPTIVE_GRAD_MIN_SERVED}</span>
+                    <span class="${r.streakOk ? 'badge-ok' : 'badge-miss'}">Streak ${r.streak}/${ADAPTIVE_GRAD_MIN_STREAK}</span>
+                    <span class="${r.confidenceOk ? 'badge-ok' : 'badge-miss'}">Conf ${r.score.toFixed(2)}/${r.threshold.toFixed(2)}</span>
+                    <span class="${r.cooldownOk ? 'badge-ok' : 'badge-miss'}">Wrong >${Math.ceil(ADAPTIVE_RECENT_WRONG_COOLDOWN/60)}m</span>
+                </div>`;
+            return pill;
+        }).join('')
+        : '<div class="text-gray-500">—</div>';
+
+    const readyCount = deckItems.filter(item => getAdaptiveReadiness(item.char).ready).length;
 
     statusEl.className = 'mt-1 text-xs text-indigo-800';
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-indigo-500">Adaptive 5</div>
-        <div class="text-sm text-indigo-900">Deck (${deckItems.length}/${ADAPTIVE_DECK_SIZE}): ${deckBadges}</div>
+        <div class="text-sm text-indigo-900">Deck ${deckItems.length}/${ADAPTIVE_DECK_SIZE} · Ready ${readyCount}/${deckItems.length}</div>
         <div class="text-[11px] text-indigo-700">${masteredCount} graduated · ${remaining} remaining · cycle ${cycleNumber}</div>
+        <div class="adaptive-pill-wrap">${deckBadges}</div>
     `;
 }
 
@@ -4525,7 +4581,27 @@ function generateQuestion(options = {}) {
         initStrokeOrder();
     } else if (mode === 'handwriting' && handwritingMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
-        questionDisplay.innerHTML = `<div class="text-center text-4xl mt-4 mb-2 font-bold text-gray-700">${displayPinyin}</div>`;
+
+        // Show prompt inside the handwriting pane (keeps it from overlapping mode buttons)
+        let promptEl = handwritingMode.querySelector('.handwriting-prompt');
+        if (!promptEl) {
+            promptEl = document.createElement('div');
+            promptEl.className = 'handwriting-prompt';
+            handwritingMode.insertBefore(promptEl, handwritingMode.firstChild);
+        }
+        const meaningText = currentQuestion.meaning ? ` · ${currentQuestion.meaning}` : '';
+        promptEl.textContent = `${displayPinyin}${meaningText}`;
+
+        // Clear the main question area so it doesn't cover the sidebar and reset hint/feedback
+        questionDisplay.innerHTML = '';
+        if (hint) {
+            hint.textContent = '';
+        }
+        if (feedback) {
+            feedback.textContent = '';
+            feedback.className = '';
+        }
+
         handwritingMode.style.display = 'block';
         initHandwriting();
     } else if (mode === 'draw-char' && drawCharMode) {
@@ -4535,6 +4611,52 @@ function generateQuestion(options = {}) {
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
+    } else if (mode === 'draw-missing-component' && drawCharMode) {
+        // Requires decomposition data
+        if (!decompositionsLoaded) {
+            questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
+            loadDecompositionsData().then(() => {
+                if (mode === 'draw-missing-component') {
+                    generateQuestion();
+                }
+            });
+            return;
+        }
+
+        // Use prepared component question if available, otherwise prepare new one
+        let prepared = null;
+        if (componentUpcomingQuestion) {
+            prepared = componentUpcomingQuestion;
+            componentUpcomingQuestion = null;
+        } else {
+            prepared = prepareComponentQuestion();
+        }
+
+        if (!prepared) {
+            questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
+            return;
+        }
+
+        currentQuestion = prepared.question;
+        window.currentQuestion = currentQuestion;
+        currentDecomposition = prepared.decomposition;
+        currentMissingComponent = prepared.decomposition.missingComponent;
+        componentInlineFeedback = null;
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
+
+        // Render partial word in three-column layout
+        renderThreeColumnComponentLayout();
+
+        // Show draw UI and seed candidates with the missing component + whole word
+        drawCharMode.style.display = 'block';
+        initCanvas();
+        clearCanvas();
+        updateOcrCandidates([currentMissingComponent.char, currentQuestion.char]);
+        const ocrResult = document.getElementById('ocrResult');
+        if (ocrResult) ocrResult.textContent = '';
+        feedback.textContent = '';
+        hint.textContent = '';
     } else if (mode === 'study' && studyMode) {
         questionDisplay.innerHTML = '';
         studyMode.style.display = 'block';
@@ -8275,8 +8397,12 @@ function submitDrawing() {
     // Play submit sound
     playSubmitSound();
 
+    const expectedChar = (mode === 'draw-missing-component' && currentMissingComponent)
+        ? currentMissingComponent.char
+        : currentQuestion.char;
+
     const normalizedRecognized = normalizeDrawAnswer(recognized);
-    const normalizedTarget = normalizeDrawAnswer(currentQuestion.char);
+    const normalizedTarget = normalizeDrawAnswer(expectedChar);
     const correct = normalizedRecognized === normalizedTarget;
     const isFirstAttempt = !answered;
 
@@ -8292,13 +8418,67 @@ function submitDrawing() {
     if (correct) {
         playCorrectSound();
         const tryAgainText = isFirstAttempt ? '' : ' (practice attempt)';
-        feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${tryAgainText}`;
+        const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
+        const label = mode === 'draw-missing-component'
+            ? `Missing: ${expectedChar}`
+            : `${currentQuestion.char}`;
+        feedback.textContent = `✓ Correct! ${label} (${currentQuestion.pinyin})${meaningSuffix}${tryAgainText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+
+        if (mode === 'draw-missing-component') {
+            // Record previous question for left column
+            componentPreviousQuestion = {
+                question: currentQuestion,
+                decomposition: currentDecomposition
+            };
+            componentPreviousResult = 'correct';
+            componentInlineFeedback = null;
+
+            // Advance to next component question
+            if (componentUpcomingQuestion) {
+                currentQuestion = componentUpcomingQuestion.question;
+                window.currentQuestion = currentQuestion;
+                currentDecomposition = componentUpcomingQuestion.decomposition;
+                currentMissingComponent = componentUpcomingQuestion.decomposition.missingComponent;
+                componentUpcomingQuestion = null;
+            } else {
+                const prepared = prepareComponentQuestion();
+                if (prepared) {
+                    currentQuestion = prepared.question;
+                    window.currentQuestion = currentQuestion;
+                    currentDecomposition = prepared.decomposition;
+                    currentMissingComponent = prepared.decomposition.missingComponent;
+                }
+            }
+
+            markSchedulerServed(currentQuestion);
+            updateCurrentWordConfidence();
+            renderThreeColumnComponentLayout();
+            updateOcrCandidates([currentMissingComponent.char, currentQuestion.char]);
+            clearCanvas();
+            answered = false;
+            questionAttemptRecorded = false;
+            lastAnswerCorrect = true;
+            showDrawNextButton();
+            updateStats();
+            return;
+        }
     } else {
         playWrongSound();
         const tryAgainText = isFirstAttempt ? ' - Keep practicing!' : ' - Try again!';
-        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${tryAgainText}`;
+        const label = mode === 'draw-missing-component'
+            ? `Missing: ${expectedChar}`
+            : `${currentQuestion.char}`;
+        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${label} (${currentQuestion.pinyin})${tryAgainText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+
+        if (mode === 'draw-missing-component') {
+            componentInlineFeedback = {
+                message: `✗ Correct: ${expectedChar}`,
+                type: 'incorrect'
+            };
+            renderThreeColumnComponentLayout();
+        }
     }
 
     updateStats();
@@ -8326,13 +8506,16 @@ function prettifyHandwritingPinyin(pinyin = '') {
 function revealDrawingAnswer() {
     if (!currentQuestion) return;
 
+    const expectedChar = (mode === 'draw-missing-component' && currentMissingComponent)
+        ? currentMissingComponent.char
+        : currentQuestion.char;
+
     const ocrResult = document.getElementById('ocrResult');
     if (ocrResult) {
-        ocrResult.textContent = currentQuestion.char;
-        // Adjust font size for multi-character words to ensure all characters are visible
+        ocrResult.textContent = expectedChar;
         ocrResult.style.fontFamily = "'Noto Sans SC', sans-serif";
         ocrResult.style.fontWeight = '700';
-        if (currentQuestion.char.length > 1) {
+        if (expectedChar.length > 1) {
             ocrResult.className = 'text-5xl min-h-[80px] text-blue-600 font-bold';
         } else {
             ocrResult.className = 'text-6xl min-h-[80px] text-blue-600 font-bold';
@@ -8340,11 +8523,11 @@ function revealDrawingAnswer() {
     }
 
     // Show individual characters as candidates for multi-character words
-    if (currentQuestion.char.length > 1) {
-        const individualChars = currentQuestion.char.split('');
-        updateOcrCandidates([currentQuestion.char, ...individualChars]);
+    if (expectedChar.length > 1) {
+        const individualChars = expectedChar.split('');
+        updateOcrCandidates([expectedChar, ...individualChars]);
     } else {
-        updateOcrCandidates([currentQuestion.char]);
+        updateOcrCandidates([expectedChar]);
     }
 
     const isFirstReveal = !answered;
@@ -8358,7 +8541,7 @@ function revealDrawingAnswer() {
 
     const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
     const revealText = isFirstReveal ? 'ⓘ Answer: ' : 'ⓘ Answer (shown again): ';
-    feedback.textContent = `${revealText}${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
+    feedback.textContent = `${revealText}${expectedChar} (${currentQuestion.pinyin})${meaningSuffix}`;
     feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
 
     updateStats();
@@ -10705,6 +10888,7 @@ function initQuizCommandPalette() {
         { name: 'Stroke Order', mode: 'stroke-order', type: 'mode' },
         { name: 'Handwriting', mode: 'handwriting', type: 'mode' },
         { name: 'Draw Character', mode: 'draw-char', type: 'mode' },
+        { name: 'Draw Missing Component', mode: 'draw-missing-component', type: 'mode' },
         { name: 'Study Mode', mode: 'study', type: 'mode' }
     ];
 
@@ -11191,6 +11375,7 @@ function initQuiz(charactersData, userConfig = {}) {
     loadAdaptiveState();
     loadFeedState();
     loadDecompositionsData(); // Load character decompositions from JSON
+    ensureModeButton('draw-missing-component', 'Draw Missing Component');
 
     reconcileBatchStateWithQueue();
     reconcileAdaptiveStateWithPool();
