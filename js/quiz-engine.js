@@ -2595,10 +2595,6 @@ function ensureConfidencePanel() {
                     <div id="confidenceGoalBadge" class="hidden inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">All ≥ ${CONFIDENCE_GOAL}</div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
-                    <div class="flex items-center gap-1">
-                        <span id="confidenceLiveLabel" class="text-[11px] text-gray-500">live</span>
-                        <button id="confidenceTrackingToggle" type="button" class="text-[11px] font-semibold text-green-600 px-1 py-0.5 rounded hover:bg-gray-100" title="Toggle live tracking">On</button>
-                    </div>
                     <button id="confidenceToggleBtn" type="button" class="text-[11px] font-semibold text-blue-600 px-2 py-1 rounded hover:bg-blue-50 border border-transparent hover:border-blue-200" aria-pressed="true">Hide</button>
                 </div>
             </div>
