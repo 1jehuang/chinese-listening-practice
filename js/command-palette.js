@@ -561,6 +561,7 @@ function initCommandPalette(config = []) {
 
     window.__commandPaletteState = {
         updateConfig(newConfig) {
+            console.log('[DEBUG] updateConfig called with', newConfig.items?.length, 'items:', newConfig.items?.map(i => i.name));
             baseItems = newConfig.items;
             if (typeof newConfig.searchPlaceholder === 'string') {
                 search.placeholder = newConfig.searchPlaceholder;
