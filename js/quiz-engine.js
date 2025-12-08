@@ -10144,21 +10144,22 @@ function showFullscreenAnswer() {
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt) {
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
-        prompt.innerHTML = `<span class="text-blue-600">ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}</span>`;
+        prompt.innerHTML = `<span class="text-red-600">✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}</span>`;
     }
 
     if (!answered) {
         answered = true;
         total++;
+        // Score not incremented = counts as wrong
 
         markSchedulerOutcome(false);
 
         updateStats();
 
-        // Also update main feedback
+        // Also update main feedback - show as wrong (red)
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
-        feedback.textContent = `ⓘ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
+        feedback.textContent = `✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     }
 }
 
