@@ -2893,7 +2893,7 @@ function updateRightSideSpacing() {
         const chatPanelWidth = 320; // w-80 = 20rem
         appContainer.style.paddingRight = `${chatPanelWidth + gutter}px`;
     } else if (confidencePanelVisible) {
-        const panelWidth = confidencePanel?.offsetWidth || 240;
+        const panelWidth = confidencePanel?.offsetWidth || 208;
         appContainer.style.paddingRight = `${panelWidth + gutter}px`;
     } else {
         appContainer.style.paddingRight = '0px';
@@ -2908,7 +2908,8 @@ function updateConfidenceLayoutSpacing(panelWidth) {
 function positionConfidencePullTab() {
     const pullTab = document.getElementById('confidencePullTab');
     if (!pullTab) return;
-    const panelWidth = confidencePanel?.offsetWidth || 240; // default width (w-60-ish)
+    // Panel is w-52 = 13rem = 208px
+    const panelWidth = confidencePanel?.offsetWidth || 208;
     pullTab.style.right = confidencePanelVisible ? `${panelWidth}px` : '0';
 }
 
@@ -2916,7 +2917,7 @@ function setConfidencePanelVisible(visible) {
     confidencePanelVisible = Boolean(visible);
     const pullTab = document.getElementById('confidencePullTab');
     const content = document.getElementById('confidencePanelContent');
-    const panelWidth = confidencePanel?.offsetWidth || 240;
+    const panelWidth = confidencePanel?.offsetWidth || 208;
 
     if (confidencePanelVisible) {
         // Show panel
