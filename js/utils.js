@@ -269,6 +269,37 @@ function pinyinToAudioKey(pinyin) {
     return result + tone;
 }
 
+// Voice caching for iOS compatibility ----------------------------------------
+// iOS Safari returns empty array from getVoices() on first call - need to wait
+// for voiceschanged event and cache the voices
+
+let cachedVoices = [];
+let voicesLoaded = false;
+
+function loadVoices() {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    const voices = speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        cachedVoices = voices;
+        voicesLoaded = true;
+    }
+}
+
+// Initialize voices on page load
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+    loadVoices();
+    // iOS Safari fires voiceschanged after getVoices() returns empty
+    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+}
+
+function getChineseVoice() {
+    if (!voicesLoaded) loadVoices();
+    // Prefer zh-CN, fall back to any zh voice
+    return cachedVoices.find(v => v.lang === 'zh-CN') ||
+           cachedVoices.find(v => v.lang.startsWith('zh'));
+}
+
 // Play audio using TTS
 function playTTS(chineseChar) {
     stopActiveAudio();
@@ -290,18 +321,21 @@ function playTTS(chineseChar) {
         utterance.rate = DEFAULT_TTS_RATE;
     }
 
-    // Try to get a Chinese voice
-    const voices = speechSynthesis.getVoices();
-    const chineseVoice = voices.find(voice => voice.lang.startsWith('zh'));
+    // Use cached Chinese voice (iOS-compatible)
+    const chineseVoice = getChineseVoice();
     if (chineseVoice) {
         utterance.voice = chineseVoice;
     }
 
+    // Cancel any ongoing speech before starting new one
     if (typeof speechSynthesis.cancel === 'function') {
         speechSynthesis.cancel();
     }
 
-    speechSynthesis.speak(utterance);
+    // iOS Safari workaround: sometimes needs a small delay after cancel
+    setTimeout(() => {
+        speechSynthesis.speak(utterance);
+    }, 10);
 }
 
 function mapRateToSentenceSpeed(rate) {
