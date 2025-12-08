@@ -331,7 +331,7 @@
                 <div id="sidebar-profile-slot"></div>
             </div>
             <h2>Quiz Modes</h2>
-            <p class="mode-desc">Mix of dialogue + vocab from Lessons 1–4.</p>
+            <p class="mode-desc">High-frequency "glue" words for dictation practice.</p>
             <nav>
                 <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
                 <button class="mode-btn" data-mode="char-to-pinyin">Char → Pinyin</button>
@@ -351,8 +351,8 @@
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>Lessons 1–4 · Common Words (Dialogue + Vocab)</h1>
-                <p class="text-gray-500 text-sm">Every word that appears in the dialogues or vocab lists for Lessons 1–4.</p>
+                <h1>Lessons 1–4 · Common Words</h1>
+                <p class="text-gray-500 text-sm">High-frequency connecting words: particles, conjunctions, pronouns, basic verbs.</p>
             </header>
 
             <section class="quiz-display">
@@ -404,7 +404,7 @@
                     </div>
                 </div>
                 <div id="studyMode" class="hidden">
-                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Full list of all common words from Lessons 1–4.</div>
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Curated list of high-frequency connecting words.</div>
                     <div id="studyList" style="max-height: 480px; overflow-y: auto;"></div>
                 </div>
                 <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
@@ -418,249 +418,116 @@
     </div>
 
     <script>
-        // Lessons 1–4 (from cumulative files)
-        const lesson1 = [
-            { char: '第', pinyin: 'dì', meaning: 'ordinal prefix (-st, -nd, -rd, -th)' },
-            { char: '课', pinyin: 'kè', meaning: 'lesson' },
-            { char: '两', pinyin: 'liǎng', meaning: 'two (used with AN)' },
-            { char: '张', pinyin: 'zhāng', meaning: 'measure word for flat things' },
-            { char: '地图', pinyin: 'dìtú', meaning: 'map' },
-            { char: '甲', pinyin: 'jiǎ', meaning: 'person A' },
-            { char: '这', pinyin: 'zhè', meaning: 'this; these' },
-            { char: '是', pinyin: 'shì', meaning: 'is; am; are' },
-            { char: '什么', pinyin: 'shén.me', meaning: 'what' },
-            { char: '比', pinyin: 'bǐ', meaning: 'compare' },
-            { char: '大', pinyin: 'dà', meaning: 'big' },
-            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little' },
-            { char: '年', pinyin: 'nián', meaning: 'year' },
-            { char: '以前', pinyin: 'yǐqián', meaning: 'before' },
-            { char: '那时', pinyin: 'nàshí', meaning: 'that time' },
-            { char: '还', pinyin: 'hái', meaning: 'still; also' },
-            { char: '包括', pinyin: 'bāokuò', meaning: 'include' },
-            { char: '现在', pinyin: 'xiànzài', meaning: 'now' },
-            { char: '蒙古国', pinyin: 'Měnggǔguó', meaning: 'Mongolia' },
-            { char: '哦', pinyin: 'ò', meaning: 'oh; I see' },
-            { char: '我', pinyin: 'wǒ', meaning: 'I; me' },
-            { char: '懂', pinyin: 'dǒng', meaning: 'understand' },
-            { char: '了', pinyin: 'le', meaning: 'particle for new situation' },
-            { char: '历史', pinyin: 'lì.shǐ', meaning: 'history' },
-            { char: '上', pinyin: 'shàng', meaning: 'in; on' },
-            { char: '对了', pinyin: 'duì.le', meaning: "that's right" },
-            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but' },
-            { char: '完全', pinyin: 'wánquán', meaning: 'completely; entirely' },
-            { char: '他们', pinyin: 'tā.men', meaning: 'they' },
-            { char: '搬', pinyin: 'bān', meaning: 'move' },
-            { char: '到…去', pinyin: 'dào...qù', meaning: 'go to...' },
-            { char: '台湾', pinyin: 'Táiwān', meaning: 'Taiwan' },
-            { char: '就是', pinyin: 'jiù.shì', meaning: 'be exactly' },
-            { char: '和', pinyin: 'hé', meaning: 'and' },
-            { char: '政府', pinyin: 'zhèng.fǔ', meaning: 'government' },
-            { char: '都', pinyin: 'dōu', meaning: 'in all cases' },
-            { char: '说', pinyin: 'shuō', meaning: 'speak; say; talk' },
-            { char: '只有', pinyin: 'zhǐyǒu', meaning: "there's only" },
-            { char: '个', pinyin: 'gè', meaning: 'general measure word' },
-            { char: '而', pinyin: 'ér', meaning: 'and; yet' },
-            { char: '部分', pinyin: 'bù.fèn', meaning: 'part' },
-            { char: '国家', pinyin: 'guójiā', meaning: 'country' },
-            { char: '对不对', pinyin: 'duì.bu.duì', meaning: 'Is it correct?' },
-            { char: '很难说', pinyin: 'hěnnánshuō', meaning: "It's hard to say" },
-            { char: '乙', pinyin: 'yǐ', meaning: 'person B' },
-            { char: '中国', pinyin: 'Zhōng.guó', meaning: 'China' },
-            { char: '那么', pinyin: 'nà.me', meaning: 'well then; then' },
-            { char: '那', pinyin: 'nà', meaning: 'that; those' },
+        // Common/connecting words from Lessons 1–4 (manually curated)
+        // These are the "glue" words that appear frequently in dictations
+        const characters = [
+            // === PARTICLES ===
+            { char: '的', pinyin: 'de', meaning: 'particle for modification' },
+            { char: '了', pinyin: 'le', meaning: 'particle for completed action / new situation' },
+            { char: '吗', pinyin: '.ma', meaning: 'particle for yes/no questions' },
             { char: '呢', pinyin: 'ne', meaning: 'particle for follow-up questions' },
-            { char: '也', pinyin: 'yě', meaning: 'also; too' },
-            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why' },
-            { char: '不', pinyin: 'bù', meaning: 'no; not' },
-            { char: '一样', pinyin: 'yīyàng', meaning: 'same' },
-            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because; since' },
-            { char: '中华', pinyin: 'Zhōnghuá', meaning: 'China' },
-            { char: '民国', pinyin: 'mínguó', meaning: 'republic' },
-            { char: '人民', pinyin: 'rénmín', meaning: 'the people' },
-            { char: '共和国', pinyin: 'gònghéguó', meaning: 'republic' },
-            { char: '的', pinyin: 'de', meaning: 'particle for modification' }
-        ];
-
-        const lesson2 = [
-            // Page 18
-            { char: '我的', pinyin: 'wǒ.de', meaning: 'my' },
-            { char: '家', pinyin: 'jiā', meaning: 'home' },
-            { char: '在', pinyin: 'zài', meaning: 'be located in; at; on' },
-            { char: '哪儿', pinyin: 'nǎr', meaning: 'where' },
-            { char: '父亲', pinyin: 'fù.qin', meaning: 'father' },
-            { char: '书', pinyin: 'shū', meaning: 'book' },
-            { char: '书房', pinyin: 'shūfáng', meaning: 'a study' },
-            { char: '里', pinyin: 'lǐ', meaning: 'inside' },
-            { char: '挂', pinyin: 'guà', meaning: 'hang' },
-            { char: 'V着', pinyin: 'V.zhe', meaning: 'keep on V-ing' },
-            { char: '小', pinyin: 'xiǎo', meaning: 'young; small' },
-            { char: '时候', pinyin: 'shí.hou', meaning: 'time' },
-            { char: '他', pinyin: 'tā', meaning: 'he' },
-            { char: '常', pinyin: 'cháng', meaning: 'often' },
-            { char: '指', pinyin: 'zhǐ', meaning: 'point' },
-            { char: '西南', pinyin: 'xīnán', meaning: 'southwest' },
-            // Page 19
-            { char: '边', pinyin: 'biān', meaning: 'side' },
-            { char: '黑', pinyin: 'hēi', meaning: 'black; dark' },
-            { char: '点', pinyin: 'diǎn', meaning: 'spot; dot' },
-            { char: '我们的', pinyin: 'wǒ.men.de', meaning: 'our; ours' },
-            { char: '老家', pinyin: 'lǎojiā', meaning: 'hometown' },
-            { char: '觉得', pinyin: 'jué.de', meaning: 'think; feel' },
-            { char: '很', pinyin: 'hěn', meaning: 'very' },
-            { char: '奇怪', pinyin: 'qíguài', meaning: 'strange' },
-            { char: '纽约', pinyin: 'Niǔyuē', meaning: 'New York' },
-            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
-            { char: '会', pinyin: 'huì', meaning: 'could; would; can' },
-            { char: '后来', pinyin: 'hòulái', meaning: 'later' },
-            { char: '才', pinyin: 'cái', meaning: 'later than expected' },
-            { char: '知道', pinyin: 'zhīdao', meaning: 'know' },
-            { char: '成都', pinyin: 'Chéngdū', meaning: 'name of a city' },
-            { char: '虽然', pinyin: 'suīrán', meaning: 'although' },
-            { char: '来', pinyin: 'lái', meaning: 'come' },
-            { char: '美国', pinyin: 'Měiguó', meaning: 'The United States of America' },
-            { char: '快…了', pinyin: 'kuài... .le', meaning: 'almost, about to' },
-            // Page 20
-            { char: '总', pinyin: 'zǒng', meaning: 'always' },
-            { char: '还是', pinyin: 'hái.shì', meaning: 'still' },
-            { char: '四川', pinyin: 'Sìchuān', meaning: 'a province in southwest China' },
-            { char: '才', pinyin: 'cái', meaning: 'emphasizing contrast' },
-            { char: '生', pinyin: 'shēng', meaning: 'be born' },
-            { char: '长', pinyin: 'zhǎng', meaning: 'grow up' },
-            { char: '从小', pinyin: 'cóngxiǎo', meaning: "from one's childhood" },
-            { char: '就', pinyin: 'jiù', meaning: 'sooner than expected; as early as' },
-            { char: '跟', pinyin: 'gēn', meaning: 'with; to' },
-            { char: '中文', pinyin: 'Zhōngwén', meaning: 'the Chinese language' },
-            { char: '吃', pinyin: 'chī', meaning: 'eat' },
-            { char: '菜', pinyin: 'cài', meaning: 'food; vegetables' },
-            { char: '有时', pinyin: 'yǒushí', meaning: 'sometimes' },
-            { char: '看', pinyin: 'kàn', meaning: 'see; look' },
-            { char: '电视', pinyin: 'diànshì', meaning: 'television' },
-            { char: '节目', pinyin: 'jiémù', meaning: 'program' },
-            { char: '星期', pinyin: 'xīngqī', meaning: 'week' },
-            { char: '星期六', pinyin: 'xīngqīliù', meaning: 'Saturday' },
-            // Page 21
-            { char: '还', pinyin: 'hái', meaning: 'also' },
-            { char: '去', pinyin: 'qù', meaning: 'go' },
-            { char: '附近', pinyin: 'fùjìn', meaning: 'nearby; vicinity' },
-            { char: '学校', pinyin: 'xuéxiào', meaning: 'school' },
-            { char: '学', pinyin: 'xué', meaning: 'study; learn' },
-            { char: '同学', pinyin: 'tóngxué', meaning: 'classmates; schoolmates' },
-            { char: '到底', pinyin: 'dàodǐ', meaning: 'after all (emphatic use)' },
-            { char: '还是', pinyin: 'háishì', meaning: 'or' },
-            { char: '意思', pinyin: 'yìsi', meaning: 'meaning' }
-        ];
-
-        const lesson3 = [
-            // Page 32
-            { char: '你', pinyin: 'nǐ', meaning: 'you' },
-            { char: '从…来', pinyin: 'cóng...lái', meaning: 'come from' },
-            { char: '来', pinyin: 'lái', meaning: 'come' },
-            { char: '德州', pinyin: 'Dézhōu', meaning: 'Texas' },
-            { char: '看起来', pinyin: 'kàn.qi.lái', meaning: 'look like, seem' },
-            // Page 33
-            { char: '像', pinyin: 'xiàng', meaning: 'resemble' },
-            { char: '跟', pinyin: 'gēn', meaning: 'and' },
             { char: '啊', pinyin: '.a', meaning: 'particle showing obviousness' },
-            { char: '真', pinyin: 'zhēn', meaning: 'really' },
-            { char: '看不出来', pinyin: 'kàn.bù.chū.lái', meaning: "can't figure out by looking; can't tell" },
-            { char: '样', pinyin: 'yàng', meaning: 'kind; sort' },
-            { char: '才', pinyin: 'cái', meaning: 'indicating contrast' },
-            { char: '想', pinyin: 'xiǎng', meaning: 'think' },
-            { char: '黄', pinyin: 'huáng', meaning: 'yellow; brown' },
-            { char: '头发', pinyin: 'tóu.fà', meaning: 'hair (on the human head)' },
-            { char: '蓝', pinyin: 'lán', meaning: 'blue' },
-            { char: '眼睛', pinyin: 'yǎnjīng', meaning: 'eyes' },
-            { char: '吗', pinyin: '.ma', meaning: 'particle for simple questions' },
-            { char: '不一定', pinyin: 'bùyīdìng', meaning: 'not necessarily' },
-            // Page 34
-            { char: '但是', pinyin: 'dàn.shì', meaning: 'but' },
-            { char: '有', pinyin: 'yǒu', meaning: 'have; there be' },
-            { char: '却', pinyin: 'què', meaning: 'but' },
-            { char: '日本人', pinyin: 'Rì.běn.rén', meaning: 'Japanese people' },
-            { char: '可以', pinyin: 'kěyǐ', meaning: 'can; may' },
-            { char: '所以', pinyin: 'suǒ.yǐ', meaning: 'therefore' },
-            { char: '有的', pinyin: 'yǒu.de', meaning: 'some' },
-            { char: '白人', pinyin: 'bái.rén', meaning: 'Caucasian American' },
-            { char: '黑人', pinyin: 'hēi.rén', meaning: 'African American' },
-            { char: '黄种人', pinyin: 'huángzhǒng.rén', meaning: 'Asian American' },
-            { char: '欧洲', pinyin: 'Ōuzhōu', meaning: 'Europe' },
-            { char: '非洲', pinyin: 'Fēizhōu', meaning: 'Africa' },
-            // Page 35
-            { char: '亚洲', pinyin: 'Yàzhōu', meaning: 'Asia' },
-            { char: '只要', pinyin: 'zhǐyào', meaning: 'as long as; provided that' },
-            { char: '得', pinyin: 'děi', meaning: 'have to' }
-        ];
-
-        const lesson4 = [
-            // Pages 44-45
-            { char: '女', pinyin: 'nǚ', meaning: 'daughter; female' },
-            { char: '妈', pinyin: 'mā', meaning: 'mom; mother' },
-            { char: '今天', pinyin: 'jīntiān', meaning: 'today' },
-            { char: '注册', pinyin: 'zhùcè', meaning: 'register (at school)' },
-            { char: '选', pinyin: 'xuǎn', meaning: 'choose' },
-            { char: '了', pinyin: '.le', meaning: 'completed-action particle' },
-            { char: '门', pinyin: 'mén', meaning: 'measure word for courses' },
-            { char: '课', pinyin: 'kè', meaning: 'course; class' },
-            { char: '母', pinyin: 'mǔ', meaning: 'mother (abbr.)' },
-            { char: '讨厌', pinyin: 'tǎoyàn', meaning: 'find disgusting; dislike' },
-            { char: 'V起…来', pinyin: 'V.qǐ.lai', meaning: 'start to V; set about V-ing' },
-            { char: '并', pinyin: 'bìng', meaning: 'actually (not); used for emphasis' },
-            { char: '只是', pinyin: 'zhǐ.shì', meaning: 'only; just' },
-            { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like' },
-            { char: '逼', pinyin: 'bī', meaning: 'force; compel' },
-            { char: '得', pinyin: '.de', meaning: 'predicative complement marker' },
-            { char: '太', pinyin: 'tài', meaning: 'too; excessively' },
-            { char: '紧', pinyin: 'jǐn', meaning: 'tight; strict' },
-            { char: '没(有)', pinyin: 'méi(.yǒu)', meaning: 'have not; there is not' },
-            { char: '想', pinyin: 'xiǎng', meaning: 'want; would like to; think' },
-            { char: '好极了', pinyin: 'hǎojí.le', meaning: 'wonderful; great' },
-            { char: '爸爸', pinyin: 'bà.ba', meaning: 'father' },
-            { char: '听到', pinyin: 'tīng.dào', meaning: 'hear' },
-            { char: '消息', pinyin: 'xiāo.xi', meaning: 'news; information' },
-            { char: '一定', pinyin: 'yídìng', meaning: 'certainly; for sure' },
-            { char: '高兴', pinyin: 'gāoxìng', meaning: 'happy; glad' },
-            { char: '告诉', pinyin: 'gào.sù', meaning: 'tell; inform' },
-            // Page 46
-            { char: '你又来了', pinyin: 'nǐ yòu lái.le', meaning: 'there you go again' },
-            { char: '要', pinyin: 'yào', meaning: 'need; want' },
-            { char: '世界', pinyin: 'shìjiè', meaning: 'world' },
-            { char: '各', pinyin: 'gè', meaning: 'each; every' },
-            { char: '地', pinyin: 'dì', meaning: 'place; land' },
-            { char: '不但', pinyin: 'bùdàn', meaning: 'not only' },
-            { char: '英国', pinyin: 'Yīng.guó', meaning: 'England' },
-            { char: '法国', pinyin: 'Fǎ.guó', meaning: 'France' },
-            // Page 47
-            { char: '哦', pinyin: 'ó', meaning: 'oh?! (interjection)' },
-            { char: '是吗', pinyin: 'shì.ma', meaning: 'is that so?' },
-            { char: '人口', pinyin: 'rén.kǒu', meaning: 'population' },
-            { char: '多', pinyin: 'duō', meaning: 'many; much' },
-            { char: '经济', pinyin: 'jīng.jì', meaning: 'economy' },
-            { char: '贸易', pinyin: 'mào.yì', meaning: 'trade; commerce' },
-            { char: '发达', pinyin: 'fā.dá', meaning: 'developed; advanced' },
-            { char: '做', pinyin: 'zuò', meaning: 'do; make' },
-            { char: '生意', pinyin: 'shēngyi', meaning: 'business' },
-            { char: '越来越', pinyin: 'yuè lái yuè', meaning: 'more and more' },
-            { char: '一天比一天', pinyin: 'yìtiān bǐ yìtiān', meaning: 'day by day; more with each day' },
-            { char: '为了', pinyin: 'wèile', meaning: 'in order to' },
-            { char: '买卖', pinyin: 'mǎi.mài', meaning: 'business transaction; buying and selling' },
-            { char: '才', pinyin: 'cái', meaning: 'only; just now' },
             { char: '啰', pinyin: 'lo', meaning: 'particle showing obviousness' },
-            { char: '不见得', pinyin: 'bújiàn.de', meaning: 'not necessarily' },
-            { char: '文学', pinyin: 'wén.xué', meaning: 'literature' },
-            // Page 48
-            { char: '自己', pinyin: 'zìjǐ', meaning: 'self' },
-            { char: '才', pinyin: 'cái', meaning: 'just now; only then' },
-            { char: '更', pinyin: 'gèng', meaning: 'even more' },
-            { char: '有意思', pinyin: 'yǒu.yì.si', meaning: 'interesting; meaningful' },
-            { char: '呢', pinyin: '.ne', meaning: 'particle for emphasis or continuation' }
-        ];
+            { char: '着', pinyin: 'zhe', meaning: 'particle for ongoing action' },
+            { char: '得', pinyin: '.de', meaning: 'complement marker' },
 
-        // Merge and de-duplicate
-        const combinedMap = new Map();
-        [...lesson1, ...lesson2, ...lesson3, ...lesson4].forEach(item => {
-            if (!combinedMap.has(item.char)) combinedMap.set(item.char, item);
-        });
-        const characters = Array.from(combinedMap.values());
+            // === CONJUNCTIONS ===
+            { char: '和', pinyin: 'hé', meaning: 'and' },
+            { char: '跟', pinyin: 'gēn', meaning: 'and; with' },
+            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but' },
+            { char: '但是', pinyin: 'dàn.shì', meaning: 'but' },
+            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because' },
+            { char: '所以', pinyin: 'suǒ.yǐ', meaning: 'therefore' },
+            { char: '虽然', pinyin: 'suīrán', meaning: 'although' },
+            { char: '而', pinyin: 'ér', meaning: 'and; yet; but' },
+            { char: '不但', pinyin: 'bùdàn', meaning: 'not only' },
+            { char: '只要', pinyin: 'zhǐyào', meaning: 'as long as' },
+            { char: '为了', pinyin: 'wèile', meaning: 'in order to' },
+
+            // === PRONOUNS ===
+            { char: '我', pinyin: 'wǒ', meaning: 'I; me' },
+            { char: '你', pinyin: 'nǐ', meaning: 'you' },
+            { char: '他', pinyin: 'tā', meaning: 'he; him' },
+            { char: '他们', pinyin: 'tā.men', meaning: 'they; them' },
+            { char: '自己', pinyin: 'zìjǐ', meaning: 'oneself' },
+            { char: '这', pinyin: 'zhè', meaning: 'this' },
+            { char: '那', pinyin: 'nà', meaning: 'that' },
+
+            // === QUESTION WORDS ===
+            { char: '什么', pinyin: 'shén.me', meaning: 'what' },
+            { char: '哪儿', pinyin: 'nǎr', meaning: 'where' },
+            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
+            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why' },
+
+            // === ADVERBS ===
+            { char: '都', pinyin: 'dōu', meaning: 'all; both; in every case' },
+            { char: '也', pinyin: 'yě', meaning: 'also; too' },
+            { char: '还', pinyin: 'hái', meaning: 'still; also' },
+            { char: '很', pinyin: 'hěn', meaning: 'very' },
+            { char: '太', pinyin: 'tài', meaning: 'too; excessively' },
+            { char: '真', pinyin: 'zhēn', meaning: 'really; truly' },
+            { char: '更', pinyin: 'gèng', meaning: 'even more' },
+            { char: '就', pinyin: 'jiù', meaning: 'then; precisely; as early as' },
+            { char: '才', pinyin: 'cái', meaning: 'only then; just; only' },
+            { char: '常', pinyin: 'cháng', meaning: 'often' },
+            { char: '总', pinyin: 'zǒng', meaning: 'always' },
+            { char: '并', pinyin: 'bìng', meaning: 'actually (not); for emphasis' },
+            { char: '却', pinyin: 'què', meaning: 'but; yet; however' },
+            { char: '只', pinyin: 'zhǐ', meaning: 'only' },
+
+            // === BASIC VERBS ===
+            { char: '是', pinyin: 'shì', meaning: 'is; am; are' },
+            { char: '有', pinyin: 'yǒu', meaning: 'have; there is/are' },
+            { char: '在', pinyin: 'zài', meaning: 'be at; be located' },
+            { char: '会', pinyin: 'huì', meaning: 'can; will; know how to' },
+            { char: '能', pinyin: 'néng', meaning: 'can; be able to' },
+            { char: '可以', pinyin: 'kěyǐ', meaning: 'can; may' },
+            { char: '要', pinyin: 'yào', meaning: 'want; need; will' },
+            { char: '想', pinyin: 'xiǎng', meaning: 'want to; think; miss' },
+            { char: '得', pinyin: 'děi', meaning: 'have to; must' },
+            { char: '说', pinyin: 'shuō', meaning: 'speak; say' },
+            { char: '看', pinyin: 'kàn', meaning: 'look; see; read' },
+            { char: '来', pinyin: 'lái', meaning: 'come' },
+            { char: '去', pinyin: 'qù', meaning: 'go' },
+            { char: '做', pinyin: 'zuò', meaning: 'do; make' },
+            { char: '知道', pinyin: 'zhīdao', meaning: 'know' },
+            { char: '懂', pinyin: 'dǒng', meaning: 'understand' },
+            { char: '觉得', pinyin: 'jué.de', meaning: 'feel; think' },
+            { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like' },
+
+            // === LOCATION/TIME ===
+            { char: '上', pinyin: 'shàng', meaning: 'on; above; last' },
+            { char: '里', pinyin: 'lǐ', meaning: 'inside; in' },
+            { char: '边', pinyin: 'biān', meaning: 'side' },
+            { char: '现在', pinyin: 'xiànzài', meaning: 'now' },
+            { char: '以前', pinyin: 'yǐqián', meaning: 'before; previously' },
+            { char: '后来', pinyin: 'hòulái', meaning: 'later; afterwards' },
+            { char: '时候', pinyin: 'shí.hou', meaning: 'time; moment' },
+            { char: '今天', pinyin: 'jīntiān', meaning: 'today' },
+
+            // === MEASURE WORDS ===
+            { char: '个', pinyin: 'gè', meaning: 'general measure word' },
+            { char: '两', pinyin: 'liǎng', meaning: 'two (with measure words)' },
+
+            // === OTHER COMMON ===
+            { char: '不', pinyin: 'bù', meaning: 'no; not' },
+            { char: '没', pinyin: 'méi', meaning: 'not; have not' },
+            { char: '对', pinyin: 'duì', meaning: 'correct; right' },
+            { char: '多', pinyin: 'duō', meaning: 'many; much; more' },
+            { char: '大', pinyin: 'dà', meaning: 'big; large' },
+            { char: '小', pinyin: 'xiǎo', meaning: 'small; young' },
+            { char: '一样', pinyin: 'yīyàng', meaning: 'same; alike' },
+            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little' },
+            { char: '一定', pinyin: 'yídìng', meaning: 'certainly; definitely' },
+            { char: '不一定', pinyin: 'bùyīdìng', meaning: 'not necessarily' },
+            { char: '还是', pinyin: 'háishì', meaning: 'or; still' },
+            { char: '有的', pinyin: 'yǒu.de', meaning: 'some' },
+            { char: '越来越', pinyin: 'yuèláiyuè', meaning: 'more and more' },
+            { char: '那么', pinyin: 'nà.me', meaning: 'then; in that case' },
+            { char: '只是', pinyin: 'zhǐ.shì', meaning: 'only; just; merely' },
+            { char: '只有', pinyin: 'zhǐyǒu', meaning: 'only; only if' },
+            { char: '就是', pinyin: 'jiù.shì', meaning: 'exactly; precisely' }
+        ];
 
         initQuiz(characters, {
             enablePreviewQueue: true,
