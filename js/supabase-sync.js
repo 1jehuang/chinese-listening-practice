@@ -377,16 +377,34 @@ function createAuthUI() {
 
     const authContainer = document.createElement('div');
     authContainer.id = 'auth-container';
-    authContainer.className = 'fixed top-4 left-28 z-50';
-    authContainer.innerHTML = `
-        <button id="auth-btn" class="bg-white hover:bg-gray-100 text-gray-700 w-10 h-10 rounded-full shadow border border-gray-200 transition flex items-center justify-center" title="Sign in">
-            <svg id="auth-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-            </svg>
-            <img id="auth-avatar" class="w-8 h-8 rounded-full hidden" alt="Profile" />
-        </button>
-    `;
-    document.body.appendChild(authContainer);
+
+    // Check if sidebar has a profile slot
+    const sidebarSlot = document.getElementById('sidebar-profile-slot');
+    if (sidebarSlot) {
+        // Use sidebar slot - no fixed positioning needed
+        authContainer.className = '';
+        authContainer.innerHTML = `
+            <button id="auth-btn" class="bg-white hover:bg-gray-100 text-gray-700 w-10 h-10 rounded-full shadow border border-gray-200 transition flex items-center justify-center" title="Sign in">
+                <svg id="auth-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <img id="auth-avatar" class="w-8 h-8 rounded-full hidden" alt="Profile" />
+            </button>
+        `;
+        sidebarSlot.appendChild(authContainer);
+    } else {
+        // Fall back to fixed positioning
+        authContainer.className = 'fixed top-4 left-28 z-50';
+        authContainer.innerHTML = `
+            <button id="auth-btn" class="bg-white hover:bg-gray-100 text-gray-700 w-10 h-10 rounded-full shadow border border-gray-200 transition flex items-center justify-center" title="Sign in">
+                <svg id="auth-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <img id="auth-avatar" class="w-8 h-8 rounded-full hidden" alt="Profile" />
+            </button>
+        `;
+        document.body.appendChild(authContainer);
+    }
 
     const authBtn = document.getElementById('auth-btn');
     const authIcon = document.getElementById('auth-icon');
