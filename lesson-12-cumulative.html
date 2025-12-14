@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Lesson 12 Cumulative: 做孩子也不容易 - Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Confidence pane on the right for this experimental page */
+        body.experimental-layout #confidencePanel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 240px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-left: 1px solid #e5e7eb;
+            box-shadow: -6px 0 20px rgba(0,0,0,0.05);
+            padding: 0.65rem 0.85rem 0.85rem;
+            margin-top: 0 !important;
+            z-index: 40;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        body.experimental-layout #confidencePanel .space-y-1 { margin-top: 0.35rem; }
+        body.experimental-layout #confidencePanel .border-t { border-top: none !important; }
+        body.experimental-layout #confidencePanel .pt-4 { padding-top: 0 !important; }
+        body.experimental-layout #confidencePanel #confidenceList {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-bottom: 0.5rem;
+            max-height: none !important;
+        }
+
+        /* Add breathing room so content doesn't sit under the right pane */
+        body.experimental-layout .app-container {
+            padding-right: 16rem;
+            min-height: 100vh;
+        }
+
+        /* Hide confidence panel on smaller screens */
+        @media (max-width: 1024px) {
+            body.experimental-layout #confidencePanel {
+                display: none;
+            }
+            body.experimental-layout .app-container {
+                padding-right: 0;
+            }
+        }
+
+        /* Main layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar (match standard pages) */
+        .sidebar {
+            width: 16rem;
+            flex-shrink: 0;
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            margin-top: 3rem;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .sidebar .mode-desc {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .sidebar .mode-btn {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 0.75rem;
+            border: 2px solid #d1d5db;
+            background: #ffffff;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #374151;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+
+        .sidebar .mode-btn:hover {
+            background: #f3f4f6;
+        }
+
+        .sidebar .mode-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Main content area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding: 1rem 2rem;
+            overflow: hidden;
+        }
+
+        /* Header with title and toolbar */
+        .quiz-header {
+            flex-shrink: 0;
+            text-align: center;
+            padding-bottom: 0.5rem;
+        }
+
+        .quiz-header h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            margin: 0;
+        }
+
+        /* Quiz display area - grows to fill space */
+        .quiz-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 0;
+            padding: 1rem 0;
+        }
+
+        #questionDisplay {
+            width: 100%;
+        }
+
+        /* Three-column layout tweaks */
+        .three-column-meaning-layout {
+            margin: 0 auto;
+            padding: 0.5rem;
+            gap: 2rem;
+        }
+
+        .three-column-meaning-layout .column-char-large {
+            font-size: clamp(56px, 12vw, 120px);
+        }
+
+        .three-column-meaning-layout .column-char {
+            font-size: clamp(28px, 5vw, 40px);
+        }
+
+        .three-column-meaning-layout .column-card {
+            min-height: auto;
+            padding: 0.5rem;
+        }
+
+        /* Input section - fixed at bottom */
+        .input-section {
+            flex-shrink: 0;
+            max-width: 32rem;
+            width: 100%;
+            margin: 0 auto;
+            padding-top: 1rem;
+        }
+
+        .input-section input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .input-section input[type="text"]:focus {
+            border-color: #3b82f6;
+        }
+
+        .choice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .choice-grid button {
+            padding: 0.875rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: white;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .choice-grid button:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 0.75rem 0;
+            font-size: 0.875rem;
+            color: #6b7280;
+            border-top: 1px solid #f3f4f6;
+            margin-top: auto;
+        }
+
+        .stats-bar span {
+            font-weight: 500;
+        }
+
+        /* Feedback area */
+        #feedback {
+            min-height: 2rem;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0.5rem 0;
+        }
+
+        /* Hide sections by default */
+        #typeMode, #choiceMode, #fuzzyMode, #strokeOrderMode,
+        #handwritingMode, #drawCharMode, #studyMode {
+            display: none;
+        }
+
+        #typeMode.active, #choiceMode.active, #fuzzyMode.active,
+        #strokeOrderMode.active, #handwritingMode.active,
+        #drawCharMode.active, #studyMode.active {
+            display: block;
+        }
+
+        /* Study mode needs full width - remove input-section constraint */
+        body.study-mode-active .input-section {
+            max-width: none;
+            flex-direction: column;
+        }
+
+        #studyMode.active {
+            width: 100%;
+        }
+
+        /* Hide feedback in study mode */
+        body.study-mode-active #feedback {
+            display: none;
+        }
+
+        /* Home button */
+        .home-btn {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.375rem 0.75rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            color: #374151;
+            text-decoration: none;
+            z-index: 50;
+            transition: background 0.15s;
+        }
+
+        .home-btn:hover {
+            background: #f3f4f6;
+        }
+
+        /* Audio button */
+        #audioSection button {
+            padding: 0.75rem 1.5rem;
+            background: #06b6d4;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        #audioSection button:hover {
+            background: #0891b2;
+        }
+    </style>
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="data/lessons/lesson-12.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+</head>
+<body class="experimental-layout">
+    <a href="home.html" class="home-btn">← Home</a>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 bg-white shadow-lg">
+            <h2>Quiz Modes</h2>
+            <p class="mode-desc">Choose a mode, then answer in the panel to the right.</p>
+            <nav>
+                <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-tones-mc">Char → Pinyin → Tones (MC)</button>
+                <button class="mode-btn" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn" data-mode="missing-component">Missing Component</button>
+                <button class="mode-btn" data-mode="char-building">Build Character</button>
+                <button class="mode-btn" data-mode="study">Study Mode</button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>Lesson 12 Cumulative: 做孩子也不容易 · All Vocab (Pages 144–147)</h1>
+            </header>
+
+            <!-- Quiz Display -->
+            <section class="quiz-display">
+                <div id="questionDisplay"></div>
+
+                <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
+                    <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
+                </div>
+
+                <div id="hint" style="font-size: 1.5rem; font-weight: 600; margin: 1rem 0;"></div>
+
+                <div id="audioSection" class="hidden" style="margin: 1rem 0;">
+                    <button id="playAudioBtn">🔊 Play Sound</button>
+                </div>
+            </section>
+
+            <!-- Input Section -->
+            <section class="input-section">
+                <!-- Type Mode -->
+                <div id="typeMode">
+                    <input type="text" id="answerInput" placeholder="Type your answer...">
+                    <button id="checkBtn" style="display: none;">Check Answer</button>
+                </div>
+
+                <!-- Choice Mode -->
+                <div id="choiceMode">
+                    <div id="options" class="choice-grid"></div>
+                </div>
+
+                <!-- Fuzzy Mode -->
+                <div id="fuzzyMode">
+                    <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+
+                <!-- Stroke Order Mode -->
+                <div id="strokeOrderMode">
+                    <div id="strokeOrderWriter" style="display: flex; justify-content: center;"></div>
+                </div>
+
+                <!-- Handwriting Mode -->
+                <div id="handwritingMode">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer</p>
+
+                    <div id="handwritingWriter" style="display: flex; justify-content: center; gap: 10px;"></div>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer</button>
+                        <button id="hwNextBtn" style="padding: 0.75rem 2rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Next</button>
+                    </div>
+                                    <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
+                </div>
+
+                <!-- Draw Character Mode -->
+                <div id="drawCharMode">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <div id="ocrResult" style="font-size: 3.5rem; min-height: 5rem; color: #3b82f6; font-weight: 700;"></div>
+                        <div style="font-size: 0.875rem; color: #9ca3af;">Real-time recognition</div>
+                    </div>
+                    <canvas id="drawCanvas" style="display: block; margin: 0 auto; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: crosshair;" width="300" height="300"></canvas>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="clearCanvasBtn" style="padding: 0.5rem 1.5rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Clear</button>
+                        <button id="submitDrawBtn" style="padding: 0.5rem 1.5rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Submit</button>
+                        <button id="fullscreenDrawBtn" style="padding: 0.5rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Fullscreen</button>
+                    </div>
+                </div>
+
+                <!-- Study Mode -->
+                <div id="studyMode">
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study vocabulary with the original textbook scans (pages 144–147).</div>
+                    <div style="display: grid; gap: 0.75rem; grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
+                        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.75rem;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Page 144</div>
+                            <img src="images/lesson12/page144.jpg" alt="Page 144" style="border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+                            <a href="images/lesson12/page144.jpg" target="_blank" style="color: #3b82f6; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Full ↗</a>
+                        </div>
+                        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.75rem;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Page 145</div>
+                            <img src="images/lesson12/page145.jpg" alt="Page 145" style="border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+                            <a href="images/lesson12/page145.jpg" target="_blank" style="color: #3b82f6; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Full ↗</a>
+                        </div>
+                        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.75rem;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Page 146</div>
+                            <img src="images/lesson12/page146.jpg" alt="Page 146" style="border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+                            <a href="images/lesson12/page146.jpg" target="_blank" style="color: #3b82f6; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Full ↗</a>
+                        </div>
+                        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 0.75rem;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Page 147</div>
+                            <img src="images/lesson12/page147.jpg" alt="Page 147" style="border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+                            <a href="images/lesson12/page147.jpg" target="_blank" style="color: #3b82f6; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Full ↗</a>
+                        </div>
+                    </div>
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Quick list of all vocab. Use search or sorting as needed.</p>
+                    <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Missing Component Mode -->
+                <div id="missingComponentMode" style="display: none;">
+                    <input type="text" id="componentInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="componentOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
+                </div>
+
+                <!-- Character Building Mode -->
+                <div id="charBuildingMode" style="display: none;">
+                    <input type="text" id="charBuildingInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="charBuildingOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
+                </div>
+
+                <!-- Feedback -->
+                <div id="feedback"></div>
+            </section>
+
+            <!-- Stats Bar -->
+            <footer class="stats-bar" id="stats">
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const part1 = window.__LESSON_DATASETS__['lesson-12'].vocab.part1;
+
+        const part2 = window.__LESSON_DATASETS__['lesson-12'].vocab.part2;
+
+        // Merge and de-duplicate by character
+        const combinedMap = new Map();
+        [...part1, ...part2].forEach(item => {
+            if (!combinedMap.has(item.char)) {
+                combinedMap.set(item.char, item);
+            }
+        });
+        const characters = Array.from(combinedMap.values());
+
+        initQuiz(characters, {
+            enablePreviewQueue: true,
+            previewQueueSize: 1,
+            previewElementId: 'upcomingCharacters',
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+        });
+    </script>
+</body>
+</html>

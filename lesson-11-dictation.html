@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Dictation – Lesson 11 (为什么学中文)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/lesson-layout.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="data/lessons/lesson-11.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+</head>
+<body class="experimental-layout">
+    <a href="home.html" class="home-btn">← Home</a>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Dictation Modes</h2>
+            <p class="mode-desc">Hear a line, type the pinyin or meaning. Enter submits instantly; Space replays audio.</p>
+            <nav>
+                <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin">Text → Pinyin</button>
+                <button class="mode-btn" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn" data-mode="audio-to-meaning-chunks">Audio → Meaning (Chunks)</button>
+                <button class="mode-btn" data-mode="text-to-meaning">Text → Meaning</button>
+                <button class="mode-btn" data-mode="text-to-meaning-chunks">Text → Meaning (Chunks)</button>
+                <button class="mode-btn" data-mode="study">Study Mode</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>Dictation: Lesson 11 为什么学中文</h1>
+            </header>
+
+            <section class="quiz-display">
+                <div id="questionDisplay"></div>
+
+                <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
+                    <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
+                </div>
+
+                <div id="hint" style="font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0;"></div>
+
+                <div id="audioSection" class="hidden" style="margin: 1rem 0;">
+                    <button id="playAudioBtn">🔊 Play Sentence</button>
+                </div>
+            </section>
+
+            <section class="input-section">
+                <div id="typeMode">
+                    <input type="text" id="answerInput" placeholder="Type your answer...">
+                    <button id="checkBtn" style="display: none;">Check Answer</button>
+                </div>
+
+                <div id="choiceMode">
+                    <div id="options" class="choice-grid"></div>
+                </div>
+
+                <div id="fuzzyMode">
+                    <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+
+                <div id="studyMode">
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Click the speaker to replay any line. Use Study Mode to preview before dictation.</div>
+                    <div id="studyList" style="max-height: 420px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="feedback"></div>
+            </section>
+
+            <footer class="stats-bar" id="stats">
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div id="timerDisplay"></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const dictationSentences = window.__LESSON_DATASETS__['lesson-11'].dictation;
+
+        const paletteItems = [
+            { name: 'Dictation: Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Text → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+            { name: 'Dictation: Audio → Meaning (Chunks)', mode: 'audio-to-meaning-chunks', type: 'mode' },
+            { name: 'Dictation: Text → Meaning', mode: 'text-to-meaning', type: 'mode' },
+            { name: 'Dictation: Text → Meaning (Chunks)', mode: 'text-to-meaning-chunks', type: 'mode' },
+            { name: 'Dictation: Study Mode', mode: 'study', type: 'mode' }
+        ];
+
+        initQuiz(dictationSentences, {
+            defaultMode: 'audio-to-meaning',
+            commandPaletteItems: paletteItems
+        });
+    </script>
+</body>
+</html>

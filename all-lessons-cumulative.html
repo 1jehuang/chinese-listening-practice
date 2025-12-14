@@ -298,6 +298,14 @@
     <script src="js/etymology-loader.js"></script>
     <script src="js/pinyin-utils.js"></script>
     <script src="js/quiz-engine.js"></script>
+    <script src="data/lessons/lesson-9.js"></script>
+    <script src="data/lessons/lesson-10.js"></script>
+    <script src="data/lessons/lesson-11.js"></script>
+    <script src="data/lessons/lesson-12.js"></script>
+    <script src="data/lessons/lesson-13.js"></script>
+    <script src="data/lessons/lesson-14.js"></script>
+    <script src="data/lessons/lesson-15.js"></script>
+    <script src="data/lessons/lesson-16.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
@@ -329,7 +337,7 @@
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>All Lessons Cumulative (Lessons 1-7)</h1>
+                <h1>All Lessons Cumulative (Lessons 1-16)</h1>
             </header>
 
             <section class="quiz-display">
@@ -390,7 +398,7 @@
                 </div>
 
                 <div id="studyMode">
-                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 1-7</p>
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 1-16</p>
                     <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
 
@@ -814,9 +822,49 @@
             { char: '怎么回事', pinyin: 'zěn.me huí shì', meaning: "what's the matter?" }
         ];
 
+        // Lesson 9: I Want to Go to China (我要去中国)
+        const lesson9part1 = window.__LESSON_DATASETS__['lesson-9'].vocab.part1;
+
+        const lesson9part2 = window.__LESSON_DATASETS__['lesson-9'].vocab.part2;
+
+        // Lesson 10: Preparation Before Going Abroad (出国前的准备)
+        const lesson10part1 = window.__LESSON_DATASETS__['lesson-10'].vocab.part1;
+
+        const lesson10part2 = window.__LESSON_DATASETS__['lesson-10'].vocab.part2;
+
+        // Lesson 11: Why Study Chinese (为什么学中文)
+        const lesson11part1 = window.__LESSON_DATASETS__['lesson-11'].vocab.part1;
+
+        const lesson11part2 = window.__LESSON_DATASETS__['lesson-11'].vocab.part2;
+
+        // Lesson 12: Being a Kid Isn’t Easy (做孩子也不容易)
+        const lesson12part1 = window.__LESSON_DATASETS__['lesson-12'].vocab.part1;
+
+        const lesson12part2 = window.__LESSON_DATASETS__['lesson-12'].vocab.part2;
+
+        // Lesson 13: Speak Standard Mandarin (说标准的普通话)
+        const lesson13part1 = window.__LESSON_DATASETS__['lesson-13'].vocab.part1;
+
+        const lesson13part2 = window.__LESSON_DATASETS__['lesson-13'].vocab.part2;
+
+        // Lesson 14: Traditional & Simplified (繁体字和简体字)
+        const lesson14part1 = window.__LESSON_DATASETS__['lesson-14'].vocab.part1;
+
+        const lesson14part2 = window.__LESSON_DATASETS__['lesson-14'].vocab.part2;
+
+        // Lesson 15: It’s All Your Mom’s Fault (都怪你妈妈)
+        const lesson15part1 = window.__LESSON_DATASETS__['lesson-15'].vocab.part1;
+
+        const lesson15part2 = window.__LESSON_DATASETS__['lesson-15'].vocab.part2;
+
+        // Lesson 16: I Don’t Want to Go to Chinatown (我不要去中国城)
+        const lesson16part1 = window.__LESSON_DATASETS__['lesson-16'].vocab.part1;
+
+        const lesson16part2 = window.__LESSON_DATASETS__['lesson-16'].vocab.part2;
+
         // Merge all lessons and de-duplicate by character
         const combinedMap = new Map();
-        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2, ...lesson8part1, ...lesson8part2].forEach(item => {
+        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2, ...lesson8part1, ...lesson8part2, ...lesson9part1, ...lesson9part2, ...lesson10part1, ...lesson10part2, ...lesson11part1, ...lesson11part2, ...lesson12part1, ...lesson12part2, ...lesson13part1, ...lesson13part2, ...lesson14part1, ...lesson14part2, ...lesson15part1, ...lesson15part2, ...lesson16part1, ...lesson16part2].forEach(item => {
             if (!combinedMap.has(item.char)) {
                 combinedMap.set(item.char, item);
             }

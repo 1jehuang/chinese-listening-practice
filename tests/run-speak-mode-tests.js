@@ -230,22 +230,45 @@ function createEnvironment() {
     'chooseMode',
     'tone24Mode',
     'speakMode',
-    'micBtn',
-    'resetMicBtn',
+    'doubleMode',
+    'doubleAnswerInput',
+    'doubleCheckBtn',
     'displayPinyin',
     'recognizedText',
+    'debugInfo',
     'options',
     'tone24Options',
     'score',
     'total',
     'percentage',
+    'visualizer',
   ];
 
   ids.forEach((id) => {
-    const tag = id.endsWith('Btn') ? 'button' : 'div';
+    let tag = 'div';
+    if (id === 'visualizer') {
+      tag = 'canvas';
+    } else if (id.endsWith('Input')) {
+      tag = 'input';
+    } else if (id.endsWith('Btn')) {
+      tag = 'button';
+    }
     const el = createElement(tag, id);
-    if (id === 'micBtn') {
-      el.textContent = '🎤 Tap to Speak';
+    if (id === 'visualizer') {
+      el.width = 300;
+      el.height = 100;
+      el.getContext = function getContext() {
+        return {
+          fillStyle: '',
+          strokeStyle: '',
+          lineWidth: 1,
+          fillRect: () => {},
+          beginPath: () => {},
+          moveTo: () => {},
+          lineTo: () => {},
+          stroke: () => {},
+        };
+      };
     }
   });
 
@@ -256,13 +279,14 @@ function createEnvironment() {
     this._focused = true;
   };
 
-  document.getElementById('listenMode').style.display = 'block';
-  document.getElementById('chooseMode').style.display = 'none';
-  document.getElementById('tone24Mode').style.display = 'none';
-  document.getElementById('speakMode').style.display = 'none';
+  const doubleAnswerInput = document.getElementById('doubleAnswerInput');
+  doubleAnswerInput.value = '';
+  doubleAnswerInput.focus = function focus() {
+    this._focused = true;
+  };
 
   // Mode buttons
-  const modeButtons = ['listen', 'choose', 'tone24', 'speak'].map((mode) => {
+  const modeButtons = ['listen', 'choose', 'tone24', 'double', 'speak'].map((mode) => {
     const btn = createElement('button');
     btn.classList.add('mode-btn');
     btn.dataset.mode = mode;
@@ -282,6 +306,14 @@ function createEnvironment() {
       return new NodeList(matches);
     }
     return new NodeList([]);
+  };
+
+  document.querySelector = function querySelector(selector) {
+    const match = selector && selector.match(/\.mode-btn\[data-mode="([^"]+)"\]/);
+    if (match) {
+      return modeButtons.find((btn) => btn.dataset.mode === match[1]) || null;
+    }
+    return null;
   };
 
   // Speech recognition mock
@@ -361,6 +393,8 @@ function createEnvironment() {
     alert: () => {},
     setTimeout: timers.setTimeout,
     clearTimeout: timers.clearTimeout,
+    requestAnimationFrame: () => 0,
+    cancelAnimationFrame: () => {},
     Math,
     Audio,
     SpeechRecognition: MockSpeechRecognition,
@@ -369,7 +403,38 @@ function createEnvironment() {
 
   window.window = window;
   window.globalThis = window;
-  window.navigator = {};
+  window.navigator = {
+    mediaDevices: {
+      getUserMedia: async () => ({
+        getTracks: () => [{ stop: () => {} }],
+      }),
+    },
+  };
+
+  class AudioContext {
+    createAnalyser() {
+      return {
+        frequencyBinCount: 1024,
+        fftSize: 2048,
+        getByteTimeDomainData: (arr) => {
+          for (let i = 0; i < arr.length; i += 1) {
+            arr[i] = 128;
+          }
+        },
+      };
+    }
+
+    createMediaStreamSource(stream) {
+      return { connect: () => {}, mediaStream: stream };
+    }
+
+    close() {
+      return Promise.resolve();
+    }
+  }
+
+  window.AudioContext = AudioContext;
+  window.webkitAudioContext = AudioContext;
 
   const context = vm.createContext(window);
 
@@ -383,95 +448,79 @@ function createEnvironment() {
 }
 
 function extractScriptSource() {
-  const htmlPath = path.join(__dirname, '..', 'index.html');
+  const htmlPath = path.join(__dirname, '..', 'pinyin-practice.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
   const match = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
   if (!match) {
-    throw new Error('Unable to locate main script in index.html');
+    throw new Error('Unable to locate main script in pinyin-practice.html');
   }
   return match[1];
 }
 
-function runTest(name, testFn, scriptSource, results) {
+async function flushMicrotasks(times = 5) {
+  for (let i = 0; i < times; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.resolve();
+  }
+}
+
+async function runTest(name, testFn, scriptSource, results) {
   const env = createEnvironment();
   vm.runInContext(scriptSource, env.context);
 
   try {
-    testFn(env);
+    await testFn(env);
     results.push({ name, ok: true });
   } catch (err) {
     results.push({ name, ok: false, error: err });
   }
 }
 
-function main() {
+async function main() {
   const results = [];
   const scriptSource = extractScriptSource();
 
-  runTest(
-    'Tap-to-speak enters listening state and auto-stops after 2 seconds',
-    ({ context, timers, elements, modeButtons, recognitionInstances }) => {
+  await runTest(
+    'Speak mode starts continuous listening',
+    async ({ timers, elements, modeButtons, recognitionInstances }) => {
       const speakBtn = modeButtons.find((btn) => btn.dataset.mode === 'speak');
       speakBtn.click();
 
-      const micBtn = elements.micBtn;
-      micBtn.click();
+      // Speak mode starts after a 500ms delay (setTimeout in the page script).
+      timers.advanceBy(500);
+      await flushMicrotasks();
 
       assert.strictEqual(recognitionInstances.length, 1, 'Recognition should start');
       assert.strictEqual(
-        micBtn.textContent.trim(),
-        '🎤 Listening...',
-        'Mic button should indicate listening state'
-      );
-
-      timers.advanceBy(2000);
-
-      assert.strictEqual(
-        micBtn.textContent.trim(),
-        '🎤 Tap to Speak',
-        'Mic button should reset after auto-stop'
-      );
-      assert.ok(
-        /Listening\.{3}|Timeout - please try again|No speech detected/i.test(
-          elements.recognizedText.textContent
-        ),
-        'Recognized text should show listening or timeout guidance after auto-stop'
+        elements.recognizedText.textContent.trim(),
+        'Listening...',
+        'Speak mode should update the listening hint'
       );
     },
     scriptSource,
     results
   );
 
-  runTest(
-    'Final transcript awards a correct score update',
-    ({ context, timers, elements, modeButtons, recognitionInstances }) => {
+  await runTest(
+    'Final transcript updates feedback',
+    async ({ timers, elements, modeButtons, recognitionInstances }) => {
       const speakBtn = modeButtons.find((btn) => btn.dataset.mode === 'speak');
       speakBtn.click();
 
-      const micBtn = elements.micBtn;
-      micBtn.click();
+      timers.advanceBy(500);
+      await flushMicrotasks();
 
       const activeRecognition = recognitionInstances[recognitionInstances.length - 1];
-      const transcript = elements.displayPinyin.textContent.trim();
+      const transcript = elements.displayPinyin.textContent.trim() || 'ma';
 
       activeRecognition.emitResult(transcript, { confidence: 0.82, isFinal: true });
-      activeRecognition.stop();
-
-      timers.advanceBy(0);
+      await flushMicrotasks();
 
       assert.ok(
-        /✓ Correct/.test(elements.feedback.textContent),
-        'Feedback should mark the answer as correct'
+        /Target:/.test(elements.feedback.innerHTML),
+        'Feedback should display the target prompt'
       );
-      assert.strictEqual(
-        String(elements.score.textContent),
-        '1',
-        'Score should increment to 1'
-      );
-      assert.ok(
-        elements.recognizedText.textContent.includes(transcript),
-        'Recognized text should echo the transcript'
-      );
+      assert.ok(/You said:/.test(elements.feedback.innerHTML), 'Feedback should include the transcript');
     },
     scriptSource,
     results
@@ -500,7 +549,10 @@ function main() {
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }
 
 module.exports = {

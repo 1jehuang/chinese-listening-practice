@@ -1,0 +1,53 @@
+window.__LESSON_DATASETS__ = window.__LESSON_DATASETS__ || {};
+window.__LESSON_DATASETS__['lesson-16'] = {
+  vocab: {
+    part1: [
+      // Page 193
+                  { char: '趟', pinyin: 'tàng', meaning: 'AN for certain verbs of motion' },
+                  { char: '中国城', pinyin: 'zhōngguóchéng', meaning: 'Chinatown' },
+                  { char: '顿', pinyin: 'dùn', meaning: 'AN for 吃, 打 and certain other verbs' },
+                  { char: '馆子', pinyin: 'guǎn.zi', meaning: 'restaurant' },
+                  { char: '一块儿', pinyin: 'yìkuàir', meaning: 'together' },
+                  { char: '脏', pinyin: 'zāng', meaning: 'dirty' },
+                  { char: '上馆子', pinyin: 'shàng guǎn.zi', meaning: 'go to a restaurant' },
+                  { char: '高高兴兴', pinyin: 'gāogāoxìngxìng', meaning: 'cheerful; happy' },
+                  { char: '懂事', pinyin: 'dǒngshì', meaning: 'sensible; mature in understanding' },
+                  { char: '新奇', pinyin: 'xīnqí', meaning: 'new and strange' },
+                  { char: '俗气', pinyin: 'súqi', meaning: 'in poor taste; vulgar' },
+                  { char: '商业', pinyin: 'shāngyè', meaning: 'commerce' },
+                  { char: '商业化', pinyin: 'shāngyèhuà', meaning: 'commercialized' },
+                  { char: '既不…也…', pinyin: 'jì bù... yě bù...', meaning: 'neither... nor...' },
+                  { char: '代表', pinyin: 'dàibiǎo', meaning: 'represent' },
+                  { char: '特别', pinyin: 'tèbié', meaning: 'unusually; especially' },
+                  { char: '舒服', pinyin: 'shūfu', meaning: 'comfortable' },
+                  { char: '好吧', pinyin: 'hǎo.ba', meaning: 'all right; very well' }
+    ],
+    part2: [
+      // Page 194
+                  { char: '又', pinyin: 'yòu', meaning: 'for emphasis' },
+                  { char: '长', pinyin: 'zhǎng', meaning: 'grow' },
+                  { char: '毛', pinyin: 'máo', meaning: 'body hair' },
+                  { char: '简直', pinyin: 'jiǎnzhí', meaning: 'simply; downright' },
+                  { char: '办法', pinyin: 'bànfǎ', meaning: 'way; method' },
+                  { char: '哈', pinyin: 'hā', meaning: 'Ha!' }
+    ]
+  },
+  dictation: [
+    { char: '母：这个周末我和你爸爸想去纽约。', pinyin: 'mǔ: zhè ge zhōu mò wǒ hé nǐ bà ba xiǎng qù niǔ yuē.', meaning: 'Mom: This weekend your dad and I want to go to New York.' },
+                { char: '女：是不是又要去中国城啊？', pinyin: 'nǚ: shì bu shì yòu yào qù zhōng guó chéng a?', meaning: 'Daughter: Are we going to Chinatown again?' },
+                { char: '母：是啊，一个月没去了，想去买点中国菜和吃顿中国馆子，你要不要跟我们一块儿去啊？', pinyin: 'mǔ: shì a, yí gè yuè méi qù le, xiǎng qù mǎi diǎn zhōng guó cài hé chī dùn zhōng guó guǎn zǐ, nǐ yào bu yào gēn wǒ men yí kuài ér qù a?', meaning: 'Mom: Yeah, we haven’t gone in a month. I want to buy some Chinese groceries and eat a meal at a Chinese restaurant—do you want to go with us?' },
+                { char: '女：怎么又要去中国城呢？', pinyin: 'nǚ: zěn me yòu yào qù zhōng guó chéng ne?', meaning: 'Daughter: Why are we going to Chinatown again?' },
+                { char: '女：我最讨厌那个地方了，又脏又乱，除了上馆子跟买菜还能做什么呢？', pinyin: 'nǚ: wǒ zuì tǎo yàn nà gè dì fāng le, yòu zāng yòu luàn, chú le shàng guǎn zǐ gēn mǎi cài hái néng zuò shén me ne?', meaning: 'Daughter: I hate that place the most—it’s dirty and chaotic. Besides going to restaurants and buying groceries, what else can you do?' },
+                { char: '女：我才不去呢！', pinyin: 'nǚ: wǒ cái bú qù ne!', meaning: 'Daughter: I’m not going!' },
+                { char: '母：我不懂你为什么那么讨厌中国城。', pinyin: 'mǔ: wǒ bù dǒng nǐ wèi shén me nà me tǎo yàn zhōng guó chéng.', meaning: 'Mom: I don’t understand why you hate Chinatown so much.' },
+                { char: '母：你小时候跟我们一块儿去中国城总是高高兴兴的，现在为什么一说起中国城来就那么不高兴呢？', pinyin: 'mǔ: nǐ xiǎo shí hòu gēn wǒ men yí kuài ér qù zhōng guó chéng zǒng shì gāo gāo xìng xìng de, xiàn zài wèi shén me yì shuō qǐ zhōng guó chéng lái jiù nà me bù gāo xìng ne?', meaning: 'Mom: When you were little, whenever you went to Chinatown with us you were always so happy—why are you so unhappy now whenever Chinatown is mentioned?' },
+                { char: '女：小时候我不懂事，觉得中国城里有许多新奇的事，现在我只觉得那个地方又俗气又商业化，既不能代表中国文化，也不能代表美国文化，每次从那儿回来以后都觉得特别不舒服。', pinyin: 'nǚ: xiǎo shí hòu wǒ bù dǒng shì, jué de zhōng guó chéng lǐ yǒu xǔ duō xīn qí de shì, xiàn zài wǒ zhǐ jué de nà gè dì fāng yòu sú qì yòu shāng yè huà, jì bù néng dài biǎo zhōng guó wén huà, yě bù néng dài biǎo měi guó wén huà, měi cì cóng nà ér huí lái yǐ hòu dōu jué de tè bié bù shū fú.', meaning: 'Daughter: When I was little I didn’t understand; I thought Chinatown had lots of new and interesting things. Now I just think that place is tacky and commercialized—it represents neither Chinese culture nor American culture. Every time I come back from there I feel especially uncomfortable.' },
+                { char: '母：好吧，好吧，你不去就不去吧。真是越来越像个“外国人”了。', pinyin: 'mǔ: hǎo ba, hǎo ba, nǐ bú qù jiù bú qù ba. zhēn shì yuè lái yuè xiàng gè “wài guó rén” le.', meaning: 'Mom: Alright, alright—if you don’t want to go, then don’t go. You’re really becoming more and more like a “foreigner”.' },
+                { char: '女：妈，你总是把“美国人”叫成“外国人”，其实，在美国，中国人才是外国人呢。', pinyin: 'nǚ: mā, nǐ zǒng shì bǎ “měi guó rén” jiào chéng “wài guó rén”, qí shí, zài měi guó, zhōng guó rén cái shì wài guó rén ne.', meaning: 'Daughter: Mom, you always call “Americans” “foreigners,” but actually in America, Chinese people are the foreigners.' },
+                { char: '母：中国人就是中国人！中国人无论到哪儿还是中国人，怎么会是外国人呢？', pinyin: 'mǔ: zhōng guó rén jiù shì zhōng guó rén! zhōng guó rén wú lùn dào nǎ ér hái shì zhōng guó rén, zěn me huì shì wài guó rén ne?', meaning: 'Mom: Chinese people are Chinese people! No matter where Chinese people go, they’re still Chinese—how could they be foreigners?' },
+                { char: '女：对中国人来说，美国人是外国人；可是对美国人来说，中国人不就成了外国人了吗？', pinyin: 'nǚ: duì zhōng guó rén lái shuō, měi guó rén shì wài guó rén; kě shì duì měi guó rén lái shuō, zhōng guó rén bú jiù chéng le wài guó rén le ma?', meaning: 'Daughter: To Chinese people, Americans are foreigners; but to Americans, don’t Chinese people become foreigners?' },
+                { char: '母：这个简单的道理我知道，但是……但是……但是我们都是黑头发，黑眼睛，身上又不长毛，我们怎么会是外国人呢？', pinyin: 'mǔ: zhè ge jiǎn dān de dào lǐ wǒ zhī dào, dàn shì... dàn shì... dàn shì wǒ men dōu shì hēi tóu fā, hēi yǎn jīng, shēn shàng yòu bù cháng máo, wǒ men zěn me huì shì wài guó rén ne?', meaning: 'Mom: I understand that simple logic, but... but... but we all have black hair and black eyes, and we don’t grow body hair—how could we be foreigners?' },
+                { char: '女：妈——！我简直拿您没办法！', pinyin: 'nǚ: mā... wǒ jiǎn zhí ná nín méi bàn fǎ!', meaning: 'Daughter: Mom! I really don’t know what to do with you!' },
+                { char: '母：哈！哈！哈！', pinyin: 'mǔ: hā! hā! hā!', meaning: 'Mom: Ha! Ha! Ha!' }
+  ]
+};

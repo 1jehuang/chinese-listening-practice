@@ -111,6 +111,6 @@ The test will verify that the pinyin conversion produces the expected tone numbe
 ### What to Test
 
 Always run tests after:
-- Modifying `js/quiz-engine.js` (especially `splitPinyinSyllables` or `convertPinyinToToneNumbers`)
+- Modifying `js/pinyin-utils.js` or `js/quiz-engine.js` (especially `splitPinyinSyllables`, `convertPinyinToToneNumbers`, or `checkPinyinMatch`)
 - Adding new vocabulary with unusual pinyin patterns
 - Fixing bugs in answer validation

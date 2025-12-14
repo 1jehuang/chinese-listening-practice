@@ -1,0 +1,59 @@
+window.__LESSON_DATASETS__ = window.__LESSON_DATASETS__ || {};
+window.__LESSON_DATASETS__['lesson-14'] = {
+  vocab: {
+    part1: [
+      // Pages 166–167
+                  { char: '繁体字', pinyin: 'fántǐzì', meaning: 'traditional characters' },
+                  { char: '简体字', pinyin: 'jiǎntǐzì', meaning: 'simplified characters' },
+                  { char: '李', pinyin: 'Lǐ', meaning: 'a common surname' },
+                  { char: '据…说', pinyin: 'jù...shuō', meaning: 'according to...' },
+                  { char: '汉语拼音', pinyin: 'hànyǔ pīnyīn', meaning: 'the Chinese phonetic alphabet' },
+                  { char: '共产党', pinyin: 'gòngchǎndǎng', meaning: 'Communist Party' },
+                  { char: '发明', pinyin: 'fāmíng', meaning: 'invent' },
+                  { char: '繁杂', pinyin: 'fánzá', meaning: 'complicated & difficult; troublesome' },
+                  { char: '汉字', pinyin: 'hànzì', meaning: 'Chinese characters' },
+                  { char: '简化', pinyin: 'jiǎnhuà', meaning: 'simplify' },
+                  { char: '亿', pinyin: 'yì', meaning: 'a hundred million' },
+                  { char: '通用', pinyin: 'tōngyòng', meaning: 'use commonly' },
+                  { char: '文字', pinyin: 'wénzì', meaning: 'written language' },
+                  { char: '海外', pinyin: 'hǎiwài', meaning: 'overseas' },
+                  { char: '古书', pinyin: 'gǔshū', meaning: 'ancient books' }
+    ],
+    part2: [
+      // Pages 168–169
+                  { char: '不断', pinyin: 'búduàn', meaning: 'constantly; continually' },
+                  { char: '改变', pinyin: 'gǎibiàn', meaning: 'change' },
+                  { char: '孔子', pinyin: 'Kǒngzǐ', meaning: 'Confucius (551–479 B.C.)' },
+                  { char: '时代', pinyin: 'shídài', meaning: 'times; age' },
+                  { char: '论语', pinyin: 'Lúnyǔ', meaning: 'Confucian Analects' },
+                  { char: '离', pinyin: 'lí', meaning: 'depart from' },
+                  { char: '远', pinyin: 'yuǎn', meaning: 'far' },
+                  { char: '无论', pinyin: 'wúlùn', meaning: 'no matter...' },
+                  { char: '好看', pinyin: 'hǎokàn', meaning: 'good-looking' },
+                  { char: '差不多', pinyin: 'chàbuduō', meaning: 'similar; about the same' },
+                  { char: '反而', pinyin: 'fǎnér', meaning: 'on the contrary' },
+                  { char: '记得', pinyin: 'jì.de', meaning: 'remember' },
+                  { char: '的确', pinyin: 'díquè', meaning: 'indeed; really' },
+                  { char: '搞混', pinyin: 'gǎohùn', meaning: 'confuse; mix up' },
+                  { char: '譬如', pinyin: 'pìrú', meaning: 'for example' },
+                  { char: '至于', pinyin: 'zhìyú', meaning: 'as for; as to' },
+                  { char: '个人的', pinyin: 'gèrén.de', meaning: 'personal' },
+                  { char: '学会', pinyin: 'xuéhuì', meaning: 'learn' }
+    ]
+  },
+  dictation: [
+    { char: '学生：李老师，据我父母说，我们学的简体字和汉语拼音是共产党发明的，大部分中国人都看不懂简体字也不喜欢简体字，我们为什么要学简体字呢？', pinyin: 'xuéshēng: Lǐ lǎoshī, jù wǒ fùmǔ shuō, wǒmen xué de jiǎntǐzì hé hànyǔ pīnyīn shì gòngchǎndǎng fāmíng de, dàbùfen Zhōngguórén dōu kàn bu dǒng jiǎntǐzì yě bù xǐhuan jiǎntǐzì, wǒmen wèishénme yào xué jiǎntǐzì ne', meaning: 'Student: Teacher Li, according to my parents, the simplified characters and pinyin we’re learning were invented by the Communist Party; most Chinese people can’t read simplified characters and don’t like them. Why do we need to learn simplified characters?' },
+                { char: '老师：我完全不同意这个说法。', pinyin: 'lǎoshī: wǒ wánquán bù tóngyì zhè ge shuōfa', meaning: 'Teacher: I completely disagree with that statement.' },
+                { char: '老师：共产党并没有“发明”简体字，他们只是把一些繁难的汉字简化了，所以比较容易写。', pinyin: 'lǎoshī: gòngchǎndǎng bìng méiyǒu “fāmíng” jiǎntǐzì, tāmen zhǐshì bǎ yìxiē fánnán de hànzì jiǎnhuà le, suǒyǐ bǐjiào róngyì xiě', meaning: 'Teacher: The Communist Party didn’t “invent” simplified characters—they just simplified some complicated characters, so they’re easier to write.' },
+                { char: '老师：现在，简体字是中国十几亿人民通用的文字，只有台湾和一部分海外的中国人还用繁体字，中国人看不懂的是繁体字而不是简体字。', pinyin: 'lǎoshī: xiànzài, jiǎntǐzì shì Zhōngguó shíjǐ yì rénmín tōngyòng de wénzì, zhǐyǒu Táiwān hé yí bùfen hǎiwài de Zhōngguórén hái yòng fántǐzì, Zhōngguórén kàn bu dǒng de shì fántǐzì ér bú shì jiǎntǐzì', meaning: 'Teacher: Now, simplified characters are the written script commonly used by China’s more than one billion people; only Taiwan and some overseas Chinese still use traditional characters. What Chinese people can’t read are traditional characters, not simplified characters.' },
+                { char: '学生：简体字到现在只有几十年的历史，可是中国有几千年的文化，学简体字不是看不懂古书了吗？', pinyin: 'xuéshēng: jiǎntǐzì dào xiànzài zhǐyǒu jǐshí nián de lìshǐ, kěshì Zhōngguó yǒu jǐqiān nián de wénhuà, xué jiǎntǐzì bú shì kàn bu dǒng gǔshū le ma', meaning: 'Student: Simplified characters only have a history of a few decades, but China has thousands of years of culture—if we learn simplified characters, won’t we be unable to read ancient books?' },
+                { char: '老师：这个说法也不一定对，几千年来中国的文字不断地在改变。', pinyin: 'lǎoshī: zhè ge shuōfa yě bù yídìng duì, jǐqiān nián lái Zhōngguó de wénzì búduàn de zài gǎibiàn', meaning: 'Teacher: That statement isn’t necessarily correct; for thousands of years China’s writing has been constantly changing.' },
+                { char: '老师：孔子时代写的字，并不是现在的繁体字，但是我们现在还能读《论语》。', pinyin: 'lǎoshī: Kǒngzǐ shídài xiě de zì, bìng bú shì xiànzài de fántǐzì, dànshì wǒmen xiànzài hái néng dú “Lúnyǔ”', meaning: 'Teacher: The characters written in Confucius’s time are not the same as today’s traditional characters, yet we can still read the Analects.' },
+                { char: '老师：有些古书我们看不懂并不是因为用的是简体字，而是因为古书离我们太远了，无论用什么字写我们都看不懂。', pinyin: 'lǎoshī: yǒuxiē gǔshū wǒmen kàn bu dǒng bìng bú shì yīnwèi yòng de shì jiǎntǐzì, ér shì yīnwèi gǔshū lí wǒmen tài yuǎn le, wúlùn yòng shénme zì xiě wǒmen dōu kàn bu dǒng', meaning: 'Teacher: Some ancient books we can’t understand not because of simplified characters, but because ancient books are too far from us; no matter what characters they’re written in, we still won’t understand them.' },
+                { char: '学生：简体字没有繁体字那么好看，而且有些字看起来都差不多，反而不容易记得。', pinyin: 'xuéshēng: jiǎntǐzì méiyǒu fántǐzì nàme hǎokàn, érqiě yǒuxiē zì kànqǐlái dōu chàbuduō, fǎnér bù róngyì jì.de', meaning: 'Student: Simplified characters aren’t as good-looking as traditional ones; and some characters look almost the same, making them harder to remember.' },
+                { char: '老师：有些简体字的确是太简单了，容易搞混，譬如“几”“九”和“儿”就有这个问题。', pinyin: 'lǎoshī: yǒuxiē jiǎntǐzì díquè shì tài jiǎndān le, róngyì gǎohùn, pìrú “jǐ”, “jiǔ” hé “ér” jiù yǒu zhè ge wèntí', meaning: 'Teacher: Some simplified characters really are too simple and easy to confuse—for example “几”, “九”, and “儿” have this issue.' },
+                { char: '老师：至于好看不好看，这是个人的看法，你觉得“一”“二”“人”这几个字不好看吗？', pinyin: 'lǎoshī: zhìyú hǎokàn bù hǎokàn, zhè shì gèrén de kànfǎ, nǐ juéde “yī”, “èr”, “rén” zhè jǐ ge zì bù hǎokàn ma', meaning: 'Teacher: As for whether they’re good-looking or not, that’s a personal opinion. Do you think “one”, “two”, and “person” are not good-looking?' },
+                { char: '学生：也许您说的也有道理，我们最好两种字都能看都能写。', pinyin: 'xuéshēng: yěxǔ nín shuō de yě yǒu dàolǐ, wǒmen zuìhǎo liǎng zhǒng zì dōu néng kàn dōu néng xiě', meaning: 'Student: Maybe you have a point—we’d better be able to read and write both kinds of characters.' },
+                { char: '老师：其实，繁体字和简体字的不同并没有一般人说得那么大，你只要学会了一种以后，另一种很快就能看懂的。', pinyin: 'lǎoshī: qíshí, fántǐzì hé jiǎntǐzì de bùtóng bìng méiyǒu yìbān rén shuō de nàme dà, nǐ zhǐyào xuéhuì le yì zhǒng yǐhòu, lìng yì zhǒng hěn kuài jiù néng kàn dǒng de', meaning: 'Teacher: Actually, the differences between traditional and simplified characters aren’t as big as people say. Once you learn one kind, you can understand the other kind quickly.' }
+  ]
+};

@@ -2803,7 +2803,7 @@ function loadConfidencePanelVisibility() {
                 : Array.isArray(quizCharacters)
                     ? quizCharacters.length
                     : 0;
-            confidencePanelVisible = deckSize <= CONFIDENCE_AUTO_HIDE_THRESHOLD;
+            confidencePanelVisible = deckSize <= CONFIDENCE_AUTO_HIDE_THRESHOLD && !isNarrowViewport();
         }
     } catch (e) {
         console.warn('Failed to load confidence panel visibility', e);
@@ -2877,11 +2877,37 @@ function saveConfidencePanelVisibility() {
     }
 }
 
+function isNarrowViewport() {
+    if (typeof window === 'undefined') return false;
+    if (typeof window.matchMedia === 'function') {
+        return window.matchMedia('(max-width: 1024px)').matches;
+    }
+    return (window.innerWidth || 0) <= 1024;
+}
+
+function getMeasuredWidth(element) {
+    if (!element) return 0;
+    try {
+        const rect = element.getBoundingClientRect?.();
+        const width = rect?.width ?? 0;
+        if (width > 0) return Math.round(width);
+    } catch {
+        // ignore measurement errors
+    }
+    const fallback = element.offsetWidth || 0;
+    return fallback > 0 ? Math.round(fallback) : 0;
+}
+
 function updateRightSideSpacing() {
     const appContainer = document.querySelector('.app-container');
     const mainContent = document.querySelector('.main-content');
     if (!appContainer) return;
     const gutter = 16;
+
+    if (document.body?.classList?.contains('study-mode-active') || isNarrowViewport()) {
+        appContainer.style.paddingRight = '0px';
+        return;
+    }
 
     // Clear any leftover margin from old approach
     if (mainContent) {
@@ -2893,8 +2919,8 @@ function updateRightSideSpacing() {
         const chatPanelWidth = 320; // w-80 = 20rem
         appContainer.style.paddingRight = `${chatPanelWidth + gutter}px`;
     } else if (confidencePanelVisible) {
-        const panelWidth = confidencePanel?.offsetWidth || 208;
-        appContainer.style.paddingRight = `${panelWidth + gutter}px`;
+        const panelWidth = getMeasuredWidth(confidencePanel);
+        appContainer.style.paddingRight = panelWidth ? `${panelWidth + gutter}px` : '0px';
     } else {
         appContainer.style.paddingRight = '0px';
     }
@@ -2908,20 +2934,19 @@ function updateConfidenceLayoutSpacing(panelWidth) {
 function positionConfidencePullTab() {
     const pullTab = document.getElementById('confidencePullTab');
     if (!pullTab) return;
-    // Panel is w-52 = 13rem = 208px
-    const panelWidth = confidencePanel?.offsetWidth || 208;
-    pullTab.style.right = confidencePanelVisible ? `${panelWidth}px` : '0';
+    const panelWidth = getMeasuredWidth(confidencePanel);
+    pullTab.style.right = (confidencePanelVisible && panelWidth) ? `${panelWidth}px` : '0';
 }
 
 function setConfidencePanelVisible(visible) {
     confidencePanelVisible = Boolean(visible);
     const pullTab = document.getElementById('confidencePullTab');
     const content = document.getElementById('confidencePanelContent');
-    const panelWidth = confidencePanel?.offsetWidth || 208;
 
     if (confidencePanelVisible) {
         // Show panel
         if (confidencePanel) {
+            confidencePanel.style.display = 'flex';
             confidencePanel.style.transform = 'translateX(0)';
             confidencePanel.style.visibility = 'visible';
         }
@@ -2933,6 +2958,7 @@ function setConfidencePanelVisible(visible) {
     } else {
         // Hide panel
         if (confidencePanel) {
+            confidencePanel.style.display = 'flex';
             confidencePanel.style.transform = 'translateX(100%)';
             confidencePanel.style.visibility = 'hidden';
         }
@@ -2943,7 +2969,7 @@ function setConfidencePanelVisible(visible) {
         if (content) content.classList.add('hidden');
     }
 
-    updateConfidenceLayoutSpacing(panelWidth);
+    updateRightSideSpacing();
     saveConfidencePanelVisibility();
 }
 
@@ -3281,6 +3307,19 @@ function ensureConfidencePanel() {
     if (pullTab && !pullTab.dataset.bound) {
         pullTab.dataset.bound = 'true';
         pullTab.addEventListener('click', toggleConfidencePanel);
+    }
+
+    if (typeof window !== 'undefined' && !window.__confidencePanelResizeBound) {
+        window.__confidencePanelResizeBound = true;
+        let resizeRaf = null;
+        window.addEventListener('resize', () => {
+            if (resizeRaf) cancelAnimationFrame(resizeRaf);
+            resizeRaf = requestAnimationFrame(() => {
+                resizeRaf = null;
+                updateRightSideSpacing();
+                positionConfidencePullTab();
+            });
+        });
     }
 
     const trackingToggle = document.getElementById('confidenceTrackingToggle');
@@ -4334,75 +4373,6 @@ function checkPinyinMatch(userAnswer, correct) {
     return false;
 }
 
-// Normalize a pinyin string for strict but punctuation-agnostic comparison.
-// Keeps tone numbers (using convertPinyinToToneNumbers) so tone accuracy is still required,
-// but strips spaces, dots, commas, and other separators so variants like
-// "bān chū.qù", "ban1 chu1 qu4", and "ban1chu1qu4" compare equal.
-function normalizePinyinForChoice(pinyin) {
-    if (!pinyin) return '';
-    const asNumbers = convertPinyinToToneNumbers(pinyin.toLowerCase().trim());
-    return asNumbers.replace(PINYIN_STRIP_REGEX, '');
-}
-
-function normalizePinyin(pinyin) {
-    // Normalize pinyin to a standard form for comparison
-    // 1. Convert to lowercase
-    // 2. Remove all separators/punctuation
-    // 3. Remove all tone numbers
-    // 4. Remove all tone marks
-    // 5. Result: pure letters only (e.g., "zhongguo")
-
-    let result = pinyin.toLowerCase().trim();
-
-    // Remove all separators and punctuation
-    result = result.replace(PINYIN_STRIP_REGEX, '');
-
-    // Normalize ü/u: variants to 'v'
-    result = result.replace(/u:/g, 'v');
-
-    // Remove tone numbers (1-5)
-    result = result.replace(/[1-5]/g, '');
-
-    // Remove tone marks by replacing with base vowels
-    for (const [marked, base] of Object.entries(TONE_MARK_TO_BASE)) {
-        result = result.replace(new RegExp(marked, 'g'), base);
-    }
-
-    return result;
-}
-
-function extractToneSequence(pinyin) {
-    const syllables = splitPinyinSyllables(pinyin);
-    if (syllables.length === 0) return '';
-
-    let tones = '';
-
-    syllables.forEach(syl => {
-        let tone = null;
-        for (let i = 0; i < syl.length; i++) {
-            const char = syl[i];
-            if (/[1-5]/.test(char)) {
-                tone = char;
-                break;
-            }
-
-            const lower = char.toLowerCase();
-            if (TONE_MARK_TO_NUMBER[lower]) {
-                tone = TONE_MARK_TO_NUMBER[lower];
-                break;
-            }
-        }
-
-        if (!tone) {
-            tone = '5';
-        }
-
-        tones += tone;
-    });
-
-    return tones;
-}
-
 // Split a Chinese sentence into manageable chunks by punctuation
 function splitSentenceIntoChunks(sentence) {
     if (!sentence || !sentence.char) return [];
@@ -4750,10 +4720,13 @@ function playFullDictationSentence() {
 // QUIZ LOGIC
 // =============================================================================
 
-function generateQuestion(options = {}) {
-    const prefillAnswer = typeof options.prefillAnswer === 'string'
+function getPrefillAnswerForNextQuestion(options = {}) {
+    return (options && typeof options.prefillAnswer === 'string')
         ? options.prefillAnswer
         : (typeof nextAnswerBuffer === 'string' ? nextAnswerBuffer : '');
+}
+
+function resetForNextQuestion(prefillAnswer) {
     clearPendingNextQuestion();
     stopTimer();
     enteredSyllables = [];
@@ -4782,60 +4755,70 @@ function generateQuestion(options = {}) {
     clearComponentBreakdown();
     hideDrawNextButton();
     syncModeLayoutState();
+}
 
+function prepareSchedulerForNextQuestion() {
     if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
         prepareBatchForNextQuestion();
     }
     if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         prepareAdaptiveForNextQuestion();
     }
+}
 
+function maybeGenerateChunksQuestion() {
     // Handle chunk modes - iterate through sentence chunks
-    if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
-        // Check if we need a new sentence or can use the next chunk
-        if (sentenceChunks.length === 0 || currentChunkIndex >= sentenceChunks.length) {
-            // Need a new sentence - select one and split into chunks
-            const exclusions = currentFullSentence?.char ? [currentFullSentence.char] : [];
-            const nextSentence = selectNextQuestion(exclusions);
-            if (nextSentence) {
-                currentFullSentence = nextSentence;
-                sentenceChunks = splitSentenceIntoChunks(nextSentence);
-                currentChunkIndex = 0;
-            }
-        }
+    if (mode !== 'audio-to-meaning-chunks' && mode !== 'text-to-meaning-chunks') {
+        return false;
+    }
 
-        if (sentenceChunks.length > 0 && currentChunkIndex < sentenceChunks.length) {
-            currentQuestion = sentenceChunks[currentChunkIndex];
-            window.currentQuestion = currentQuestion;
-
-            // Pre-compute upcoming chunk for three-column layout
-            if (currentChunkIndex + 1 < sentenceChunks.length) {
-                chunksUpcomingChunk = sentenceChunks[currentChunkIndex + 1];
-            } else {
-                chunksUpcomingChunk = null;
-            }
-
-            // Render three-column layout
-            if (mode === 'audio-to-meaning-chunks') {
-                renderThreeColumnChunksLayout(true);
-                if (audioSection) audioSection.classList.remove('hidden');
-                setupChunkAudioMode(currentQuestion.char);
-            } else {
-                // text-to-meaning-chunks
-                renderThreeColumnChunksLayout(false);
-            }
-
-            if (typeMode) typeMode.style.display = 'block';
-            if (answerInput) {
-                answerInput.placeholder = 'Type your translation...';
-                setTimeout(() => answerInput.focus(), 100);
-            }
-
-            startTimer();
-            return;
+    // Check if we need a new sentence or can use the next chunk
+    if (sentenceChunks.length === 0 || currentChunkIndex >= sentenceChunks.length) {
+        // Need a new sentence - select one and split into chunks
+        const exclusions = currentFullSentence?.char ? [currentFullSentence.char] : [];
+        const nextSentence = selectNextQuestion(exclusions);
+        if (nextSentence) {
+            currentFullSentence = nextSentence;
+            sentenceChunks = splitSentenceIntoChunks(nextSentence);
+            currentChunkIndex = 0;
         }
     }
 
+    if (!(sentenceChunks.length > 0 && currentChunkIndex < sentenceChunks.length)) {
+        return false;
+    }
+
+    currentQuestion = sentenceChunks[currentChunkIndex];
+    window.currentQuestion = currentQuestion;
+
+    // Pre-compute upcoming chunk for three-column layout
+    if (currentChunkIndex + 1 < sentenceChunks.length) {
+        chunksUpcomingChunk = sentenceChunks[currentChunkIndex + 1];
+    } else {
+        chunksUpcomingChunk = null;
+    }
+
+    // Render three-column layout
+    if (mode === 'audio-to-meaning-chunks') {
+        renderThreeColumnChunksLayout(true);
+        if (audioSection) audioSection.classList.remove('hidden');
+        setupChunkAudioMode(currentQuestion.char);
+    } else {
+        // text-to-meaning-chunks
+        renderThreeColumnChunksLayout(false);
+    }
+
+    if (typeMode) typeMode.style.display = 'block';
+    if (answerInput) {
+        answerInput.placeholder = 'Type your translation...';
+        setTimeout(() => answerInput.focus(), 100);
+    }
+
+    startTimer();
+    return true;
+}
+
+function selectNextQuizQuestion() {
     const previewActive = isPreviewModeActive();
     let nextQuestion = null;
 
@@ -4857,25 +4840,16 @@ function generateQuestion(options = {}) {
         nextQuestion = selectNextQuestion(exclusions);
     }
 
-    if (!nextQuestion) {
-        questionDisplay.innerHTML = `<div class="text-center text-2xl text-red-600 my-8">No questions available.</div>`;
-        return;
-    }
+    return nextQuestion;
+}
 
-    currentQuestion = nextQuestion;
-    updatePreviewDisplay();
-    window.currentQuestion = currentQuestion;
-    markSchedulerServed(currentQuestion);
-
-    // Update learn mode overlay if active
-    if (typeof updateLearnModeCharacter === 'function') {
-        updateLearnModeCharacter();
-    }
-
+function clearPreviousQuestionBreakdown() {
     // Clear any previous per-character breakdown
     const prevBreakdown = document.getElementById('charBreakdown');
     if (prevBreakdown) prevBreakdown.remove();
+}
 
+function prefillQuestionInputs(prefillAnswer) {
     // Clear input fields to prevent autofilled values (e.g., "yi dian er ling" from TTS speed)
     if (answerInput) {
         answerInput.value = prefillAnswer;
@@ -4884,7 +4858,9 @@ function generateQuestion(options = {}) {
         // Also prefill fuzzyInput for char-to-meaning-type mode prefiring
         fuzzyInput.value = prefillAnswer;
     }
+}
 
+function hideAllModeContainersForNewQuestion() {
     // Hide all mode containers
     typeMode.style.display = 'none';
     if (choiceMode) choiceMode.style.display = 'none';
@@ -4898,29 +4874,60 @@ function generateQuestion(options = {}) {
     if (charBuildingMode) charBuildingMode.style.display = 'none';
     if (audioSection) audioSection.classList.add('hidden');
     resetDictationState();
+}
 
+function updateSchedulerToolbarVisibility() {
     // Show scheduler toolbar for quiz modes (hide for study/non-quiz modes)
     const schedulerBar = document.getElementById('schedulerToolbar');
     if (schedulerBar) {
         schedulerBar.style.display = (mode === 'study') ? 'none' : '';
     }
+}
 
-    // Show appropriate UI based on mode
+function prepareUiForNewQuestion(prefillAnswer) {
+    clearPreviousQuestionBreakdown();
+    prefillQuestionInputs(prefillAnswer);
+    hideAllModeContainersForNewQuestion();
+    updateSchedulerToolbarVisibility();
+}
+
+function ensureDecompositionsLoadedOrDefer(targetMode) {
+    if (decompositionsLoaded) return true;
+
+    questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
+    loadDecompositionsData().then(() => {
+        if (mode === targetMode) {
+            generateQuestion();
+        }
+    });
+    return false;
+}
+
+function renderQuestionUiForTypingModes() {
     if (mode === 'char-to-pinyin') {
         renderThreeColumnPinyinDictationLayout(false); // false = text mode
         typeMode.style.display = 'block';
         if (answerInput) answerInput.placeholder = 'Type pinyin...';
         setTimeout(() => answerInput.focus(), 100);
-    } else if (mode === 'char-to-tones' && choiceMode) {
+        return true;
+    }
+
+    if (mode === 'char-to-tones' && choiceMode) {
         // Use MC mode with tone buttons and three-column layout
         initCharToTonesMc();
-    } else if (mode === 'audio-to-pinyin' && audioSection) {
+        return true;
+    }
+
+    if (mode === 'audio-to-pinyin' && audioSection) {
         renderThreeColumnPinyinDictationLayout(true); // true = audio mode
         typeMode.style.display = 'block';
         if (answerInput) answerInput.placeholder = 'Type pinyin...';
         audioSection.classList.remove('hidden');
         setupAudioMode({ focusAnswer: true });
-    } else if (mode === 'audio-to-meaning' && audioSection && typeMode) {
+        return true;
+    }
+
+    if (mode === 'audio-to-meaning' && audioSection && typeMode) {
         renderThreeColumnTranslationLayout(true); // true = audio mode
         audioSection.classList.remove('hidden');
         typeMode.style.display = 'block';
@@ -4928,7 +4935,10 @@ function generateQuestion(options = {}) {
             answerInput.placeholder = 'Type your translation...';
         }
         setupAudioMode({ focusAnswer: true });
-    } else if (mode === 'text-to-meaning' && typeMode) {
+        return true;
+    }
+
+    if (mode === 'text-to-meaning' && typeMode) {
         renderThreeColumnTranslationLayout(false); // false = text mode
         typeMode.style.display = 'block';
         if (answerInput) {
@@ -4936,40 +4946,75 @@ function generateQuestion(options = {}) {
             setTimeout(() => answerInput.focus(), 100);
         }
         startTimer();
-    } else if (mode === 'char-to-pinyin-mc' && choiceMode) {
+        return true;
+    }
+
+    return false;
+}
+
+function renderQuestionUiForChoiceModes() {
+    if (mode === 'char-to-pinyin-mc' && choiceMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generatePinyinOptions();
         choiceMode.style.display = 'block';
-    } else if (mode === 'char-to-pinyin-type' && fuzzyMode) {
+        return true;
+    }
+
+    if (mode === 'char-to-pinyin-type' && fuzzyMode) {
         renderThreeColumnPinyinLayout();
         generateFuzzyPinyinOptions();
         fuzzyMode.style.display = 'block';
-    } else if (mode === 'char-to-pinyin-tones-mc' && fuzzyMode) {
+        return true;
+    }
+
+    if (mode === 'char-to-pinyin-tones-mc' && fuzzyMode) {
         renderThreeColumnPinyinLayout();
         startPinyinToneMcFlow(true); // use fuzzy input for the pinyin step
         fuzzyMode.style.display = 'block';
-    } else if (mode === 'pinyin-to-char' && choiceMode) {
+        return true;
+    }
+
+    if (mode === 'pinyin-to-char' && choiceMode) {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
         generateCharOptions();
         choiceMode.style.display = 'block';
-    } else if (mode === 'char-to-meaning' && choiceMode) {
+        return true;
+    }
+
+    if (mode === 'char-to-meaning' && choiceMode) {
         renderMeaningQuestionLayout();
         generateMeaningOptions();
         choiceMode.style.display = 'block';
         updateMeaningChoicesVisibility();
-    } else if (mode === 'char-to-meaning-type' && fuzzyMode) {
+        return true;
+    }
+
+    if (mode === 'char-to-meaning-type' && fuzzyMode) {
         renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
         fuzzyMode.style.display = 'block';
-    } else if (mode === 'meaning-to-char' && choiceMode) {
+        return true;
+    }
+
+    if (mode === 'meaning-to-char' && choiceMode) {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
         generateCharOptions();
         choiceMode.style.display = 'block';
-    } else if (mode === 'stroke-order' && strokeOrderMode) {
+        return true;
+    }
+
+    return false;
+}
+
+function renderQuestionUiForHandwritingModes() {
+    if (mode === 'stroke-order' && strokeOrderMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-lg text-gray-500 mt-2">Trace each stroke in order</div>`;
         strokeOrderMode.style.display = 'block';
         initStrokeOrder();
-    } else if (mode === 'handwriting' && handwritingMode) {
+        return true;
+    }
+
+    if (mode === 'handwriting' && handwritingMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
 
         // Show prompt inside the handwriting pane (keeps it from overlapping mode buttons)
@@ -4994,23 +5039,26 @@ function generateQuestion(options = {}) {
 
         handwritingMode.style.display = 'block';
         initHandwriting();
-    } else if (mode === 'draw-char' && drawCharMode) {
+        return true;
+    }
+
+    if (mode === 'draw-char' && drawCharMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
         const meaningText = currentQuestion.meaning ? `<div class="text-lg text-gray-500 mt-1">${currentQuestion.meaning}</div>` : '';
         questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div>${meaningText}</div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
-    } else if (mode === 'draw-missing-component' && drawCharMode) {
-        // Requires decomposition data
-        if (!decompositionsLoaded) {
-            questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
-            loadDecompositionsData().then(() => {
-                if (mode === 'draw-missing-component') {
-                    generateQuestion();
-                }
-            });
-            return;
+        return true;
+    }
+
+    return false;
+}
+
+function renderQuestionUiForComponentModes() {
+    if (mode === 'draw-missing-component' && drawCharMode) {
+        if (!ensureDecompositionsLoadedOrDefer('draw-missing-component')) {
+            return true;
         }
 
         // Use prepared component question if available, otherwise prepare new one
@@ -5024,7 +5072,7 @@ function generateQuestion(options = {}) {
 
         if (!prepared) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
-            return;
+            return true;
         }
 
         currentQuestion = prepared.question;
@@ -5047,11 +5095,17 @@ function generateQuestion(options = {}) {
         if (ocrResult) ocrResult.textContent = '';
         feedback.textContent = '';
         hint.textContent = '';
-    } else if (mode === 'study' && studyMode) {
+        return false;
+    }
+
+    if (mode === 'study' && studyMode) {
         questionDisplay.innerHTML = '';
         studyMode.style.display = 'block';
         populateStudyList();
-    } else if (mode === 'radical-practice' && radicalPracticeMode) {
+        return false;
+    }
+
+    if (mode === 'radical-practice' && radicalPracticeMode) {
         // Skip characters without radical data
         let attempts = 0;
         while ((!currentQuestion.radicals || currentQuestion.radicals.length === 0) && attempts < 100) {
@@ -5065,24 +5119,19 @@ function generateQuestion(options = {}) {
 
         if (!currentQuestion.radicals || currentQuestion.radicals.length === 0) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with radical data available in this lesson.</div>`;
-            return;
+            return true;
         }
 
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
-    } else if (mode === 'missing-component' && missingComponentMode) {
+        return false;
+    }
+
+    if (mode === 'missing-component' && missingComponentMode) {
         // Use three-column layout for missing component mode
-        // Ensure decomposition data is loaded first
-        if (!decompositionsLoaded) {
-            questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
-            // Start loading if not already started, then retry
-            loadDecompositionsData().then(() => {
-                if (mode === 'missing-component') {
-                    generateQuestion();
-                }
-            });
-            return;
+        if (!ensureDecompositionsLoadedOrDefer('missing-component')) {
+            return true;
         }
 
         // If we have an upcoming question ready, use it; otherwise prepare one
@@ -5096,7 +5145,7 @@ function generateQuestion(options = {}) {
 
         if (!prepared) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
-            return;
+            return true;
         }
 
         // Set up current question and decomposition
@@ -5113,20 +5162,15 @@ function generateQuestion(options = {}) {
 
         missingComponentMode.style.display = 'block';
         generateComponentOptions();
-    } else if (mode === 'char-building' && charBuildingMode) {
+        return false;
+    }
+
+    if (mode === 'char-building' && charBuildingMode) {
         // Character Building mode - build all characters in a word component by component
         // Uses three-column layout with instant transitions
 
-        // Ensure decomposition data is loaded first
-        if (!decompositionsLoaded) {
-            questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading component data...</div>`;
-            // Start loading if not already started, then retry
-            loadDecompositionsData().then(() => {
-                if (mode === 'char-building') {
-                    generateQuestion();
-                }
-            });
-            return;
+        if (!ensureDecompositionsLoadedOrDefer('char-building')) {
+            return true;
         }
 
         // Use upcoming question if available, otherwise prepare new one
@@ -5140,7 +5184,7 @@ function generateQuestion(options = {}) {
 
         if (!prepared) {
             questionDisplay.innerHTML = `<div class="text-center text-2xl my-8 text-red-600">No characters with component data available in this lesson.</div>`;
-            return;
+            return true;
         }
 
         currentQuestion = prepared.question;
@@ -5166,6 +5210,48 @@ function generateQuestion(options = {}) {
 
         charBuildingMode.style.display = 'block';
         generateCharBuildingOptions();
+        return false;
+    }
+
+    return false;
+}
+
+function generateQuestion(options = {}) {
+    const prefillAnswer = getPrefillAnswerForNextQuestion(options);
+    resetForNextQuestion(prefillAnswer);
+    prepareSchedulerForNextQuestion();
+    if (maybeGenerateChunksQuestion()) return;
+
+    let nextQuestion = selectNextQuizQuestion();
+
+    if (!nextQuestion) {
+        questionDisplay.innerHTML = `<div class="text-center text-2xl text-red-600 my-8">No questions available.</div>`;
+        return;
+    }
+
+    currentQuestion = nextQuestion;
+    updatePreviewDisplay();
+    window.currentQuestion = currentQuestion;
+    markSchedulerServed(currentQuestion);
+
+    // Update learn mode overlay if active
+    if (typeof updateLearnModeCharacter === 'function') {
+        updateLearnModeCharacter();
+    }
+
+    prepareUiForNewQuestion(prefillAnswer);
+
+    // Show appropriate UI based on mode
+    if (renderQuestionUiForTypingModes()) {
+        // Mode handled
+    } else if (renderQuestionUiForChoiceModes()) {
+        // Mode handled
+    } else if (renderQuestionUiForHandwritingModes()) {
+        // Mode handled
+    } else {
+        if (renderQuestionUiForComponentModes()) {
+            return;
+        }
     }
 
     // If we prefilled an answer (user typed during the reveal phase), preserve it
@@ -12429,13 +12515,15 @@ function initQuizCommandPalette() {
 // INITIALIZATION
 // =============================================================================
 
-function initQuiz(charactersData, userConfig = {}) {
+function initQuizRuntime() {
     // Reserve Ctrl/Cmd+K for focusing the quiz input instead of the command palette
     window.__preferCtrlKForQuiz = true;
 
     // Upgrade pre-Lesson 7 pages to the experimental layout automatically
     upgradeLegacyLessonLayoutIfNeeded();
+}
 
+function initQuizPersistentState(charactersData, userConfig) {
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};
@@ -12469,7 +12557,9 @@ function initQuiz(charactersData, userConfig = {}) {
 
     // Load saved mode (overrides default if valid)
     loadQuizMode();
+}
 
+function initQuizDomElements() {
     // Get DOM elements
     questionDisplay = document.getElementById('questionDisplay');
     answerInput = document.getElementById('answerInput');
@@ -12498,7 +12588,9 @@ function initQuiz(charactersData, userConfig = {}) {
     audioSection = document.getElementById('audioSection');
     fullscreenDrawInitialized = false;
     ensureFullscreenDrawLayout();
+}
 
+function configureQuizInputs() {
     // Disable autocomplete and speech input to prevent browser from auto-filling values
     // (e.g., TTS speed "1.20" being transcribed as "yi dian er ling")
     if (answerInput) {
@@ -12516,7 +12608,9 @@ function initQuiz(charactersData, userConfig = {}) {
 
     // Setup keyboard shortcut hints for inputs
     setupInputShortcutHints();
+}
 
+function initQuizPreviewAndSchedulerUi() {
     previewQueue = [];
     const requestedPreviewSize = Number(config.previewQueueSize);
     previewQueueSize = Number.isFinite(requestedPreviewSize) && requestedPreviewSize > 0
@@ -12541,11 +12635,56 @@ function initQuiz(charactersData, userConfig = {}) {
     }
     renderConfidenceList();
     updateMeaningChoicesVisibility();
+}
 
+function resetModeTransientState() {
+    // Reset three-column state when switching modes
+    translationPreviousQuestion = null;
+    translationPreviousResult = null;
+    translationUpcomingQuestion = null;
+    translationInlineFeedback = null;
+    pinyinDictationPreviousQuestion = null;
+    pinyinDictationPreviousResult = null;
+    pinyinDictationPreviousUserAnswer = null;
+    pinyinDictationUpcomingQuestion = null;
+    chunksPreviousChunk = null;
+    chunksPreviousResult = null;
+    chunksUpcomingChunk = null;
+}
+
+function applyModeChange(selectedMode, btn) {
+    if (selectedMode === 'composer') {
+        composerEnabled = true;
+        buildComposerPipeline();
+        saveComposerState();
+        saveQuizMode('composer');
+        const stage = getComposerCurrentStage();
+        mode = stage ? stage.mode : mode;
+    } else {
+        composerEnabled = false;
+        saveComposerState();
+        mode = selectedMode;
+        saveQuizMode(mode);
+    }
+
+    if (btn) {
+        btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+        btn.classList.remove('border-gray-300');
+    }
+}
+
+function clearModeButtonActiveStates() {
+    document.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.remove('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+        b.classList.add('border-gray-300');
+    });
+}
+
+function initQuizEventListeners() {
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
 
-    answerInput.addEventListener('input', (e) => {
+    answerInput.addEventListener('input', () => {
         if (mode === 'char-to-tones') {
             // Only allow 1-5 digits
             const filtered = answerInput.value.replace(/[^1-5]/g, '');
@@ -12627,47 +12766,15 @@ function initQuiz(charactersData, userConfig = {}) {
             checkAnswer();
         }
     });
+}
 
-    // Mode selector
+function initModeButtons() {
     prioritizeMeaningModeButton();
     document.querySelectorAll('.mode-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.mode-btn').forEach(b => {
-                b.classList.remove('active', 'bg-blue-500', 'text-white', 'border-blue-500');
-                b.classList.add('border-gray-300');
-            });
-            const selectedMode = btn.dataset.mode;
-
-            if (selectedMode === 'composer') {
-                composerEnabled = true;
-                buildComposerPipeline();
-                saveComposerState();
-                saveQuizMode('composer');
-                const stage = getComposerCurrentStage();
-                mode = stage ? stage.mode : mode;
-                btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
-                btn.classList.remove('border-gray-300');
-            } else {
-                composerEnabled = false;
-                saveComposerState();
-                mode = selectedMode;
-                saveQuizMode(mode);
-                btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
-                btn.classList.remove('border-gray-300');
-            }
-
-            // Reset three-column state when switching modes
-            translationPreviousQuestion = null;
-            translationPreviousResult = null;
-            translationUpcomingQuestion = null;
-            translationInlineFeedback = null;
-            pinyinDictationPreviousQuestion = null;
-            pinyinDictationPreviousResult = null;
-            pinyinDictationPreviousUserAnswer = null;
-            pinyinDictationUpcomingQuestion = null;
-            chunksPreviousChunk = null;
-            chunksPreviousResult = null;
-            chunksUpcomingChunk = null;
+            clearModeButtonActiveStates();
+            applyModeChange(btn.dataset.mode, btn);
+            resetModeTransientState();
 
             score = 0;
             total = 0;
@@ -12685,6 +12792,16 @@ function initQuiz(charactersData, userConfig = {}) {
         initialBtn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
         initialBtn.classList.remove('border-gray-300');
     }
+}
+
+function initQuiz(charactersData, userConfig = {}) {
+    initQuizRuntime();
+    initQuizPersistentState(charactersData, userConfig);
+    initQuizDomElements();
+    configureQuizInputs();
+    initQuizPreviewAndSchedulerUi();
+    initQuizEventListeners();
+    initModeButtons();
 
     registerQuizHotkeys();
 
@@ -12705,7 +12822,9 @@ function initQuiz(charactersData, userConfig = {}) {
 // Setup collapsible sidebars for quiz modes and confidence panel
 function setupCollapsibleSidebars() {
     // Find the left sidebar (quiz modes)
-    const leftSidebar = document.querySelector('.flex.min-h-screen > .w-64, .flex.min-h-screen > div:first-child.bg-white');
+    const leftSidebar = document.querySelector(
+        '.flex.min-h-screen > .w-64, .flex.min-h-screen > div:first-child.bg-white, .app-container > .sidebar, .app-container > aside.sidebar, .app-container > div.sidebar'
+    );
     if (leftSidebar && !leftSidebar.closest('.sidebar-wrapper')) {
         wrapSidebarWithToggle(leftSidebar, 'left');
     }
@@ -12727,7 +12846,10 @@ function wrapSidebarWithToggle(sidebar, side) {
 
     // Get stored collapse state
     const storageKey = `sidebar-${side}-collapsed`;
-    const isCollapsed = localStorage.getItem(storageKey) === 'true';
+    const storedCollapse = localStorage.getItem(storageKey);
+    const isCollapsed = storedCollapse === null
+        ? isNarrowViewport()
+        : storedCollapse === 'true';
 
     sidebar.parentNode.insertBefore(wrapper, sidebar);
 

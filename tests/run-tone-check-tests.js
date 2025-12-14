@@ -3,12 +3,70 @@ const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
 
+function createBrowserLikeContext() {
+  const context = {
+    console,
+    setTimeout,
+    clearTimeout,
+  };
+
+  context.window = context;
+  context.globalThis = context;
+  context.navigator = {
+    platform: '',
+    clipboard: {
+      writeText: () => Promise.resolve(),
+    },
+  };
+  context.location = {
+    pathname: '/lesson-1-quiz.html',
+    href: 'http://localhost/lesson-1-quiz.html',
+    hash: '',
+    search: '',
+  };
+  context.localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  context.document = {
+    readyState: 'loading',
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: () => ({
+      style: {},
+      setAttribute: () => {},
+      appendChild: () => {},
+      removeChild: () => {},
+      focus: () => {},
+      select: () => {},
+      classList: { add: () => {}, remove: () => {}, contains: () => false },
+    }),
+    body: { appendChild: () => {}, removeChild: () => {} },
+    documentElement: {},
+  };
+
+  context.requestAnimationFrame = (fn) => setTimeout(fn, 0);
+  context.cancelAnimationFrame = (id) => clearTimeout(id);
+
+  return context;
+}
+
+function loadScripts(context, relativePaths) {
+  relativePaths.forEach((relativePath) => {
+    const fullPath = path.join(__dirname, '..', relativePath);
+    const source = fs.readFileSync(fullPath, 'utf8');
+    vm.runInContext(source, context);
+  });
+}
+
 function loadQuizEngine() {
-  const quizPath = path.join(__dirname, '..', 'js', 'quiz-engine.js');
-  const source = fs.readFileSync(quizPath, 'utf8');
-  const context = { console };
+  const context = createBrowserLikeContext();
   vm.createContext(context);
-  vm.runInContext(source, context);
+  loadScripts(context, ['js/utils.js', 'js/pinyin-utils.js', 'js/quiz-engine.js']);
   return context;
 }
 

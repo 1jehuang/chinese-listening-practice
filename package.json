@@ -1,5 +1,12 @@
 {
+  "scripts": {
+    "test": "node test-convert.js && node test-pinyin.js && node test-tone-numbers.js && node test-all-vocab.js && node tests/run-tone-check-tests.js && node tests/run-speak-mode-tests.js && node test-confidence-display.js && node test-feed-mode.js",
+    "test:audio": "node test-audio.js"
+  },
   "dependencies": {
     "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "pinyin-pro": "^3.27.0"
   }
 }

@@ -979,6 +979,10 @@ body.study-mode-active #confidencePanel {
     display: none !important;
 }
 
+body.study-mode-active #confidencePullTab {
+    display: none !important;
+}
+
 body.study-mode-active .app-container {
     padding-right: 0;
     width: 100%;

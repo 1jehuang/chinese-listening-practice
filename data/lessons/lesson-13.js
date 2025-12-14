@@ -1,0 +1,48 @@
+window.__LESSON_DATASETS__ = window.__LESSON_DATASETS__ || {};
+window.__LESSON_DATASETS__['lesson-13'] = {
+  vocab: {
+    part1: [
+      // Pages 154–155
+                  { char: '标准', pinyin: 'biāozhǔn', meaning: 'standard' },
+                  { char: '普通话', pinyin: 'pǔtōnghuà', meaning: 'Standard Mandarin Chinese' },
+                  { char: '念', pinyin: 'niàn', meaning: 'pronounce; read; study' },
+                  { char: '笑', pinyin: 'xiào', meaning: 'laugh' },
+                  { char: '发音', pinyin: 'fāyīn', meaning: 'pronunciation; pronounce' },
+                  { char: '变', pinyin: 'biàn', meaning: 'change' },
+                  { char: '奇奇怪怪', pinyin: 'qíqíguàiguài', meaning: 'very unusual or strange' },
+                  { char: '带…口音', pinyin: 'dài...kǒuyīn', meaning: 'speak with...accent' },
+                  { char: '南方', pinyin: 'nánfāng', meaning: 'south' },
+                  { char: '(要)不然', pinyin: '(yào)bùrán', meaning: 'otherwise' },
+                  { char: '南腔北调', pinyin: 'nánqiāng běidiào', meaning: 'southern tune and northern intonation—mixed accent' },
+                  { char: '乱', pinyin: 'luàn', meaning: 'unruly; disorderly; chaotic' }
+    ],
+    part2: [
+      // Page 156
+                  { char: '北方人', pinyin: 'běifāngrén', meaning: 'Northerner' },
+                  { char: '方言', pinyin: 'fāngyán', meaning: 'dialect' },
+                  { char: '目的', pinyin: 'mùdì', meaning: 'purpose' },
+                  { char: '互相', pinyin: 'hùxiāng', meaning: 'each other; mutually' },
+                  { char: '别人', pinyin: 'biérén', meaning: 'other people' },
+                  { char: '行了', pinyin: 'xíng.le', meaning: 'will do; all right' },
+                  { char: '卷舌', pinyin: 'juǎnshé', meaning: 'curl the tongue; pronounce retroflex initials' },
+                  { char: '道理', pinyin: 'dàolǐ', meaning: 'sense; reason; argument' },
+                  { char: '总', pinyin: 'zǒng', meaning: 'anyway; after all' },
+                  { char: '低', pinyin: 'dī', meaning: 'low' },
+                  { char: '既然…(就)', pinyin: 'jìrán...(jiù)', meaning: 'given the fact that; since' },
+                  { char: '录音带', pinyin: 'lùyīndài', meaning: 'audiotape' }
+    ]
+  },
+  dictation: [
+    { char: '老师：美生，这个字念“shi”不念“si”，是“老师”不是“老四”。', pinyin: 'lǎoshī: Měishēng, zhè ge zì niàn “shi” bù niàn “si”, shì “lǎoshī” bú shì “lǎosì”', meaning: 'Teacher: Meisheng, this character is pronounced “shi,” not “si”; it’s “teacher,” not “laosi.”' },
+                { char: '学生：可是我爸妈都说“老四”，他们的朋友也都说“老四”，“ci饭”。为什么我一定得说“shi”跟“chi”呢？', pinyin: 'xuéshēng: kěshì wǒ bà mā dōu shuō “lǎosì”, tāmen de péngyou yě dōu shuō “lǎosì”, “ci fàn”. wèishénme wǒ yīdìng děi shuō “shi” gēn “chi” ne', meaning: 'Student: But my parents say “laosi”; their friends also say “laosi”, “cifan”. Why do I have to say “shi” and “chi”?' },
+                { char: '学生：他们常常笑我，学了中文以后，发音变得奇奇怪怪的。', pinyin: 'xuéshēng: tāmen chángcháng xiào wǒ, xué le Zhōngwén yǐhòu, fāyīn biàn de qíqíguàiguài de', meaning: 'Student: They often laugh at me—after studying Chinese, my pronunciation has become very strange.' },
+                { char: '老师：“老四”、“ci饭”是带南方口音的普通话，那是不标准的。', pinyin: 'lǎoshī: “lǎosì”, “ci fàn” shì dài nánfāng kǒuyīn de pǔtōnghuà, nà shì bù biāozhǔn de', meaning: 'Teacher: “Laosi” and “cifan” are Mandarin with a southern accent—that is not standard.' },
+                { char: '学生：我父母都是南方人，我说带南方口音的普通话不是很自然的吗？', pinyin: 'xuéshēng: wǒ fùmǔ dōu shì nánfāngrén, wǒ shuō dài nánfāng kǒuyīn de pǔtōnghuà bú shì hěn zìrán de ma', meaning: 'Student: My parents are southerners—isn’t it natural that I speak Mandarin with a southern accent?' },
+                { char: '老师：自然是自然，但是学校里得教标准的普通话，不然南腔北调太乱了。', pinyin: 'lǎoshī: zìrán shì zìrán, dànshì xuéxiào lǐ děi jiāo biāozhǔn de pǔtōnghuà, bùrán nánqiāng běidiào tài luàn le', meaning: 'Teacher: Natural is natural, but schools have to teach standard Mandarin—otherwise it’s a chaotic mix of accents.' },
+                { char: '学生：我觉得中国北方人不太尊重南方的方言，总是说南方人的话不标准。', pinyin: 'xuéshēng: wǒ juéde Zhōngguó běifāngrén bú tài zūnzhòng nánfāng de fāngyán, zǒng shì shuō nánfāngrén de huà bù biāozhǔn', meaning: 'Student: I feel that northern Chinese people don’t really respect southern dialects; they always say southerners’ speech isn’t standard.' },
+                { char: '学生：其实说话的目的只是为了互相沟通，“老师”也好，“老四”也好，只要别人知道我的意思是“teacher”就行了，卷不卷舌有什么关系呢？', pinyin: 'xuéshēng: qíshí shuōhuà de mùdì zhǐshì wèile hùxiāng gōutōng, “lǎoshī” yě hǎo, “lǎosì” yě hǎo, zhǐyào biérén zhīdào wǒ de yìsi shì “teacher” jiù xíng le, juǎn bù juǎn shé yǒu shénme guānxi ne', meaning: 'Student: The purpose of speaking is just to communicate. Whether it’s “laoshi” or “laosi,” as long as people know I mean “teacher,” it’s fine—what difference does it make if I curl my tongue or not?' },
+                { char: '老师：你说的话不是没有道理，但是在学校里学中文总得有个标准，“只要互相能懂”这个标准，在我看来，太低了。', pinyin: 'lǎoshī: nǐ shuō de huà bú shì méiyǒu dàolǐ, dànshì zài xuéxiào lǐ xué Zhōngwén zǒng děi yǒu ge biāozhǔn, “zhǐyào hùxiāng néng dǒng” zhè ge biāozhǔn, zài wǒ kànlái, tài dī le', meaning: 'Teacher: What you said isn’t without reason, but in school there must be a standard. In my view, the standard of “as long as we understand each other” is too low.' },
+                { char: '老师：既然要学中文，为什么不学标准的普通话呢？', pinyin: 'lǎoshī: jìrán yào xué Zhōngwén, wèishénme bù xué biāozhǔn de pǔtōnghuà ne', meaning: 'Teacher: Since you’re going to study Chinese, why not learn standard Mandarin?' },
+                { char: '学生：您说得很对，既然学中文就应该学标准的普通话，我还得多注意我的发音。', pinyin: 'xuéshēng: nín shuō de hěn duì, jìrán xué Zhōngwén jiù yīnggāi xué biāozhǔn de pǔtōnghuà, wǒ hái děi duō zhùyì wǒ de fāyīn', meaning: 'Student: You’re right—since I’m studying Chinese, I should learn standard Mandarin. I still need to pay more attention to my pronunciation.' }
+  ]
+};

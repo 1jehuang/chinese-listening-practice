@@ -216,18 +216,6 @@ function fuzzyMatch(input, target) {
     return score;
 }
 
-// Split pinyin into individual syllables
-function splitPinyinSyllables(pinyin) {
-    // Remove dots first
-    pinyin = pinyin.replace(/\./g, '').replace(/\.\.\./g, '');
-
-    // Match syllable pattern: optional consonant(s) + vowel(s) with tone + optional n/ng/r
-    const syllablePattern = /[bpmfdtnlgkhjqxzcsrwy]?h?[aeiouüāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+n?g?r?/gi;
-    const syllables = pinyin.match(syllablePattern) || [pinyin];
-
-    return syllables;
-}
-
 // Convert single pinyin syllable with tone marks to audio key format
 function pinyinToAudioKey(pinyin) {
     const toneMarkToBase = {

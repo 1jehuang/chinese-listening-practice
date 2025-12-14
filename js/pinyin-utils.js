@@ -23,7 +23,8 @@ const TONE_MARK_TO_NUMBER = {
 };
 
 const PINYIN_FINAL_LETTERS = new Set(['a', 'e', 'i', 'o', 'u', 'v', 'n', 'r']);
-const PINYIN_SEPARATOR_REGEX = /[\s.,/;:!?'"""''—–\-…，。、？！；：（）【】《》·]/;
+// NOTE: Keep ':' out of the separator regex so `u:` (ü) notation like `lu:4` stays in a single token.
+const PINYIN_SEPARATOR_REGEX = /[\s.,/;!?'"""''—–\-…，。、？！；：（）【】《》·]/;
 const PINYIN_STRIP_REGEX = /[\s.,/;:!?'"""''—–\-…，。、？！；：（）【】《》·]/g;
 const TONE_SEQUENCE = ['1', '2', '3', '4', '5'];
 const TONE_MARK_MAP = {
@@ -34,7 +35,7 @@ const TONE_MARK_MAP = {
     'u': ['ū', 'ú', 'ǔ', 'ù'],
     'ü': ['ǖ', 'ǘ', 'ǚ', 'ǜ']
 };
-const PINYIN_WORD_SEPARATOR_REGEX = /[\s,，、。！？；：:;（）()【】《》「」『』…—–-]+/;
+const PINYIN_WORD_SEPARATOR_REGEX = /[\s,，、。！？；：;（）()【】《》「」『』…—–-]+/;
 
 /**
  * Convert pinyin with tone marks or numbers to tone number format (e.g., "hǎo" -> "hao3")
@@ -79,6 +80,76 @@ function convertPinyinToToneNumbers(pinyin) {
 
         return base + tone;
     }).join('');
+}
+
+// Normalize a pinyin string for strict but punctuation-agnostic comparison.
+// Keeps tone numbers (using convertPinyinToToneNumbers) so tone accuracy is still required,
+// but strips spaces, dots, commas, and other separators so variants like
+// "bān chū.qù", "ban1 chu1 qu4", and "ban1chu1qu4" compare equal.
+function normalizePinyinForChoice(pinyin) {
+    if (!pinyin) return '';
+    const asNumbers = convertPinyinToToneNumbers(pinyin.toLowerCase().trim());
+    return asNumbers.replace(PINYIN_STRIP_REGEX, '');
+}
+
+function normalizePinyin(pinyin) {
+    // Normalize pinyin to a standard form for comparison
+    // 1. Convert to lowercase
+    // 2. Normalize ü/u: variants to 'v'
+    // 3. Remove all separators/punctuation
+    // 4. Remove all tone numbers
+    // 5. Remove all tone marks
+    // 6. Result: pure letters only (e.g., "zhongguo")
+
+    let result = pinyin.toLowerCase().trim();
+
+    // Normalize ü/u: variants to 'v'
+    result = result.replace(/u:/g, 'v');
+
+    // Remove all separators and punctuation
+    result = result.replace(PINYIN_STRIP_REGEX, '');
+
+    // Remove tone numbers (1-5)
+    result = result.replace(/[1-5]/g, '');
+
+    // Remove tone marks by replacing with base vowels
+    for (const [marked, base] of Object.entries(TONE_MARK_TO_BASE)) {
+        result = result.replace(new RegExp(marked, 'g'), base);
+    }
+
+    return result;
+}
+
+function extractToneSequence(pinyin) {
+    const syllables = splitPinyinSyllables(pinyin);
+    if (syllables.length === 0) return '';
+
+    let tones = '';
+
+    syllables.forEach(syl => {
+        let tone = null;
+        for (let i = 0; i < syl.length; i++) {
+            const char = syl[i];
+            if (/[1-5]/.test(char)) {
+                tone = char;
+                break;
+            }
+
+            const lower = char.toLowerCase();
+            if (TONE_MARK_TO_NUMBER[lower]) {
+                tone = TONE_MARK_TO_NUMBER[lower];
+                break;
+            }
+        }
+
+        if (!tone) {
+            tone = '5';
+        }
+
+        tones += tone;
+    });
+
+    return tones;
 }
 
 /**
