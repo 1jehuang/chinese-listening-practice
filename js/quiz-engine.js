@@ -5638,7 +5638,7 @@ Your response MUST follow this exact format:
 2. Second line: Brief explanation (1 sentence)
 3. Third line: MARKUP: followed by the student's EXACT text with annotations
    - Wrap parts showing CORRECT understanding in [OK:word/phrase]
-   - Wrap parts showing WRONG understanding in [ERR:word/phrase]
+   - Wrap parts showing WRONG understanding in [ERR:word/phrase:reason] - include WHY it's wrong
    - Keep their text exactly as written
 
 Grading scale (grade their Chinese comprehension):
@@ -5647,10 +5647,15 @@ Grading scale (grade their Chinese comprehension):
 50-69%: Got the general topic but missed key meaning
 Below 50%: Did not understand the Chinese
 
-Example response:
+Example response for correct:
 GRADE: 100%
 Understood the Chinese perfectly.
-MARKUP: [OK:I am] [OK:happy] [OK:to meet you]`
+MARKUP: [OK:I am] [OK:happy] [OK:to meet you]
+
+Example response with error:
+GRADE: 60%
+Misunderstood who was speaking.
+MARKUP: [OK:He said] [ERR:she is coming:should be "he is coming" - 他 means he not she] [OK:tomorrow]`
                     },
                     {
                         role: 'user',
@@ -5699,6 +5704,9 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
         if (markup) {
             colorCodedAnswer = markup
                 .replace(/\[OK:([^\]]+)\]/g, '<span style="color: #16a34a; font-weight: 600;">$1</span>')
+                // Handle [ERR:text:reason] format - show text with tooltip for reason
+                .replace(/\[ERR:([^:\]]+):([^\]]+)\]/g, '<span style="color: #dc2626; font-weight: 600; text-decoration: underline wavy #dc2626; cursor: help;" title="$2">$1</span> <span style="display: inline-block; font-size: 11px; color: #991b1b; background: #fee2e2; padding: 1px 4px; border-radius: 3px; margin-left: 2px;">$2</span>')
+                // Fallback for [ERR:text] without reason
                 .replace(/\[ERR:([^\]]+)\]/g, '<span style="color: #dc2626; font-weight: 600; text-decoration: underline wavy #dc2626;">$1</span>');
         }
 
