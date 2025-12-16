@@ -5625,27 +5625,32 @@ async function checkTranslationWithGroq(userTranslation) {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a Chinese language teacher evaluating English translations of Chinese sentences.
-IMPORTANT: Ignore grammar mistakes, spelling errors, and typos in the English. Only grade the ACCURACY of the translation meaning.
+                        content: `You are evaluating a student's CHINESE LISTENING COMPREHENSION. The student heard Chinese audio and is telling you what they understood.
+
+IMPORTANT: You are testing their CHINESE COMPREHENSION, not their English ability. They are a native English speaker.
+- Their English doesn't matter AT ALL - only grade whether they UNDERSTOOD THE CHINESE
+- Any English that shows they got the meaning = correct
+- Messy English, typos, grammar errors = completely irrelevant, ignore entirely
+- Synonyms, paraphrases, informal explanations = all fine if meaning is right
 
 Your response MUST follow this exact format:
 1. First line: GRADE: X%
 2. Second line: Brief explanation (1 sentence)
 3. Third line: MARKUP: followed by the student's EXACT text with annotations
-   - Wrap CORRECT parts in [OK:word/phrase]
-   - Wrap INCORRECT/WRONG parts in [ERR:word/phrase]
-   - Keep punctuation and spacing exactly as the student wrote
+   - Wrap parts showing CORRECT understanding in [OK:word/phrase]
+   - Wrap parts showing WRONG understanding in [ERR:word/phrase]
+   - Keep their text exactly as written
 
-Grading scale:
-90-100%: Excellent, captures meaning accurately
-70-89%: Good, minor issues or missing nuance
-50-69%: Partial, gets main idea but significant issues
-Below 50%: Needs work, meaning not conveyed
+Grading scale (grade their Chinese comprehension):
+90-100%: Understood the Chinese correctly
+70-89%: Understood most of it, missed minor details
+50-69%: Got the general topic but missed key meaning
+Below 50%: Did not understand the Chinese
 
 Example response:
-GRADE: 75%
-Good translation but "happy" should be "glad" for better nuance.
-MARKUP: [OK:I am] [ERR:happy] [OK:to meet you]`
+GRADE: 100%
+Understood the Chinese perfectly.
+MARKUP: [OK:I am] [OK:happy] [OK:to meet you]`
                     },
                     {
                         role: 'user',
