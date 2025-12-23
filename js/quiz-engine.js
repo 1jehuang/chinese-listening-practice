@@ -347,7 +347,6 @@ const ADAPTIVE_MIN_DECK_SIZE = 3;  // minimum cards to keep variety, pulls from 
 const ADAPTIVE_GRAD_CONFIDENCE = 4.2;
 const ADAPTIVE_GRAD_MIN_SERVED = 3;
 const ADAPTIVE_GRAD_MIN_STREAK = 2;
-const ADAPTIVE_RECENT_WRONG_COOLDOWN = 90; // seconds to keep a recently-missed card around
 let adaptiveStateKey = '';
 let adaptiveDeckState = {
     deck: [],
@@ -2105,12 +2104,10 @@ function shouldGraduateAdaptiveChar(char) {
     const served = stats.served || 0;
     const streak = stats.streak || 0;
     const confidenceOk = isConfidenceHighEnough(char);
-    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
 
     if (served < ADAPTIVE_GRAD_MIN_SERVED) return false;
     if (streak < ADAPTIVE_GRAD_MIN_STREAK) return false;
     if (!confidenceOk) return false;
-    if (lastWrongAgo < ADAPTIVE_RECENT_WRONG_COOLDOWN) return false;
     return true;
 }
 
@@ -2121,17 +2118,15 @@ function getAdaptiveReadiness(char) {
     const streak = stats.streak || 0;
     const score = getConfidenceScore(char);
     const threshold = getConfidenceMasteryThreshold();
-    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
 
     const servedOk = served >= ADAPTIVE_GRAD_MIN_SERVED;
     const streakOk = streak >= ADAPTIVE_GRAD_MIN_STREAK;
     const confidenceOk = score >= threshold;
-    const cooldownOk = lastWrongAgo >= ADAPTIVE_RECENT_WRONG_COOLDOWN;
 
     return {
-        served, streak, score, threshold, lastWrongAgo,
-        servedOk, streakOk, confidenceOk, cooldownOk,
-        ready: servedOk && streakOk && confidenceOk && cooldownOk
+        served, streak, score, threshold,
+        servedOk, streakOk, confidenceOk,
+        ready: servedOk && streakOk && confidenceOk
     };
 }
 
@@ -2144,12 +2139,10 @@ function isCharMasteredForMode(char, modeName) {
     const streak = stats.streak || 0;
     const score = getConfidenceScoreForMode(char, modeName);
     const threshold = getConfidenceMasteryThreshold();
-    const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
     const servedOk = served >= ADAPTIVE_GRAD_MIN_SERVED;
     const streakOk = streak >= ADAPTIVE_GRAD_MIN_STREAK;
     const confidenceOk = Number.isFinite(score) && score >= threshold;
-    const cooldownOk = lastWrongAgo >= ADAPTIVE_RECENT_WRONG_COOLDOWN;
-    return servedOk && streakOk && confidenceOk && cooldownOk;
+    return servedOk && streakOk && confidenceOk;
 }
 
 function isModeFullyMastered(modeName) {
@@ -2171,24 +2164,20 @@ function debugAdaptiveGraduation() {
     console.log('Confidence threshold:', threshold);
     console.log('Min served:', ADAPTIVE_GRAD_MIN_SERVED);
     console.log('Min streak:', ADAPTIVE_GRAD_MIN_STREAK);
-    console.log('Wrong cooldown (sec):', ADAPTIVE_RECENT_WRONG_COOLDOWN);
     console.log('');
 
     deck.forEach(char => {
         const stats = getSchedulerStats(char);
         const score = getConfidenceScore(char);
-        const lastWrongAgo = stats.lastWrong ? (Date.now() - stats.lastWrong) / 1000 : Infinity;
-
         const checks = {
             served: (stats.served || 0) >= ADAPTIVE_GRAD_MIN_SERVED,
             streak: (stats.streak || 0) >= ADAPTIVE_GRAD_MIN_STREAK,
-            confidence: score >= threshold,
-            cooldown: lastWrongAgo >= ADAPTIVE_RECENT_WRONG_COOLDOWN
+            confidence: score >= threshold
         };
-        const wouldGraduate = checks.served && checks.streak && checks.confidence && checks.cooldown;
+        const wouldGraduate = checks.served && checks.streak && checks.confidence;
 
-        console.log(`${char}: served=${stats.served || 0}, streak=${stats.streak || 0}, score=${score.toFixed(2)}, lastWrongAgo=${lastWrongAgo.toFixed(0)}s`);
-        console.log(`  Checks: served=${checks.served}, streak=${checks.streak}, confidence=${checks.confidence}, cooldown=${checks.cooldown}`);
+        console.log(`${char}: served=${stats.served || 0}, streak=${stats.streak || 0}, score=${score.toFixed(2)}`);
+        console.log(`  Checks: served=${checks.served}, streak=${checks.streak}, confidence=${checks.confidence}`);
         console.log(`  Would graduate: ${wouldGraduate}`);
     });
 
@@ -4339,7 +4328,6 @@ function updateAdaptiveStatusDisplay() {
                     <span class="${r.servedOk ? 'badge-ok' : 'badge-miss'}">Seen ${r.served}/${ADAPTIVE_GRAD_MIN_SERVED}</span>
                     <span class="${r.streakOk ? 'badge-ok' : 'badge-miss'}">Streak ${r.streak}/${ADAPTIVE_GRAD_MIN_STREAK}</span>
                     <span class="${r.confidenceOk ? 'badge-ok' : 'badge-miss'}">Conf ${r.score.toFixed(2)}/${r.threshold.toFixed(2)}</span>
-                    <span class="${r.cooldownOk ? 'badge-ok' : 'badge-miss'}">Wrong >${Math.ceil(ADAPTIVE_RECENT_WRONG_COOLDOWN/60)}m</span>
                 </div>`;
             return pill;
         }).join('')
