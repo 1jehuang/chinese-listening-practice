@@ -5746,6 +5746,9 @@ function renderQuestionUiForComponentModes() {
             return true;
         }
 
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
+
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
@@ -5781,6 +5784,9 @@ function renderQuestionUiForComponentModes() {
         // Clear inline feedback for new question
         componentInlineFeedback = null;
 
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
+
         // Render three-column layout
         renderThreeColumnComponentLayout();
 
@@ -5814,6 +5820,9 @@ function renderQuestionUiForComponentModes() {
         currentQuestion = prepared.question;
         window.currentQuestion = currentQuestion;
         charBuildingWordChars = prepared.wordChars;
+
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
 
         // Reset building state
         charBuildingCharIndex = 0;
@@ -5856,7 +5865,9 @@ function generateQuestion(options = {}) {
     currentQuestion = nextQuestion;
     updatePreviewDisplay();
     window.currentQuestion = currentQuestion;
-    markSchedulerServed(currentQuestion);
+    if (!shouldDeferServingForMode(mode)) {
+        markSchedulerServed(currentQuestion);
+    }
 
     // Update learn mode overlay if active
     if (typeof updateLearnModeCharacter === 'function') {
@@ -5893,6 +5904,15 @@ function generateQuestion(options = {}) {
 
     // Show current word confidence
     updateCurrentWordConfidence();
+}
+
+function shouldDeferServingForMode(activeMode) {
+    return (
+        activeMode === 'missing-component' ||
+        activeMode === 'draw-missing-component' ||
+        activeMode === 'char-building' ||
+        activeMode === 'radical-practice'
+    );
 }
 
 function updateCurrentWordConfidence() {
