@@ -204,16 +204,96 @@ function playSubmitSound() {
     oscillator.stop(audioContext.currentTime + 0.15);
 }
 
-// Fuzzy matching function for text input
-function fuzzyMatch(input, target) {
-    if (input === target) return 1000;
-    if (target.startsWith(input)) return 100 + input.length;
-    if (target.includes(input)) return 50 + input.length;
-    let score = 0;
-    for (let char of input) {
-        if (target.includes(char)) score += 1;
+let fuzzyNonWordRegex = null;
+try {
+    fuzzyNonWordRegex = new RegExp('[^\\p{L}\\p{N}]+', 'gu');
+} catch (err) {
+    fuzzyNonWordRegex = /[^a-zA-Z0-9\u4e00-\u9fff]+/g;
+}
+
+function normalizeFuzzy(text) {
+    if (!text) return '';
+    let normalized = text.toLowerCase();
+    if (typeof normalized.normalize === 'function') {
+        normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
-    return score;
+    normalized = normalized.replace(fuzzyNonWordRegex, '');
+    return normalized.trim();
+}
+
+function damerauLevenshtein(a, b) {
+    const lenA = a.length;
+    const lenB = b.length;
+    if (!lenA) return lenB;
+    if (!lenB) return lenA;
+
+    const dp = Array.from({ length: lenA + 1 }, () => new Array(lenB + 1).fill(0));
+    for (let i = 0; i <= lenA; i++) dp[i][0] = i;
+    for (let j = 0; j <= lenB; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= lenA; i++) {
+        const aChar = a[i - 1];
+        for (let j = 1; j <= lenB; j++) {
+            const bChar = b[j - 1];
+            const cost = aChar === bChar ? 0 : 1;
+            let best = Math.min(
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost
+            );
+            if (i > 1 && j > 1 && aChar === b[j - 2] && a[i - 2] === bChar) {
+                best = Math.min(best, dp[i - 2][j - 2] + cost);
+            }
+            dp[i][j] = best;
+        }
+    }
+    return dp[lenA][lenB];
+}
+
+function countSubsequenceMatches(input, target) {
+    let matches = 0;
+    let idx = 0;
+    for (const ch of input) {
+        const found = target.indexOf(ch, idx);
+        if (found === -1) continue;
+        matches += 1;
+        idx = found + 1;
+    }
+    return matches;
+}
+
+function charOverlapRatio(input, target) {
+    const setA = new Set(input.split(''));
+    const setB = new Set(target.split(''));
+    if (!setA.size) return 0;
+    let overlap = 0;
+    for (const ch of setA) {
+        if (setB.has(ch)) overlap += 1;
+    }
+    return overlap / setA.size;
+}
+
+// Fuzzy matching function for text input (typo-tolerant)
+function fuzzyMatch(input, target) {
+    const normInput = normalizeFuzzy(input);
+    const normTarget = normalizeFuzzy(target);
+
+    if (!normInput || !normTarget) return 0;
+    if (normInput === normTarget) return 1000;
+    if (normTarget.startsWith(normInput)) return 900 + normInput.length;
+    if (normTarget.includes(normInput)) return 700 + normInput.length;
+
+    const maxLen = Math.max(normInput.length, normTarget.length);
+    const dist = damerauLevenshtein(normInput, normTarget);
+    const similarity = Math.max(0, 1 - dist / maxLen);
+    const subseqRatio = countSubsequenceMatches(normInput, normTarget) / normInput.length;
+    const overlapRatio = charOverlapRatio(normInput, normTarget);
+
+    let score = Math.round(similarity * 450 + subseqRatio * 120 + overlapRatio * 80);
+    if (dist <= 1) score += 60;
+    else if (dist <= 2) score += 30;
+
+    return Math.max(0, Math.min(650, score));
 }
 
 // Convert single pinyin syllable with tone marks to audio key format
