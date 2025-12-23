@@ -278,6 +278,7 @@ function syncModeLayoutState() {
     const root = document.body;
     if (!root) return;
     root.classList.toggle('study-mode-active', mode === 'study');
+    root.classList.toggle('dictation-chat-active', mode === 'dictation-chat');
 }
 
 // Timer state
@@ -417,6 +418,9 @@ let dictationChatPromptTextEl = null;
 let dictationChatPromptSystemBtn = null;
 let dictationChatPromptAiBtn = null;
 let dictationChatStatusEl = null;
+let dictationChatAudioSlot = null;
+let dictationChatAudioHome = null;
+let dictationChatAudioHomeNext = null;
 
 // BKT (Bayesian Knowledge Tracing) parameters
 // These model within-session learning probability
@@ -3270,6 +3274,7 @@ function ensureDictationChatMode() {
                             <button id="dictationChatPromptAiBtn" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-full border border-slate-300 text-slate-600 hover:border-slate-400">AI Prompt</button>
                         </div>
                     </div>
+                    <div id="dictationChatAudioSlot" class="flex items-center justify-center"></div>
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div id="dictationChatStatus" class="text-sm font-semibold text-amber-600">Status: In progress</div>
                         <div class="flex gap-2">
@@ -3301,6 +3306,7 @@ function ensureDictationChatMode() {
     dictationChatPromptSystemBtn = container.querySelector('#dictationChatPromptSystemBtn');
     dictationChatPromptAiBtn = container.querySelector('#dictationChatPromptAiBtn');
     dictationChatStatusEl = container.querySelector('#dictationChatStatus');
+    dictationChatAudioSlot = container.querySelector('#dictationChatAudioSlot');
 
     if (dictationChatInputEl) {
         dictationChatInputEl.setAttribute('autocomplete', 'off');
@@ -5472,6 +5478,9 @@ function ensureDecompositionsLoadedOrDefer(targetMode) {
 }
 
 function renderQuestionUiForTypingModes() {
+    if (mode !== 'dictation-chat') {
+        restoreDictationChatAudio();
+    }
     if (mode === 'dictation-chat') {
         renderDictationChatQuestion({ reset: true });
         return true;
@@ -5528,13 +5537,13 @@ function renderQuestionUiForTypingModes() {
 function renderDictationChatQuestion(options = {}) {
     const { reset = false } = options;
     ensureDictationChatMode();
-    renderThreeColumnTranslationLayout(true);
-    if (audioSection) {
-        audioSection.classList.remove('hidden');
+    if (questionDisplay) {
+        questionDisplay.innerHTML = '';
     }
+    attachDictationChatAudio();
     setupAudioMode({ focusAnswer: false });
     if (dictationChatMode) {
-        dictationChatMode.style.display = 'block';
+        dictationChatMode.style.display = 'flex';
     }
     if (reset) {
         resetDictationChatSession();
@@ -5543,6 +5552,28 @@ function renderDictationChatQuestion(options = {}) {
         setTimeout(() => dictationChatInputEl.focus(), 80);
     }
     return true;
+}
+
+function attachDictationChatAudio() {
+    if (!audioSection || !dictationChatAudioSlot) return;
+    if (!dictationChatAudioHome) {
+        dictationChatAudioHome = audioSection.parentElement;
+        dictationChatAudioHomeNext = audioSection.nextSibling;
+    }
+    if (audioSection.parentElement !== dictationChatAudioSlot) {
+        dictationChatAudioSlot.appendChild(audioSection);
+    }
+    audioSection.classList.remove('hidden');
+}
+
+function restoreDictationChatAudio() {
+    if (!audioSection || !dictationChatAudioHome) return;
+    if (audioSection.parentElement === dictationChatAudioHome) return;
+    if (dictationChatAudioHomeNext && dictationChatAudioHomeNext.parentElement === dictationChatAudioHome) {
+        dictationChatAudioHome.insertBefore(audioSection, dictationChatAudioHomeNext);
+    } else {
+        dictationChatAudioHome.appendChild(audioSection);
+    }
 }
 
 function renderQuestionUiForChoiceModes() {
