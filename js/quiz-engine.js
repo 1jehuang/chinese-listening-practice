@@ -277,8 +277,9 @@ function setComposerEnabled(enabled) {
 function syncModeLayoutState() {
     const root = document.body;
     if (!root) return;
-    root.classList.toggle('study-mode-active', mode === 'study');
-    root.classList.toggle('dictation-chat-active', mode === 'dictation-chat');
+    const layout = getModeConfig().layout;
+    root.classList.toggle('study-mode-active', layout === 'study');
+    root.classList.toggle('dictation-chat-active', layout === 'chat');
 }
 
 // Timer state
@@ -421,6 +422,19 @@ let dictationChatStatusEl = null;
 let dictationChatAudioSlot = null;
 let dictationChatAudioHome = null;
 let dictationChatAudioHomeNext = null;
+
+const MODE_CONFIG = {
+    'study': { layout: 'study' },
+    'dictation-chat': { layout: 'chat' },
+    'missing-component': { deferServing: true, customQuestion: true },
+    'draw-missing-component': { deferServing: true, customQuestion: true },
+    'char-building': { deferServing: true, customQuestion: true },
+    'radical-practice': { deferServing: true, customQuestion: true }
+};
+
+function getModeConfig(activeMode = mode) {
+    return MODE_CONFIG[activeMode] || {};
+}
 
 // BKT (Bayesian Knowledge Tracing) parameters
 // These model within-session learning probability
@@ -3004,6 +3018,53 @@ function toggleHideMeaningChoices() {
 // CHAT PANEL
 // ============================================================================
 
+function getGroqApiKey() {
+    return window.getGroqApiKey ? window.getGroqApiKey() : '';
+}
+
+async function callGroqChat({ system, messages = [], maxTokens = 400, temperature = 0.7, model = 'moonshotai/kimi-k2-instruct' }) {
+    const apiKey = getGroqApiKey();
+    if (!apiKey) {
+        const err = new Error('MISSING_API_KEY');
+        err.code = 'MISSING_API_KEY';
+        throw err;
+    }
+
+    const payload = {
+        model,
+        messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
+        max_tokens: maxTokens,
+        temperature
+    };
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        let message = `API error ${response.status}`;
+        try {
+            const errorJson = JSON.parse(errorBody);
+            message = errorJson.error?.message || message;
+        } catch {}
+        if (response.status === 401) {
+            message = 'Invalid API key. Please set a valid Groq API key (Ctrl+K → \"Set Groq API Key\")';
+        }
+        const err = new Error(message);
+        err.code = response.status;
+        throw err;
+    }
+
+    const result = await response.json();
+    return result.choices?.[0]?.message?.content || '';
+}
+
 function createChatPanel() {
     if (chatPanel) return chatPanel;
 
@@ -3170,13 +3231,6 @@ async function sendChatMessage() {
     // Add to messages history
     chatMessages.push({ role: 'user', content: message });
 
-    // Call Groq API
-    const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
-    if (!apiKey) {
-        appendChatMessage('assistant', 'Please set your Groq API key first. Press Ctrl+K and search for "Set Groq API Key".');
-        return;
-    }
-
     // Show typing indicator
     const typingDiv = document.createElement('div');
     typingDiv.className = 'mr-8 p-2 bg-gray-100 rounded-lg text-sm text-gray-500';
@@ -3187,48 +3241,24 @@ async function sendChatMessage() {
     try {
         const systemMsg = chatMessages.find(m => m.role === 'system');
         const userMsgs = chatMessages.filter(m => m.role !== 'system').slice(-10); // Last 10 messages
-
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'moonshotai/kimi-k2-instruct',
-                messages: [
-                    { role: 'system', content: systemMsg?.content || buildQuizContext() },
-                    ...userMsgs
-                ],
-                max_tokens: 500,
-                temperature: 0.7
-            })
-        });
-
         document.getElementById('chatTyping')?.remove();
-
-        if (!response.ok) {
-            const errorBody = await response.text();
-            let errorMsg = `API error ${response.status}`;
-            try {
-                const errorJson = JSON.parse(errorBody);
-                errorMsg = errorJson.error?.message || errorMsg;
-            } catch {}
-            if (response.status === 401) {
-                errorMsg = 'Invalid API key. Please set a valid Groq API key (Ctrl+K → "Set Groq API Key")';
-            }
-            throw new Error(errorMsg);
-        }
-
-        const result = await response.json();
-        const reply = result.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+        const reply = await callGroqChat({
+            system: systemMsg?.content || buildQuizContext(),
+            messages: userMsgs,
+            maxTokens: 500,
+            temperature: 0.7
+        }) || 'Sorry, I could not generate a response.';
 
         chatMessages.push({ role: 'assistant', content: reply });
         appendChatMessage('assistant', reply);
 
     } catch (error) {
         document.getElementById('chatTyping')?.remove();
-        appendChatMessage('assistant', `Error: ${error.message}`);
+        if (error.code === 'MISSING_API_KEY') {
+            appendChatMessage('assistant', 'Please set your Groq API key first. Press Ctrl+K and search for "Set Groq API Key".');
+        } else {
+            appendChatMessage('assistant', `Error: ${error.message}`);
+        }
     }
 }
 
@@ -3404,48 +3434,28 @@ function setDictationChatPromptSource(source) {
 
 async function generateDictationChatAiPrompt() {
     if (!currentQuestion) return;
-    const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
-    if (!apiKey) {
-        dictationChatAiPrompt = 'Set your Groq API key to enable AI prompts.';
-        updateDictationChatPromptText();
-        return;
-    }
 
     dictationChatPromptGenerating = true;
     updateDictationChatPromptText();
 
     try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'moonshotai/kimi-k2-instruct',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You create short listening prompts for Chinese students. Write a single short prompt or question that asks the student to explain the meaning of the sentence. Do NOT include the answer. Reply with only the prompt text.'
-                    },
-                    {
-                        role: 'user',
-                        content: `Chinese: ${currentQuestion.char}\nReference meaning: ${currentQuestion.meaning || ''}`
-                    }
-                ],
-                max_tokens: 120,
-                temperature: 0.6
-            })
+        const prompt = await callGroqChat({
+            system: 'You create short listening prompts for Chinese students. Write a single short prompt or question that asks the student to explain the meaning of the sentence. Do NOT include the answer. Reply with only the prompt text.',
+            messages: [{
+                role: 'user',
+                content: `Chinese: ${currentQuestion.char}\nReference meaning: ${currentQuestion.meaning || ''}`
+            }],
+            maxTokens: 120,
+            temperature: 0.6
         });
 
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        dictationChatAiPrompt = (result.choices[0]?.message?.content || '').trim() || 'AI prompt unavailable.';
+        dictationChatAiPrompt = (prompt || '').trim() || 'AI prompt unavailable.';
     } catch (error) {
-        dictationChatAiPrompt = `AI prompt error: ${error.message}`;
+        if (error.code === 'MISSING_API_KEY') {
+            dictationChatAiPrompt = 'Set your Groq API key to enable AI prompts.';
+        } else {
+            dictationChatAiPrompt = `AI prompt error: ${error.message}`;
+        }
     } finally {
         dictationChatPromptGenerating = false;
         updateDictationChatPromptText();
@@ -3741,14 +3751,6 @@ async function sendDictationChatMessage() {
     dictationChatMessages.push({ role: 'user', content: message });
     dictationChatLastUserAnswer = message;
 
-    const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
-    if (!apiKey) {
-        const info = 'Please set your Groq API key first. Press Ctrl+K and search for "Set Groq API Key".';
-        appendDictationChatMessage('assistant', info);
-        dictationChatMessages.push({ role: 'assistant', content: info });
-        return;
-    }
-
     const typingDiv = document.createElement('div');
     typingDiv.className = 'mr-8 p-3 bg-white rounded-xl text-sm text-slate-500 border border-slate-200';
     typingDiv.innerHTML = 'Thinking...';
@@ -3762,28 +3764,13 @@ async function sendDictationChatMessage() {
         const systemMsg = dictationChatMessages.find(m => m.role === 'system') || { role: 'system', content: buildDictationChatSystemPrompt() };
         const recent = dictationChatMessages.filter(m => m.role !== 'system').slice(-10);
 
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'moonshotai/kimi-k2-instruct',
-                messages: [systemMsg, ...recent],
-                max_tokens: 350,
-                temperature: 0.5
-            })
-        });
-
         document.getElementById('dictationChatTyping')?.remove();
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        let reply = result.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+        let reply = await callGroqChat({
+            system: systemMsg?.content || buildDictationChatSystemPrompt(),
+            messages: recent,
+            maxTokens: 350,
+            temperature: 0.5
+        }) || 'Sorry, I could not generate a response.';
 
         const passMatch = reply.match(/PASS:\s*(yes|no)/i);
         const passed = passMatch ? passMatch[1].toLowerCase() === 'yes' : false;
@@ -3800,9 +3787,15 @@ async function sendDictationChatMessage() {
 
     } catch (error) {
         document.getElementById('dictationChatTyping')?.remove();
-        const errText = `Error: ${error.message}`;
-        appendDictationChatMessage('assistant', errText);
-        dictationChatMessages.push({ role: 'assistant', content: errText });
+        if (error.code === 'MISSING_API_KEY') {
+            const info = 'Please set your Groq API key first. Press Ctrl+K and search for "Set Groq API Key".';
+            appendDictationChatMessage('assistant', info);
+            dictationChatMessages.push({ role: 'assistant', content: info });
+        } else {
+            const errText = `Error: ${error.message}`;
+            appendDictationChatMessage('assistant', errText);
+            dictationChatMessages.push({ role: 'assistant', content: errText });
+        }
     }
 }
 
@@ -5907,12 +5900,7 @@ function generateQuestion(options = {}) {
 }
 
 function shouldDeferServingForMode(activeMode) {
-    return (
-        activeMode === 'missing-component' ||
-        activeMode === 'draw-missing-component' ||
-        activeMode === 'char-building' ||
-        activeMode === 'radical-practice'
-    );
+    return Boolean(getModeConfig(activeMode).deferServing);
 }
 
 function updateCurrentWordConfidence() {
@@ -6242,13 +6230,6 @@ function checkAnswer() {
 }
 
 async function checkTranslationWithGroq(userTranslation) {
-    const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
-    if (!apiKey) {
-        feedback.innerHTML = '<span class="text-red-600">Please set your Groq API key first.</span><br><span class="text-sm text-gray-500">Press Ctrl+K and search for "Set Groq API Key"</span>';
-        feedback.className = 'text-center text-lg font-semibold my-4';
-        return;
-    }
-
     // Show loading state
     if (checkBtn) {
         checkBtn.textContent = 'Grading...';
@@ -6258,18 +6239,7 @@ async function checkTranslationWithGroq(userTranslation) {
     feedback.className = 'text-center text-xl font-semibold my-4 text-gray-500';
 
     try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'moonshotai/kimi-k2-instruct',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are evaluating a student's CHINESE LISTENING COMPREHENSION. The student heard Chinese audio and is telling you what they understood.
+        const systemPrompt = `You are evaluating a student's CHINESE LISTENING COMPREHENSION. The student heard Chinese audio and is telling you what they understood.
 
 IMPORTANT: You are testing their CHINESE COMPREHENSION, not their English ability. They are a native English speaker.
 - Their English doesn't matter AT ALL - only grade whether they UNDERSTOOD THE CHINESE
@@ -6300,27 +6270,21 @@ Example response with error:
 GRADE: 60%
 Misunderstood who was speaking.
 MARKUP: [OK:He said] [ERR:she is coming|should be "he is coming" - 他 means he not she] [OK:tomorrow]`
-                    },
-                    {
-                        role: 'user',
-                        content: `Chinese: ${currentQuestion.char}
+                    }`;
+
+        const feedbackText = await callGroqChat({
+            system: systemPrompt,
+            messages: [{
+                role: 'user',
+                content: `Chinese: ${currentQuestion.char}
 Reference translation: ${currentQuestion.meaning}
 Student's translation: ${userTranslation}
 
 Grade this translation with percentage, feedback, and word-by-word markup.`
-                    }
-                ],
-                max_tokens: 300,
-                temperature: 0.3
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        const feedbackText = result.choices[0]?.message?.content || 'No feedback received.';
+            }],
+            maxTokens: 300,
+            temperature: 0.3
+        }) || 'No feedback received.';
 
         // Parse result
         const gradeMatch = feedbackText.match(/GRADE:\s*(\d+)%/i) || feedbackText.match(/(\d+)%/);
@@ -6486,8 +6450,13 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
 
     } catch (error) {
         console.error('Groq API error:', error);
-        feedback.innerHTML = `<span class="text-red-600">Error grading translation: ${error.message}</span>`;
-        feedback.className = 'text-center text-lg font-semibold my-4';
+        if (error.code === 'MISSING_API_KEY') {
+            feedback.innerHTML = '<span class="text-red-600">Please set your Groq API key first.</span><br><span class="text-sm text-gray-500">Press Ctrl+K and search for \"Set Groq API Key\"</span>';
+            feedback.className = 'text-center text-lg font-semibold my-4';
+        } else {
+            feedback.innerHTML = `<span class="text-red-600">Error grading translation: ${error.message}</span>`;
+            feedback.className = 'text-center text-lg font-semibold my-4';
+        }
     } finally {
         if (checkBtn) {
             checkBtn.textContent = 'Check Answer';
