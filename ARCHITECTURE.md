@@ -31,11 +31,11 @@
 
 ### 5) UI Components
 - **Layout manager**: toggles layout classes and avoids overlaps.
-- **Panels**: confidence panel, chat panel, dictation chat.
+- **Panels**: confidence panel, chat panel, dictation chat (`js/engine/chat.js`).
 - **Shared widgets**: audio controls, preview queue, stats bar.
 
 ### 6) Services
-- **LLM service**: single Groq API client for grading + chat prompts.
+- **LLM service**: `js/engine/ai-service.js` (Groq client + markdown rendering) used for grading + chat prompts.
 - **Audio service**: TTS playback, pinyin audio routing.
 - **Storage**: localStorage for mode, stats, UI prefs.
 
