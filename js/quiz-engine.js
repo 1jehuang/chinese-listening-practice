@@ -15,6 +15,52 @@ let originalQuizCharacters = []; // Store original characters array
 let config = {};
 let nextAnswerBuffer = ''; // carry typed text into the next question after showing feedback
 
+const debugState = {
+    events: [],
+    maxEvents: 200
+};
+
+function logDebugEvent(type, detail = {}) {
+    if (!config?.debug) return;
+    const event = { ts: new Date().toISOString(), type, detail };
+    debugState.events.push(event);
+    if (debugState.events.length > debugState.maxEvents) {
+        debugState.events.shift();
+    }
+    if (config.debugConsole) {
+        console.debug('[Quiz]', type, detail);
+    }
+}
+
+function initQuizDebugInterface() {
+    window.__QUIZ_DEBUG__ = {
+        events: debugState.events,
+        log: logDebugEvent,
+        clearEvents: () => { debugState.events.length = 0; },
+        snapshot: () => ({
+            mode,
+            schedulerMode,
+            currentQuestion,
+            score,
+            total,
+            answered,
+            config: {
+                debug: Boolean(config?.debug),
+                debugConsole: Boolean(config?.debugConsole)
+            },
+            schedulerStatsKey,
+            adaptiveDeckState,
+            batchModeState,
+            feedModeState
+        }),
+        getSchedulerStats: (char, skillKey) => getSchedulerStats(char, skillKey || getCurrentSkillKey()),
+        resetSchedulerStats: () => {
+            schedulerStats = {};
+            saveSchedulerStats();
+        }
+    };
+}
+
 // 3-column layout state for char-to-meaning-type mode
 let previousQuestion = null;
 let previousQuestionResult = null; // 'correct' or 'incorrect'
@@ -1787,6 +1833,12 @@ function markSchedulerServed(question) {
     stats.served += 1;
     stats.lastServed = Date.now();
     schedulerOutcomeRecordedChar = null;
+    logDebugEvent('scheduler-served', {
+        char: question.char,
+        skill: getCurrentSkillKey(),
+        served: stats.served,
+        mode: schedulerMode
+    });
     saveSchedulerStats();
     renderConfidenceList();
 
@@ -1818,6 +1870,17 @@ function markSchedulerOutcome(correct) {
 
     // Update BKT probability (always, so it's available if user switches formulas)
     updateBKT(char, correct);
+
+    logDebugEvent('scheduler-outcome', {
+        char,
+        correct: Boolean(correct),
+        skill: getCurrentSkillKey(),
+        served: stats.served,
+        correctCount: stats.correct,
+        wrong: stats.wrong,
+        streak: stats.streak,
+        mode: schedulerMode
+    });
 
     saveSchedulerStats();
 
@@ -5058,6 +5121,11 @@ function generateQuestion(options = {}) {
     currentQuestion = nextQuestion;
     updatePreviewDisplay();
     window.currentQuestion = currentQuestion;
+    logDebugEvent('question-selected', {
+        char: currentQuestion?.char,
+        mode,
+        schedulerMode
+    });
     if (!shouldDeferServingForMode(mode)) {
         markSchedulerServed(currentQuestion);
     }
@@ -12382,6 +12450,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};
+    initQuizDebugInterface();
 
     loadConfidencePanelVisibility();
     loadConfidenceTrackingEnabled();
