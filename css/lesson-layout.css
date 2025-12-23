@@ -376,11 +376,21 @@ body.dictation-chat-active #dictationChatMode {
     min-height: 0;
 }
 
+body.dictation-chat-active .dictation-chat-shell {
+    flex: 1;
+    min-height: 0;
+}
+
 body.dictation-chat-active #dictationChatMessages {
     flex: 1;
     height: auto;
+    min-height: 0;
 }
 
 body.dictation-chat-active .stats-bar {
+    display: none;
+}
+
+body.dictation-chat-active #feedback {
     display: none;
 }

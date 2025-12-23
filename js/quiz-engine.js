@@ -4615,19 +4615,26 @@ function prefillQuestionInputs(prefillAnswer) {
     }
 }
 
+function getModeContainers() {
+    return [
+        typeMode,
+        choiceMode,
+        fuzzyMode,
+        strokeOrderMode,
+        handwritingMode,
+        drawCharMode,
+        studyMode,
+        dictationChatMode,
+        radicalPracticeMode,
+        missingComponentMode,
+        charBuildingMode
+    ].filter(Boolean);
+}
+
 function hideAllModeContainersForNewQuestion() {
-    // Hide all mode containers
-    typeMode.style.display = 'none';
-    if (choiceMode) choiceMode.style.display = 'none';
-    if (fuzzyMode) fuzzyMode.style.display = 'none';
-    if (strokeOrderMode) strokeOrderMode.style.display = 'none';
-    if (handwritingMode) handwritingMode.style.display = 'none';
-    if (drawCharMode) drawCharMode.style.display = 'none';
-    if (studyMode) studyMode.style.display = 'none';
-    if (dictationChatMode) dictationChatMode.style.display = 'none';
-    if (radicalPracticeMode) radicalPracticeMode.style.display = 'none';
-    if (missingComponentMode) missingComponentMode.style.display = 'none';
-    if (charBuildingMode) charBuildingMode.style.display = 'none';
+    getModeContainers().forEach((container) => {
+        container.style.display = 'none';
+    });
     if (audioSection) audioSection.classList.add('hidden');
     resetDictationState();
 }
