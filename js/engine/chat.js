@@ -23,6 +23,9 @@ let dictationChatPromptTextEl = null;
 let dictationChatPromptSystemBtn = null;
 let dictationChatPromptAiBtn = null;
 let dictationChatStatusEl = null;
+let dictationChatScoreEl = null;
+let dictationChatTotalEl = null;
+let dictationChatAccuracyEl = null;
 let dictationChatAudioSlot = null;
 let dictationChatAudioHome = null;
 let dictationChatAudioHomeNext = null;
@@ -243,35 +246,47 @@ function ensureDictationChatMode() {
         container.id = 'dictationChatMode';
         container.className = 'dictation-chat-mode';
         container.innerHTML = `
-            <div class="dictation-chat-shell flex flex-col gap-3">
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-2">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="dictation-chat-app">
+                <section class="dictation-chat-main">
+                    <header class="dictation-chat-header">
                         <div>
-                            <div class="text-[11px] uppercase tracking-[0.25em] text-slate-400">Prompt</div>
-                            <div id="dictationChatPromptText" class="text-base font-semibold text-slate-800">Listen to the audio and explain the meaning in English.</div>
+                            <div class="dictation-chat-title">AI Dictation Chat</div>
+                            <div class="dictation-chat-subtitle">Explain the meaning in English. I will pass you when the meaning is right.</div>
                         </div>
-                        <div class="flex gap-2">
-                            <button id="dictationChatPromptSystemBtn" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-full border border-slate-300 text-slate-600 hover:border-slate-400">System</button>
-                            <button id="dictationChatPromptAiBtn" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-full border border-slate-300 text-slate-600 hover:border-slate-400">AI Prompt</button>
+                    </header>
+                    <div id="dictationChatMessages" class="dictation-chat-messages"></div>
+                    <div class="dictation-chat-input">
+                        <textarea id="dictationChatInput" rows="2" class="dictation-chat-textarea" placeholder="Type your reply..."></textarea>
+                        <button id="dictationChatSendBtn" class="dictation-chat-send">Send</button>
+                    </div>
+                    <div class="dictation-chat-hint">Enter to send • Shift+Enter for newline • N = next when passed • Type "next" or "skip"</div>
+                </section>
+                <aside class="dictation-chat-aside">
+                    <div class="dictation-chat-card">
+                        <div class="dictation-chat-card-label">Prompt</div>
+                        <div id="dictationChatPromptText" class="dictation-chat-card-text">Listen to the audio and explain the meaning in English.</div>
+                        <div class="dictation-chat-toggle">
+                            <button id="dictationChatPromptSystemBtn" type="button" class="dictation-chat-toggle-btn">System</button>
+                            <button id="dictationChatPromptAiBtn" type="button" class="dictation-chat-toggle-btn">AI Prompt</button>
                         </div>
                     </div>
-                    <div id="dictationChatAudioSlot" class="flex items-center justify-center"></div>
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div id="dictationChatStatus" class="text-sm font-semibold text-amber-600">Status: In progress</div>
-                        <div class="flex gap-2">
-                            <button id="dictationChatNextBtn" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-full bg-emerald-500 text-white disabled:opacity-50" disabled>Next (N)</button>
-                            <button id="dictationChatSkipBtn" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-full border border-slate-300 text-slate-600 hover:border-slate-400">Skip</button>
+                    <div class="dictation-chat-card dictation-chat-audio-card">
+                        <div class="dictation-chat-card-label">Audio</div>
+                        <div id="dictationChatAudioSlot" class="dictation-chat-audio-slot"></div>
+                    </div>
+                    <div class="dictation-chat-card">
+                        <div class="dictation-chat-card-label">Status</div>
+                        <div id="dictationChatStatus" class="dictation-chat-status is-pending">Status: In progress</div>
+                        <div class="dictation-chat-actions">
+                            <button id="dictationChatNextBtn" type="button" class="dictation-chat-action dictation-chat-action-primary" disabled>Next (N)</button>
+                            <button id="dictationChatSkipBtn" type="button" class="dictation-chat-action">Skip</button>
+                        </div>
+                        <div class="dictation-chat-mini-stats">
+                            <div><span id="dictationChatScore">0</span>/<span id="dictationChatTotal">0</span> correct</div>
+                            <div><span id="dictationChatAccuracy">0%</span> accuracy</div>
                         </div>
                     </div>
-                </div>
-                <div id="dictationChatMessages" class="h-60 md:h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3"></div>
-                <div class="flex flex-col gap-2">
-                    <div class="flex gap-2">
-                        <textarea id="dictationChatInput" rows="2" class="flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" placeholder="Type your reply..."></textarea>
-                        <button id="dictationChatSendBtn" class="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition">Send</button>
-                    </div>
-                    <div class="text-xs text-slate-400">Enter to send • Shift+Enter for newline • N = next when passed • Type "next" or "skip"</div>
-                </div>
+                </aside>
             </div>
         `;
         inputSection.appendChild(container);
@@ -287,6 +302,9 @@ function ensureDictationChatMode() {
     dictationChatPromptSystemBtn = container.querySelector('#dictationChatPromptSystemBtn');
     dictationChatPromptAiBtn = container.querySelector('#dictationChatPromptAiBtn');
     dictationChatStatusEl = container.querySelector('#dictationChatStatus');
+    dictationChatScoreEl = container.querySelector('#dictationChatScore');
+    dictationChatTotalEl = container.querySelector('#dictationChatTotal');
+    dictationChatAccuracyEl = container.querySelector('#dictationChatAccuracy');
     dictationChatAudioSlot = container.querySelector('#dictationChatAudioSlot');
 
     if (dictationChatInputEl) {
@@ -348,14 +366,10 @@ function buildDictationChatSystemPrompt() {
 function updateDictationChatPromptButtons() {
     const isSystem = dictationChatPromptSource === 'system';
     if (dictationChatPromptSystemBtn) {
-        dictationChatPromptSystemBtn.classList.toggle('bg-blue-500', isSystem);
-        dictationChatPromptSystemBtn.classList.toggle('text-white', isSystem);
-        dictationChatPromptSystemBtn.classList.toggle('border-blue-500', isSystem);
+        dictationChatPromptSystemBtn.classList.toggle('is-active', isSystem);
     }
     if (dictationChatPromptAiBtn) {
-        dictationChatPromptAiBtn.classList.toggle('bg-blue-500', !isSystem);
-        dictationChatPromptAiBtn.classList.toggle('text-white', !isSystem);
-        dictationChatPromptAiBtn.classList.toggle('border-blue-500', !isSystem);
+        dictationChatPromptAiBtn.classList.toggle('is-active', !isSystem);
     }
 }
 
@@ -417,14 +431,24 @@ function updateDictationChatStatus(message) {
     if (!dictationChatStatusEl) return;
     if (dictationChatPassed) {
         dictationChatStatusEl.textContent = 'Status: Passed ✅ (press N or type "next")';
-        dictationChatStatusEl.className = 'text-sm font-semibold text-emerald-600';
+        dictationChatStatusEl.classList.add('is-passed');
+        dictationChatStatusEl.classList.remove('is-pending');
     } else {
         dictationChatStatusEl.textContent = message || 'Status: In progress';
-        dictationChatStatusEl.className = 'text-sm font-semibold text-amber-600';
+        dictationChatStatusEl.classList.add('is-pending');
+        dictationChatStatusEl.classList.remove('is-passed');
     }
     if (dictationChatNextBtn) {
         dictationChatNextBtn.disabled = !dictationChatPassed;
     }
+}
+
+function updateDictationChatMiniStats() {
+    if (!dictationChatScoreEl || !dictationChatTotalEl || !dictationChatAccuracyEl) return;
+    dictationChatScoreEl.textContent = score;
+    dictationChatTotalEl.textContent = total;
+    const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+    dictationChatAccuracyEl.textContent = `${percentage}%`;
 }
 
 function resetDictationChatSession() {
@@ -445,6 +469,7 @@ function resetDictationChatSession() {
     updateDictationChatPromptButtons();
     updateDictationChatPromptText();
     updateDictationChatStatus();
+    updateDictationChatMiniStats();
 
     if (dictationChatPromptSource === 'ai') {
         generateDictationChatAiPrompt();
@@ -454,13 +479,12 @@ function resetDictationChatSession() {
 function appendDictationChatMessage(role, content) {
     if (!dictationChatMessagesEl) return;
     const msgDiv = document.createElement('div');
-    msgDiv.className = role === 'user'
-        ? 'ml-8 p-3 bg-blue-50 rounded-xl text-sm text-slate-800'
-        : 'mr-8 p-3 bg-white rounded-xl text-sm text-slate-800 border border-slate-200';
+    msgDiv.className = `dictation-chat-bubble ${role === 'user' ? 'is-user' : 'is-assistant'}`;
     const bodyHtml = role === 'assistant'
         ? renderMarkdownSafe(content)
         : `<div class="whitespace-pre-wrap">${escapeHtml(content)}</div>`;
-    msgDiv.innerHTML = `<div class="text-[11px] text-slate-400 mb-1">${role === 'user' ? 'You' : 'Assistant'}</div>${bodyHtml}`;
+    const label = role === 'user' ? 'You' : 'Tutor';
+    msgDiv.innerHTML = `<div class="dictation-chat-bubble-label">${label}</div>${bodyHtml}`;
     dictationChatMessagesEl.appendChild(msgDiv);
     dictationChatMessagesEl.scrollTop = dictationChatMessagesEl.scrollHeight;
 }
@@ -576,8 +600,8 @@ async function sendDictationChatMessage() {
     dictationChatLastUserAnswer = message;
 
     const typingDiv = document.createElement('div');
-    typingDiv.className = 'mr-8 p-3 bg-white rounded-xl text-sm text-slate-500 border border-slate-200';
-    typingDiv.innerHTML = 'Thinking...';
+    typingDiv.className = 'dictation-chat-bubble is-assistant is-typing';
+    typingDiv.innerHTML = '<div class="dictation-chat-bubble-label">Tutor</div>Thinking...';
     typingDiv.id = 'dictationChatTyping';
     dictationChatMessagesEl?.appendChild(typingDiv);
     if (dictationChatMessagesEl) {

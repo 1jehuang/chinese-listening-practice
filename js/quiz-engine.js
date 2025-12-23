@@ -7239,6 +7239,9 @@ function updateStats() {
     if (accuracyEl) accuracyEl.textContent = percentage + '%';
 
     updateTimerDisplay();
+    if (typeof updateDictationChatMiniStats === 'function') {
+        updateDictationChatMiniStats();
+    }
     checkComposerAdvance();
 }
 
