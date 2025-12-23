@@ -5697,6 +5697,7 @@ function renderQuestionUiForComponentModes() {
         currentDecomposition = prepared.decomposition;
         currentMissingComponent = prepared.decomposition.missingComponent;
         componentInlineFeedback = null;
+        syncQuestionAfterSelection();
         markSchedulerServed(currentQuestion);
         updateCurrentWordConfidence();
 
@@ -5739,6 +5740,7 @@ function renderQuestionUiForComponentModes() {
             return true;
         }
 
+        syncQuestionAfterSelection();
         markSchedulerServed(currentQuestion);
         updateCurrentWordConfidence();
 
@@ -5777,6 +5779,7 @@ function renderQuestionUiForComponentModes() {
         // Clear inline feedback for new question
         componentInlineFeedback = null;
 
+        syncQuestionAfterSelection();
         markSchedulerServed(currentQuestion);
         updateCurrentWordConfidence();
 
@@ -5814,6 +5817,7 @@ function renderQuestionUiForComponentModes() {
         window.currentQuestion = currentQuestion;
         charBuildingWordChars = prepared.wordChars;
 
+        syncQuestionAfterSelection();
         markSchedulerServed(currentQuestion);
         updateCurrentWordConfidence();
 
@@ -5897,6 +5901,13 @@ function generateQuestion(options = {}) {
 
     // Show current word confidence
     updateCurrentWordConfidence();
+}
+
+function syncQuestionAfterSelection() {
+    updatePreviewDisplay();
+    if (typeof updateLearnModeCharacter === 'function') {
+        updateLearnModeCharacter();
+    }
 }
 
 function shouldDeferServingForMode(activeMode) {
