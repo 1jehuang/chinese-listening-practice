@@ -1624,13 +1624,18 @@ function ensureCharGlossesLoaded() {
 }
 
 function loadSchedulerMode() {
-    const stored = localStorage.getItem(SCHEDULER_MODE_KEY);
-    if (stored && Object.values(SCHEDULER_MODES).includes(stored)) {
-        schedulerMode = stored;
-    } else if (stored === 'fast-loop') {
-        // Legacy mode: map old Fast Loop to weighted scheduler
-        schedulerMode = SCHEDULER_MODES.WEIGHTED;
-    } else {
+    try {
+        const stored = localStorage.getItem(SCHEDULER_MODE_KEY);
+        if (stored && Object.values(SCHEDULER_MODES).includes(stored)) {
+            schedulerMode = stored;
+        } else if (stored === 'fast-loop') {
+            // Legacy mode: map old Fast Loop to weighted scheduler
+            schedulerMode = SCHEDULER_MODES.WEIGHTED;
+        } else {
+            schedulerMode = SCHEDULER_MODES.WEIGHTED;
+        }
+    } catch (e) {
+        console.warn('Failed to load scheduler mode', e);
         schedulerMode = SCHEDULER_MODES.WEIGHTED;
     }
 }
@@ -12778,7 +12783,12 @@ function wrapSidebarWithToggle(sidebar, side) {
 
     // Get stored collapse state
     const storageKey = `sidebar-${side}-collapsed`;
-    const storedCollapse = localStorage.getItem(storageKey);
+    let storedCollapse = null;
+    try {
+        storedCollapse = localStorage.getItem(storageKey);
+    } catch (e) {
+        storedCollapse = null;
+    }
     const isCollapsed = storedCollapse === null
         ? isNarrowViewport()
         : storedCollapse === 'true';
@@ -12816,6 +12826,8 @@ function wrapSidebarWithToggle(sidebar, side) {
         toggle.innerHTML = side === 'left'
             ? (nowCollapsed ? '▶' : '◀')
             : (nowCollapsed ? '◀' : '▶');
-        localStorage.setItem(storageKey, nowCollapsed);
+        try {
+            localStorage.setItem(storageKey, nowCollapsed);
+        } catch (e) {}
     });
 }
