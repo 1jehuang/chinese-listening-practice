@@ -52,6 +52,7 @@ const DEFAULT_PAGES = [
     { name: 'Lesson 8 Part 2', url: 'lesson-8-part-2.html', type: 'page', keywords: 'lesson 8 part2 quiz pages 106 107 vocab kan dianying' },
     { name: 'Lesson 8 Cumulative', url: 'lesson-8-cumulative.html', type: 'page', keywords: 'lesson 8 cumulative vocab kan dianying' },
     { name: 'Lesson 8 Dictation', url: 'lesson-8-dictation.html', type: 'page', keywords: 'lesson 8 dictation movie watching' },
+    { name: 'Lessons 1-8 Cumulative', url: 'lesson-1-8-cumulative.html', type: 'page', keywords: 'lessons 1 2 3 4 5 6 7 8 cumulative vocab review milestone' },
     { name: 'Lesson 9 Part 1', url: 'lesson-9-part-1.html', type: 'page', keywords: 'lesson 9 part1 quiz pages 116 117 wo yao qu zhongguo 我要去中国' },
     { name: 'Lesson 9 Part 2', url: 'lesson-9-part-2.html', type: 'page', keywords: 'lesson 9 part2 quiz pages 118 119 wo yao qu zhongguo 我要去中国' },
     { name: 'Lesson 9 Cumulative', url: 'lesson-9-cumulative.html', type: 'page', keywords: 'lesson 9 cumulative vocab wo yao qu zhongguo 我要去中国' },

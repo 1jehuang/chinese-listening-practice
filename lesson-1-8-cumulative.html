@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>Lessons 4-7 Common Words – Quiz</title>
+    <title>Lessons 1-8 Cumulative - Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
@@ -14,7 +14,6 @@
             overflow: hidden;
         }
 
-        /* Confidence pane on the right for this experimental page */
         body.experimental-layout #confidencePanel {
             position: fixed;
             top: 0;
@@ -45,13 +44,11 @@
             max-height: none !important;
         }
 
-        /* Add breathing room so content doesn't sit under the right pane */
         body.experimental-layout .app-container {
             padding-right: 16rem;
             min-height: 100vh;
         }
 
-        /* Hide confidence panel on smaller screens */
         @media (max-width: 1024px) {
             body.experimental-layout #confidencePanel {
                 display: none;
@@ -61,14 +58,12 @@
             }
         }
 
-        /* Main layout */
         .app-container {
             display: flex;
             height: 100vh;
             width: 100vw;
         }
 
-        /* Sidebar (match standard pages) */
         .sidebar {
             width: 16rem;
             flex-shrink: 0;
@@ -78,36 +73,12 @@
             overflow-y: auto;
         }
 
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .sidebar-home-btn {
-            padding: 0.375rem 0.75rem;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.375rem;
-            font-size: 0.875rem;
-            color: #374151;
-            text-decoration: none;
-            transition: background 0.15s;
-        }
-
-        .sidebar-home-btn:hover {
-            background: #f3f4f6;
-        }
-
         .sidebar h2 {
             font-size: 1.125rem;
             font-weight: 700;
             color: #1f2937;
             margin-bottom: 1rem;
-            margin-top: 0.5rem;
-            text-transform: none;
-            letter-spacing: 0;
+            margin-top: 3rem;
         }
 
         .sidebar .mode-desc {
@@ -142,7 +113,6 @@
             border-color: #3b82f6;
         }
 
-        /* Main content area */
         .main-content {
             flex: 1;
             display: flex;
@@ -152,7 +122,6 @@
             overflow: hidden;
         }
 
-        /* Header with title and toolbar */
         .quiz-header {
             flex-shrink: 0;
             text-align: center;
@@ -166,7 +135,6 @@
             margin: 0;
         }
 
-        /* Quiz display area - grows to fill space */
         .quiz-display {
             flex: 1;
             display: flex;
@@ -181,7 +149,6 @@
             width: 100%;
         }
 
-        /* Three-column layout tweaks */
         .three-column-meaning-layout {
             margin: 0 auto;
             padding: 0.5rem;
@@ -201,7 +168,6 @@
             padding: 0.5rem;
         }
 
-        /* Input section - fixed at bottom */
         .input-section {
             flex-shrink: 0;
             max-width: 32rem;
@@ -245,7 +211,6 @@
             background: #eff6ff;
         }
 
-        /* Stats bar */
         .stats-bar {
             flex-shrink: 0;
             display: flex;
@@ -262,7 +227,6 @@
             font-weight: 500;
         }
 
-        /* Feedback area */
         #feedback {
             min-height: 2rem;
             text-align: center;
@@ -271,7 +235,6 @@
             padding: 0.5rem 0;
         }
 
-        /* Hide sections by default */
         #typeMode, #choiceMode, #fuzzyMode, #strokeOrderMode,
         #handwritingMode, #drawCharMode, #studyMode {
             display: none;
@@ -283,7 +246,6 @@
             display: block;
         }
 
-        /* Study mode needs full width - remove input-section constraint */
         body.study-mode-active .input-section {
             max-width: none;
             flex-direction: column;
@@ -293,13 +255,29 @@
             width: 100%;
         }
 
-        /* Hide feedback in study mode */
         body.study-mode-active #feedback {
             display: none;
         }
 
+        .home-btn {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.375rem 0.75rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            color: #374151;
+            text-decoration: none;
+            z-index: 50;
+            transition: background 0.15s;
+        }
 
-        /* Audio button */
+        .home-btn:hover {
+            background: #f3f4f6;
+        }
+
         #audioSection button {
             padding: 0.75rem 1.5rem;
             background: #06b6d4;
@@ -326,14 +304,12 @@
     <script src="js/supabase-sync.js"></script>
 </head>
 <body class="experimental-layout">
+    <a href="home.html" class="home-btn">← Home</a>
+
     <div class="app-container">
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <a href="home.html" class="sidebar-home-btn">← Home</a>
-                <div id="sidebar-profile-slot"></div>
-            </div>
             <h2>Quiz Modes</h2>
-            <p class="mode-desc">Every word from Lessons 4–7 dialogues and vocab.</p>
+            <p class="mode-desc">Lessons 1–8 combined vocab review.</p>
             <nav>
                 <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
                 <button class="mode-btn" data-mode="char-to-pinyin">Char → Pinyin</button>
@@ -347,23 +323,27 @@
                 <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
                 <button class="mode-btn" data-mode="handwriting">Handwriting</button>
                 <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn" data-mode="missing-component">Missing Component</button>
+                <button class="mode-btn" data-mode="char-building">Build Character</button>
                 <button class="mode-btn" data-mode="study">Study Mode</button>
             </nav>
         </aside>
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>Lessons 4–7 · Common Words (Dialogue + Vocab)</h1>
-                <p class="text-gray-500 text-sm">Merged list from Lessons 4, 5, 6, and 7 with duplicates removed.</p>
+                <h1>Lessons 1–8 Cumulative</h1>
             </header>
 
             <section class="quiz-display">
                 <div id="questionDisplay"></div>
+
                 <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
                     <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
                     <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
                 </div>
-                <div id="hint" style="font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0;"></div>
+
+                <div id="hint" style="font-size: 1.5rem; font-weight: 600; margin: 1rem 0;"></div>
+
                 <div id="audioSection" class="hidden" style="margin: 1rem 0;">
                     <button id="playAudioBtn">🔊 Play Sound</button>
                 </div>
@@ -374,18 +354,22 @@
                     <input type="text" id="answerInput" placeholder="Type your answer...">
                     <button id="checkBtn" style="display: none;">Check Answer</button>
                 </div>
+
                 <div id="choiceMode">
                     <div id="options" class="choice-grid"></div>
                 </div>
+
                 <div id="fuzzyMode">
                     <input type="text" id="fuzzyInput" placeholder="Type your answer...">
                     <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
                 </div>
+
                 <div id="strokeOrderMode">
                     <div id="strokeOrderWriter" style="display: flex; justify-content: center;"></div>
                 </div>
+
                 <div id="handwritingMode">
-                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer.</p>
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer</p>
                     <div id="handwritingWriter" style="display: flex; justify-content: center; gap: 10px;"></div>
                     <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
                         <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer</button>
@@ -393,6 +377,7 @@
                     </div>
                     <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
                 </div>
+
                 <div id="drawCharMode">
                     <div style="text-align: center; margin-bottom: 1rem;">
                         <div id="ocrResult" style="font-size: 3.5rem; min-height: 5rem; color: #3b82f6; font-weight: 700;"></div>
@@ -405,22 +390,194 @@
                         <button id="fullscreenDrawBtn" style="padding: 0.5rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Fullscreen</button>
                     </div>
                 </div>
-                <div id="studyMode" class="hidden">
-                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Full list of all common words from Lessons 4–7.</div>
-                    <div id="studyList" style="max-height: 480px; overflow-y: auto;"></div>
+
+                <div id="studyMode">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 1-8</p>
+                    <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
-                <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+                <div id="missingComponentMode" style="display: none;">
+                    <input type="text" id="componentInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="componentOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
+
+                <div id="charBuildingMode" style="display: none;">
+                    <input type="text" id="charBuildingInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="charBuildingOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
+                </div>
+                </div>
+
+                <div id="feedback"></div>
             </section>
 
             <footer class="stats-bar" id="stats">
-                <span>Score: <span id="score">0</span>/<span id="total">0</span></span>
-                <span>Accuracy: <span id="accuracy">0%</span></span>
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
             </footer>
         </main>
     </div>
 
-    <script>
-        // Lessons 4–7 data (dialogue + vocab)
+    <script>// Lesson 1: Two Maps (两张地图)
+        const lesson1 = [
+            { char: '第', pinyin: 'dì', meaning: 'ordinal prefix (-st, -nd, -rd, -th)' },
+            { char: '课', pinyin: 'kè', meaning: 'lesson' },
+            { char: '两', pinyin: 'liǎng', meaning: 'two (used with AN)' },
+            { char: '张', pinyin: 'zhāng', meaning: 'measure word for flat things' },
+            { char: '地图', pinyin: 'dìtú', meaning: 'map' },
+            { char: '甲', pinyin: 'jiǎ', meaning: 'person A' },
+            { char: '这', pinyin: 'zhè', meaning: 'this; these' },
+            { char: '是', pinyin: 'shì', meaning: 'is; am; are' },
+            { char: '什么', pinyin: 'shén.me', meaning: 'what' },
+            { char: '比', pinyin: 'bǐ', meaning: 'compare' },
+            { char: '大', pinyin: 'dà', meaning: 'big' },
+            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little' },
+            { char: '年', pinyin: 'nián', meaning: 'year' },
+            { char: '以前', pinyin: 'yǐqián', meaning: 'before' },
+            { char: '那时', pinyin: 'nàshí', meaning: 'that time' },
+            { char: '还', pinyin: 'hái', meaning: 'still; also' },
+            { char: '包括', pinyin: 'bāokuò', meaning: 'include' },
+            { char: '现在', pinyin: 'xiànzài', meaning: 'now' },
+            { char: '蒙古国', pinyin: 'Měnggǔguó', meaning: 'Mongolia' },
+            { char: '哦', pinyin: 'ò', meaning: 'oh; I see' },
+            { char: '我', pinyin: 'wǒ', meaning: 'I; me' },
+            { char: '懂', pinyin: 'dǒng', meaning: 'understand' },
+            { char: '了', pinyin: 'le', meaning: 'particle for new situation' },
+            { char: '历史', pinyin: 'lì.shǐ', meaning: 'history' },
+            { char: '上', pinyin: 'shàng', meaning: 'in; on' },
+            { char: '对了', pinyin: 'duì.le', meaning: "that's right" },
+            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but' },
+            { char: '完全', pinyin: 'wánquán', meaning: 'completely; entirely' },
+            { char: '他们', pinyin: 'tā.men', meaning: 'they' },
+            { char: '搬', pinyin: 'bān', meaning: 'move' },
+            { char: '到…去', pinyin: 'dào...qù', meaning: 'go to...' },
+            { char: '台湾', pinyin: 'Táiwān', meaning: 'Taiwan' },
+            { char: '就是', pinyin: 'jiù.shì', meaning: 'be exactly' },
+            { char: '和', pinyin: 'hé', meaning: 'and' },
+            { char: '政府', pinyin: 'zhèng.fǔ', meaning: 'government' },
+            { char: '都', pinyin: 'dōu', meaning: 'in all cases' },
+            { char: '说', pinyin: 'shuō', meaning: 'speak; say; talk' },
+            { char: '只有', pinyin: 'zhǐyǒu', meaning: "there's only" },
+            { char: '个', pinyin: 'gè', meaning: 'general measure word' },
+            { char: '而', pinyin: 'ér', meaning: 'and; yet' },
+            { char: '部分', pinyin: 'bù.fèn', meaning: 'part' },
+            { char: '国家', pinyin: 'guójiā', meaning: 'country' },
+            { char: '对不对', pinyin: 'duì.bu.duì', meaning: 'Is it correct?' },
+            { char: '很难说', pinyin: 'hěnnánshuō', meaning: "It's hard to say" },
+            { char: '乙', pinyin: 'yǐ', meaning: 'person B' },
+            { char: '中国', pinyin: 'Zhōng.guó', meaning: 'China' },
+            { char: '那么', pinyin: 'nà.me', meaning: 'well then; then' },
+            { char: '那', pinyin: 'nà', meaning: 'that; those' },
+            { char: '呢', pinyin: 'ne', meaning: 'particle for follow-up questions' },
+            { char: '也', pinyin: 'yě', meaning: 'also; too' },
+            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why' },
+            { char: '不', pinyin: 'bù', meaning: 'no; not' },
+            { char: '一样', pinyin: 'yīyàng', meaning: 'same' },
+            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because; since' },
+            { char: '中华', pinyin: 'Zhōnghuá', meaning: 'China' },
+            { char: '民国', pinyin: 'mínguó', meaning: 'republic' },
+            { char: '人民', pinyin: 'rénmín', meaning: 'the people' },
+            { char: '共和国', pinyin: 'gònghéguó', meaning: 'republic' },
+            { char: '的', pinyin: 'de', meaning: 'particle for modification' }
+        ];
+
+        // Lesson 2: Where is My Home? (我的家在哪儿?)
+        const lesson2 = [
+            { char: '我的', pinyin: 'wǒ.de', meaning: 'my' },
+            { char: '家', pinyin: 'jiā', meaning: 'home' },
+            { char: '在', pinyin: 'zài', meaning: 'be located in; at; on' },
+            { char: '哪儿', pinyin: 'nǎr', meaning: 'where' },
+            { char: '父亲', pinyin: 'fù.qin', meaning: 'father' },
+            { char: '书', pinyin: 'shū', meaning: 'book' },
+            { char: '书房', pinyin: 'shūfáng', meaning: 'a study' },
+            { char: '里', pinyin: 'lǐ', meaning: 'inside' },
+            { char: '挂', pinyin: 'guà', meaning: 'hang' },
+            { char: 'V着', pinyin: 'V.zhe', meaning: 'keep on V-ing' },
+            { char: '小', pinyin: 'xiǎo', meaning: 'young; small' },
+            { char: '时候', pinyin: 'shí.hou', meaning: 'time' },
+            { char: '他', pinyin: 'tā', meaning: 'he' },
+            { char: '常', pinyin: 'cháng', meaning: 'often' },
+            { char: '指', pinyin: 'zhǐ', meaning: 'point' },
+            { char: '西南', pinyin: 'xīnán', meaning: 'southwest' },
+            { char: '边', pinyin: 'biān', meaning: 'side' },
+            { char: '黑', pinyin: 'hēi', meaning: 'black; dark' },
+            { char: '点', pinyin: 'diǎn', meaning: 'spot; dot' },
+            { char: '我们的', pinyin: 'wǒ.men.de', meaning: 'our; ours' },
+            { char: '老家', pinyin: 'lǎojiā', meaning: 'hometown' },
+            { char: '觉得', pinyin: 'jué.de', meaning: 'think; feel' },
+            { char: '很', pinyin: 'hěn', meaning: 'very' },
+            { char: '奇怪', pinyin: 'qíguài', meaning: 'strange' },
+            { char: '纽约', pinyin: 'Niǔyuē', meaning: 'New York' },
+            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
+            { char: '会', pinyin: 'huì', meaning: 'could; would; can' },
+            { char: '后来', pinyin: 'hòulái', meaning: 'later' },
+            { char: '才', pinyin: 'cái', meaning: 'later than expected' },
+            { char: '知道', pinyin: 'zhīdao', meaning: 'know' },
+            { char: '成都', pinyin: 'Chéngdū', meaning: 'name of a city' },
+            { char: '虽然', pinyin: 'suīrán', meaning: 'although' },
+            { char: '来', pinyin: 'lái', meaning: 'come' },
+            { char: '美国', pinyin: 'Měiguó', meaning: 'The United States of America' },
+            { char: '快…了', pinyin: 'kuài... .le', meaning: 'almost, about to' },
+            { char: '总', pinyin: 'zǒng', meaning: 'always' },
+            { char: '还是', pinyin: 'hái.shì', meaning: 'still' },
+            { char: '四川', pinyin: 'Sìchuān', meaning: 'a province in southwest China' },
+            { char: '生', pinyin: 'shēng', meaning: 'be born' },
+            { char: '长', pinyin: 'zhǎng', meaning: 'grow up' },
+            { char: '从小', pinyin: 'cóngxiǎo', meaning: 'from one\'s childhood' },
+            { char: '就', pinyin: 'jiù', meaning: 'sooner than expected; as early as' },
+            { char: '跟', pinyin: 'gēn', meaning: 'with; to' },
+            { char: '中文', pinyin: 'Zhōngwén', meaning: 'the Chinese language' },
+            { char: '吃', pinyin: 'chī', meaning: 'eat' },
+            { char: '菜', pinyin: 'cài', meaning: 'food; vegetables' },
+            { char: '有时', pinyin: 'yǒushí', meaning: 'sometimes' },
+            { char: '看', pinyin: 'kàn', meaning: 'see; look' },
+            { char: '电视', pinyin: 'diànshì', meaning: 'television' },
+            { char: '节目', pinyin: 'jiémù', meaning: 'program' },
+            { char: '星期', pinyin: 'xīngqī', meaning: 'week' },
+            { char: '星期六', pinyin: 'xīngqīliù', meaning: 'Saturday' },
+            { char: '去', pinyin: 'qù', meaning: 'go' },
+            { char: '附近', pinyin: 'fùjìn', meaning: 'nearby; vicinity' },
+            { char: '学校', pinyin: 'xuéxiào', meaning: 'school' },
+            { char: '学', pinyin: 'xué', meaning: 'study; learn' },
+            { char: '同学', pinyin: 'tóngxué', meaning: 'classmates; schoolmates' },
+            { char: '到底', pinyin: 'dàodǐ', meaning: 'after all (emphatic use)' },
+            { char: '意思', pinyin: 'yìsi', meaning: 'meaning' }
+        ];
+
+        // Lesson 3: We Are All Americans (我们都是美国人)
+        const lesson3 = [
+            { char: '你', pinyin: 'nǐ', meaning: 'you' },
+            { char: '从…来', pinyin: 'cóng...lái', meaning: 'come from' },
+            { char: '德州', pinyin: 'Dézhōu', meaning: 'Texas' },
+            { char: '看起来', pinyin: 'kàn.qi.lái', meaning: 'look like, seem' },
+            { char: '像', pinyin: 'xiàng', meaning: 'resemble' },
+            { char: '啊', pinyin: '.a', meaning: 'particle showing obviousness' },
+            { char: '真', pinyin: 'zhēn', meaning: 'really' },
+            { char: '看不出来', pinyin: 'kàn.bù.chū.lái', meaning: "can't figure out by looking; can't tell" },
+            { char: '样', pinyin: 'yàng', meaning: 'kind; sort' },
+            { char: '想', pinyin: 'xiǎng', meaning: 'think' },
+            { char: '黄', pinyin: 'huáng', meaning: 'yellow; brown' },
+            { char: '头发', pinyin: 'tóu.fà', meaning: 'hair (on the human head)' },
+            { char: '蓝', pinyin: 'lán', meaning: 'blue' },
+            { char: '眼睛', pinyin: 'yǎnjīng', meaning: 'eyes' },
+            { char: '吗', pinyin: '.ma', meaning: 'particle for simple questions' },
+            { char: '不一定', pinyin: 'bùyīdìng', meaning: 'not necessarily' },
+            { char: '但是', pinyin: 'dàn.shì', meaning: 'but' },
+            { char: '有', pinyin: 'yǒu', meaning: 'have; there be' },
+            { char: '却', pinyin: 'què', meaning: 'but' },
+            { char: '日本人', pinyin: 'Rì.běn.rén', meaning: 'Japanese people' },
+            { char: '可以', pinyin: 'kěyǐ', meaning: 'can; may' },
+            { char: '所以', pinyin: 'suǒ.yǐ', meaning: 'therefore' },
+            { char: '有的', pinyin: 'yǒu.de', meaning: 'some' },
+            { char: '白人', pinyin: 'bái.rén', meaning: 'Caucasian American' },
+            { char: '黑人', pinyin: 'hēi.rén', meaning: 'African American' },
+            { char: '黄种人', pinyin: 'huángzhǒng.rén', meaning: 'Asian American' },
+            { char: '欧洲', pinyin: 'Ōuzhōu', meaning: 'Europe' },
+            { char: '非洲', pinyin: 'Fēizhōu', meaning: 'Africa' },
+            { char: '亚洲', pinyin: 'Yàzhōu', meaning: 'Asia' },
+            { char: '只要', pinyin: 'zhǐyào', meaning: 'as long as; provided that' },
+            { char: '得', pinyin: 'děi', meaning: 'have to' }
+        ];
+
+        // Lesson 4: Americans Study Chinese (美国人学中文)
         const lesson4 = [
             { char: '女', pinyin: 'nǚ', meaning: 'daughter; female' },
             { char: '妈', pinyin: 'mā', meaning: 'mom; mother' },
@@ -462,55 +619,53 @@
             { char: '发达', pinyin: 'fā.dá', meaning: 'developed; advanced' },
             { char: '做', pinyin: 'zuò', meaning: 'do; make' },
             { char: '生意', pinyin: 'shēngyi', meaning: 'business' },
-            { char: '越…越…', pinyin: 'yuè...yuè...', meaning: 'the more... the more...' },
-            { char: '为了', pinyin: 'wèi.le', meaning: 'in order to' },
-            { char: '去', pinyin: 'qù', meaning: 'go' },
-            { char: '做买卖', pinyin: 'zuò mǎi.mai', meaning: 'do business' },
-            { char: '倒', pinyin: 'dào', meaning: 'actually; on the contrary' },
+            { char: '越来越', pinyin: 'yuè lái yuè', meaning: 'more and more' },
+            { char: '一天比一天', pinyin: 'yìtiān bǐ yìtiān', meaning: 'day by day; more with each day' },
+            { char: '为了', pinyin: 'wèile', meaning: 'in order to' },
+            { char: '买卖', pinyin: 'mǎi.mài', meaning: 'business transaction; buying and selling' },
+            { char: '啰', pinyin: 'lo', meaning: 'particle showing obviousness' },
             { char: '不见得', pinyin: 'bújiàn.de', meaning: 'not necessarily' },
-            { char: '文学', pinyin: 'wénxué', meaning: 'literature' }
+            { char: '文学', pinyin: 'wén.xué', meaning: 'literature' },
+            { char: '自己', pinyin: 'zìjǐ', meaning: 'self' },
+            { char: '刚', pinyin: 'gāng', meaning: 'just now; recently' },
+            { char: '更', pinyin: 'gèng', meaning: 'even more' },
+            { char: '有意思', pinyin: 'yǒu.yì.si', meaning: 'interesting; meaningful' }
         ];
 
+        // Lesson 5: Am I from Sichuan? (我是四川人？)
         const lesson5 = [
-            { char: '我是四川人？', pinyin: 'wǒ shì sìchuān rén', meaning: 'Am I from Sichuan?' },
-            { char: '对', pinyin: 'duì', meaning: 'correct' },
-            { char: '就', pinyin: 'jiù', meaning: 'exactly; precisely' },
-            { char: '可能', pinyin: 'kěnéng', meaning: 'maybe; possible' },
-            { char: '以为', pinyin: 'yǐwéi', meaning: 'mistakenly think' },
-            { char: '告诉', pinyin: 'gào.sù', meaning: 'tell' },
-            { char: '黄种人', pinyin: 'huángzhǒng.rén', meaning: 'Asian American' },
-            { char: '日本人', pinyin: 'Rì.běn.rén', meaning: 'Japanese people' },
-            { char: '看来', pinyin: 'kàn.lai', meaning: 'it seems' },
-            { char: '来自', pinyin: 'lái.zì', meaning: 'come from' },
-            { char: '皮肤', pinyin: 'pífū', meaning: 'skin' },
-            { char: '白', pinyin: 'bái', meaning: 'white' },
-            { char: '黑', pinyin: 'hēi', meaning: 'black' },
-            { char: '头发', pinyin: 'tóu.fà', meaning: 'hair' },
-            { char: '长得', pinyin: 'zhǎng.de', meaning: 'look; grow (to appear)' },
-            { char: '像', pinyin: 'xiàng', meaning: 'resemble' },
-            { char: '不像', pinyin: 'bú xiàng', meaning: 'doesn’t resemble' },
-            { char: '又', pinyin: 'yòu', meaning: 'again; both…and' },
-            { char: '以为', pinyin: 'yǐwéi', meaning: 'assume (incorrectly)' },
-            { char: '亲戚', pinyin: 'qīn.qi', meaning: 'relatives' },
-            { char: '听说', pinyin: 'tīngshuō', meaning: 'hear (that)' },
-            { char: '热情', pinyin: 'rèqíng', meaning: 'warm; enthusiastic' },
-            { char: '极了', pinyin: 'jí.le', meaning: 'extremely' },
-            { char: '有名', pinyin: 'yǒumíng', meaning: 'famous' },
-            { char: '餐馆', pinyin: 'cānguǎn', meaning: 'restaurant' },
-            { char: '不一定', pinyin: 'bù yídìng', meaning: 'not necessarily' },
-            { char: '也许', pinyin: 'yěxǔ', meaning: 'perhaps; maybe' },
-            { char: '说不定', pinyin: 'shuō.bu.dìng', meaning: 'maybe; perhaps' },
-            { char: '看起来', pinyin: 'kàn.qi.lai', meaning: 'seem; appear' },
-            { char: '四川菜', pinyin: 'Sìchuān cài', meaning: 'Sichuan food' },
+            { char: '上课', pinyin: 'shàngkè', meaning: 'hold class; go to class' },
+            { char: '老师', pinyin: 'lǎoshī', meaning: 'teacher' },
+            { char: '又', pinyin: 'yòu', meaning: 'again' },
+            { char: '问', pinyin: 'wèn', meaning: 'ask' },
+            { char: '有没有', pinyin: 'yǒu méiyǒu', meaning: 'have or not? are there?' },
+            { char: '名字', pinyin: 'míng.zi', meaning: 'name' },
+            { char: '叫', pinyin: 'jiào', meaning: 'call; be called; tell' },
+            { char: '字', pinyin: 'zì', meaning: 'Chinese character; word' },
+            { char: '写', pinyin: 'xiě', meaning: 'write' },
+            { char: '回答', pinyin: 'huídá', meaning: 'answer; respond' },
+            { char: '不好意思', pinyin: 'bùhǎoyì.si', meaning: 'embarrassing' },
+            { char: '出生', pinyin: 'chūshēng', meaning: 'be born' },
+            { char: '给', pinyin: 'gěi', meaning: 'for; to/give' },
+            { char: '起名字', pinyin: 'qǐ míng.zi', meaning: 'give a name; pick a name' },
+            { char: '广东人', pinyin: 'guǎngdōngrén', meaning: 'Cantonese people' },
+            { char: '说法', pinyin: 'shuō.fa', meaning: 'way of saying; opinion' },
+            { char: '照…的说法', pinyin: 'zhào...de shuō.fa', meaning: "according to...'s opinion" },
+            { char: '孩子', pinyin: 'hái.zi', meaning: 'child' },
             { char: '连', pinyin: 'lián', meaning: 'even' },
-            { char: '州', pinyin: 'zhōu', meaning: 'state (US)' },
-            { char: '如果', pinyin: 'rúguǒ', meaning: 'if' },
-            { char: '关系', pinyin: 'guānxi', meaning: 'connection; relation' },
-            { char: '文化', pinyin: 'wénhuà', meaning: 'culture' },
-            { char: '认为', pinyin: 'rènwéi', meaning: 'think; consider' },
-            { char: '美国人', pinyin: 'Měiguórén', meaning: 'American' }
+            { char: '能', pinyin: 'néng', meaning: 'can; may; could' },
+            { char: '算(是)', pinyin: 'suàn(.shi)', meaning: 'be considered' },
+            { char: '过', pinyin: 'guò', meaning: 'verbal suffix for past experience' },
+            { char: '不过', pinyin: 'búguò', meaning: 'but; however' },
+            { char: '电话', pinyin: 'diànhuà', meaning: 'phone call; telephone' },
+            { char: '进来', pinyin: 'jìnlái', meaning: 'come in' },
+            { char: '明天', pinyin: 'míngtiān', meaning: 'tomorrow' },
+            { char: '再', pinyin: 'zài', meaning: 'again' },
+            { char: '您', pinyin: 'nín', meaning: 'you (a respectful form)' },
+            { char: '打', pinyin: 'dǎ', meaning: 'dial or call (on phone)' }
         ];
 
+        // Lesson 6: Don't Worry (别担心)
         const lesson6 = [
             { char: '别', pinyin: 'bié', meaning: 'don\'t' },
             { char: '担心', pinyin: 'dānxīn', meaning: 'worry' },
@@ -554,42 +709,10 @@
             { char: '嫁', pinyin: 'jià', meaning: 'marry (a man)' },
             { char: '外国人', pinyin: 'wàiguórén', meaning: 'foreigner' },
             { char: '怎么办', pinyin: 'zěn.me bàn', meaning: 'what to do? what can be done?' },
-            { char: '谁', pinyin: 'shéi', meaning: 'who' },
-            { char: '容易', pinyin: 'róngyì', meaning: 'easy' },
-            { char: '可', pinyin: 'kě', meaning: 'indeed; (for emphasis)' },
-            { char: '决定', pinyin: 'juédìng', meaning: 'decide' },
-            { char: '带', pinyin: 'dài', meaning: 'bring; take' },
-            { char: '一样', pinyin: 'yíyàng', meaning: 'the same; identical' },
-            { char: '用具', pinyin: 'yòngjù', meaning: 'utensil; appliance' },
-            { char: '微波炉', pinyin: 'wēibōlú', meaning: 'microwave oven' },
-            { char: '行', pinyin: 'xíng', meaning: 'all right; OK; no problem' },
-            { char: '好久', pinyin: 'hǎojiǔ', meaning: 'for a long time' },
-            { char: '用', pinyin: 'yòng', meaning: 'use' },
-            { char: '坏了', pinyin: 'huài.le', meaning: 'be broken' },
-            { char: '家具', pinyin: 'jiājù', meaning: 'furniture' },
-            { char: '床', pinyin: 'chuáng', meaning: 'bed' },
-            { char: '桌子', pinyin: 'zhuō.zi', meaning: 'table' },
-            { char: '书架', pinyin: 'shūjià', meaning: 'bookshelf' },
-            { char: '把', pinyin: 'bǎ', meaning: 'AN for things with a handle' },
-            { char: '椅子', pinyin: 'yǐ.zi', meaning: 'chair' },
-            { char: '台灯', pinyin: 'táidēng', meaning: 'desk lamp' },
-            { char: '地毯', pinyin: 'dìtǎn', meaning: 'rug; carpet' },
-            { char: '要紧', pinyin: 'yàojǐn', meaning: 'important; serious' },
-            { char: '对了', pinyin: 'duì.le', meaning: 'by the way' },
-            { char: '合住', pinyin: 'hézhù', meaning: 'share living space' },
-            { char: '认识', pinyin: 'rèn.shi', meaning: 'know (a person); recognize' },
-            { char: '年级', pinyin: 'niánjí', meaning: 'school grade; year' },
-            { char: '一起', pinyin: 'yìqǐ', meaning: 'together' },
-            { char: '不太', pinyin: 'bùtài', meaning: 'not very' },
-            { char: '浴室', pinyin: 'yùshì', meaning: 'bathroom' },
-            { char: '厕所', pinyin: 'cèsuǒ', meaning: 'toilet' },
-            { char: '合用', pinyin: 'héyòng', meaning: 'share (use together)' },
-            { char: '最好', pinyin: 'zuìhǎo', meaning: 'had better' },
-            { char: '考虑', pinyin: 'kǎolǜ', meaning: 'consider' },
-            { char: '一层楼', pinyin: 'yì céng lóu', meaning: 'one floor; the same floor' },
-            { char: '考试', pinyin: 'kǎoshì', meaning: 'examination; test' }
+            { char: '谁', pinyin: 'shéi', meaning: 'who' }
         ];
 
+        // Lesson 7: Living Together (男女同住)
         const lesson7part1 = [
             { char: '同住', pinyin: 'tóngzhù', meaning: 'live together' },
             { char: '从…起', pinyin: 'cóng...qǐ', meaning: 'starting from' },
@@ -652,9 +775,52 @@
             { char: '考试', pinyin: 'kǎoshì', meaning: 'examination; test' }
         ];
 
+        // Lesson 8: Watching Movies (看电影)
+        const lesson8part1 = [
+            { char: '电影', pinyin: 'diànyǐng', meaning: 'movie' },
+            { char: '把', pinyin: 'bǎ', meaning: 'pretransitive marker' },
+            { char: '盒', pinyin: 'hé', meaning: 'AN for boxes' },
+            { char: '卫生纸', pinyin: 'wèishēngzhǐ', meaning: 'facial tissue; toilet paper' },
+            { char: '拿', pinyin: 'ná', meaning: 'take with hand; bring; carry' },
+            { char: '已经', pinyin: 'yǐjīng', meaning: 'already' },
+            { char: '至少', pinyin: 'zhìshǎo', meaning: 'at least' },
+            { char: '哭', pinyin: 'kū', meaning: 'cry' },
+            { char: '样子', pinyin: 'yàng.zi', meaning: 'state; appearance' },
+            { char: '主角', pinyin: 'zhǔjiǎo/zhǔjué', meaning: 'leading role in a story' },
+            { char: '可怜', pinyin: 'kělián', meaning: 'pitiful; pitiable' },
+            { char: '又…又…', pinyin: 'yòu...yòu...', meaning: 'both ... and ...' },
+            { char: '爱', pinyin: 'ài', meaning: 'love' },
+            { char: '故事', pinyin: 'gùshi', meaning: 'story' },
+            { char: '许多', pinyin: 'xǔduō', meaning: 'many; much' },
+            { char: '烦', pinyin: 'fán', meaning: 'be tired of; annoyed' },
+            { char: '好玩儿', pinyin: 'hǎowánr', meaning: 'fun; amusing' },
+            { char: '受罪', pinyin: 'shòuzuì', meaning: 'suffer; endure hardship' }
+        ];
+
+        const lesson8part2 = [
+            { char: '胡闹', pinyin: 'húnào', meaning: 'behave crazily; act ridiculous' },
+            { char: '稍微', pinyin: 'shāowēi', meaning: 'a little; slightly' },
+            { char: '严肃', pinyin: 'yánsù', meaning: 'serious; solemn' },
+            { char: '认真', pinyin: 'rènzhēn', meaning: 'conscientious; earnest' },
+            { char: '无聊', pinyin: 'wúliáo', meaning: 'boring' },
+            { char: '教', pinyin: 'jiāo', meaning: 'teach' },
+            { char: '做人', pinyin: 'zuòrén', meaning: 'be a (proper) person' },
+            { char: '应该', pinyin: 'yīnggāi', meaning: 'should; ought to' },
+            { char: '最', pinyin: 'zuì', meaning: 'most' },
+            { char: '愿意', pinyin: 'yuànyì', meaning: 'willing' },
+            { char: '向…学', pinyin: 'xiàng...xué', meaning: 'learn from ...' },
+            { char: '教堂', pinyin: 'jiàotáng', meaning: 'church' },
+            { char: '轻松', pinyin: 'qīngsōng', meaning: 'relaxed; relaxing' },
+            { char: '吵', pinyin: 'chǎo', meaning: 'argue; quarrel' },
+            { char: '怎么回事', pinyin: 'zěn.me huí shì', meaning: "what's the matter?" }
+        ];
+
+        // Merge all lessons and de-duplicate by character
         const combinedMap = new Map();
-        [...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2].forEach(item => {
-            if (!combinedMap.has(item.char)) combinedMap.set(item.char, item);
+        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2, ...lesson8part1, ...lesson8part2].forEach(item => {
+            if (!combinedMap.has(item.char)) {
+                combinedMap.set(item.char, item);
+            }
         });
         const characters = Array.from(combinedMap.values());
 

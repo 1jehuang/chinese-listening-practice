@@ -5544,8 +5544,7 @@ MARKUP: [OK:I am] [OK:happy] [OK:to meet you]
 Example response with error:
 GRADE: 60%
 Misunderstood who was speaking.
-MARKUP: [OK:He said] [ERR:she is coming|should be "he is coming" - 他 means he not she] [OK:tomorrow]`
-                    }`;
+MARKUP: [OK:He said] [ERR:she is coming|should be "he is coming" - 他 means he not she] [OK:tomorrow]`;
 
         const feedbackText = await callGroqChat({
             system: systemPrompt,
