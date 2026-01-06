@@ -170,6 +170,10 @@ function main() {
       fn: () => assert.strictEqual(checkPinyinMatch('le', 'le'), true),
     },
     {
+      name: 'Accepts erhua with tone numbers',
+      fn: () => assert.strictEqual(checkPinyinMatch('wan2r', 'wánr'), true),
+    },
+    {
       name: 'Handles ü variants',
       fn: () => {
         assert.strictEqual(checkPinyinMatch('lü4', 'lü4'), true);

@@ -245,6 +245,14 @@ function splitPinyinSyllables(pinyin) {
         current += char;
 
         if (/[1-5]/.test(char)) {
+            const nextChar = text[i + 1];
+            if (nextChar && nextChar.toLowerCase() === 'r') {
+                const nextNext = text[i + 2];
+                if (!nextNext || isSeparator(nextNext)) {
+                    // Keep erhua r as part of the same syllable (e.g., wan2r)
+                    continue;
+                }
+            }
             flush();
             continue;
         }

@@ -7975,15 +7975,15 @@ function renderThreeColumnPinyinLayout() {
 function displayQuestion() {
     if (!currentQuestion) return;
 
+    // Reset per-question state (answered flag, entered syllables, hints, etc.)
+    // without selecting a new question.
+    resetForNextQuestion('');
+
     // Mark this question as served in the scheduler
     window.currentQuestion = currentQuestion;
     markSchedulerServed(currentQuestion);
 
-    // Clear input fields
-    if (answerInput) answerInput.value = '';
-    if (fuzzyInput) fuzzyInput.value = '';
-
-    // Reset dictation state
+    // Reset dictation state for fresh progress indicators
     resetDictationState();
 
     // Render based on mode
