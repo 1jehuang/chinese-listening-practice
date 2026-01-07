@@ -2430,6 +2430,7 @@ function getFeedTargetHandSize() {
     if (poolSize === 0) return FEED_DEFAULT_HAND_SIZE;
 
     const explorationRatio = getFeedExplorationRatio();
+    const seenCount = Object.keys(feedModeState.seen || {}).length;
 
     // Count weak cards (cards we've seen but have low confidence on)
     let weakCount = 0;
@@ -2443,15 +2444,21 @@ function getFeedTargetHandSize() {
         }
     }
 
-    if (explorationRatio < 0.3) {
-        // Still exploring - larger hand to cycle through more cards
-        return Math.min(FEED_MAX_HAND_SIZE, poolSize);
+    // Start small like 5-card sets: begin with 2 cards, expand as you learn
+    if (seenCount < 2) {
+        // Very beginning - start with just 2 cards
+        return 2;
+    } else if (explorationRatio < 0.15) {
+        // Early phase - small sets of 3-4
+        return Math.min(4, Math.max(2, weakCount + 2));
+    } else if (explorationRatio < 0.3) {
+        // Growing phase - expand to 5-6
+        return Math.min(6, Math.max(3, weakCount + 2));
     } else if (explorationRatio < 0.6) {
         // Middle phase - moderate hand size
         return Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE + 2, weakCount + 3));
     } else {
         // Explored most of the deck - shrink to focus on weak cards
-        // Hand size based on how many weak cards exist
         return Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE, weakCount + 2));
     }
 }
