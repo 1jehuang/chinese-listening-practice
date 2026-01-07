@@ -2551,7 +2551,7 @@ function ensureFeedHand() {
 }
 
 function getFeedQuestionPool() {
-    if (schedulerMode !== SCHEDULER_MODES.FEED) {
+    if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR) {
         return Array.isArray(quizCharacters) ? quizCharacters : [];
     }
     ensureFeedHand();
@@ -2584,7 +2584,7 @@ function selectFeedQuestion(excludeChars = []) {
 }
 
 function recordFeedOutcome(char, correct) {
-    if (schedulerMode !== SCHEDULER_MODES.FEED) return;
+    if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR) return;
     if (!char) return;
 
     feedModeState.totalPulls = (feedModeState.totalPulls || 0) + 1;
@@ -2611,7 +2611,7 @@ function recordFeedOutcome(char, correct) {
 }
 
 function prepareFeedForNextQuestion() {
-    if (schedulerMode !== SCHEDULER_MODES.FEED) return;
+    if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR) return;
     reconcileFeedStateWithPool();
     ensureFeedHand();
     updateFeedStatusDisplay();
