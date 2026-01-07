@@ -4278,7 +4278,9 @@ function getPartialMatch(userAnswer, correct) {
 }
 
 function updatePartialProgress() {
-    if ((mode !== 'char-to-pinyin' && mode !== 'audio-to-pinyin') || answered) return;
+    // Disable live preview feedback for char-to-pinyin - only show feedback after Enter
+    if (mode === 'char-to-pinyin') return;
+    if (mode !== 'audio-to-pinyin' || answered) return;
 
     const userAnswer = answerInput.value.trim();
     if (!userAnswer) {
