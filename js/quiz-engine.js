@@ -5912,79 +5912,9 @@ function giveUpAndShowAnswer() {
     }
 
     stopTimer();
-    lastAnswerCorrect = false;
-    playWrongSound();
-    answered = true;
-    total++;
-    markSchedulerOutcome(false);
-    updateStats();
 
-    // For pinyin dictation modes with three-column layout, use instant transition
-    if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
-        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-        playPinyinAudio(firstPinyin, currentQuestion.char);
-
-        pinyinDictationPreviousQuestion = currentQuestion;
-        pinyinDictationPreviousResult = 'incorrect';
-        pinyinDictationPreviousUserAnswer = answerInput?.value || '(gave up)';
-
-        // Clear feedback and hint
-        if (feedback) { feedback.textContent = ''; feedback.className = ''; }
-        if (hint) { hint.textContent = ''; hint.className = ''; }
-        if (answerInput) answerInput.value = '';
-
-        // Advance upcoming to current
-        if (pinyinDictationUpcomingQuestion) {
-            currentQuestion = pinyinDictationUpcomingQuestion;
-            pinyinDictationUpcomingQuestion = null;
-        }
-
-        displayQuestion();
-        return;
-    }
-
-    // Show correct answer based on mode
-    if (mode === 'audio-to-pinyin') {
-        feedback.textContent = `✗ Answer: ${currentQuestion.pinyin} (${currentQuestion.char})`;
-    } else if (mode === 'audio-to-meaning' || mode === 'text-to-meaning') {
-        feedback.textContent = `✗ Answer: ${currentQuestion.meaning}`;
-    } else if ((mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') && currentFullSentence) {
-        feedback.textContent = `✗ Full meaning: ${currentFullSentence.meaning}`;
-    } else if (mode === 'char-to-meaning' || mode === 'char-to-meaning-type') {
-        feedback.textContent = `✗ Answer: ${currentQuestion.meaning}`;
-    } else {
-        feedback.textContent = `✗ Answer: ${currentQuestion.pinyin}`;
-    }
-    feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
-
-    // Show meaning hint for pinyin modes
-    if ((mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') && currentFullSentence) {
-        hint.textContent = `Chunk: ${currentQuestion.char}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
-        currentChunkIndex++; // Advance to next chunk
-    } else if (mode !== 'audio-to-meaning' && mode !== 'text-to-meaning' && mode !== 'char-to-meaning' && mode !== 'char-to-meaning-type') {
-        hint.textContent = `Meaning: ${currentQuestion.meaning}`;
-        hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
-    } else {
-        hint.textContent = `Chinese: ${currentQuestion.char} (${currentQuestion.pinyin})`;
-        hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
-    }
-
-    renderCharacterComponents(currentQuestion);
-
-    // Play audio
-    if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning-chunks') {
-        // For chunks, use TTS on the chunk text
-        playSentenceAudio(currentQuestion.char);
-    } else if (currentQuestion.pinyin) {
-        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-        playPinyinAudio(firstPinyin, currentQuestion.char);
-    }
-
-    // Clear input
-    if (answerInput) answerInput.value = '';
-
-    scheduleNextQuestion(1400);
+    // Just delegate to handleWrongAnswer - same display for give up as wrong answer
+    handleWrongAnswer();
 }
 
 // =============================================================================
