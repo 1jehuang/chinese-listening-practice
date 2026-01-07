@@ -5474,12 +5474,39 @@ function checkAnswer() {
     } else if (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin') {
         const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim());
 
-        // Check if full answer is entered - no syllable-by-syllable feedback
+        // Check if full answer is entered
         const fullMatch = pinyinOptions.some(option => checkPinyinMatch(userAnswer, option));
 
         if (fullMatch) {
             handleCorrectFullAnswer();
-        } else {
+            return;
+        }
+
+        // Check if single syllable matches next expected syllable
+        let syllableMatched = false;
+        for (const option of pinyinOptions) {
+            const syllables = splitPinyinSyllables(option);
+            const optionWithNumbers = convertPinyinToToneNumbers(option);
+            const syllablesWithNumbers = splitPinyinSyllables(optionWithNumbers);
+
+            if (enteredSyllables.length < syllables.length) {
+                const expectedSyllable = syllables[enteredSyllables.length];
+                const expectedSyllableWithNumbers = syllablesWithNumbers[enteredSyllables.length];
+
+                // Check if user's input matches expected syllable (with or without tone numbers)
+                const userLower = userAnswer.toLowerCase();
+                const expectedLower = expectedSyllable.toLowerCase();
+                const expectedNumLower = expectedSyllableWithNumbers.toLowerCase();
+
+                if (userLower === expectedLower || userLower === expectedNumLower) {
+                    handleCorrectSyllable(syllables, option);
+                    syllableMatched = true;
+                    break;
+                }
+            }
+        }
+
+        if (!syllableMatched) {
             handleWrongAnswer();
         }
     } else if (mode === 'audio-to-meaning' || mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning' || mode === 'text-to-meaning-chunks') {
