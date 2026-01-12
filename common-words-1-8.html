@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Lessons 1-8 Common Words – Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Confidence pane on the right for this experimental page */
+        body.experimental-layout #confidencePanel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 240px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-left: 1px solid #e5e7eb;
+            box-shadow: -6px 0 20px rgba(0,0,0,0.05);
+            padding: 0.65rem 0.85rem 0.85rem;
+            margin-top: 0 !important;
+            z-index: 40;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        body.experimental-layout #confidencePanel .space-y-1 { margin-top: 0.35rem; }
+        body.experimental-layout #confidencePanel .border-t { border-top: none !important; }
+        body.experimental-layout #confidencePanel .pt-4 { padding-top: 0 !important; }
+        body.experimental-layout #confidencePanel #confidenceList {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-bottom: 0.5rem;
+            max-height: none !important;
+        }
+
+        /* Add breathing room so content doesn't sit under the right pane */
+        body.experimental-layout .app-container {
+            padding-right: 16rem;
+            min-height: 100vh;
+        }
+
+        /* Hide confidence panel on smaller screens */
+        @media (max-width: 1024px) {
+            body.experimental-layout #confidencePanel {
+                display: none;
+            }
+            body.experimental-layout .app-container {
+                padding-right: 0;
+            }
+        }
+
+        /* Main layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar (match standard pages) */
+        .sidebar {
+            width: 16rem;
+            flex-shrink: 0;
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .sidebar-home-btn {
+            padding: 0.375rem 0.75rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            color: #374151;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+
+        .sidebar-home-btn:hover {
+            background: #f3f4f6;
+        }
+
+        .sidebar h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            margin-top: 0.5rem;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .sidebar .mode-desc {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .sidebar .mode-btn {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 0.75rem;
+            border: 2px solid #d1d5db;
+            background: #ffffff;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #374151;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+
+        .sidebar .mode-btn:hover {
+            background: #f3f4f6;
+        }
+
+        .sidebar .mode-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Main content area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding: 1rem 2rem;
+            overflow: hidden;
+        }
+
+        /* Header with title and toolbar */
+        .quiz-header {
+            flex-shrink: 0;
+            text-align: center;
+            padding-bottom: 0.5rem;
+        }
+
+        .quiz-header h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            margin: 0;
+        }
+
+        /* Quiz display area - grows to fill space */
+        .quiz-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 0;
+            padding: 1rem 0;
+        }
+
+        #questionDisplay {
+            width: 100%;
+        }
+
+        /* Three-column layout tweaks */
+        .three-column-meaning-layout {
+            margin: 0 auto;
+            padding: 0.5rem;
+            gap: 2rem;
+        }
+
+        .three-column-meaning-layout .column-char-large {
+            font-size: clamp(56px, 12vw, 120px);
+        }
+
+        .three-column-meaning-layout .column-char {
+            font-size: clamp(28px, 5vw, 40px);
+        }
+
+        .three-column-meaning-layout .column-card {
+            min-height: auto;
+            padding: 0.5rem;
+        }
+
+        /* Input section - fixed at bottom */
+        .input-section {
+            flex-shrink: 0;
+            max-width: 32rem;
+            width: 100%;
+            margin: 0 auto;
+            padding-top: 1rem;
+        }
+
+        .input-section input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .input-section input[type="text"]:focus {
+            border-color: #3b82f6;
+        }
+
+        .choice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .choice-grid button {
+            padding: 0.875rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: white;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .choice-grid button:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 0.75rem 0;
+            font-size: 0.875rem;
+            color: #6b7280;
+            border-top: 1px solid #f3f4f6;
+            margin-top: auto;
+        }
+
+        .stats-bar span {
+            font-weight: 500;
+        }
+
+        /* Feedback area */
+        #feedback {
+            min-height: 2rem;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0.5rem 0;
+        }
+
+        /* Hide sections by default */
+        #typeMode, #choiceMode, #fuzzyMode, #strokeOrderMode,
+        #handwritingMode, #drawCharMode, #studyMode {
+            display: none;
+        }
+
+        #typeMode.active, #choiceMode.active, #fuzzyMode.active,
+        #strokeOrderMode.active, #handwritingMode.active,
+        #drawCharMode.active, #studyMode.active {
+            display: block;
+        }
+
+        /* Study mode needs full width - remove input-section constraint */
+        body.study-mode-active .input-section {
+            max-width: none;
+            flex-direction: column;
+        }
+
+        #studyMode.active {
+            width: 100%;
+        }
+
+        /* Hide feedback in study mode */
+        body.study-mode-active #feedback {
+            display: none;
+        }
+
+
+        /* Audio button */
+        #audioSection button {
+            padding: 0.75rem 1.5rem;
+            background: #06b6d4;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        #audioSection button:hover {
+            background: #0891b2;
+        }
+    </style>
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/engine/ai-service.js"></script>
+    <script src="js/engine/chat.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+</head>
+<body class="experimental-layout">
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="home.html" class="sidebar-home-btn">← Home</a>
+                <div id="sidebar-profile-slot"></div>
+            </div>
+            <h2>Quiz Modes</h2>
+            <p class="mode-desc">High-frequency "glue" words for dictation practice.</p>
+            <nav>
+                <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-tones-mc">Char → Pinyin → Tones (MC)</button>
+                <button class="mode-btn" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn" data-mode="study">Study Mode</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>Lessons 1–8 · Common Words</h1>
+                <p class="text-gray-500 text-sm">High-frequency connecting words: particles, conjunctions, pronouns, basic verbs.</p>
+            </header>
+
+            <section class="quiz-display">
+                <div id="questionDisplay"></div>
+                <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
+                    <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
+                </div>
+                <div id="hint" style="font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0;"></div>
+                <div id="audioSection" class="hidden" style="margin: 1rem 0;">
+                    <button id="playAudioBtn">🔊 Play Sound</button>
+                </div>
+            </section>
+
+            <section class="input-section">
+                <div id="typeMode">
+                    <input type="text" id="answerInput" placeholder="Type your answer...">
+                    <button id="checkBtn" style="display: none;">Check Answer</button>
+                </div>
+                <div id="choiceMode">
+                    <div id="options" class="choice-grid"></div>
+                </div>
+                <div id="fuzzyMode">
+                    <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+                <div id="strokeOrderMode">
+                    <div id="strokeOrderWriter" style="display: flex; justify-content: center;"></div>
+                </div>
+                <div id="handwritingMode">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer.</p>
+                    <div id="handwritingWriter" style="display: flex; justify-content: center; gap: 10px;"></div>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer</button>
+                        <button id="hwNextBtn" style="padding: 0.75rem 2rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Next</button>
+                    </div>
+                    <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
+                </div>
+                <div id="drawCharMode">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <div id="ocrResult" style="font-size: 3.5rem; min-height: 5rem; color: #3b82f6; font-weight: 700;"></div>
+                        <div style="font-size: 0.875rem; color: #9ca3af;">Real-time recognition</div>
+                    </div>
+                    <canvas id="drawCanvas" style="display: block; margin: 0 auto; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: crosshair;" width="300" height="300"></canvas>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="clearCanvasBtn" style="padding: 0.5rem 1.5rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Clear</button>
+                        <button id="submitDrawBtn" style="padding: 0.5rem 1.5rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Submit</button>
+                        <button id="fullscreenDrawBtn" style="padding: 0.5rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Fullscreen</button>
+                    </div>
+                </div>
+                <div id="studyMode" class="hidden">
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Curated list of high-frequency words from Lessons 1–8.</div>
+                    <div id="studyList" style="max-height: 480px; overflow-y: auto;"></div>
+                </div>
+                <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+            </section>
+
+            <footer class="stats-bar" id="stats">
+                <span>Score: <span id="score">0</span>/<span id="total">0</span></span>
+                <span>Accuracy: <span id="accuracy">0%</span></span>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // Common/connecting words from Lessons 1–8 (manually curated)
+        // These are the "glue" words that appear frequently in dictations
+        const characters = [
+            // === PARTICLES ===
+            { char: '的', pinyin: 'de', meaning: 'particle for modification' },
+            { char: '了', pinyin: 'le', meaning: 'particle for completed action / new situation' },
+            { char: '吗', pinyin: '.ma', meaning: 'particle for yes/no questions' },
+            { char: '呢', pinyin: 'ne', meaning: 'particle for follow-up questions' },
+            { char: '啊', pinyin: '.a', meaning: 'particle showing obviousness' },
+            { char: '啰', pinyin: 'lo', meaning: 'particle showing obviousness' },
+            { char: '着', pinyin: 'zhe', meaning: 'particle for ongoing action' },
+            { char: '得', pinyin: '.de', meaning: 'complement marker' },
+
+            // === CONJUNCTIONS ===
+            { char: '和', pinyin: 'hé', meaning: 'and' },
+            { char: '跟', pinyin: 'gēn', meaning: 'and; with' },
+            { char: '可是', pinyin: 'kě.shì', meaning: 'however; but' },
+            { char: '但是', pinyin: 'dàn.shì', meaning: 'but' },
+            { char: '因为', pinyin: 'yīn.wèi', meaning: 'because' },
+            { char: '所以', pinyin: 'suǒ.yǐ', meaning: 'therefore' },
+            { char: '虽然', pinyin: 'suīrán', meaning: 'although' },
+            { char: '而', pinyin: 'ér', meaning: 'and; yet; but' },
+            { char: '不但', pinyin: 'bùdàn', meaning: 'not only' },
+            { char: '只要', pinyin: 'zhǐyào', meaning: 'as long as' },
+            { char: '为了', pinyin: 'wèile', meaning: 'in order to' },
+
+            // === PRONOUNS ===
+            { char: '我', pinyin: 'wǒ', meaning: 'I; me' },
+            { char: '你', pinyin: 'nǐ', meaning: 'you' },
+            { char: '他', pinyin: 'tā', meaning: 'he; him' },
+            { char: '他们', pinyin: 'tā.men', meaning: 'they; them' },
+            { char: '自己', pinyin: 'zìjǐ', meaning: 'oneself' },
+            { char: '这', pinyin: 'zhè', meaning: 'this' },
+            { char: '那', pinyin: 'nà', meaning: 'that' },
+
+            // === QUESTION WORDS ===
+            { char: '什么', pinyin: 'shén.me', meaning: 'what' },
+            { char: '哪儿', pinyin: 'nǎr', meaning: 'where' },
+            { char: '怎么', pinyin: 'zěn.me', meaning: 'how; how come' },
+            { char: '为什么', pinyin: 'wèishén.me', meaning: 'why' },
+
+            // === ADVERBS ===
+            { char: '都', pinyin: 'dōu', meaning: 'all; both; in every case' },
+            { char: '也', pinyin: 'yě', meaning: 'also; too' },
+            { char: '还', pinyin: 'hái', meaning: 'still; also' },
+            { char: '很', pinyin: 'hěn', meaning: 'very' },
+            { char: '太', pinyin: 'tài', meaning: 'too; excessively' },
+            { char: '真', pinyin: 'zhēn', meaning: 'really; truly' },
+            { char: '更', pinyin: 'gèng', meaning: 'even more' },
+            { char: '就', pinyin: 'jiù', meaning: 'then; precisely; as early as' },
+            { char: '才', pinyin: 'cái', meaning: 'only then; just; only' },
+            { char: '常', pinyin: 'cháng', meaning: 'often' },
+            { char: '总', pinyin: 'zǒng', meaning: 'always' },
+            { char: '并', pinyin: 'bìng', meaning: 'actually (not); for emphasis' },
+            { char: '却', pinyin: 'què', meaning: 'but; yet; however' },
+            { char: '只', pinyin: 'zhǐ', meaning: 'only' },
+
+            // === BASIC VERBS ===
+            { char: '是', pinyin: 'shì', meaning: 'is; am; are' },
+            { char: '有', pinyin: 'yǒu', meaning: 'have; there is/are' },
+            { char: '在', pinyin: 'zài', meaning: 'be at; be located' },
+            { char: '会', pinyin: 'huì', meaning: 'can; will; know how to' },
+            { char: '能', pinyin: 'néng', meaning: 'can; be able to' },
+            { char: '可以', pinyin: 'kěyǐ', meaning: 'can; may' },
+            { char: '要', pinyin: 'yào', meaning: 'want; need; will' },
+            { char: '想', pinyin: 'xiǎng', meaning: 'want to; think; miss' },
+            { char: '得', pinyin: 'děi', meaning: 'have to; must' },
+            { char: '说', pinyin: 'shuō', meaning: 'speak; say' },
+            { char: '看', pinyin: 'kàn', meaning: 'look; see; read' },
+            { char: '来', pinyin: 'lái', meaning: 'come' },
+            { char: '去', pinyin: 'qù', meaning: 'go' },
+            { char: '做', pinyin: 'zuò', meaning: 'do; make' },
+            { char: '知道', pinyin: 'zhīdao', meaning: 'know' },
+            { char: '懂', pinyin: 'dǒng', meaning: 'understand' },
+            { char: '觉得', pinyin: 'jué.de', meaning: 'feel; think' },
+            { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like' },
+
+            // === LOCATION/TIME ===
+            { char: '上', pinyin: 'shàng', meaning: 'on; above; last' },
+            { char: '里', pinyin: 'lǐ', meaning: 'inside; in' },
+            { char: '边', pinyin: 'biān', meaning: 'side' },
+            { char: '现在', pinyin: 'xiànzài', meaning: 'now' },
+            { char: '以前', pinyin: 'yǐqián', meaning: 'before; previously' },
+            { char: '后来', pinyin: 'hòulái', meaning: 'later; afterwards' },
+            { char: '时候', pinyin: 'shí.hou', meaning: 'time; moment' },
+            { char: '今天', pinyin: 'jīntiān', meaning: 'today' },
+
+            // === MEASURE WORDS ===
+            { char: '个', pinyin: 'gè', meaning: 'general measure word' },
+            { char: '两', pinyin: 'liǎng', meaning: 'two (with measure words)' },
+
+            // === OTHER COMMON ===
+            { char: '不', pinyin: 'bù', meaning: 'no; not' },
+            { char: '没', pinyin: 'méi', meaning: 'not; have not' },
+            { char: '对', pinyin: 'duì', meaning: 'correct; right' },
+            { char: '多', pinyin: 'duō', meaning: 'many; much; more' },
+            { char: '大', pinyin: 'dà', meaning: 'big; large' },
+            { char: '小', pinyin: 'xiǎo', meaning: 'small; young' },
+            { char: '一样', pinyin: 'yīyàng', meaning: 'same; alike' },
+            { char: '一点儿', pinyin: 'yìdiǎnr', meaning: 'a little' },
+            { char: '一定', pinyin: 'yídìng', meaning: 'certainly; definitely' },
+            { char: '不一定', pinyin: 'bùyīdìng', meaning: 'not necessarily' },
+            { char: '还是', pinyin: 'háishì', meaning: 'or; still' },
+            { char: '有的', pinyin: 'yǒu.de', meaning: 'some' },
+            { char: '越来越', pinyin: 'yuèláiyuè', meaning: 'more and more' },
+            { char: '那么', pinyin: 'nà.me', meaning: 'then; in that case' },
+            { char: '只是', pinyin: 'zhǐ.shì', meaning: 'only; just; merely' },
+            { char: '只有', pinyin: 'zhǐyǒu', meaning: 'only; only if' },
+            { char: '就是', pinyin: 'jiù.shì', meaning: 'exactly; precisely' },
+
+            // === LESSONS 5–8 ADDITIONS ===
+            // --- People & things ---
+            { char: '老师', pinyin: 'lǎoshī', meaning: 'teacher' },
+            { char: '上课', pinyin: 'shàngkè', meaning: 'hold class; go to class' },
+            { char: '名字', pinyin: 'míng.zi', meaning: 'name' },
+            { char: '孩子', pinyin: 'hái.zi', meaning: 'child' },
+            { char: '电话', pinyin: 'diànhuà', meaning: 'phone call; telephone' },
+            { char: '号码', pinyin: 'hàomǎ', meaning: 'number' },
+            { char: '电影', pinyin: 'diànyǐng', meaning: 'movie' },
+
+            // --- Actions & verbs ---
+            { char: '问', pinyin: 'wèn', meaning: 'ask' },
+            { char: '叫', pinyin: 'jiào', meaning: 'call; be called; tell' },
+            { char: '写', pinyin: 'xiě', meaning: 'write' },
+            { char: '回答', pinyin: 'huídá', meaning: 'answer; respond' },
+            { char: '给', pinyin: 'gěi', meaning: 'for; to/give' },
+            { char: '打', pinyin: 'dǎ', meaning: 'dial or call (on phone)' },
+            { char: '买', pinyin: 'mǎi', meaning: 'buy' },
+            { char: '用', pinyin: 'yòng', meaning: 'use' },
+            { char: '拿', pinyin: 'ná', meaning: 'take with hand; bring; carry' },
+            { char: '教', pinyin: 'jiāo', meaning: 'teach' },
+            { char: '住', pinyin: 'zhù', meaning: 'stay; live' },
+            { char: '认识', pinyin: 'rèn.shi', meaning: 'know (a person); recognize' },
+            { char: '考虑', pinyin: 'kǎolǜ', meaning: 'consider' },
+            { char: '决定', pinyin: 'juédìng', meaning: 'decide' },
+            { char: '爱', pinyin: 'ài', meaning: 'love' },
+
+            // --- Time & sequence ---
+            { char: '明天', pinyin: 'míngtiān', meaning: 'tomorrow' },
+            { char: '每天', pinyin: 'měitiān', meaning: 'every day' },
+            { char: '已经', pinyin: 'yǐjīng', meaning: 'already' },
+            { char: '至少', pinyin: 'zhìshǎo', meaning: 'at least' },
+            { char: '再', pinyin: 'zài', meaning: 'again' },
+            { char: '过', pinyin: 'guò', meaning: 'verbal suffix for past experience' },
+            { char: '不过', pinyin: 'búguò', meaning: 'but; however' },
+            { char: '要是', pinyin: 'yàoshi', meaning: 'if' },
+
+            // --- Courtesy & questions ---
+            { char: '请', pinyin: 'qǐng', meaning: 'please; request' },
+            { char: '不好意思', pinyin: 'bùhǎoyì.si', meaning: 'embarrassing; sorry' },
+            { char: '您', pinyin: 'nín', meaning: 'you (a respectful form)' },
+            { char: '别', pinyin: 'bié', meaning: 'don\'t' },
+            { char: '有没有', pinyin: 'yǒu méiyǒu', meaning: 'have or not? are there?' },
+            { char: '谁', pinyin: 'shéi', meaning: 'who' },
+            { char: '怎么回事', pinyin: 'zěn.me huí shì', meaning: "what's the matter?" },
+
+            // --- States & attitudes ---
+            { char: '方便', pinyin: 'fāngbiàn', meaning: 'convenient' },
+            { char: '问题', pinyin: 'wèntí', meaning: 'problem; question' },
+            { char: '时间', pinyin: 'shíjiān', meaning: 'time' },
+            { char: '简单', pinyin: 'jiǎndān', meaning: 'simple' },
+            { char: '容易', pinyin: 'róngyì', meaning: 'easy' },
+            { char: '最好', pinyin: 'zuìhǎo', meaning: 'had better' },
+            { char: '行', pinyin: 'xíng', meaning: 'all right; OK; no problem' },
+            { char: '忙', pinyin: 'máng', meaning: 'busy' },
+            { char: '放心', pinyin: 'fàngxīn', meaning: 'don\'t worry; put down the heart' },
+            { char: '担心', pinyin: 'dānxīn', meaning: 'worry' },
+            { char: '无聊', pinyin: 'wúliáo', meaning: 'boring' },
+            { char: '认真', pinyin: 'rènzhēn', meaning: 'conscientious; earnest' },
+            { char: '轻松', pinyin: 'qīngsōng', meaning: 'relaxed; relaxing' },
+            { char: '愿意', pinyin: 'yuànyì', meaning: 'willing' },
+            { char: '应该', pinyin: 'yīnggāi', meaning: 'should; ought to' },
+            { char: '最', pinyin: 'zuì', meaning: 'most' },
+            { char: '许多', pinyin: 'xǔduō', meaning: 'many; much' },
+            { char: '一起', pinyin: 'yìqǐ', meaning: 'together' },
+            { char: '稍微', pinyin: 'shāowēi', meaning: 'a little; slightly' }
+        ];
+
+        initQuiz(characters, {
+            enablePreviewQueue: true,
+            previewQueueSize: 1,
+            previewElementId: 'upcomingCharacters',
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+        });
+    </script>
+</body>
+</html>
