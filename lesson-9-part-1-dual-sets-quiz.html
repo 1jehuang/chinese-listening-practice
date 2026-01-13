@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Lesson 9 Part 1: 2-Card Sets Mode - Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/engine/ai-service.js"></script>
+    <script src="js/engine/chat.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <a href="home.html" class="fixed top-4 left-4 bg-white hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg shadow border border-gray-200 transition text-sm z-50">← Home</a>
+
+        <div class="flex min-h-screen">
+        <!-- Mode Selector Sidebar -->
+        <div class="w-64 bg-white shadow-lg p-4 overflow-y-auto">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 mt-12">Card Sets</h2>
+
+            <!-- Card Set Selection -->
+            <div class="mb-6 pb-4 border-b border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-600 mb-2">Select Card Sets</h3>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="cardSet1" class="card-set-checkbox mr-2" checked>
+                        <span class="text-sm">Academic/Learning (16 words)</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="cardSet2" class="card-set-checkbox mr-2" checked>
+                        <span class="text-sm">Time/Plans/Travel (15 words)</span>
+                    </label>
+                </div>
+                <div class="mt-2 text-xs text-gray-500">
+                    Total: <span id="totalWords">31</span> words
+                </div>
+            </div>
+
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Quiz Modes</h2>
+            <div class="flex flex-col gap-2">
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition active:bg-blue-500 active:text-white active:border-blue-500 text-left text-sm" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-pinyin-tones-mc">Char → Pinyin (Tones MC)</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="missing-component">Missing Component</button>
+                <button class="mode-btn px-3 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 transition text-left text-sm" data-mode="study">Study Mode</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-4 md:p-8">
+            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Lesson 9 Part 1: 我要去中国 (2-Card Sets Mode)</h1>
+
+        <!-- Upcoming Preview -->
+        <div id="upcomingCharacters" class="hidden text-center mb-4">
+            <div class="text-xs uppercase tracking-widest text-gray-400">Upcoming</div>
+            <div class="preview-list flex justify-center gap-4 mt-2 text-4xl text-gray-300"></div>
+        </div>
+
+        <!-- Question Display -->
+        <div id="questionDisplay" class="text-center"></div>
+
+        <!-- Hint -->
+        <div id="hint" class="text-center text-2xl font-semibold my-4"></div>
+
+        <!-- Audio Section -->
+        <div id="audioSection" class="text-center my-4 hidden">
+            <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊 Play Sound</button>
+        </div>
+
+        <!-- Type Mode -->
+        <div id="typeMode" class="space-y-4">
+            <input type="text" id="answerInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <button id="checkBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition">Check Answer</button>
+        </div>
+
+        <!-- Choice Mode -->
+        <div id="choiceMode" class="hidden">
+            <div id="options" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Fuzzy Mode -->
+        <div id="fuzzyMode" class="hidden space-y-4">
+            <input type="text" id="fuzzyInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg" placeholder="Type your answer...">
+            <div id="fuzzyOptions" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Stroke Order Mode -->
+        <div id="strokeOrderMode" class="hidden">
+            <div id="strokeOrderWriter" class="flex justify-center my-8"></div>
+        </div>
+
+        <!-- Handwriting Mode -->
+        <div id="handwritingMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Practice writing on paper, then reveal the answer</div>
+            <div id="handwritingWriter" class="flex justify-center my-8"></div>
+            <div class="flex justify-center gap-3">
+                <button id="hwShowBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg transition text-lg">Show Answer</button>
+                <button id="hwNextBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg transition text-lg">Next</button>
+            </div>
+                            <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
+                </div>
+
+        <!-- Draw Character Mode -->
+        <div id="drawCharMode" class="hidden">
+            <div class="text-center mb-4">
+                <div id="ocrResult" class="text-6xl min-h-[80px] text-blue-600 font-bold" style="font-family: 'Noto Sans SC', sans-serif; font-weight: 700;"></div>
+                <div class="text-sm text-gray-500">Real-time recognition</div>
+            </div>
+            <canvas id="drawCanvas" class="border-2 border-gray-300 rounded-lg mx-auto cursor-crosshair" width="300" height="300"></canvas>
+            <div class="flex gap-3 justify-center mt-4">
+                <button id="clearCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition">🗑️ Clear</button>
+                <button id="submitDrawBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">✓ Submit</button>
+            </div>
+        </div>
+
+        <!-- Study Mode -->
+        <div id="studyMode" class="hidden">
+            <div class="text-center text-gray-600 mb-4">Study all vocabulary with audio</div>
+            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto"></div>
+        </div>
+
+        <!-- Missing Component Mode -->
+        <div id="missingComponentMode" class="hidden">
+            <input type="text" id="componentInput" placeholder="Type component pinyin..." class="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg text-center mb-4">
+            <div id="componentOptions" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Character Building Mode -->
+        <div id="charBuildingMode" class="hidden">
+            <input type="text" id="charBuildingInput" placeholder="Type component pinyin..." class="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg text-center mb-4">
+            <div id="charBuildingOptions" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="feedback" class="text-center text-2xl font-semibold my-4 min-h-[24px]"></div>
+
+        <!-- Stats -->
+        <div id="stats" class="flex justify-between text-sm text-gray-600 pt-4 border-t border-gray-200">
+            <span>Score: <span id="score" class="font-semibold">0</span>/<span id="total" class="font-semibold">0</span></span>
+            <span id="timerDisplay" style="display: none;"></span>
+            <span>Accuracy: <span id="accuracy" class="font-semibold">0%</span></span>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Card Set 1: Academic/Learning Terms
+        const cardSet1 = [
+            { char: '兴趣', pinyin: 'xìngqù', meaning: 'interest' },
+            { char: '重', pinyin: 'zhòng', meaning: 'heavy' },
+            { char: '平常', pinyin: 'píngcháng', meaning: 'ordinary; common; usual' },
+            { char: '语法', pinyin: 'yǔfǎ', meaning: 'grammar' },
+            { char: '结构', pinyin: 'jiégòu', meaning: 'structure' },
+            { char: '非常', pinyin: 'fēicháng', meaning: 'extremely' },
+            { char: '语言', pinyin: 'yǔyán', meaning: 'language' },
+            { char: '实验室', pinyin: 'shíyànshì', meaning: 'laboratory' },
+            { char: '设备', pinyin: 'shèbèi', meaning: 'facilities' },
+            { char: '练习', pinyin: 'liànxí', meaning: 'practice' },
+            { char: '机会', pinyin: 'jīhuì', meaning: 'opportunity; chance' },
+            { char: '中文桌子', pinyin: 'zhōngwénzhuō.zi', meaning: 'Chinese table' },
+            { char: '随便', pinyin: 'suíbiàn', meaning: 'casually; freely' },
+            { char: '谈谈', pinyin: 'tán.tan', meaning: 'talk; chat' },
+            { char: '口语', pinyin: 'kǒuyǔ', meaning: 'spoken language' },
+            { char: '进步', pinyin: 'jìnbù', meaning: 'make progress' }
+        ];
+
+        // Card Set 2: Time/Plans/Travel
+        const cardSet2 = [
+            { char: '只有…(才)', pinyin: 'zhǐyǒu...(cái)', meaning: 'only if... (then)' },
+            { char: '晚上', pinyin: 'wǎn.shang', meaning: 'evening; night' },
+            { char: '慢', pinyin: 'màn', meaning: 'slow' },
+            { char: '利用', pinyin: 'lìyòng', meaning: 'make use of; take advantage of' },
+            { char: '今年', pinyin: 'jīnnián', meaning: 'this year' },
+            { char: '暑假', pinyin: 'shǔjià', meaning: 'summer vacation' },
+            { char: '北京', pinyin: 'Běijīng', meaning: 'Beijing' },
+            { char: '参加', pinyin: 'cānjiā', meaning: 'join; participate in' },
+            { char: '短期', pinyin: 'duǎnqī', meaning: 'short term' },
+            { char: '训练班', pinyin: 'xùnliànbān', meaning: 'training class' }
+        ];
+
+        // Storage key for card set preferences
+        const CARD_SET_SELECTION_KEY = 'quiz_card_sets_lesson9_part1_dual';
+
+        // Function to get selected characters based on checkbox states
+        function getSelectedCharacters() {
+            const set1Checked = document.getElementById('cardSet1').checked;
+            const set2Checked = document.getElementById('cardSet2').checked;
+
+            let selectedCharacters = [];
+            if (set1Checked) selectedCharacters = selectedCharacters.concat(cardSet1);
+            if (set2Checked) selectedCharacters = selectedCharacters.concat(cardSet2);
+
+            return selectedCharacters;
+        }
+
+        // Function to update total words count
+        function updateWordCount() {
+            const selectedCharacters = getSelectedCharacters();
+            document.getElementById('totalWords').textContent = selectedCharacters.length;
+        }
+
+        // Function to save card set selection to localStorage
+        function saveCardSetSelection() {
+            const selection = {
+                cardSet1: document.getElementById('cardSet1').checked,
+                cardSet2: document.getElementById('cardSet2').checked
+            };
+            localStorage.setItem(CARD_SET_SELECTION_KEY, JSON.stringify(selection));
+        }
+
+        // Function to load card set selection from localStorage
+        function loadCardSetSelection() {
+            const saved = localStorage.getItem(CARD_SET_SELECTION_KEY);
+            if (saved) {
+                const selection = JSON.parse(saved);
+                document.getElementById('cardSet1').checked = selection.cardSet1 !== false; // default to true
+                document.getElementById('cardSet2').checked = selection.cardSet2 !== false; // default to true
+            }
+        }
+
+        // Function to reinitialize quiz with new character selection
+        function reinitializeQuiz() {
+            const selectedCharacters = getSelectedCharacters();
+            if (selectedCharacters.length === 0) {
+                alert('Please select at least one card set!');
+                return;
+            }
+
+            // Update global quiz characters (these are global variables in quiz-engine.js)
+            if (typeof quizCharacters !== 'undefined') {
+                // Update the global arrays
+                quizCharacters.length = 0; // Clear existing array
+                quizCharacters.push(...selectedCharacters); // Add selected characters
+
+                originalQuizCharacters.length = 0; // Clear existing array
+                originalQuizCharacters.push(...selectedCharacters); // Add selected characters
+
+                // Reset scheduler state if characters changed
+                if (typeof resetBatchState === 'function') resetBatchState();
+                if (typeof resetFeedState === 'function') resetFeedState();
+
+                // Generate a new question with updated character set
+                if (typeof generateQuestion === 'function') {
+                    generateQuestion();
+                }
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved preferences
+            loadCardSetSelection();
+            updateWordCount();
+
+            // Add event listeners to checkboxes
+            document.getElementById('cardSet1').addEventListener('change', function() {
+                updateWordCount();
+                saveCardSetSelection();
+                reinitializeQuiz();
+            });
+
+            document.getElementById('cardSet2').addEventListener('change', function() {
+                updateWordCount();
+                saveCardSetSelection();
+                reinitializeQuiz();
+            });
+        });
+
+        // Get initial character set
+        const characters = getSelectedCharacters();
+
+        // Initialize the quiz with the modular engine
+        initQuiz(characters, {
+            enablePreviewQueue: true,
+            previewQueueSize: 4,
+            previewElementId: 'upcomingCharacters',
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning']
+        });
+    </script>
+</body>
+</html>
