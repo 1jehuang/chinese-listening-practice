@@ -347,6 +347,7 @@ const SCHEDULER_MODES = {
     WEIGHTED: 'weighted',
     ADAPTIVE_5: 'adaptive-5',
     BATCH_5: 'batch-5',
+    BATCH_2: 'batch-2',
     ORDERED: 'ordered',
     FEED: 'feed',
     FEED_SR: 'feed-sr'
@@ -360,6 +361,8 @@ let schedulerOrderedIndex = 0;
 const BATCH_STATE_KEY_PREFIX = 'quiz_batch_state_';
 const BATCH_INITIAL_SIZE = 5;
 const BATCH_COMBINED_SIZE = 10;
+const BATCH_2_INITIAL_SIZE = 2;
+const BATCH_2_COMBINED_SIZE = 4;
 const BATCH_TOAST_ID = 'batchModeToast';
 let confettiStyleInjected = false;
 const BATCH_MASTER_MIN_STREAK = 2;
@@ -1745,6 +1748,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
             return 'Feed Graduate';
         case SCHEDULER_MODES.BATCH_5:
             return 'Batch sets (5 → 10 after full pass)';
+        case SCHEDULER_MODES.BATCH_2:
+            return 'Batch sets (2 → 4 after full pass)';
         case SCHEDULER_MODES.ORDERED:
             return 'In order (top-to-bottom)';
         case SCHEDULER_MODES.RANDOM:
@@ -1765,6 +1770,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
             return 'Feed mode with graduation; cards leave hand when confidence is high enough.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
+        case SCHEDULER_MODES.BATCH_2:
+            return 'Disjoint 2-card sets until every word is seen, then 4-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
             return 'Walk through the list in defined order and wrap.';
         case SCHEDULER_MODES.RANDOM:
@@ -1847,7 +1854,7 @@ function markSchedulerServed(question) {
     saveSchedulerStats();
     renderConfidenceList();
 
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         markBatchSeen(question.char);
     }
     if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
@@ -1889,7 +1896,7 @@ function markSchedulerOutcome(correct) {
 
     saveSchedulerStats();
 
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         maybeAdvanceBatchAfterAnswer();
     }
 
@@ -3406,7 +3413,14 @@ function showBatchSwapToast(setLabel, cycleNumber, setSize) {
 
 function getCurrentBatchSize() {
     const cycle = Number.isFinite(batchModeState?.cycleCount) ? batchModeState.cycleCount : 0;
+    if (schedulerMode === SCHEDULER_MODES.BATCH_2) {
+        return cycle > 0 ? BATCH_2_COMBINED_SIZE : BATCH_2_INITIAL_SIZE;
+    }
     return cycle > 0 ? BATCH_COMBINED_SIZE : BATCH_INITIAL_SIZE;
+}
+
+function isBatchMode() {
+    return isBatchMode() || schedulerMode === SCHEDULER_MODES.BATCH_2;
 }
 
 function selectBatchFromPool(pool, size) {
@@ -3417,7 +3431,7 @@ function selectBatchFromPool(pool, size) {
 }
 
 function startNewBatch() {
-    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
+    if (!isBatchMode()) return;
 
     const available = Array.isArray(quizCharacters) ? quizCharacters.slice() : [];
     if (!available.length) {
@@ -3458,7 +3472,7 @@ function startNewBatch() {
 
 function advanceBatchSetNow() {
     // Force-load the next batch set (used by command palette)
-    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+    if (!isBatchMode()) {
         setSchedulerMode(SCHEDULER_MODES.BATCH_5);
     }
 
@@ -3478,7 +3492,7 @@ function advanceBatchSetNow() {
 }
 
 function getBatchQuestionPool() {
-    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+    if (!isBatchMode()) {
         return Array.isArray(quizCharacters) ? quizCharacters : [];
     }
 
@@ -3492,7 +3506,7 @@ function getBatchQuestionPool() {
 }
 
 function prepareBatchForNextQuestion() {
-    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
+    if (!isBatchMode()) return;
     reconcileBatchStateWithQueue();
     const progress = getBatchMasteryProgress();
 
@@ -3506,7 +3520,7 @@ function prepareBatchForNextQuestion() {
 }
 
 function maybeAdvanceBatchAfterAnswer() {
-    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) return;
+    if (!isBatchMode()) return;
     const progress = getBatchMasteryProgress();
     const allSeen = progress.seenCount === progress.total;
     if (!progress.total) {
@@ -3528,7 +3542,7 @@ function updateBatchStatusDisplay() {
     const statusEl = document.getElementById('batchModeStatus');
     if (!statusEl) return;
 
-    if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+    if (!isBatchMode()) {
         statusEl.innerHTML = '';
         statusEl.className = 'hidden';
         return;
@@ -3678,14 +3692,14 @@ function checkComposerAdvance() {
 
 function setSchedulerMode(mode) {
     if (!Object.values(SCHEDULER_MODES).includes(mode)) return;
-    const switchingToBatch = mode === SCHEDULER_MODES.BATCH_5 && schedulerMode !== SCHEDULER_MODES.BATCH_5;
+    const switchingToBatch = (mode === SCHEDULER_MODES.BATCH_5 || mode === SCHEDULER_MODES.BATCH_2) && !isBatchMode();
     schedulerMode = mode;
     saveSchedulerMode(mode);
     if (switchingToBatch) {
         resetBatchState({ refresh: false });
     }
     updateSchedulerToolbar();
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         batchModeState.activeBatch = [];
         prepareBatchForNextQuestion();
     } else {
@@ -3722,7 +3736,7 @@ function getFullscreenQueueCandidates() {
         }
         return Array.isArray(deckPool) ? deckPool.slice() : [];
     }
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         const batchPool = getBatchQuestionPool();
         if (isPreviewModeActive() && Array.isArray(previewQueue) && previewQueue.length) {
             const previewChars = previewQueue.map(item => item && item.char);
@@ -3818,6 +3832,7 @@ function ensureSchedulerToolbar() {
                 <button id="schedulerFeedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed</button>
                 <button id="schedulerFeedSRBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed Grad</button>
                 <button id="schedulerBatchBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">5-Card Sets</button>
+                <button id="schedulerBatch2Btn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">2-Card Sets</button>
                 <button id="schedulerOrderedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">In Order</button>
             </div>
         `;
@@ -3839,6 +3854,7 @@ function ensureSchedulerToolbar() {
     const feedBtn = document.getElementById('schedulerFeedBtn');
     const feedSRBtn = document.getElementById('schedulerFeedSRBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
+    const batch2Btn = document.getElementById('schedulerBatch2Btn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
     if (randomBtn && !randomBtn.dataset.bound) {
@@ -3865,6 +3881,10 @@ function ensureSchedulerToolbar() {
         batchBtn.dataset.bound = 'true';
         batchBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_5);
     }
+    if (batch2Btn && !batch2Btn.dataset.bound) {
+        batch2Btn.dataset.bound = 'true';
+        batch2Btn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_2);
+    }
     if (orderedBtn && !orderedBtn.dataset.bound) {
         orderedBtn.dataset.bound = 'true';
         orderedBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.ORDERED);
@@ -3887,6 +3907,7 @@ function updateSchedulerToolbar() {
         { id: 'schedulerFeedBtn', mode: SCHEDULER_MODES.FEED },
         { id: 'schedulerFeedSRBtn', mode: SCHEDULER_MODES.FEED_SR },
         { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
+        { id: 'schedulerBatch2Btn', mode: SCHEDULER_MODES.BATCH_2 },
         { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
     ];
     btns.forEach(({ id, mode }) => {
@@ -3909,12 +3930,12 @@ function updateFullscreenNextSetButton() {
     const btn = document.getElementById('fullscreenNextSetBtn');
     if (!btn) return;
 
-    const inBatchMode = schedulerMode === SCHEDULER_MODES.BATCH_5;
+    const inBatchMode = isBatchMode();
     btn.disabled = !inBatchMode;
     btn.className = inBatchMode
         ? 'px-4 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition'
         : 'px-4 py-2 rounded-xl border border-gray-200 text-gray-400 font-semibold bg-gray-50 cursor-not-allowed transition';
-    btn.title = inBatchMode ? 'Load a fresh 5-card set now' : 'Switch to 5-Card Sets to use this';
+    btn.title = inBatchMode ? 'Load a fresh batch set now' : 'Switch to a Batch mode to use this';
 }
 
 function getRandomQuestion() {
@@ -3980,7 +4001,7 @@ function selectWeighted(pool) {
 function selectNextQuestion(exclusions = []) {
     const exclusionSet = new Set(exclusions || []);
     let sourcePool = quizCharacters;
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         sourcePool = getBatchQuestionPool();
     } else if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         sourcePool = getAdaptiveQuestionPool();
@@ -3994,6 +4015,7 @@ function selectNextQuestion(exclusions = []) {
         case SCHEDULER_MODES.ORDERED:
             return selectOrdered(pool, exclusionSet) || selectRandom(pool);
         case SCHEDULER_MODES.BATCH_5:
+        case SCHEDULER_MODES.BATCH_2:
             return selectRandom(pool);
         case SCHEDULER_MODES.ADAPTIVE_5:
             return selectWeighted(pool) || selectRandom(pool);
@@ -4590,7 +4612,7 @@ function resetForNextQuestion(prefillAnswer) {
 }
 
 function prepareSchedulerForNextQuestion() {
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         prepareBatchForNextQuestion();
     }
     if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
@@ -9651,7 +9673,7 @@ function enterFullscreenDrawing() {
     if (nextSetBtn && !nextSetBtn.dataset.bound) {
         nextSetBtn.dataset.bound = 'true';
         nextSetBtn.onclick = () => {
-            if (schedulerMode !== SCHEDULER_MODES.BATCH_5) {
+            if (!isBatchMode()) {
                 setSchedulerMode(SCHEDULER_MODES.BATCH_5);
             }
             advanceBatchSetNow();
@@ -12257,13 +12279,20 @@ function initQuizCommandPalette() {
             action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5)
         });
         actions.push({
-            name: 'Next Set (5-Card Mode)',
+            name: 'Next Item: 2-Card Batches',
+            type: 'action',
+            description: 'Work one random batch of 2 until mastered, then auto-rotate',
+            keywords: 'batch mode two cards grouped rotation mastery subset pair',
+            action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_2)
+        });
+        actions.push({
+            name: 'Next Set (Batch Mode)',
             type: 'action',
             description: 'Skip the current batch and load a fresh set immediately',
-            keywords: 'batch next set new five cards skip group rotate',
+            keywords: 'batch next set new cards skip group rotate',
             action: () => advanceBatchSetNow(),
-            available: () => schedulerMode === SCHEDULER_MODES.BATCH_5,
-            scope: '5-card sets only'
+            available: () => isBatchMode(),
+            scope: 'Batch modes only'
         });
         actions.push({
             name: 'Refresh Adaptive Deck (5-card)',
@@ -12687,7 +12716,7 @@ function initQuiz(charactersData, userConfig = {}) {
     // Setup collapsible sidebars
     setupCollapsibleSidebars();
 
-    if (schedulerMode === SCHEDULER_MODES.BATCH_5) {
+    if (isBatchMode()) {
         prepareBatchForNextQuestion();
     }
 
