@@ -329,25 +329,7 @@
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar w-64 bg-white shadow-lg">
-            <h2>Card Sets</h2>
-            <div class="card-set-selection" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
-                <p class="mode-desc">Select which card sets to include:</p>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <label style="display: flex; align-items: center; font-size: 0.875rem; cursor: pointer;">
-                        <input type="checkbox" id="cardSet1" class="card-set-checkbox" checked style="margin-right: 0.5rem;">
-                        <span>Academic Terms (13 words)</span>
-                    </label>
-                    <label style="display: flex; align-items: center; font-size: 0.875rem; cursor: pointer;">
-                        <input type="checkbox" id="cardSet2" class="card-set-checkbox" checked style="margin-right: 0.5rem;">
-                        <span>Daily Life & Plans (13 words)</span>
-                    </label>
-                </div>
-                <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280;">
-                    Total: <span id="totalWords">26</span> words
-                </div>
-            </div>
-
-            <h2 style="margin-top: 0;">Quiz Modes</h2>
+            <h2>Quiz Modes</h2>
             <p class="mode-desc">Choose a mode, then answer in the panel to the right.</p>
             <nav>
                 <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
@@ -484,121 +466,7 @@
     </div>
 
     <script>
-        // Card Set 1: Academic/Study Terms
-        const cardSet1 = [
-            { char: '兴趣', pinyin: 'xìngqù', meaning: 'interest' },
-            { char: '重', pinyin: 'zhòng', meaning: 'heavy' },
-            { char: '平常', pinyin: 'píngcháng', meaning: 'ordinary; common; usual' },
-            { char: '语法', pinyin: 'yǔfǎ', meaning: 'grammar' },
-            { char: '结构', pinyin: 'jiégòu', meaning: 'structure' },
-            { char: '非常', pinyin: 'fēicháng', meaning: 'extremely' },
-            { char: '语言', pinyin: 'yǔyán', meaning: 'language' },
-            { char: '实验室', pinyin: 'shíyànshì', meaning: 'laboratory' },
-            { char: '设备', pinyin: 'shèbèi', meaning: 'facilities' },
-            { char: '练习', pinyin: 'liànxí', meaning: 'practice' },
-            { char: '机会', pinyin: 'jīhuì', meaning: 'opportunity; chance' },
-            { char: '口语', pinyin: 'kǒuyǔ', meaning: 'spoken language' },
-            { char: '进步', pinyin: 'jìnbù', meaning: 'make progress' }
-        ];
-
-        // Card Set 2: Daily Life & Plans
-        const cardSet2 = [
-            { char: '只有…(才)', pinyin: 'zhǐyǒu...(cái)', meaning: 'only if... (then)' },
-            { char: '晚上', pinyin: 'wǎn.shang', meaning: 'evening; night' },
-            { char: '中文桌子', pinyin: 'zhōngwénzhuō.zi', meaning: 'Chinese table' },
-            { char: '随便', pinyin: 'suíbiàn', meaning: 'casually; freely' },
-            { char: '谈谈', pinyin: 'tán.tan', meaning: 'talk; chat' },
-            { char: '慢', pinyin: 'màn', meaning: 'slow' },
-            { char: '利用', pinyin: 'lìyòng', meaning: 'make use of; take advantage of' },
-            { char: '今年', pinyin: 'jīnnián', meaning: 'this year' },
-            { char: '暑假', pinyin: 'shǔjià', meaning: 'summer vacation' },
-            { char: '北京', pinyin: 'Běijīng', meaning: 'Beijing' },
-            { char: '参加', pinyin: 'cānjiā', meaning: 'join; participate in' },
-            { char: '短期', pinyin: 'duǎnqī', meaning: 'short term' },
-            { char: '训练班', pinyin: 'xùnliànbān', meaning: 'training class' }
-        ];
-
-        // Storage key for card set preferences
-        const CARD_SET_SELECTION_KEY = 'quiz_card_sets_lesson9_part1';
-
-        // Function to get selected characters based on checkbox states
-        function getSelectedCharacters() {
-            const set1Checked = document.getElementById('cardSet1').checked;
-            const set2Checked = document.getElementById('cardSet2').checked;
-
-            let selectedCharacters = [];
-            if (set1Checked) selectedCharacters = selectedCharacters.concat(cardSet1);
-            if (set2Checked) selectedCharacters = selectedCharacters.concat(cardSet2);
-
-            return selectedCharacters;
-        }
-
-        // Function to update total words count
-        function updateWordCount() {
-            const selectedCharacters = getSelectedCharacters();
-            document.getElementById('totalWords').textContent = selectedCharacters.length;
-        }
-
-        // Function to save card set selection to localStorage
-        function saveCardSetSelection() {
-            const selection = {
-                cardSet1: document.getElementById('cardSet1').checked,
-                cardSet2: document.getElementById('cardSet2').checked
-            };
-            localStorage.setItem(CARD_SET_SELECTION_KEY, JSON.stringify(selection));
-        }
-
-        // Function to load card set selection from localStorage
-        function loadCardSetSelection() {
-            const saved = localStorage.getItem(CARD_SET_SELECTION_KEY);
-            if (saved) {
-                const selection = JSON.parse(saved);
-                document.getElementById('cardSet1').checked = selection.cardSet1 !== false;
-                document.getElementById('cardSet2').checked = selection.cardSet2 !== false;
-            }
-        }
-
-        // Function to reinitialize quiz with new character selection
-        function reinitializeQuiz() {
-            const selectedCharacters = getSelectedCharacters();
-            if (selectedCharacters.length === 0) {
-                alert('Please select at least one card set!');
-                return;
-            }
-
-            // Update global quiz characters
-            if (window.originalQuizCharacters) {
-                window.quizCharacters = selectedCharacters;
-                window.originalQuizCharacters = [...selectedCharacters];
-
-                // Reinitialize relevant parts of the quiz
-                if (window.resetQuizState) window.resetQuizState();
-                if (window.generateQuestion) window.generateQuestion();
-            }
-        }
-
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load saved preferences
-            loadCardSetSelection();
-            updateWordCount();
-
-            // Add event listeners to checkboxes
-            document.getElementById('cardSet1').addEventListener('change', function() {
-                updateWordCount();
-                saveCardSetSelection();
-                reinitializeQuiz();
-            });
-
-            document.getElementById('cardSet2').addEventListener('change', function() {
-                updateWordCount();
-                saveCardSetSelection();
-                reinitializeQuiz();
-            });
-        });
-
-        // Get initial character set
-        const characters = getSelectedCharacters();
+        const characters = window.__LESSON_DATASETS__['lesson-9'].vocab.part1;
 
         initQuiz(characters, {
             enablePreviewQueue: true,
