@@ -3420,7 +3420,7 @@ function getCurrentBatchSize() {
 }
 
 function isBatchMode() {
-    return isBatchMode() || schedulerMode === SCHEDULER_MODES.BATCH_2;
+    return schedulerMode === SCHEDULER_MODES.BATCH_5 || schedulerMode === SCHEDULER_MODES.BATCH_2;
 }
 
 function selectBatchFromPool(pool, size) {
