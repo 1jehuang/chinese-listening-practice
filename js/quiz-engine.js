@@ -347,6 +347,7 @@ const SCHEDULER_MODES = {
     WEIGHTED: 'weighted',
     ADAPTIVE_5: 'adaptive-5',
     BATCH_5: 'batch-5',
+    BATCH_3: 'batch-3',
     BATCH_2: 'batch-2',
     ORDERED: 'ordered',
     FEED: 'feed',
@@ -363,6 +364,8 @@ const BATCH_INITIAL_SIZE = 5;
 const BATCH_COMBINED_SIZE = 10;
 const BATCH_2_INITIAL_SIZE = 2;
 const BATCH_2_COMBINED_SIZE = 4;
+const BATCH_3_INITIAL_SIZE = 3;
+const BATCH_3_COMBINED_SIZE = 6;
 const BATCH_TOAST_ID = 'batchModeToast';
 let confettiStyleInjected = false;
 const BATCH_MASTER_MIN_STREAK = 2;
@@ -1748,6 +1751,8 @@ function getSchedulerModeLabel(mode = schedulerMode) {
             return 'Feed Graduate';
         case SCHEDULER_MODES.BATCH_5:
             return 'Batch sets (5 → 10 after full pass)';
+        case SCHEDULER_MODES.BATCH_3:
+            return 'Batch sets (3 → 6 after full pass)';
         case SCHEDULER_MODES.BATCH_2:
             return 'Batch sets (2 → 4 after full pass)';
         case SCHEDULER_MODES.ORDERED:
@@ -1770,6 +1775,8 @@ function getSchedulerModeDescription(mode = schedulerMode) {
             return 'Feed mode with graduation; cards leave hand when confidence is high enough.';
         case SCHEDULER_MODES.BATCH_5:
             return 'Disjoint 5-card sets until every word is seen, then 10-card sets for combined practice.';
+        case SCHEDULER_MODES.BATCH_3:
+            return 'Disjoint 3-card sets until every word is seen, then 6-card sets for combined practice.';
         case SCHEDULER_MODES.BATCH_2:
             return 'Disjoint 2-card sets until every word is seen, then 4-card sets for combined practice.';
         case SCHEDULER_MODES.ORDERED:
@@ -3416,11 +3423,14 @@ function getCurrentBatchSize() {
     if (schedulerMode === SCHEDULER_MODES.BATCH_2) {
         return cycle > 0 ? BATCH_2_COMBINED_SIZE : BATCH_2_INITIAL_SIZE;
     }
+    if (schedulerMode === SCHEDULER_MODES.BATCH_3) {
+        return cycle > 0 ? BATCH_3_COMBINED_SIZE : BATCH_3_INITIAL_SIZE;
+    }
     return cycle > 0 ? BATCH_COMBINED_SIZE : BATCH_INITIAL_SIZE;
 }
 
 function isBatchMode() {
-    return schedulerMode === SCHEDULER_MODES.BATCH_5 || schedulerMode === SCHEDULER_MODES.BATCH_2;
+    return schedulerMode === SCHEDULER_MODES.BATCH_5 || schedulerMode === SCHEDULER_MODES.BATCH_3 || schedulerMode === SCHEDULER_MODES.BATCH_2;
 }
 
 function selectBatchFromPool(pool, size) {
@@ -3832,6 +3842,7 @@ function ensureSchedulerToolbar() {
                 <button id="schedulerFeedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed</button>
                 <button id="schedulerFeedSRBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed Grad</button>
                 <button id="schedulerBatchBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">5-Card Sets</button>
+                <button id="schedulerBatch3Btn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">3-Card Sets</button>
                 <button id="schedulerBatch2Btn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">2-Card Sets</button>
                 <button id="schedulerOrderedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">In Order</button>
             </div>
@@ -3854,6 +3865,7 @@ function ensureSchedulerToolbar() {
     const feedBtn = document.getElementById('schedulerFeedBtn');
     const feedSRBtn = document.getElementById('schedulerFeedSRBtn');
     const batchBtn = document.getElementById('schedulerBatchBtn');
+    const batch3Btn = document.getElementById('schedulerBatch3Btn');
     const batch2Btn = document.getElementById('schedulerBatch2Btn');
     const orderedBtn = document.getElementById('schedulerOrderedBtn');
 
@@ -3881,6 +3893,10 @@ function ensureSchedulerToolbar() {
         batchBtn.dataset.bound = 'true';
         batchBtn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_5);
     }
+    if (batch3Btn && !batch3Btn.dataset.bound) {
+        batch3Btn.dataset.bound = 'true';
+        batch3Btn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_3);
+    }
     if (batch2Btn && !batch2Btn.dataset.bound) {
         batch2Btn.dataset.bound = 'true';
         batch2Btn.onclick = () => setSchedulerMode(SCHEDULER_MODES.BATCH_2);
@@ -3907,6 +3923,7 @@ function updateSchedulerToolbar() {
         { id: 'schedulerFeedBtn', mode: SCHEDULER_MODES.FEED },
         { id: 'schedulerFeedSRBtn', mode: SCHEDULER_MODES.FEED_SR },
         { id: 'schedulerBatchBtn', mode: SCHEDULER_MODES.BATCH_5 },
+        { id: 'schedulerBatch3Btn', mode: SCHEDULER_MODES.BATCH_3 },
         { id: 'schedulerBatch2Btn', mode: SCHEDULER_MODES.BATCH_2 },
         { id: 'schedulerOrderedBtn', mode: SCHEDULER_MODES.ORDERED }
     ];
@@ -12286,6 +12303,13 @@ function initQuizCommandPalette() {
             description: 'Work one random batch of 5 until mastered, then auto-rotate',
             keywords: 'batch mode five cards grouped rotation mastery subset',
             action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5)
+        });
+        actions.push({
+            name: 'Next Item: 3-Card Batches',
+            type: 'action',
+            description: 'Work one random batch of 3 until mastered, then auto-rotate',
+            keywords: 'batch mode three cards grouped rotation mastery subset',
+            action: () => setSchedulerMode(SCHEDULER_MODES.BATCH_3)
         });
         actions.push({
             name: 'Next Item: 2-Card Batches',
