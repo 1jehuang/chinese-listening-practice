@@ -8175,6 +8175,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
     const prevUserAnswer = pinyinDictationPreviousUserAnswer;
     const prevChar = prev ? escapeHtml(prev.char || '') : '';
     const prevPinyin = prev ? escapeHtml(prev.pinyin || '') : '';
+    const prevMeaning = prev ? escapeHtml(prev.meaning || '') : '';
 
     // Determine result styling
     let prevResultClass = '';
@@ -8211,6 +8212,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
             </div>
             <div class="column-char" style="font-size: 28px;">${prevChar}</div>
             <div class="column-pinyin" style="font-size: 15px; color: #1d4ed8;">${prevPinyin}</div>
+            <div class="column-meaning" style="font-size: 13px; color: #64748b; margin-top: 4px;">${prevMeaning}</div>
             ${userAnswerDisplay ? `
                 <div style="font-size: 13px; margin-top: 6px; padding: 4px 8px; background: ${isCorrect ? '#dcfce7' : '#fee2e2'}; border-radius: 4px; color: ${isCorrect ? '#166534' : '#991b1b'};">
                     Your answer: ${userAnswerDisplay}
