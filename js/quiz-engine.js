@@ -5442,6 +5442,15 @@ function checkAnswer() {
 
     const userAnswer = answerInput.value.trim();
 
+    // Quick "j" shortcut to mark as wrong (skip/don't know)
+    if (userAnswer.toLowerCase() === 'j') {
+        if (answerInput) answerInput.value = '';
+        handleWrongAnswer();
+        updateStats();
+        scheduleNextQuestion(2000);
+        return;
+    }
+
     if (mode === 'char-to-tones') {
         const expectedTones = extractToneSequence(currentQuestion.pinyin.split('/')[0].trim());
 
