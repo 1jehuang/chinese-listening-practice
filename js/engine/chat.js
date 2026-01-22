@@ -216,6 +216,19 @@ async function sendChatMessage() {
     }
 }
 
+function resetChatForNewWord() {
+    // Clear chat messages and reset context for the new word
+    chatMessages = [];
+    const messagesEl = document.getElementById('chatMessages');
+    if (messagesEl) {
+        messagesEl.innerHTML = '';
+    }
+    // Re-add context if chat panel is visible
+    if (chatPanelVisible) {
+        addChatContext();
+    }
+}
+
 function saveChatPanelVisibility() {
     try {
         localStorage.setItem(CHAT_PANEL_KEY, chatPanelVisible ? '1' : '0');

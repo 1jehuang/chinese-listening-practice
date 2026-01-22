@@ -3561,6 +3561,7 @@ function updateBatchStatusDisplay() {
     const progress = getBatchMasteryProgress();
     const active = progress.active;
     const masteredCount = progress.masteredCount;
+    const leftInSet = Math.max(0, active.length - masteredCount);
     const totalAvailable = Array.isArray(quizCharacters) ? quizCharacters.length : active.length;
     const usedCount = Array.isArray(batchModeState.usedChars) ? batchModeState.usedChars.length : 0;
     const remaining = Math.max(0, totalAvailable - usedCount);
@@ -3585,7 +3586,7 @@ function updateBatchStatusDisplay() {
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-500">Batch Mode</div>
         <div class="text-sm text-blue-900">Set ${setLabel} · ${cycleLabel} · ${currentBatchSize}-card set: ${charBadges}</div>
-        <div class="text-[11px] text-blue-800">${masteredCount}/${active.length} mastered · ${remaining} unused left</div>
+        <div class="text-[11px] text-blue-800">${masteredCount}/${active.length} mastered · ${leftInSet} left in set · ${remaining} unused left</div>
     `;
 }
 
@@ -4216,7 +4217,12 @@ function togglePreviewQueue() {
 
 function checkPinyinMatch(userAnswer, correct) {
     const user = userAnswer.toLowerCase().trim();
-    const correctLower = correct.toLowerCase().trim();
+    let correctLower = correct.toLowerCase().trim();
+
+    // Strip parenthetical content from the expected answer
+    // e.g., "láihuí (jīpiào)" -> "láihuí"
+    // This allows users to type just the main word
+    const strippedCorrect = correctLower.replace(/\s*\([^)]*\)\s*/g, '').trim();
 
     // Handle multiple pronunciations (e.g., "cháng/zhǎng")
     if (correctLower.includes('/')) {
@@ -4224,12 +4230,24 @@ function checkPinyinMatch(userAnswer, correct) {
         return options.some(option => checkPinyinMatch(user, option));
     }
 
-    // Strip parentheses from answer key (e.g., "shēng(yīn)" -> "shēngyīn")
-    // User should type the full pinyin without literal parentheses
+    // Check against the stripped version first (main word only)
+    // e.g., "láihuí (jīpiào)" -> accepts just "lai2hui2"
+    if (strippedCorrect !== correctLower) {
+        if (checkPinyinMatchInternal(user, strippedCorrect)) return true;
+    }
+
+    // Also try stripping just parentheses (keeping content)
+    // e.g., "shēng(yīn)" -> accepts "sheng1yin1"
     if (correctLower.includes('(') && correctLower.includes(')')) {
         const withoutParens = correctLower.replace(/[()]/g, '');
-        return checkPinyinMatch(user, withoutParens);
+        if (checkPinyinMatchInternal(user, withoutParens)) return true;
     }
+
+    // Also accept the full answer with parenthetical content
+    return checkPinyinMatchInternal(user, correctLower);
+}
+
+function checkPinyinMatchInternal(user, correctLower) {
 
     // Direct match first (covers identical formatting, tone marks, etc.)
     if (user === correctLower) return true;
@@ -4293,7 +4311,8 @@ function splitSentenceIntoChunks(sentence) {
 
 function getPartialMatch(userAnswer, correct) {
     const user = userAnswer.toLowerCase().trim();
-    const correctLower = correct.toLowerCase().trim();
+    // Strip parenthetical content (e.g., "láihuí (jīpiào)" -> "láihuí")
+    const correctLower = correct.toLowerCase().trim().replace(/\s*\([^)]*\)\s*/g, '').trim();
     const correctWithNumbers = convertPinyinToToneNumbers(correctLower);
 
     // Split into syllables (handles both spaced and non-spaced)
@@ -4625,6 +4644,10 @@ function resetForNextQuestion(prefillAnswer) {
     hint.className = 'text-center text-2xl font-semibold my-4';
     threeColumnInlineFeedback = null;
     translationInlineFeedback = null;
+    // Reset chat context for new word
+    if (typeof resetChatForNewWord === 'function') {
+        resetChatForNewWord();
+    }
     if (answerInput) {
         // Don't prefill for char-to-tones mode - tones from previous answer don't carry over
         answerInput.value = (mode === 'char-to-tones') ? '' : prefillAnswer;
@@ -5232,6 +5255,9 @@ function generateQuestion(options = {}) {
 
     // Show current word confidence
     updateCurrentWordConfidence();
+    if (isFullscreenMode) {
+        updateFullscreenConfidence();
+    }
 }
 
 function syncQuestionAfterSelection() {
@@ -9770,9 +9796,18 @@ function updateFullscreenConfidence() {
     const confidenceEl = document.getElementById('fullscreenConfidence');
     if (!confidenceEl || !currentQuestion) return;
 
-    const score = getConfidenceScore(currentQuestion.char);
-    const pct = Math.round(score * 100);
-    confidenceEl.textContent = `Confidence: ${pct}%`;
+    const rawScore = getConfidenceScore(currentQuestion.char);
+    const score = Number.isFinite(rawScore) ? rawScore : 0;
+    const threshold = getConfidenceMasteryThreshold();
+    const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
+    const masteredBadge = score >= threshold ? ' ✓' : '';
+
+    if (isBKT) {
+        const pct = Math.round(score * 100);
+        confidenceEl.textContent = `Confidence: ${pct}%${masteredBadge}`;
+    } else {
+        confidenceEl.textContent = `Confidence: ${score.toFixed(2)}${masteredBadge}`;
+    }
 }
 
 // Fullscreen Learn Mode - blink current character in center of screen
