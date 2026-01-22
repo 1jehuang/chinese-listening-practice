@@ -4224,6 +4224,13 @@ function checkPinyinMatch(userAnswer, correct) {
         return options.some(option => checkPinyinMatch(user, option));
     }
 
+    // Strip parentheses from answer key (e.g., "shēng(yīn)" -> "shēngyīn")
+    // User should type the full pinyin without literal parentheses
+    if (correctLower.includes('(') && correctLower.includes(')')) {
+        const withoutParens = correctLower.replace(/[()]/g, '');
+        return checkPinyinMatch(user, withoutParens);
+    }
+
     // Direct match first (covers identical formatting, tone marks, etc.)
     if (user === correctLower) return true;
 
@@ -4240,6 +4247,13 @@ function checkPinyinMatch(userAnswer, correct) {
     if (baseMatches && toneMatches) return true;
 
     return false;
+}
+
+// Clean pinyin for display by removing parentheses (keeps content inside them)
+// e.g., "shēng(yīn)" -> "shēngyīn"
+function cleanPinyinForDisplay(pinyin) {
+    if (!pinyin) return '';
+    return pinyin.replace(/[()]/g, '');
 }
 
 // Split a Chinese sentence into manageable chunks by punctuation
@@ -5481,7 +5495,7 @@ function checkAnswer() {
             }
             lastAnswerCorrect = true;
 
-            feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin} (${expectedTones})`;
+            feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${cleanPinyinForDisplay(currentQuestion.pinyin)} (${expectedTones})`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
@@ -5508,7 +5522,7 @@ function checkAnswer() {
             }
             lastAnswerCorrect = false;
 
-            feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${currentQuestion.pinyin})`;
+            feedback.textContent = `✗ Wrong. The answer is: ${expectedTones} (${cleanPinyinForDisplay(currentQuestion.pinyin)})`;
             feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
             hint.textContent = `Meaning: ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
@@ -5775,7 +5789,7 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
         }
 
         // Show reference
-        hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${currentQuestion.pinyin})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
+        hint.innerHTML = `<div class="text-sm text-gray-500 mt-2"><strong>Chinese:</strong> ${currentQuestion.char} (${cleanPinyinForDisplay(currentQuestion.pinyin)})<br><strong>Reference:</strong> ${currentQuestion.meaning}</div>`;
         hint.className = 'text-center my-2';
 
         // Clear input
@@ -5839,9 +5853,9 @@ function handleCorrectFullAnswer(userAnswer = '') {
     }
 
     if (mode === 'audio-to-pinyin') {
-        feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
+        feedback.textContent = `✓ Correct! ${cleanPinyinForDisplay(currentQuestion.pinyin)} (${currentQuestion.char})`;
     } else {
-        feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
+        feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${cleanPinyinForDisplay(currentQuestion.pinyin)}`;
     }
     feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
@@ -5902,9 +5916,9 @@ function handleCorrectSyllable(syllables, fullPinyin) {
         }
 
         if (mode === 'audio-to-pinyin') {
-            feedback.textContent = `✓ Correct! ${currentQuestion.pinyin} (${currentQuestion.char})`;
+            feedback.textContent = `✓ Correct! ${cleanPinyinForDisplay(currentQuestion.pinyin)} (${currentQuestion.char})`;
         } else {
-            feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${currentQuestion.pinyin}`;
+            feedback.textContent = `✓ Correct! ${currentQuestion.char} = ${cleanPinyinForDisplay(currentQuestion.pinyin)}`;
         }
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         hint.textContent = `Meaning: ${currentQuestion.meaning}`;
@@ -5929,9 +5943,9 @@ function handleWrongAnswer() {
     markSchedulerOutcome(false);
 
     if (mode === 'audio-to-pinyin') {
-        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin} (${currentQuestion.char})`;
+        feedback.textContent = `✗ Wrong. The answer is: ${cleanPinyinForDisplay(currentQuestion.pinyin)} (${currentQuestion.char})`;
     } else {
-        feedback.textContent = `✗ Wrong. The answer is: ${currentQuestion.pinyin}`;
+        feedback.textContent = `✗ Wrong. The answer is: ${cleanPinyinForDisplay(currentQuestion.pinyin)}`;
     }
     feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     hint.textContent = `Meaning: ${currentQuestion.meaning}`;
