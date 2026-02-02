@@ -136,6 +136,10 @@ let handwritingHoldTimeout = null;
 let studyModeInitialized = false;
 let drawModeInitialized = false;
 let fullscreenDrawInitialized = false;
+let drawHintWriter = null;
+let drawHintRequestId = 0;
+let fullscreenHintWriter = null;
+let fullscreenHintRequestId = 0;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
@@ -4854,6 +4858,7 @@ function resetForNextQuestion(prefillAnswer) {
     lastAnswerCorrect = false;
     clearComponentBreakdown();
     hideDrawNextButton();
+    clearDrawHint();
     syncModeLayoutState();
 }
 
@@ -9308,6 +9313,7 @@ function initCanvas() {
     const clearBtn = document.getElementById('clearCanvasBtn');
     const submitBtn = document.getElementById('submitDrawBtn');
     const showAnswerBtn = document.getElementById('showDrawAnswerBtn');
+    const hintBtn = document.getElementById('drawHintBtn');
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
     const zoomInBtn = document.getElementById('zoomInBtn');
@@ -9318,6 +9324,7 @@ function initCanvas() {
     if (clearBtn) clearBtn.onclick = clearCanvas;
     if (submitBtn) submitBtn.onclick = submitDrawing;
     if (showAnswerBtn) showAnswerBtn.onclick = revealDrawingAnswer;
+    if (hintBtn) hintBtn.onclick = () => showDrawHint();
     if (undoBtn) undoBtn.onclick = undoStroke;
     if (redoBtn) redoBtn.onclick = redoStroke;
     if (zoomInBtn) zoomInBtn.onclick = zoomIn;
@@ -9682,6 +9689,163 @@ function updateOcrCandidates(candidates = []) {
     });
 }
 
+function getDrawHintTargetChar() {
+    if (!currentQuestion) return '';
+    const raw = (mode === 'draw-missing-component' && currentMissingComponent)
+        ? currentMissingComponent.char
+        : currentQuestion.char;
+    if (!raw) return '';
+    const cleaned = stripPlaceholderChars(raw);
+    const chars = Array.from(cleaned).filter(c => /[\u3400-\u9FFF]/.test(c));
+    return chars[0] || '';
+}
+
+function getDrawHintElements(isFullscreen = false) {
+    if (isFullscreen) {
+        return {
+            box: document.getElementById('fullscreenHintBox'),
+            writer: document.getElementById('fullscreenHintWriter'),
+            label: document.getElementById('fullscreenHintLabel')
+        };
+    }
+    return {
+        box: document.getElementById('drawHintBox'),
+        writer: document.getElementById('drawHintWriter'),
+        label: document.getElementById('drawHintLabel')
+    };
+}
+
+function clearDrawHintContext(isFullscreen = false) {
+    if (isFullscreen) {
+        fullscreenHintRequestId++;
+        if (fullscreenHintWriter && typeof fullscreenHintWriter.cancelAnimation === 'function') {
+            fullscreenHintWriter.cancelAnimation();
+        }
+        fullscreenHintWriter = null;
+    } else {
+        drawHintRequestId++;
+        if (drawHintWriter && typeof drawHintWriter.cancelAnimation === 'function') {
+            drawHintWriter.cancelAnimation();
+        }
+        drawHintWriter = null;
+    }
+
+    const { box, writer, label } = getDrawHintElements(isFullscreen);
+    if (box) box.classList.add('hidden');
+    if (writer) writer.innerHTML = '';
+    if (label) label.textContent = '';
+}
+
+function clearDrawHint() {
+    clearDrawHintContext(false);
+    clearDrawHintContext(true);
+}
+
+async function showDrawHint(isFullscreen = false) {
+    const targetChar = getDrawHintTargetChar();
+    if (!targetChar) return;
+
+    const { box, writer, label } = getDrawHintElements(isFullscreen);
+    if (!writer) return;
+
+    const requestId = isFullscreen ? ++fullscreenHintRequestId : ++drawHintRequestId;
+    if (box) box.classList.remove('hidden');
+    if (label) label.textContent = 'Loading hint...';
+
+    try {
+        await ensureHanziWriterLoaded();
+    } catch (err) {
+        console.warn('Hint unavailable:', err);
+        if (label) label.textContent = 'Hint unavailable';
+        return;
+    }
+
+    const latestRequestId = isFullscreen ? fullscreenHintRequestId : drawHintRequestId;
+    if (requestId !== latestRequestId) return;
+
+    if (isFullscreen) {
+        if (fullscreenHintWriter && typeof fullscreenHintWriter.cancelAnimation === 'function') {
+            fullscreenHintWriter.cancelAnimation();
+        }
+        fullscreenHintWriter = null;
+    } else {
+        if (drawHintWriter && typeof drawHintWriter.cancelAnimation === 'function') {
+            drawHintWriter.cancelAnimation();
+        }
+        drawHintWriter = null;
+    }
+
+    writer.innerHTML = '';
+    const size = Math.max(64, Math.min(writer.clientWidth || 96, writer.clientHeight || 96));
+
+    let writerInstance = null;
+    try {
+        writerInstance = HanziWriter.create(writer, targetChar, {
+            width: size,
+            height: size,
+            padding: 4,
+            showOutline: false,
+            showCharacter: false,
+            strokeAnimationSpeed: 1,
+            delayBetweenStrokes: 80,
+            strokeColor: '#3b82f6'
+        });
+    } catch (err) {
+        console.warn('Failed to create hint writer', err);
+        if (label) label.textContent = 'Hint unavailable';
+        return;
+    }
+
+    if (isFullscreen) {
+        fullscreenHintWriter = writerInstance;
+    } else {
+        drawHintWriter = writerInstance;
+    }
+
+    let strokeCount = 1;
+    if (HanziWriter && typeof HanziWriter.loadCharacterData === 'function') {
+        try {
+            const data = await HanziWriter.loadCharacterData(targetChar);
+            if (data && Array.isArray(data.strokes) && data.strokes.length > 0) {
+                strokeCount = Math.min(2, data.strokes.length);
+            } else if (data && Array.isArray(data.strokes)) {
+                strokeCount = 0;
+            }
+        } catch (err) {
+            console.warn('Failed to load stroke data for hint', err);
+        }
+    }
+
+    const latestAfterLoad = isFullscreen ? fullscreenHintRequestId : drawHintRequestId;
+    if (requestId !== latestAfterLoad) return;
+
+    if (strokeCount === 0) {
+        if (label) label.textContent = 'Hint unavailable';
+        return;
+    }
+
+    if (typeof writerInstance.animateStroke === 'function') {
+        for (let i = 0; i < strokeCount; i++) {
+            try {
+                await writerInstance.animateStroke(i);
+            } catch (err) {
+                console.warn('Hint stroke animation failed', err);
+                if (label) label.textContent = 'Hint unavailable';
+                return;
+            }
+            const latestDuring = isFullscreen ? fullscreenHintRequestId : drawHintRequestId;
+            if (requestId !== latestDuring) return;
+        }
+    } else if (typeof writerInstance.animateCharacter === 'function') {
+        writerInstance.animateCharacter();
+    }
+
+    if (label) {
+        const suffix = strokeCount === 1 ? 'stroke' : 'strokes';
+        label.textContent = `${targetChar} first ${strokeCount} ${suffix}`;
+    }
+}
+
 function submitDrawing() {
     const ocrResult = document.getElementById('ocrResult');
     if (!ocrResult) return;
@@ -9994,6 +10158,7 @@ function enterFullscreenDrawing() {
 
     isFullscreenMode = true;
     container.classList.remove('hidden');
+    clearDrawHintContext(true);
 
     // Update prompt
     const prompt = document.getElementById('fullscreenPrompt');
@@ -10046,6 +10211,7 @@ function enterFullscreenDrawing() {
     const clearBtn = document.getElementById('fullscreenClearBtn');
     const submitBtn = document.getElementById('fullscreenSubmitBtn');
     const showAnswerBtn = document.getElementById('fullscreenShowAnswerBtn');
+    const hintBtn = document.getElementById('fullscreenHintBtn');
     const nextBtn = document.getElementById('fullscreenNextBtn');
     const nextSetBtn = document.getElementById('fullscreenNextSetBtn');
     const exitBtn = document.getElementById('exitFullscreenBtn');
@@ -10055,6 +10221,7 @@ function enterFullscreenDrawing() {
     if (clearBtn) clearBtn.onclick = clearFullscreenCanvas;
     if (submitBtn) submitBtn.onclick = submitFullscreenDrawing;
     if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
+    if (hintBtn) hintBtn.onclick = () => showDrawHint(true);
     if (nextBtn) nextBtn.onclick = nextFullscreenQuestion;
     if (nextSetBtn && !nextSetBtn.dataset.bound) {
         nextSetBtn.dataset.bound = 'true';
@@ -10108,6 +10275,7 @@ function exitFullscreenDrawing() {
     if (fullscreenCanvas && fullscreenCtx) {
         fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
     }
+    clearDrawHintContext(true);
 }
 
 function updateFullscreenConfidence() {
@@ -10796,6 +10964,11 @@ function ensureDrawModeLayout() {
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
                     <div id="ocrResult" class="text-5xl font-semibold text-blue-600 min-h-[72px]">&nbsp;</div>
                     <div id="ocrCandidates" class="flex flex-wrap gap-2 justify-center lg:justify-start"></div>
+                    <div id="drawHintBox" class="hidden mt-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                        <div class="text-xs uppercase tracking-[0.3em] text-blue-400">Hint</div>
+                        <div id="drawHintWriter" class="mt-2 mx-auto w-24 h-24"></div>
+                        <div id="drawHintLabel" class="mt-1 text-xs text-blue-500 text-center"></div>
+                    </div>
                 </div>
                 <div class="flex-1 flex flex-col gap-3">
                     <canvas id="drawCanvas" width="400" height="400" class="w-full aspect-square bg-white border border-gray-200 rounded-2xl shadow-inner touch-none select-none"></canvas>
@@ -10815,6 +10988,7 @@ function ensureDrawModeLayout() {
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button id="clearCanvasBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-red-400 hover:text-red-600 transition">Clear</button>
+                    <button id="drawHintBtn" type="button" class="px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-400 hover:text-blue-700 transition">Hint</button>
                     <button id="showDrawAnswerBtn" type="button" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Show Answer</button>
                     <button id="submitDrawBtn" type="button" class="px-4 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition">Submit</button>
                     <button id="drawNextBtn" type="button" class="hidden px-4 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-400 transition">Next</button>
@@ -10858,6 +11032,11 @@ function ensureFullscreenDrawLayout() {
                 <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200 w-32">
                     <div class="text-xs uppercase tracking-[0.25em] text-gray-400 mb-2">Match</div>
                     <div id="fullscreenOcrResult" class="text-6xl font-bold text-blue-600 text-center min-h-[80px]" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">&nbsp;</div>
+                    <div id="fullscreenHintBox" class="hidden mt-3 rounded-xl border border-blue-100 bg-blue-50/70 p-2">
+                        <div class="text-xs uppercase tracking-[0.2em] text-blue-400 text-center">Hint</div>
+                        <div id="fullscreenHintWriter" class="mt-2 mx-auto w-20 h-20"></div>
+                        <div id="fullscreenHintLabel" class="mt-1 text-xs text-blue-500 text-center"></div>
+                    </div>
                 </div>
             </div>
 
@@ -10877,6 +11056,7 @@ function ensureFullscreenDrawLayout() {
                     <div class="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-gray-200 flex gap-2">
                         <button id="fullscreenNextSetBtn" type="button" class="px-3 py-2 rounded-xl border border-amber-200 text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 transition text-sm">Next Set</button>
                         <button id="fullscreenShowAnswerBtn" type="button" class="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition text-sm">Show</button>
+                        <button id="fullscreenHintBtn" type="button" class="px-3 py-2 rounded-xl border border-blue-200 text-blue-600 font-semibold hover:border-blue-400 hover:text-blue-700 transition text-sm">Hint</button>
                         <button id="fullscreenLearnBtn" type="button" class="px-3 py-2 rounded-xl border border-yellow-400 text-yellow-700 font-semibold bg-yellow-50 hover:bg-yellow-100 transition text-sm">📖 Learn</button>
                         <button id="fullscreenSubmitBtn" type="button" class="px-3 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition text-sm">Submit</button>
                         <button id="fullscreenNextBtn" type="button" class="px-3 py-2 rounded-xl border border-blue-500 text-blue-600 font-semibold hover:bg-blue-50 transition text-sm">Next →</button>
