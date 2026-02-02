@@ -10051,15 +10051,17 @@ function renderPerCharMeaning(text, targetEl, options = {}) {
     }
     const headerHtml = options.headerHtml ?? '<div class="text-sm text-gray-600">Characters</div>';
     const bodyClass = options.bodyClass ?? 'text-sm text-gray-700 mt-1';
-    targetEl.innerHTML = `${headerHtml}<div class="${bodyClass}">${lines.join('<br>')}</div>`;
+    const separator = options.separator ?? ' · ';
+    targetEl.innerHTML = `${headerHtml}<div class="${bodyClass}">${lines.join(separator)}</div>`;
     targetEl.className = options.wrapperClass || 'text-center my-2';
 }
 
 function renderPerCharMeaningInline(text, targetEl, baseHtml, options = {}) {
     if (!targetEl) return;
     const { lines } = buildIndividualCharMeaningLines(text, options);
+    const separator = options.separator ?? ' · ';
     const perCharHtml = lines.length
-        ? `<div style="margin-top:6px;font-size:0.85rem;color:#cbd5f5;">${lines.join('<br>')}</div>`
+        ? `<div style="margin-top:6px;font-size:0.85rem;color:#cbd5f5;">${lines.join(separator)}</div>`
         : '';
     targetEl.innerHTML = `${baseHtml}${perCharHtml}`;
 }
