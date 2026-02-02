@@ -9689,15 +9689,34 @@ function updateOcrCandidates(candidates = []) {
     });
 }
 
-function getDrawHintTargetChar() {
+function getDrawHintTargetChar(isFullscreen = false) {
     if (!currentQuestion) return '';
-    const raw = (mode === 'draw-missing-component' && currentMissingComponent)
+    const rawExpected = (mode === 'draw-missing-component' && currentMissingComponent)
         ? currentMissingComponent.char
         : currentQuestion.char;
-    if (!raw) return '';
-    const cleaned = stripPlaceholderChars(raw);
-    const chars = Array.from(cleaned).filter(c => /[\u3400-\u9FFF]/.test(c));
-    return chars[0] || '';
+    if (!rawExpected) return '';
+
+    const expectedChars = Array.from(stripPlaceholderChars(rawExpected))
+        .filter(c => /[\u3400-\u9FFF]/.test(c));
+    if (!expectedChars.length) return '';
+
+    const recognizedText = isFullscreen
+        ? (document.getElementById('fullscreenOcrResult')?.textContent || '')
+        : (document.getElementById('ocrResult')?.textContent || '');
+    const recognizedChars = Array.from(stripPlaceholderChars(recognizedText))
+        .filter(c => /[\u3400-\u9FFF]/.test(c));
+
+    if (!recognizedChars.length) return expectedChars[0];
+
+    const maxCompare = Math.max(expectedChars.length, recognizedChars.length);
+    for (let i = 0; i < maxCompare; i++) {
+        const expectedChar = expectedChars[i];
+        const recognizedChar = recognizedChars[i];
+        if (!expectedChar) return expectedChars[0];
+        if (recognizedChar !== expectedChar) return expectedChar;
+    }
+
+    return expectedChars[0];
 }
 
 function getDrawHintElements(isFullscreen = false) {
@@ -9742,7 +9761,7 @@ function clearDrawHint() {
 }
 
 async function showDrawHint(isFullscreen = false) {
-    const targetChar = getDrawHintTargetChar();
+    const targetChar = getDrawHintTargetChar(isFullscreen);
     if (!targetChar) return;
 
     const { box, writer, label } = getDrawHintElements(isFullscreen);
