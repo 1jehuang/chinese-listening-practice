@@ -200,6 +200,17 @@
     text-align: left;
 }
 
+.per-char-meaning-lines {
+    text-align: left;
+    display: inline-block;
+    line-height: 1.3;
+}
+
+.column-meaning.column-meaning-lines {
+    text-align: left;
+    display: inline-block;
+}
+
 body.feedback-left-layout .question-row {
     display: grid;
     grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
@@ -241,7 +252,6 @@ body.feedback-left-layout .quiz-header {
 
 body.feedback-left-layout .quiz-display {
     padding: 0.5rem 0;
-    justify-content: flex-start;
 }
 
 body.feedback-left-layout .input-section {

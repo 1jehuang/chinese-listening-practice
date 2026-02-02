@@ -8280,11 +8280,11 @@ function renderMeaningHint(question, status) {
         if (pinyinEl) pinyinEl.textContent = pinyinText;
         if (meaningEl) meaningEl.textContent = meaningText;
         if (charsEl) {
-            const perCharInline = (mode === 'char-to-meaning' || mode === 'char-to-meaning-type')
-                ? buildPerCharMeaningInline(charText)
+            const perCharBlock = (mode === 'char-to-meaning' || mode === 'char-to-meaning-type')
+                ? buildPerCharMeaningBlockHtml(charText, { wrapperClass: 'per-char-meaning-lines text-xs text-gray-500 mt-1' })
                 : '';
-            if (perCharInline) {
-                charsEl.innerHTML = perCharInline;
+            if (perCharBlock) {
+                charsEl.innerHTML = perCharBlock;
                 charsEl.classList.remove('hidden');
             } else {
                 charsEl.textContent = '';
@@ -8304,11 +8304,11 @@ function renderMeaningHint(question, status) {
 
     if (!hint) return;
     hint.className = 'text-center text-2xl font-semibold my-4';
-    const perCharInline = (mode === 'char-to-meaning' || mode === 'char-to-meaning-type')
-        ? buildPerCharMeaningInline(charText)
+    const perCharBlock = (mode === 'char-to-meaning' || mode === 'char-to-meaning-type')
+        ? buildPerCharMeaningBlockHtml(charText, { wrapperClass: 'per-char-meaning-lines text-sm text-gray-500 mt-1' })
         : '';
-    if (perCharInline) {
-        hint.innerHTML = `${escapeHtml(charText)} (${escapeHtml(pinyinText)}) - ${escapeHtml(meaningText)}<div class="text-sm text-gray-500 mt-1">${perCharInline}</div>`;
+    if (perCharBlock) {
+        hint.innerHTML = `${escapeHtml(charText)} (${escapeHtml(pinyinText)}) - ${escapeHtml(meaningText)}${perCharBlock}`;
     } else {
         hint.textContent = `${charText} (${pinyinText}) - ${meaningText}`;
     }
@@ -8383,7 +8383,9 @@ function renderThreeColumnMeaningLayout() {
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
     const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
     const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
-    const prevCharDetails = previousQuestion ? buildPerCharMeaningInline(previousQuestion.char) : '';
+    const prevCharDetails = previousQuestion
+        ? buildPerCharMeaningBlockHtml(previousQuestion.char, { wrapperClass: 'column-meaning column-meaning-lines text-[11px] text-gray-500 mt-1' })
+        : '';
     const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
                            previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
     const prevResultIcon = previousQuestionResult === 'correct' ? '✓' :
@@ -8412,7 +8414,7 @@ function renderThreeColumnMeaningLayout() {
                     <div class="column-char">${prevChar}</div>
                     <div class="column-pinyin">${prevPinyin}</div>
                     <div class="column-meaning">${prevMeaning}</div>
-                    ${prevCharDetails ? `<div class="column-meaning text-[11px] text-gray-500 mt-1">${prevCharDetails}</div>` : ''}
+                    ${prevCharDetails}
                 ` : `
                     <div class="column-placeholder">Your last answer will appear here</div>
                 `}
@@ -10387,6 +10389,14 @@ function buildPerCharMeaningInline(text, options = {}) {
     if (!lines.length) return '';
     const separator = options.separator ?? ' · ';
     return lines.join(separator);
+}
+
+function buildPerCharMeaningBlockHtml(text, options = {}) {
+    const { lines } = buildIndividualCharMeaningLines(text, options);
+    if (!lines.length) return '';
+    const wrapperClass = options.wrapperClass || 'per-char-meaning-lines';
+    const body = lines.map(line => `<div>${line}</div>`).join('');
+    return `<div class="${wrapperClass}">${body}</div>`;
 }
 
 function buildPerCharMeaningText(text) {
