@@ -4790,6 +4790,12 @@ function getPrefillAnswerForNextQuestion(options = {}) {
         : (typeof nextAnswerBuffer === 'string' ? nextAnswerBuffer : '');
 }
 
+function notifyChatQuestionChanged() {
+    if (typeof resetChatForNewWord === 'function') {
+        resetChatForNewWord();
+    }
+}
+
 function resetForNextQuestion(prefillAnswer) {
     clearPendingNextQuestion();
     stopTimer();
@@ -4805,9 +4811,7 @@ function resetForNextQuestion(prefillAnswer) {
     threeColumnInlineFeedback = null;
     translationInlineFeedback = null;
     // Reset chat context for new word
-    if (typeof resetChatForNewWord === 'function') {
-        resetChatForNewWord();
-    }
+    notifyChatQuestionChanged();
     if (answerInput) {
         // Don't prefill for char-to-tones mode - tones from previous answer don't carry over
         answerInput.value = (mode === 'char-to-tones') ? '' : prefillAnswer;
@@ -5934,6 +5938,7 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
             if (currentChunkIndex < sentenceChunks.length) {
                 currentQuestion = sentenceChunks[currentChunkIndex];
                 window.currentQuestion = currentQuestion;
+                notifyChatQuestionChanged();
 
                 // Pre-compute upcoming
                 if (currentChunkIndex + 1 < sentenceChunks.length) {
@@ -6581,6 +6586,7 @@ function checkFuzzyPinyinAnswer(answer) {
             currentQuestion = selectNextQuestion();
             window.currentQuestion = currentQuestion;
         }
+        notifyChatQuestionChanged();
 
         // Mark the new question as served and update confidence display
         markSchedulerServed(currentQuestion);
@@ -6672,6 +6678,7 @@ function checkFuzzyAnswer(answer) {
                 currentQuestion = selectNextQuestion();
                 window.currentQuestion = currentQuestion;
             }
+            notifyChatQuestionChanged();
 
             // Mark the new question as served and update confidence display
             markSchedulerServed(currentQuestion);
@@ -9705,6 +9712,7 @@ function submitDrawing() {
                     currentMissingComponent = prepared.decomposition.missingComponent;
                 }
             }
+            notifyChatQuestionChanged();
 
             markSchedulerServed(currentQuestion);
             updateCurrentWordConfidence();
@@ -11294,6 +11302,7 @@ function checkComponentAnswer(selectedOption) {
                 currentMissingComponent = prepared.decomposition.missingComponent;
             }
         }
+        notifyChatQuestionChanged();
 
         // Mark the new question as served and update confidence display
         markSchedulerServed(currentQuestion);
@@ -11778,6 +11787,7 @@ function checkCharBuildingAnswer(selectedOption) {
                         charBuildingWordChars = prepared.wordChars;
                     }
                 }
+                notifyChatQuestionChanged();
 
                 // Reset for new word
                 charBuildingCharIndex = 0;
