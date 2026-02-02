@@ -140,6 +140,8 @@ let drawHintWriter = null;
 let drawHintRequestId = 0;
 let fullscreenHintWriter = null;
 let fullscreenHintRequestId = 0;
+let drawHintUsed = false;
+let feedStatusTicker = null;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
@@ -439,6 +441,7 @@ const FEED_RESPONSE_MAX_MS = 20000;               // clamp upper bound
 const FEED_SCORE_URGENCY_WEIGHT = 1.6;            // weight for forgetting urgency
 const FEED_SCORE_DIFFICULTY_WEIGHT = 0.75;        // weight for difficulty/slow responses
 const FEED_SCORE_UCB_WEIGHT = 0.5;                // weight for exploration bonus
+const FEED_CURVE_WINDOW_MINUTES = 6;              // show early forgetting curve window
 let feedStateKey = '';
 let feedModeState = {
     hand: [],                              // current active cards (flexible size)
@@ -2484,8 +2487,75 @@ function getFeedRecallProbability(char, now = Date.now()) {
         ? stats.halfLifeHours
         : FEED_FORGET_INITIAL_HALFLIFE_HOURS;
     const elapsedHours = Math.max(0, (now - stats.lastSeen) / 3600000);
-    const safeHalfLife = Math.max(FEED_FORGET_MIN_HALFLIFE_HOURS, halfLife);
-    return Math.pow(0.5, elapsedHours / safeHalfLife);
+    return getFeedRecallProbabilityAt(halfLife, elapsedHours);
+}
+
+function getFeedHalfLifeHours(stats) {
+    if (!stats || !Number.isFinite(stats.halfLifeHours)) return FEED_FORGET_INITIAL_HALFLIFE_HOURS;
+    return clampNumber(stats.halfLifeHours, FEED_FORGET_MIN_HALFLIFE_HOURS, FEED_FORGET_MAX_HALFLIFE_HOURS);
+}
+
+function getFeedRecallProbabilityAt(halfLifeHours, elapsedHours) {
+    const safeHalfLife = clampNumber(halfLifeHours, FEED_FORGET_MIN_HALFLIFE_HOURS, FEED_FORGET_MAX_HALFLIFE_HOURS);
+    const safeElapsed = Number.isFinite(elapsedHours) ? Math.max(0, elapsedHours) : 0;
+    return Math.pow(0.5, safeElapsed / safeHalfLife);
+}
+
+function formatFeedDuration(hours) {
+    if (!Number.isFinite(hours)) return '—';
+    const absHours = Math.max(0, hours);
+    if (absHours < 1 / 60) {
+        return `${Math.round(absHours * 3600)}s`;
+    }
+    if (absHours < 1) {
+        return `${Math.round(absHours * 60)}m`;
+    }
+    if (absHours < 24) {
+        return `${absHours.toFixed(1)}h`;
+    }
+    return `${(absHours / 24).toFixed(1)}d`;
+}
+
+function renderFeedCurveSparkline(halfLifeHours, elapsedMinutes, options = {}) {
+    const width = options.width || 120;
+    const height = options.height || 40;
+    const pad = options.pad || 2;
+    const windowMinutes = options.windowMinutes || FEED_CURVE_WINDOW_MINUTES;
+    const samples = options.samples || 24;
+
+    if (!Number.isFinite(halfLifeHours) || halfLifeHours <= 0) return '';
+
+    const usableWidth = Math.max(1, width - pad * 2);
+    const usableHeight = Math.max(1, height - pad * 2);
+    const points = [];
+
+    for (let i = 0; i <= samples; i++) {
+        const tMin = (windowMinutes * i) / samples;
+        const tHours = tMin / 60;
+        const prob = getFeedRecallProbabilityAt(halfLifeHours, tHours);
+        const yNorm = clampNumber(1 - prob, 0, 1);
+        const x = pad + (tMin / windowMinutes) * usableWidth;
+        const y = pad + yNorm * usableHeight;
+        points.push([x, y]);
+    }
+
+    const path = points.map((pt, idx) => `${idx === 0 ? 'M' : 'L'}${pt[0].toFixed(1)},${pt[1].toFixed(1)}`).join(' ');
+
+    const clampedElapsed = Math.min(windowMinutes, Math.max(0, elapsedMinutes || 0));
+    const dotProb = getFeedRecallProbabilityAt(halfLifeHours, clampedElapsed / 60);
+    const dotY = pad + clampNumber(1 - dotProb, 0, 1) * usableHeight;
+    const dotX = pad + (clampedElapsed / windowMinutes) * usableWidth;
+
+    const dotColor = elapsedMinutes > windowMinutes ? '#f59e0b' : '#3b82f6';
+    const bgLine = `<line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#e5e7eb" stroke-width="1" />`;
+
+    return `
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+            ${bgLine}
+            <path d="${path}" fill="none" stroke="#6366f1" stroke-width="1.5" />
+            <circle cx="${dotX.toFixed(1)}" cy="${dotY.toFixed(1)}" r="2.6" fill="${dotColor}" />
+        </svg>
+    `;
 }
 
 function getFeedDifficultyScore(stats) {
@@ -2564,6 +2634,61 @@ function getFeedUCBScore(char) {
         score += MARKING_NEEDS_WORK_BOOST;
     } else if (marking === 'learned') {
         score -= MARKING_LEARNED_PENALTY;
+    }
+
+    return score;
+}
+
+function getFeedUCBScoreForDisplay(char) {
+    const stats = feedModeState.seen[char];
+    const totalPulls = feedModeState.totalPulls || 1;
+    const useSRConfidence = schedulerMode === SCHEDULER_MODES.FEED_SR;
+    const marking = getWordMarking(char);
+    const MARKING_NEEDS_WORK_BOOST = 1.4;
+    const MARKING_LEARNED_PENALTY = 1.8;
+
+    if (!stats || stats.attempts === 0) {
+        const explorationRatio = getFeedExplorationRatio();
+        let baseScore = explorationRatio < 0.5 ? 3.0 : 2.0;
+        const srScore = getConfidenceScore(char);
+        const threshold = getConfidenceMasteryThreshold();
+        const srBoost = Math.max(0, (threshold - srScore) / threshold);
+        baseScore += useSRConfidence ? srBoost * 1.5 : srBoost * 0.6;
+        if (marking === 'needs-work') {
+            baseScore += MARKING_NEEDS_WORK_BOOST;
+        } else if (marking === 'learned') {
+            baseScore -= MARKING_LEARNED_PENALTY;
+        }
+        return baseScore;
+    }
+
+    const sessionConfidence = stats.correct / stats.attempts;
+    const recallProb = getFeedRecallProbability(char);
+    const forgettingUrgency = Number.isFinite(recallProb) ? (1 - recallProb) : (1 - sessionConfidence);
+    const dueBoost = Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD
+        ? (FEED_FORGET_DUE_THRESHOLD - recallProb) * FEED_FORGET_DUE_BOOST
+        : 0;
+    const difficultyScore = getFeedDifficultyScore(stats);
+    const elapsedMinutes = Number.isFinite(stats.lastSeen) ? (Date.now() - stats.lastSeen) / 60000 : 0;
+    const freshBoost = (stats.attempts < 2)
+        ? clampNumber((1 - (elapsedMinutes / 5)) * 1.4, 0, 1.4)
+        : 0;
+    const explorationBonus = FEED_UCB_C * Math.sqrt(Math.log(totalPulls) / stats.attempts);
+
+    let score = (FEED_SCORE_URGENCY_WEIGHT * forgettingUrgency)
+        + (FEED_SCORE_DIFFICULTY_WEIGHT * difficultyScore)
+        + (FEED_SCORE_UCB_WEIGHT * explorationBonus)
+        + dueBoost
+        + freshBoost;
+
+    const markingBoost = marking === 'needs-work' ? MARKING_NEEDS_WORK_BOOST
+        : marking === 'learned' ? -MARKING_LEARNED_PENALTY
+        : 0;
+    score += markingBoost;
+
+    if (useSRConfidence) {
+        const confidenceScore = normalizeConfidenceScore(getConfidenceScore(char));
+        score += (1 - confidenceScore) * 0.8;
     }
 
     return score;
@@ -2877,13 +3002,70 @@ function updateFeedStatusDisplay() {
         ? `${explorationPct}% explored · ${masteredCount} ready ≥ ${threshold.toFixed(2)} · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`
         : `${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`;
 
+    const now = Date.now();
+    const currentChar = currentQuestion?.char || '';
+    const detailCards = hand.map(char => {
+        const stats = feedModeState.seen[char];
+        const attempts = stats?.attempts || 0;
+        const correct = stats?.correct || 0;
+        const halfLife = getFeedHalfLifeHours(stats);
+        const elapsedHours = stats?.lastSeen ? Math.max(0, (now - stats.lastSeen) / 3600000) : 0;
+        const elapsedMinutes = elapsedHours * 60;
+        const recallProb = Number.isFinite(stats?.lastSeen) ? getFeedRecallProbabilityAt(halfLife, elapsedHours) : 0;
+        const recallPct = Number.isFinite(recallProb) ? Math.round(recallProb * 100) : 0;
+        const avgResponse = Number.isFinite(stats?.avgResponseMs) ? `${Math.round(stats.avgResponseMs)}ms` : '—';
+        const dueFlag = Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD ? 'Due' : '';
+        const ucbScore = getFeedUCBScoreForDisplay(char);
+        const curveSvg = renderFeedCurveSparkline(halfLife, elapsedMinutes, {
+            width: 120,
+            height: 36,
+            windowMinutes: FEED_CURVE_WINDOW_MINUTES
+        });
+        const isCurrent = currentChar === char;
+        const cardClass = isCurrent ? 'border-purple-300 bg-purple-50' : 'border-purple-100 bg-white';
+
+        return `
+            <div class="rounded-xl border ${cardClass} p-2 shadow-sm">
+                <div class="flex items-center justify-between text-xs text-purple-900 font-semibold">
+                    <span>${escapeHtml(char)}</span>
+                    <span>${attempts ? `${recallPct}%` : 'new'} ${dueFlag}</span>
+                </div>
+                <div class="mt-1 flex items-center justify-between text-[10px] text-purple-700">
+                    <span>Half-life: ${formatFeedDuration(halfLife)}</span>
+                    <span>Seen: ${formatFeedDuration(elapsedHours)}</span>
+                </div>
+                <div class="mt-1 flex items-center justify-between text-[10px] text-purple-700">
+                    <span>Acc: ${attempts ? Math.round((correct / attempts) * 100) : 0}%</span>
+                    <span>Avg: ${avgResponse}</span>
+                </div>
+                <div class="mt-1">${curveSvg}</div>
+                <div class="mt-1 text-[10px] text-purple-600">
+                    UCB: ${ucbScore !== null ? ucbScore.toFixed(2) : '—'} · Window: ${FEED_CURVE_WINDOW_MINUTES}m
+                </div>
+            </div>
+        `;
+    }).join('');
+
     statusEl.className = 'mt-1 text-xs text-purple-800';
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
         <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
         <div class="text-[11px] text-purple-700">${statsLine}</div>
+        ${detailCards ? `<div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">${detailCards}</div>` : ''}
         ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduation: ready ${masteredCount}/${seenCount || 1} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
     `;
+}
+
+function toggleFeedStatusTicker() {
+    const shouldRun = schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR;
+    if (shouldRun && !feedStatusTicker) {
+        feedStatusTicker = setInterval(() => {
+            updateFeedStatusDisplay();
+        }, 1000);
+    } else if (!shouldRun && feedStatusTicker) {
+        clearInterval(feedStatusTicker);
+        feedStatusTicker = null;
+    }
 }
 
 function refreshAdaptiveDeckNow(regenerate = false) {
@@ -3920,6 +4102,7 @@ function setSchedulerMode(mode) {
     } else {
         updateFeedStatusDisplay();
     }
+    toggleFeedStatusTicker();
     if (schedulerMode === SCHEDULER_MODES.ORDERED) {
         schedulerOrderedIndex = 0;
     }
@@ -4859,6 +5042,7 @@ function resetForNextQuestion(prefillAnswer) {
     clearComponentBreakdown();
     hideDrawNextButton();
     clearDrawHint();
+    drawHintUsed = false;
     syncModeLayoutState();
 }
 
@@ -6748,7 +6932,11 @@ function checkFuzzyAnswer(answer) {
         }
 
         threeColumnInlineFeedback = {
-            message: `✗ Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`,
+            message: (() => {
+                const perCharText = buildPerCharMeaningText(currentQuestion.char);
+                const suffix = perCharText ? ` · ${perCharText}` : '';
+                return `✗ Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})${suffix}`;
+            })(),
             type: 'incorrect'
         };
 
@@ -7990,10 +8178,23 @@ function renderMeaningHint(question, status) {
         const charEl = document.getElementById('answerSummaryChar');
         const pinyinEl = document.getElementById('answerSummaryPinyin');
         const meaningEl = document.getElementById('answerSummaryMeaning');
+        const charsEl = document.getElementById('answerSummaryCharacters');
 
         if (charEl) charEl.textContent = charText;
         if (pinyinEl) pinyinEl.textContent = pinyinText;
         if (meaningEl) meaningEl.textContent = meaningText;
+        if (charsEl) {
+            const perCharInline = (mode === 'char-to-meaning' || mode === 'char-to-meaning-type')
+                ? buildPerCharMeaningInline(charText)
+                : '';
+            if (perCharInline) {
+                charsEl.innerHTML = perCharInline;
+                charsEl.classList.remove('hidden');
+            } else {
+                charsEl.textContent = '';
+                charsEl.classList.add('hidden');
+            }
+        }
 
         card.classList.remove('summary-correct', 'summary-incorrect', 'visible');
         if (status === 'correct') {
@@ -8007,7 +8208,14 @@ function renderMeaningHint(question, status) {
 
     if (!hint) return;
     hint.className = 'text-center text-2xl font-semibold my-4';
-    hint.textContent = `${charText} (${pinyinText}) - ${meaningText}`;
+    const perCharInline = (mode === 'char-to-meaning' || mode === 'char-to-meaning-type')
+        ? buildPerCharMeaningInline(charText)
+        : '';
+    if (perCharInline) {
+        hint.innerHTML = `${escapeHtml(charText)} (${escapeHtml(pinyinText)}) - ${escapeHtml(meaningText)}<div class="text-sm text-gray-500 mt-1">${perCharInline}</div>`;
+    } else {
+        hint.textContent = `${charText} (${pinyinText}) - ${meaningText}`;
+    }
 }
 
 function renderMeaningQuestionLayout() {
@@ -8026,6 +8234,7 @@ function renderMeaningQuestionLayout() {
                         <span class="summary-card-pinyin" id="answerSummaryPinyin"></span>
                     </div>
                     <div class="summary-card-meaning" id="answerSummaryMeaning"></div>
+                    <div class="summary-card-characters text-xs text-gray-500 mt-1" id="answerSummaryCharacters"></div>
                 </div>
                 <div class="question-char-display">${charHtml}</div>
                 <div class="etymology-note-card hidden" id="etymologyNoteCard">
@@ -8078,6 +8287,7 @@ function renderThreeColumnMeaningLayout() {
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
     const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
     const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
+    const prevCharDetails = previousQuestion ? buildPerCharMeaningInline(previousQuestion.char) : '';
     const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
                            previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
     const prevResultIcon = previousQuestionResult === 'correct' ? '✓' :
@@ -8106,6 +8316,7 @@ function renderThreeColumnMeaningLayout() {
                     <div class="column-char">${prevChar}</div>
                     <div class="column-pinyin">${prevPinyin}</div>
                     <div class="column-meaning">${prevMeaning}</div>
+                    ${prevCharDetails ? `<div class="column-meaning text-[11px] text-gray-500 mt-1">${prevCharDetails}</div>` : ''}
                 ` : `
                     <div class="column-placeholder">Your last answer will appear here</div>
                 `}
@@ -8930,10 +9141,12 @@ function resetMeaningAnswerSummary() {
     const charEl = document.getElementById('answerSummaryChar');
     const pinyinEl = document.getElementById('answerSummaryPinyin');
     const meaningEl = document.getElementById('answerSummaryMeaning');
+    const charsEl = document.getElementById('answerSummaryCharacters');
 
     if (charEl) charEl.textContent = '';
     if (pinyinEl) pinyinEl.textContent = '';
     if (meaningEl) meaningEl.textContent = '';
+    if (charsEl) charsEl.textContent = '';
 }
 
 function applyComponentPanelVisibility() {
@@ -9760,6 +9973,17 @@ function clearDrawHint() {
     clearDrawHintContext(true);
 }
 
+function recordDrawHintUse() {
+    if (drawHintUsed) return;
+    drawHintUsed = true;
+    if (!answered) {
+        answered = true;
+        total++;
+        markSchedulerOutcome(false);
+        updateStats();
+    }
+}
+
 async function showDrawHint(isFullscreen = false) {
     const targetChar = getDrawHintTargetChar(isFullscreen);
     if (!targetChar) return;
@@ -9815,6 +10039,8 @@ async function showDrawHint(isFullscreen = false) {
         return;
     }
 
+    recordDrawHintUse();
+
     if (isFullscreen) {
         fullscreenHintWriter = writerInstance;
     } else {
@@ -9861,7 +10087,7 @@ async function showDrawHint(isFullscreen = false) {
 
     if (label) {
         const suffix = strokeCount === 1 ? 'stroke' : 'strokes';
-        label.textContent = `${targetChar} first ${strokeCount} ${suffix}`;
+        label.textContent = `First ${strokeCount} ${suffix} · counts as wrong`;
     }
 }
 
@@ -10058,6 +10284,31 @@ function buildIndividualCharMeaningLines(text, options = {}) {
     });
 
     return { lines, missing: [] };
+}
+
+function buildPerCharMeaningInline(text, options = {}) {
+    const { lines } = buildIndividualCharMeaningLines(text, options);
+    if (!lines.length) return '';
+    const separator = options.separator ?? ' · ';
+    return lines.join(separator);
+}
+
+function buildPerCharMeaningText(text) {
+    if (!text) return '';
+    const chars = Array.from(text).filter(c => /[\u3400-\u9FFF]/.test(c));
+    if (chars.length <= 1) return '';
+    const lines = [];
+    chars.forEach((char) => {
+        const info = lookupSingleCharInfo(char);
+        if (!info) {
+            lines.push(`${char}: not in word list`);
+            return;
+        }
+        const pinyin = info.pinyin ? ` (${info.pinyin})` : '';
+        const meaning = info.meaning ? info.meaning : '—';
+        lines.push(`${char}${pinyin}: ${meaning}`);
+    });
+    return lines.join(' · ');
 }
 
 function renderPerCharMeaning(text, targetEl, options = {}) {
@@ -13147,6 +13398,12 @@ function initQuizPreviewAndSchedulerUi() {
     if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         prepareAdaptiveForNextQuestion();
     }
+    if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR) {
+        prepareFeedForNextQuestion();
+    } else {
+        updateFeedStatusDisplay();
+    }
+    toggleFeedStatusTicker();
     renderConfidenceList();
     updateMeaningChoicesVisibility();
 }
