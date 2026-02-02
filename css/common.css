@@ -196,6 +196,10 @@
     line-height: 1.35;
 }
 
+.meaning-correction-lines {
+    text-align: left;
+}
+
 body.feedback-left-layout .question-row {
     display: grid;
     grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);

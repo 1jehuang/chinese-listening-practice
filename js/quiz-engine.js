@@ -10445,7 +10445,7 @@ function formatMeaningCorrectionHtml(question, options = {}) {
     const accentSoft = options.accentSoftClass || 'text-red-500';
 
     const charHtml = perCharLines.length
-        ? `<div class="mt-1 text-sm text-gray-700">${perCharLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')}</div>`
+        ? `<div class="meaning-correction-lines mt-1 text-sm text-gray-700">${perCharLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')}</div>`
         : '';
 
     return `
