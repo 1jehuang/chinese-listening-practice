@@ -344,6 +344,21 @@ function pinyinToAudioKey(pinyin) {
 let cachedVoices = [];
 let voicesLoaded = false;
 
+function setTtsDebug(engine, voiceLabel) {
+    if (typeof window !== 'undefined') {
+        window.__lastTtsEngine = engine;
+        window.__lastTtsVoice = voiceLabel || '';
+    }
+    if (typeof document !== 'undefined' && document.body) {
+        document.body.dataset.ttsEngine = engine;
+        if (voiceLabel) {
+            document.body.dataset.ttsVoice = voiceLabel;
+        } else {
+            delete document.body.dataset.ttsVoice;
+        }
+    }
+}
+
 function loadVoices() {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
@@ -389,21 +404,6 @@ function playTTS(chineseChar) {
     if (!text) return;
 
     console.log(`Using TTS for: ${text}`);
-
-    const setTtsDebug = (engine, voiceLabel) => {
-        if (typeof window !== 'undefined') {
-            window.__lastTtsEngine = engine;
-            window.__lastTtsVoice = voiceLabel || '';
-        }
-        if (typeof document !== 'undefined' && document.body) {
-            document.body.dataset.ttsEngine = engine;
-            if (voiceLabel) {
-                document.body.dataset.ttsVoice = voiceLabel;
-            } else {
-                delete document.body.dataset.ttsVoice;
-            }
-        }
-    };
 
     const hasSpeech = typeof window !== 'undefined' &&
         typeof window.speechSynthesis !== 'undefined' &&
@@ -523,6 +523,7 @@ function playSentenceAudio(sentence) {
     }
 
     setActiveAudio(audio);
+    setTtsDebug('remote', 'baidu');
 
     const onError = () => {
         console.log(`Sentence audio failed for "${cacheKey}", using SpeechSynthesis fallback`);
@@ -574,6 +575,7 @@ function playPinyinAudio(pinyin, chineseChar) {
 
     const audio = new Audio(audioUrl);
     setActiveAudio(audio);
+    setTtsDebug('remote', 'purpleculture');
 
     const handleError = () => {
         console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
