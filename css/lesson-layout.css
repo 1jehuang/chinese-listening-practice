@@ -104,7 +104,7 @@ body.experimental-layout .app-container {
     flex-direction: column;
     min-width: 0;
     padding: 1rem 2rem;
-    overflow: hidden;
+    overflow: auto;
 }
 
 /* Header with title */
@@ -848,4 +848,3 @@ body.dictation-chat-active #feedback {
     body.theme-dark .dictation-chat-bubble.is-typing {
         color: var(--dm-text-soft);
     }
-

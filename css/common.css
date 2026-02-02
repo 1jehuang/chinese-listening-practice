@@ -1638,3 +1638,27 @@ body.study-mode-active .main-content {
     body.theme-dark .three-column-meaning-layout .column-inline-feedback {
         color: var(--dm-text-muted);
     }
+
+body.feed-mode-active .quiz-display {
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+#choiceMode.choice-list {
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: 0;
+    width: 100%;
+}
+
+#choiceMode.choice-list .choice-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+#choiceMode.choice-list .choice-grid button {
+    width: 100%;
+    text-align: left;
+}

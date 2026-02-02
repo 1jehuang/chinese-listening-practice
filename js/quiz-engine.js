@@ -142,6 +142,7 @@ let fullscreenHintWriter = null;
 let fullscreenHintRequestId = 0;
 let drawHintUsed = false;
 let feedStatusTicker = null;
+let feedDetailsExpanded = false;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
@@ -335,6 +336,11 @@ function syncModeLayoutState() {
     root.classList.toggle('dictation-chat-active', layout === 'chat');
 }
 
+function setChoiceModeListLayout(active) {
+    if (!choiceMode) return;
+    choiceMode.classList.toggle('choice-list', Boolean(active));
+}
+
 // Timer state
 let timerEnabled = false;
 let timerSeconds = 10;
@@ -442,6 +448,7 @@ const FEED_SCORE_URGENCY_WEIGHT = 1.6;            // weight for forgetting urgen
 const FEED_SCORE_DIFFICULTY_WEIGHT = 0.75;        // weight for difficulty/slow responses
 const FEED_SCORE_UCB_WEIGHT = 0.5;                // weight for exploration bonus
 const FEED_CURVE_WINDOW_MINUTES = 6;              // show early forgetting curve window
+const AFK_RESPONSE_CUTOFF_MS = 120000;            // ignore response time after 2 minutes
 let feedStateKey = '';
 let feedModeState = {
     hand: [],                              // current active cards (flexible size)
@@ -2453,6 +2460,7 @@ function getQuestionResponseMs() {
     const start = questionStartedPerf || questionStartedAt;
     const elapsed = nowPerf - start;
     if (!Number.isFinite(elapsed) || elapsed <= 0) return null;
+    if (elapsed > AFK_RESPONSE_CUTOFF_MS) return null;
     return elapsed;
 }
 
@@ -2953,7 +2961,13 @@ function updateFeedStatusDisplay() {
         // Clear feed display if we're in a different mode
         statusEl.innerHTML = '';
         statusEl.className = 'hidden';
+        if (document && document.body) {
+            document.body.classList.remove('feed-mode-active');
+        }
         return;
+    }
+    if (document && document.body) {
+        document.body.classList.add('feed-mode-active');
     }
 
     const hand = feedModeState.hand || [];
@@ -3004,7 +3018,11 @@ function updateFeedStatusDisplay() {
 
     const now = Date.now();
     const currentChar = currentQuestion?.char || '';
-    const detailCards = hand.map(char => {
+    const focusChar = hand.includes(currentChar) ? currentChar : (hand[0] || '');
+    const isNarrow = typeof window !== 'undefined' && window.innerWidth < 900;
+    const showDetails = feedDetailsExpanded && !isNarrow;
+
+    const renderCard = (char, { highlight = false } = {}) => {
         const stats = feedModeState.seen[char];
         const attempts = stats?.attempts || 0;
         const correct = stats?.correct || 0;
@@ -3021,8 +3039,7 @@ function updateFeedStatusDisplay() {
             height: 36,
             windowMinutes: FEED_CURVE_WINDOW_MINUTES
         });
-        const isCurrent = currentChar === char;
-        const cardClass = isCurrent ? 'border-purple-300 bg-purple-50' : 'border-purple-100 bg-white';
+        const cardClass = highlight ? 'border-purple-300 bg-purple-50' : 'border-purple-100 bg-white';
 
         return `
             <div class="rounded-xl border ${cardClass} p-2 shadow-sm">
@@ -3044,16 +3061,38 @@ function updateFeedStatusDisplay() {
                 </div>
             </div>
         `;
-    }).join('');
+    };
+
+    const focusCard = focusChar ? renderCard(focusChar, { highlight: true }) : '';
+    const detailCards = showDetails
+        ? hand.map(char => renderCard(char, { highlight: char === focusChar })).join('')
+        : '';
 
     statusEl.className = 'mt-1 text-xs text-purple-800';
+    statusEl.style.width = '100%';
+    statusEl.style.maxWidth = '980px';
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
         <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
         <div class="text-[11px] text-purple-700">${statsLine}</div>
-        ${detailCards ? `<div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">${detailCards}</div>` : ''}
+        ${focusCard ? `<div class="mt-2">${focusCard}</div>` : ''}
+        ${hand.length > 1 ? `
+            <button id="feedDetailsToggle" type="button" class="mt-2 text-[11px] font-semibold text-purple-700 hover:text-purple-900">
+                ${showDetails ? 'Hide hand details' : 'Show hand details'}
+            </button>
+        ` : ''}
+        ${detailCards ? `<div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2" style="max-height: 240px; overflow: auto;">${detailCards}</div>` : ''}
         ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduation: ready ${masteredCount}/${seenCount || 1} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
     `;
+
+    const toggleBtn = document.getElementById('feedDetailsToggle');
+    if (toggleBtn && !toggleBtn.dataset.bound) {
+        toggleBtn.dataset.bound = 'true';
+        toggleBtn.addEventListener('click', () => {
+            feedDetailsExpanded = !feedDetailsExpanded;
+            updateFeedStatusDisplay();
+        });
+    }
 }
 
 function toggleFeedStatusTicker() {
@@ -5043,6 +5082,7 @@ function resetForNextQuestion(prefillAnswer) {
     hideDrawNextButton();
     clearDrawHint();
     drawHintUsed = false;
+    setChoiceModeListLayout(false);
     syncModeLayoutState();
 }
 
@@ -5302,10 +5342,12 @@ function restoreDictationChatAudio() {
 }
 
 function renderQuestionUiForChoiceModes() {
+    setChoiceModeListLayout(false);
     if (mode === 'char-to-pinyin-mc' && choiceMode) {
         questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
         generatePinyinOptions();
         choiceMode.style.display = 'block';
+        setChoiceModeListLayout(true);
         return true;
     }
 
@@ -5327,6 +5369,7 @@ function renderQuestionUiForChoiceModes() {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
         generateCharOptions();
         choiceMode.style.display = 'block';
+        setChoiceModeListLayout(true);
         return true;
     }
 
@@ -5335,6 +5378,7 @@ function renderQuestionUiForChoiceModes() {
         generateMeaningOptions();
         choiceMode.style.display = 'block';
         updateMeaningChoicesVisibility();
+        setChoiceModeListLayout(true);
         return true;
     }
 
@@ -5349,6 +5393,7 @@ function renderQuestionUiForChoiceModes() {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
         generateCharOptions();
         choiceMode.style.display = 'block';
+        setChoiceModeListLayout(true);
         return true;
     }
 
