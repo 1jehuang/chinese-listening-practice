@@ -143,6 +143,8 @@ let fullscreenHintRequestId = 0;
 let drawHintUsed = false;
 let feedStatusTicker = null;
 let feedDetailsExpanded = false;
+let choiceModeHome = null;
+let choiceModeHomeNext = null;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
@@ -339,6 +341,42 @@ function syncModeLayoutState() {
 function setChoiceModeListLayout(active) {
     if (!choiceMode) return;
     choiceMode.classList.toggle('choice-list', Boolean(active));
+}
+
+function attachChoiceModeToSidebar() {
+    if (!choiceMode) return;
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+
+    let slot = document.getElementById('choiceSidebarSlot');
+    if (!slot) {
+        slot = document.createElement('div');
+        slot.id = 'choiceSidebarSlot';
+        slot.className = 'choice-sidebar-slot';
+        const label = document.createElement('div');
+        label.className = 'choice-sidebar-label';
+        label.textContent = 'Choices';
+        const holder = document.createElement('div');
+        holder.id = 'choiceSidebarHolder';
+        slot.appendChild(label);
+        slot.appendChild(holder);
+        sidebar.appendChild(slot);
+    }
+
+    const holder = document.getElementById('choiceSidebarHolder') || slot;
+    if (choiceMode.parentElement !== holder) {
+        holder.appendChild(choiceMode);
+    }
+}
+
+function restoreChoiceModeHome() {
+    if (!choiceMode || !choiceModeHome) return;
+    if (choiceMode.parentElement === choiceModeHome) return;
+    if (choiceModeHomeNext && choiceModeHomeNext.parentElement === choiceModeHome) {
+        choiceModeHome.insertBefore(choiceMode, choiceModeHomeNext);
+    } else {
+        choiceModeHome.appendChild(choiceMode);
+    }
 }
 
 // Timer state
@@ -3035,30 +3073,25 @@ function updateFeedStatusDisplay() {
         const dueFlag = Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD ? 'Due' : '';
         const ucbScore = getFeedUCBScoreForDisplay(char);
         const curveSvg = renderFeedCurveSparkline(halfLife, elapsedMinutes, {
-            width: 120,
-            height: 36,
+            width: 100,
+            height: 28,
             windowMinutes: FEED_CURVE_WINDOW_MINUTES
         });
         const cardClass = highlight ? 'border-purple-300 bg-purple-50' : 'border-purple-100 bg-white';
 
         return `
-            <div class="rounded-xl border ${cardClass} p-2 shadow-sm">
+            <div class="rounded-xl border ${cardClass} p-1.5 shadow-sm">
                 <div class="flex items-center justify-between text-xs text-purple-900 font-semibold">
                     <span>${escapeHtml(char)}</span>
                     <span>${attempts ? `${recallPct}%` : 'new'} ${dueFlag}</span>
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-purple-700">
-                    <span>Half-life: ${formatFeedDuration(halfLife)}</span>
-                    <span>Seen: ${formatFeedDuration(elapsedHours)}</span>
+                <div class="mt-1 text-[10px] text-purple-700">
+                    HL ${formatFeedDuration(halfLife)} · Seen ${formatFeedDuration(elapsedHours)}
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-purple-700">
-                    <span>Acc: ${attempts ? Math.round((correct / attempts) * 100) : 0}%</span>
-                    <span>Avg: ${avgResponse}</span>
+                <div class="mt-1 text-[10px] text-purple-700">
+                    Acc ${attempts ? Math.round((correct / attempts) * 100) : 0}% · Avg ${avgResponse} · UCB ${ucbScore !== null ? ucbScore.toFixed(2) : '—'}
                 </div>
                 <div class="mt-1">${curveSvg}</div>
-                <div class="mt-1 text-[10px] text-purple-600">
-                    UCB: ${ucbScore !== null ? ucbScore.toFixed(2) : '—'} · Window: ${FEED_CURVE_WINDOW_MINUTES}m
-                </div>
             </div>
         `;
     };
@@ -5083,6 +5116,7 @@ function resetForNextQuestion(prefillAnswer) {
     clearDrawHint();
     drawHintUsed = false;
     setChoiceModeListLayout(false);
+    restoreChoiceModeHome();
     syncModeLayoutState();
 }
 
@@ -5348,6 +5382,7 @@ function renderQuestionUiForChoiceModes() {
         generatePinyinOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
+        attachChoiceModeToSidebar();
         return true;
     }
 
@@ -5370,6 +5405,7 @@ function renderQuestionUiForChoiceModes() {
         generateCharOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
+        attachChoiceModeToSidebar();
         return true;
     }
 
@@ -5379,6 +5415,7 @@ function renderQuestionUiForChoiceModes() {
         choiceMode.style.display = 'block';
         updateMeaningChoicesVisibility();
         setChoiceModeListLayout(true);
+        attachChoiceModeToSidebar();
         return true;
     }
 
@@ -5394,6 +5431,7 @@ function renderQuestionUiForChoiceModes() {
         generateCharOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
+        attachChoiceModeToSidebar();
         return true;
     }
 
@@ -13378,6 +13416,10 @@ function initQuizDomElements() {
     componentBreakdown = document.getElementById('componentBreakdown');
     typeMode = document.getElementById('typeMode');
     choiceMode = document.getElementById('choiceMode');
+    if (choiceMode) {
+        choiceModeHome = choiceMode.parentElement;
+        choiceModeHomeNext = choiceMode.nextSibling;
+    }
     fuzzyMode = document.getElementById('fuzzyMode');
     fuzzyInput = document.getElementById('fuzzyInput');
     strokeOrderMode = document.getElementById('strokeOrderMode');
