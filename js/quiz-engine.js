@@ -4810,8 +4810,6 @@ function resetForNextQuestion(prefillAnswer) {
     hint.className = 'text-center text-2xl font-semibold my-4';
     threeColumnInlineFeedback = null;
     translationInlineFeedback = null;
-    // Reset chat context for new word
-    notifyChatQuestionChanged();
     if (answerInput) {
         // Don't prefill for char-to-tones mode - tones from previous answer don't carry over
         answerInput.value = (mode === 'char-to-tones') ? '' : prefillAnswer;
@@ -4862,6 +4860,7 @@ function maybeGenerateChunksQuestion() {
 
     currentQuestion = sentenceChunks[currentChunkIndex];
     window.currentQuestion = currentQuestion;
+    notifyChatQuestionChanged();
 
     // Pre-compute upcoming chunk for three-column layout
     if (currentChunkIndex + 1 < sentenceChunks.length) {
@@ -5405,6 +5404,8 @@ function generateQuestion(options = {}) {
         }
     }
 
+    notifyChatQuestionChanged();
+
     // If we prefilled an answer (user typed during the reveal phase), preserve it
     if (prefillAnswer && answerInput) {
         // Update partial progress indicators for typed modes
@@ -5906,6 +5907,8 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
             // Advance the upcoming question to become current
             if (translationUpcomingQuestion) {
                 currentQuestion = translationUpcomingQuestion;
+                window.currentQuestion = currentQuestion;
+                notifyChatQuestionChanged();
                 translationUpcomingQuestion = null;
             }
 
@@ -6040,6 +6043,8 @@ function handleCorrectFullAnswer(userAnswer = '') {
         // Advance upcoming to current
         if (pinyinDictationUpcomingQuestion) {
             currentQuestion = pinyinDictationUpcomingQuestion;
+            window.currentQuestion = currentQuestion;
+            notifyChatQuestionChanged();
             pinyinDictationUpcomingQuestion = null;
         }
 
@@ -6103,6 +6108,8 @@ function handleCorrectSyllable(syllables, fullPinyin) {
             // Advance upcoming to current
             if (pinyinDictationUpcomingQuestion) {
                 currentQuestion = pinyinDictationUpcomingQuestion;
+                window.currentQuestion = currentQuestion;
+                notifyChatQuestionChanged();
                 pinyinDictationUpcomingQuestion = null;
             }
 
