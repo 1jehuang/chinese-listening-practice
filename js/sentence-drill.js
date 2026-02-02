@@ -384,17 +384,27 @@
     }
 
     function speakCurrentSentence() {
-        if (!('speechSynthesis' in window)) return;
         if (!prompts.length) return;
         const sentence = prompts[state.index].sentence;
         if (!sentence) return;
         cancelSpeech();
+        if (typeof playSentenceAudio === 'function') {
+            playSentenceAudio(sentence);
+            return;
+        }
+        if (!('speechSynthesis' in window)) return;
         const utterance = new SpeechSynthesisUtterance(sentence);
         utterance.lang = 'zh-CN';
+        if (typeof getQuizTtsRate === 'function') {
+            utterance.rate = getQuizTtsRate();
+        }
         window.speechSynthesis.speak(utterance);
     }
 
     function cancelSpeech() {
+        if (typeof stopActiveAudio === 'function') {
+            stopActiveAudio();
+        }
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
         }

@@ -382,6 +382,7 @@ const BATCH_DEFAULT_STATE = {
     lastStartedAt: 0
 };
 let batchStateKey = '';
+let batchStateKeyMode = '';
 let batchModeState = {
     activeBatch: [],
     usedChars: [],
@@ -393,6 +394,8 @@ let batchModeState = {
 // Visual celebration timers
 let correctFlashTimeout = null;
 let correctToastTimeout = null;
+let questionStartedAt = 0;
+let questionStartedPerf = 0;
 
 // Adaptive rolling 5-card deck state
 const ADAPTIVE_STATE_KEY_PREFIX = 'quiz_adaptive_state_';
@@ -417,6 +420,20 @@ const FEED_DEFAULT_HAND_SIZE = 5;          // target when balanced
 const FEED_STREAK_TO_REMOVE = 2;           // correct streak to remove from hand
 const FEED_WEAK_THRESHOLD = 0.6;           // confidence below this = "weak"
 const FEED_SR_MIN_SESSION_ATTEMPTS = 2;    // minimum attempts this session before SR graduation
+// Feed mode forgetting curve + response-time model
+const FEED_FORGET_MIN_HALFLIFE_HOURS = 0.02;      // ~1.2 minutes
+const FEED_FORGET_MAX_HALFLIFE_HOURS = 120;       // 5 days
+const FEED_FORGET_INITIAL_HALFLIFE_HOURS = 0.08;  // ~4.8 minutes
+const FEED_FORGET_CORRECT_GROWTH = 0.65;          // growth factor when correct
+const FEED_FORGET_WRONG_SHRINK = 0.45;            // shrink factor when wrong
+const FEED_FORGET_DUE_THRESHOLD = 0.82;           // recall prob below this = due
+const FEED_FORGET_DUE_BOOST = 1.1;                // extra boost for due cards
+const FEED_RESPONSE_TARGET_MS = 3000;             // expected response time
+const FEED_RESPONSE_MIN_MS = 300;                 // clamp lower bound
+const FEED_RESPONSE_MAX_MS = 20000;               // clamp upper bound
+const FEED_SCORE_URGENCY_WEIGHT = 1.6;            // weight for forgetting urgency
+const FEED_SCORE_DIFFICULTY_WEIGHT = 0.75;        // weight for difficulty/slow responses
+const FEED_SCORE_UCB_WEIGHT = 0.5;                // weight for exploration bonus
 let feedStateKey = '';
 let feedModeState = {
     hand: [],                              // current active cards (flexible size)
@@ -1914,7 +1931,8 @@ function markSchedulerOutcome(correct) {
     }
 
     if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR) {
-        recordFeedOutcome(char, correct);
+        const responseMs = getQuestionResponseMs();
+        recordFeedOutcome(char, correct, responseMs);
         prepareFeedForNextQuestion();
     }
 }
@@ -1937,9 +1955,12 @@ function getBatchPageKey() {
     return base;
 }
 
-function getBatchStorageKey() {
-    if (batchStateKey) return batchStateKey;
-    batchStateKey = `${BATCH_STATE_KEY_PREFIX}${getBatchPageKey()}`;
+function getBatchStorageKey(modeOverride) {
+    const mode = modeOverride || schedulerMode;
+    const modeTag = isBatchModeFor(mode) ? mode : 'batch';
+    if (batchStateKey && batchStateKeyMode === modeTag) return batchStateKey;
+    batchStateKeyMode = modeTag;
+    batchStateKey = `${BATCH_STATE_KEY_PREFIX}${getBatchPageKey()}_${modeTag}`;
     return batchStateKey;
 }
 
@@ -2129,6 +2150,24 @@ function loadFeedState() {
         console.warn('Failed to load feed mode state', e);
     }
     feedModeState.hand = Array.from(new Set(feedModeState.hand));
+    if (feedModeState.seen && typeof feedModeState.seen === 'object') {
+        for (const char of Object.keys(feedModeState.seen)) {
+            const stats = feedModeState.seen[char];
+            if (!stats || typeof stats !== 'object') {
+                delete feedModeState.seen[char];
+                continue;
+            }
+            stats.attempts = Number.isFinite(stats.attempts) ? stats.attempts : 0;
+            stats.correct = Number.isFinite(stats.correct) ? stats.correct : 0;
+            stats.streak = Number.isFinite(stats.streak) ? stats.streak : 0;
+            stats.lastSeen = Number.isFinite(stats.lastSeen) ? stats.lastSeen : 0;
+            stats.halfLifeHours = Number.isFinite(stats.halfLifeHours)
+                ? stats.halfLifeHours
+                : FEED_FORGET_INITIAL_HALFLIFE_HOURS;
+            stats.lastResponseMs = Number.isFinite(stats.lastResponseMs) ? stats.lastResponseMs : null;
+            stats.avgResponseMs = Number.isFinite(stats.avgResponseMs) ? stats.avgResponseMs : null;
+        }
+    }
 }
 
 function saveFeedState() {
@@ -2362,9 +2401,67 @@ function prepareAdaptiveForNextQuestion() {
     }
 }
 
+function markQuestionStartTime() {
+    questionStartedAt = Date.now();
+    questionStartedPerf = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now()
+        : questionStartedAt;
+}
+
+function getQuestionResponseMs() {
+    if (!questionStartedAt) return null;
+    const nowPerf = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now()
+        : Date.now();
+    const start = questionStartedPerf || questionStartedAt;
+    const elapsed = nowPerf - start;
+    if (!Number.isFinite(elapsed) || elapsed <= 0) return null;
+    return elapsed;
+}
+
 // =====================
 // Feed Mode Functions
 // =====================
+
+function clampNumber(value, min, max) {
+    if (!Number.isFinite(value)) return min;
+    return Math.min(max, Math.max(min, value));
+}
+
+function normalizeConfidenceScore(score) {
+    if (!Number.isFinite(score)) return 0;
+    if (confidenceFormula === CONFIDENCE_FORMULAS.BKT) {
+        return clampNumber(score, 0, 1);
+    }
+    return clampNumber(score / 6, 0, 1);
+}
+
+function getFeedResponseFactor(responseMs) {
+    if (!Number.isFinite(responseMs)) return 1;
+    const clamped = clampNumber(responseMs, FEED_RESPONSE_MIN_MS, FEED_RESPONSE_MAX_MS);
+    const ratio = FEED_RESPONSE_TARGET_MS / clamped;
+    return clampNumber(ratio, 0.45, 1.2);
+}
+
+function getFeedRecallProbability(char, now = Date.now()) {
+    const stats = feedModeState.seen[char];
+    if (!stats || !stats.lastSeen) return null;
+    const halfLife = Number.isFinite(stats.halfLifeHours)
+        ? stats.halfLifeHours
+        : FEED_FORGET_INITIAL_HALFLIFE_HOURS;
+    const elapsedHours = Math.max(0, (now - stats.lastSeen) / 3600000);
+    const safeHalfLife = Math.max(FEED_FORGET_MIN_HALFLIFE_HOURS, halfLife);
+    return Math.pow(0.5, elapsedHours / safeHalfLife);
+}
+
+function getFeedDifficultyScore(stats) {
+    if (!stats || !stats.attempts) return 1;
+    const sessionConfidence = stats.correct / stats.attempts;
+    const responsePenalty = Number.isFinite(stats.avgResponseMs)
+        ? clampNumber((stats.avgResponseMs - FEED_RESPONSE_TARGET_MS) / FEED_RESPONSE_TARGET_MS, 0, 1)
+        : 0;
+    return clampNumber((1 - sessionConfidence) * 0.7 + responsePenalty * 0.3, 0, 1.5);
+}
 
 function getFeedUCBScore(char) {
     const stats = feedModeState.seen[char];
@@ -2373,8 +2470,8 @@ function getFeedUCBScore(char) {
 
     // Get user word marking for this character
     const marking = getWordMarking(char);
-    const MARKING_NEEDS_WORK_BOOST = 1.5;  // Boost score for needs-work words
-    const MARKING_LEARNED_PENALTY = 2.0;   // Reduce score for learned words
+    const MARKING_NEEDS_WORK_BOOST = 1.4;  // Boost score for needs-work words
+    const MARKING_LEARNED_PENALTY = 1.8;   // Reduce score for learned words
 
     if (!stats || stats.attempts === 0) {
         // Unseen cards get high priority, especially early on
@@ -2382,14 +2479,11 @@ function getFeedUCBScore(char) {
         const explorationRatio = getFeedExplorationRatio();
         let baseScore = explorationRatio < 0.5 ? 3.0 : 2.0;
 
-        // In Feed Graduate mode, boost priority for low-confidence cards we haven't seen this session
-        if (useSRConfidence) {
-            const srScore = getConfidenceScore(char);
-            const threshold = getConfidenceMasteryThreshold();
-            // Low SR confidence = higher priority
-            const srBoost = Math.max(0, (threshold - srScore) / threshold);
-            baseScore += srBoost * 1.5;
-        }
+        // Boost priority for low-confidence cards
+        const srScore = getConfidenceScore(char);
+        const threshold = getConfidenceMasteryThreshold();
+        const srBoost = Math.max(0, (threshold - srScore) / threshold);
+        baseScore += useSRConfidence ? srBoost * 1.5 : srBoost * 0.6;
 
         // Apply user marking modifiers
         if (marking === 'needs-work') {
@@ -2402,19 +2496,33 @@ function getFeedUCBScore(char) {
     }
 
     const sessionConfidence = stats.correct / stats.attempts;
+    const recallProb = getFeedRecallProbability(char);
+    const forgettingUrgency = Number.isFinite(recallProb) ? (1 - recallProb) : (1 - sessionConfidence);
+    const dueBoost = Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD
+        ? (FEED_FORGET_DUE_THRESHOLD - recallProb) * FEED_FORGET_DUE_BOOST
+        : 0;
+    const difficultyScore = getFeedDifficultyScore(stats);
+    const elapsedMinutes = Number.isFinite(stats.lastSeen) ? (Date.now() - stats.lastSeen) / 60000 : 0;
+    const freshBoost = (stats.attempts < 2)
+        ? clampNumber((1 - (elapsedMinutes / 5)) * 1.4, 0, 1.4)
+        : 0;
     const explorationBonus = FEED_UCB_C * Math.sqrt(Math.log(totalPulls) / stats.attempts);
 
     // Higher score = more likely to pick
-    // Low confidence OR rarely seen = high score
-    let score = (1 - sessionConfidence) + explorationBonus;
+    let score = (FEED_SCORE_URGENCY_WEIGHT * forgettingUrgency)
+        + (FEED_SCORE_DIFFICULTY_WEIGHT * difficultyScore)
+        + (FEED_SCORE_UCB_WEIGHT * explorationBonus)
+        + dueBoost
+        + freshBoost;
 
     // In Feed Graduate mode, also factor in persistent confidence score
+    const srScore = getConfidenceScore(char);
+    const threshold = getConfidenceMasteryThreshold();
+    const srBoost = Math.max(0, (threshold - srScore) / threshold);
     if (useSRConfidence) {
-        const srScore = getConfidenceScore(char);
-        const threshold = getConfidenceMasteryThreshold();
-        // Low SR confidence = higher priority (boost score)
-        const srBoost = Math.max(0, (threshold - srScore) / threshold);
-        score += srBoost * 0.5;
+        score += srBoost * 0.6;
+    } else {
+        score += srBoost * 0.25;
     }
 
     // Apply user marking modifiers
@@ -2495,14 +2603,18 @@ function ensureFeedHand() {
     feedModeState.hand = feedModeState.hand.filter(char => {
         const stats = feedModeState.seen[char];
         if (!stats) return true; // keep if never seen (shouldn't happen)
+        const recallProb = getFeedRecallProbability(char);
+        const attempts = stats.attempts || 0;
 
         if (useSRGraduation) {
             // Feed Graduate: graduate when confidence is high enough AND we've seen it this session
-            const sessionAttempts = stats.attempts || 0;
-            if (sessionAttempts < FEED_SR_MIN_SESSION_ATTEMPTS) return true; // keep until we've tested it
+            if (attempts < FEED_SR_MIN_SESSION_ATTEMPTS) return true; // keep until we've tested it
+            if (Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD) return true;
             return !isConfidenceHighEnough(char);
         } else {
             // Regular Feed: graduate on streak
+            if (attempts < 2) return true; // keep very fresh cards for quick early repeats
+            if (Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD) return true;
             return (stats.streak || 0) < FEED_STREAK_TO_REMOVE;
         }
     });
@@ -2604,25 +2716,60 @@ function selectFeedQuestion(excludeChars = []) {
     return bestItem || selectRandom(candidates);
 }
 
-function recordFeedOutcome(char, correct) {
+function recordFeedOutcome(char, correct, responseMs = null) {
     if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR) return;
     if (!char) return;
 
+    const now = Date.now();
     feedModeState.totalPulls = (feedModeState.totalPulls || 0) + 1;
 
     if (!feedModeState.seen[char]) {
-        feedModeState.seen[char] = { attempts: 0, correct: 0, streak: 0, lastSeen: Date.now() };
+        feedModeState.seen[char] = {
+            attempts: 0,
+            correct: 0,
+            streak: 0,
+            lastSeen: 0,
+            halfLifeHours: FEED_FORGET_INITIAL_HALFLIFE_HOURS,
+            lastResponseMs: null,
+            avgResponseMs: null
+        };
     }
 
     const stats = feedModeState.seen[char];
     stats.attempts += 1;
-    stats.lastSeen = Date.now();
+    const prevSeen = Number.isFinite(stats.lastSeen) ? stats.lastSeen : 0;
+    stats.lastSeen = now;
 
     if (correct) {
         stats.correct += 1;
         stats.streak = (stats.streak || 0) + 1;
     } else {
         stats.streak = 0;
+    }
+
+    const responseFactor = getFeedResponseFactor(responseMs);
+    const confidenceNorm = normalizeConfidenceScore(getConfidenceScore(char));
+    const elapsedHours = prevSeen ? Math.max(0, (now - prevSeen) / 3600000) : 0;
+    const spacingBoost = elapsedHours > stats.halfLifeHours ? 1.15 : 1.0;
+
+    if (!Number.isFinite(stats.halfLifeHours)) {
+        stats.halfLifeHours = FEED_FORGET_INITIAL_HALFLIFE_HOURS;
+    }
+
+    if (correct) {
+        const growth = FEED_FORGET_CORRECT_GROWTH * responseFactor * (0.6 + 0.4 * confidenceNorm) * spacingBoost;
+        stats.halfLifeHours = clampNumber(stats.halfLifeHours * (1 + growth), FEED_FORGET_MIN_HALFLIFE_HOURS, FEED_FORGET_MAX_HALFLIFE_HOURS);
+    } else {
+        const shrink = FEED_FORGET_WRONG_SHRINK * (1 + (1 - responseFactor) * 0.5);
+        stats.halfLifeHours = clampNumber(stats.halfLifeHours * shrink, FEED_FORGET_MIN_HALFLIFE_HOURS, FEED_FORGET_MAX_HALFLIFE_HOURS);
+    }
+
+    if (Number.isFinite(responseMs)) {
+        const clamped = clampNumber(responseMs, FEED_RESPONSE_MIN_MS, FEED_RESPONSE_MAX_MS);
+        stats.lastResponseMs = Math.round(clamped);
+        stats.avgResponseMs = Number.isFinite(stats.avgResponseMs)
+            ? (stats.avgResponseMs * 0.8 + clamped * 0.2)
+            : clamped;
     }
 
     saveFeedState();
@@ -3429,8 +3576,12 @@ function getCurrentBatchSize() {
     return cycle > 0 ? BATCH_COMBINED_SIZE : BATCH_INITIAL_SIZE;
 }
 
+function isBatchModeFor(mode) {
+    return mode === SCHEDULER_MODES.BATCH_5 || mode === SCHEDULER_MODES.BATCH_3 || mode === SCHEDULER_MODES.BATCH_2;
+}
+
 function isBatchMode() {
-    return schedulerMode === SCHEDULER_MODES.BATCH_5 || schedulerMode === SCHEDULER_MODES.BATCH_3 || schedulerMode === SCHEDULER_MODES.BATCH_2;
+    return isBatchModeFor(schedulerMode);
 }
 
 function selectBatchFromPool(pool, size) {
@@ -3703,11 +3854,19 @@ function checkComposerAdvance() {
 
 function setSchedulerMode(mode) {
     if (!Object.values(SCHEDULER_MODES).includes(mode)) return;
-    const switchingToBatch = (mode === SCHEDULER_MODES.BATCH_5 || mode === SCHEDULER_MODES.BATCH_2) && !isBatchMode();
+    const prevMode = schedulerMode;
+    const wasBatch = isBatchMode();
+    const willBeBatch = isBatchModeFor(mode);
+    const switchingToBatch = !wasBatch && willBeBatch;
+    const switchingBatchSize = wasBatch && willBeBatch && prevMode !== mode;
     schedulerMode = mode;
     saveSchedulerMode(mode);
-    if (switchingToBatch) {
-        resetBatchState({ refresh: false });
+    if (willBeBatch) {
+        if (switchingToBatch || switchingBatchSize) {
+            resetBatchState({ refresh: false });
+        } else {
+            loadBatchState();
+        }
     }
     updateSchedulerToolbar();
     if (isBatchMode()) {
@@ -4033,6 +4192,7 @@ function selectNextQuestion(exclusions = []) {
         case SCHEDULER_MODES.ORDERED:
             return selectOrdered(pool, exclusionSet) || selectRandom(pool);
         case SCHEDULER_MODES.BATCH_5:
+        case SCHEDULER_MODES.BATCH_3:
         case SCHEDULER_MODES.BATCH_2:
             return selectRandom(pool);
         case SCHEDULER_MODES.ADAPTIVE_5:
@@ -4722,6 +4882,7 @@ function maybeGenerateChunksQuestion() {
         setTimeout(() => answerInput.focus(), 100);
     }
 
+    markQuestionStartTime();
     startTimer();
     return true;
 }
@@ -5245,6 +5406,9 @@ function generateQuestion(options = {}) {
         // Update partial progress indicators for typed modes
         updatePartialProgress();
     }
+
+    // Mark when the question is actually on screen for response-time tracking
+    markQuestionStartTime();
 
     // Start timer for the new question
     if (timerEnabled) {

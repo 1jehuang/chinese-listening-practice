@@ -363,25 +363,92 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
 
 function getChineseVoice() {
     if (!voicesLoaded) loadVoices();
-    // Prefer zh-CN, fall back to any zh voice
-    return cachedVoices.find(v => v.lang === 'zh-CN') ||
-           cachedVoices.find(v => v.lang.startsWith('zh'));
+    const zhVoices = cachedVoices.filter(v => typeof v.lang === 'string' && v.lang.toLowerCase().startsWith('zh'));
+    if (!zhVoices.length) return null;
+
+    const isRobotic = (voice) => {
+        const name = (voice?.name || '').toLowerCase();
+        const uri = (voice?.voiceURI || '').toLowerCase();
+        return name.includes('espeak') || name.includes('festival') || name.includes('flite') ||
+            uri.includes('espeak') || uri.includes('festival') || uri.includes('flite');
+    };
+
+    const preferred = zhVoices.find(v => v.lang === 'zh-CN' && !isRobotic(v)) ||
+        zhVoices.find(v => v.lang === 'zh-Hans' && !isRobotic(v)) ||
+        zhVoices.find(v => !isRobotic(v)) ||
+        zhVoices[0];
+
+    return preferred || null;
 }
 
 // Play audio using TTS
 function playTTS(chineseChar) {
     stopActiveAudio();
 
-    if (typeof window === 'undefined' ||
-        typeof window.speechSynthesis === 'undefined' ||
-        typeof window.SpeechSynthesisUtterance === 'undefined') {
-        console.warn('SpeechSynthesis not supported in this browser.');
+    const text = (chineseChar || '').toString().trim();
+    if (!text) return;
+
+    console.log(`Using TTS for: ${text}`);
+
+    const setTtsDebug = (engine, voiceLabel) => {
+        if (typeof window !== 'undefined') {
+            window.__lastTtsEngine = engine;
+            window.__lastTtsVoice = voiceLabel || '';
+        }
+        if (typeof document !== 'undefined' && document.body) {
+            document.body.dataset.ttsEngine = engine;
+            if (voiceLabel) {
+                document.body.dataset.ttsVoice = voiceLabel;
+            } else {
+                delete document.body.dataset.ttsVoice;
+            }
+        }
+    };
+
+    const hasSpeech = typeof window !== 'undefined' &&
+        typeof window.speechSynthesis !== 'undefined' &&
+        typeof window.SpeechSynthesisUtterance !== 'undefined';
+    const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
+    const hasChinese = /[\u3400-\u9FFF]/.test(text);
+    const chineseVoice = hasSpeech ? getChineseVoice() : null;
+    const voiceName = (chineseVoice?.name || '').toLowerCase();
+    const voiceUri = (chineseVoice?.voiceURI || '').toLowerCase();
+    const isLikelyRobotic = voiceName.includes('espeak') || voiceName.includes('festival') || voiceName.includes('flite') ||
+        voiceUri.includes('espeak') || voiceUri.includes('festival') || voiceUri.includes('flite');
+
+    const preferRemote = hasChinese && (isFirefox || !chineseVoice || isLikelyRobotic);
+
+    if (!hasSpeech || preferRemote) {
+        if (typeof Audio !== 'undefined') {
+            const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
+            const audio = new Audio(sentenceTtsUrl(text, rate));
+            audio.preload = 'auto';
+            setActiveAudio(audio);
+            setTtsDebug('remote', 'baidu');
+            audio.addEventListener('error', () => {
+                detachActiveAudio(audio);
+                if (hasSpeech) {
+                    const fallback = new SpeechSynthesisUtterance(text);
+                    fallback.lang = 'zh-CN';
+                    if (typeof getQuizTtsRate === 'function') {
+                        fallback.rate = getQuizTtsRate();
+                    }
+                    if (chineseVoice) {
+                        fallback.voice = chineseVoice;
+                    }
+                    setTtsDebug('speech', chineseVoice?.name || 'default');
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(fallback);
+                }
+            }, { once: true });
+            audio.play().catch(() => detachActiveAudio(audio));
+        } else if (!hasSpeech) {
+            console.warn('SpeechSynthesis not supported and Audio unavailable.');
+        }
         return;
     }
 
-    console.log(`Using TTS for: ${chineseChar}`);
-
-    const utterance = new SpeechSynthesisUtterance(chineseChar);
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN'; // Mandarin Chinese
     if (typeof getQuizTtsRate === 'function') {
         utterance.rate = getQuizTtsRate();
@@ -390,10 +457,10 @@ function playTTS(chineseChar) {
     }
 
     // Use cached Chinese voice (iOS-compatible)
-    const chineseVoice = getChineseVoice();
     if (chineseVoice) {
         utterance.voice = chineseVoice;
     }
+    setTtsDebug('speech', chineseVoice?.name || 'default');
 
     // Cancel any ongoing speech before starting new one
     if (typeof speechSynthesis.cancel === 'function') {
