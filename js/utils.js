@@ -555,7 +555,13 @@ function playSentenceAudio(sentence) {
 function playPinyinAudio(pinyin, chineseChar) {
     const text = (chineseChar || '').trim();
     const isMultiChar = text.length > 1;
+    const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
     console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${isMultiChar ? 'sentence' : 'single-char'}`);
+
+    if (isFirefox && text) {
+        playSentenceAudio(text);
+        return;
+    }
 
     if (isMultiChar) {
         playSentenceAudio(text);
