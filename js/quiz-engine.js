@@ -9729,7 +9729,6 @@ function submitDrawing() {
             answered = false;
             questionAttemptRecorded = false;
             lastAnswerCorrect = true;
-            showDrawNextButton();
             updateStats();
             return;
         }
@@ -9753,9 +9752,10 @@ function submitDrawing() {
 
     updateStats();
 
-    // Show the next button after first attempt
-    if (isFirstAttempt) {
+    if (correct && mode !== 'draw-missing-component') {
         showDrawNextButton();
+    } else if (!correct) {
+        hideDrawNextButton();
     }
 }
 
@@ -10372,22 +10372,24 @@ function submitFullscreenDrawing() {
 
     updateStats();
 
-    // Stay in fullscreen and auto-advance after 1.5 seconds
-    setTimeout(() => {
-        clearFullscreenCanvas();
-        generateQuestion();
-        // Update prompt for new question
-        const prompt = document.getElementById('fullscreenPrompt');
-        if (prompt && currentQuestion) {
-            prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
-        }
+    if (correct) {
+        // Stay in fullscreen and auto-advance after 1.5 seconds
+        setTimeout(() => {
+            clearFullscreenCanvas();
+            generateQuestion();
+            // Update prompt for new question
+            const prompt = document.getElementById('fullscreenPrompt');
+            if (prompt && currentQuestion) {
+                prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
+            }
 
-        // Play character pronunciation audio for new question
-        if (currentQuestion && currentQuestion.pinyin) {
-            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-            playPinyinAudio(firstPinyin, currentQuestion.char);
-        }
-    }, 1500);
+            // Play character pronunciation audio for new question
+            if (currentQuestion && currentQuestion.pinyin) {
+                const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+                playPinyinAudio(firstPinyin, currentQuestion.char);
+            }
+        }, 1500);
+    }
 }
 
 function showFullscreenAnswer() {
