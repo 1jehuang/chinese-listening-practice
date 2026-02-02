@@ -11485,6 +11485,28 @@ function ensureFullscreenDrawLayout() {
     fullscreenDrawInitialized = true;
 }
 
+function ensureFeedbackPanelLayout() {
+    if (!questionDisplay || !feedback) return;
+    const quizDisplay = questionDisplay.closest('.quiz-display');
+    if (!quizDisplay) return;
+
+    let row = quizDisplay.querySelector('.question-row');
+    if (!row) {
+        row = document.createElement('div');
+        row.className = 'question-row';
+        quizDisplay.insertBefore(row, questionDisplay);
+    }
+
+    if (feedback.parentElement !== row) {
+        row.appendChild(feedback);
+    }
+    if (questionDisplay.parentElement !== row) {
+        row.appendChild(questionDisplay);
+    }
+
+    document.body.classList.add('feedback-left-layout');
+}
+
 // =============================================================================
 // RADICAL PRACTICE MODE
 // =============================================================================
@@ -13501,6 +13523,7 @@ function initQuizDomElements() {
     audioSection = document.getElementById('audioSection');
     fullscreenDrawInitialized = false;
     ensureFullscreenDrawLayout();
+    ensureFeedbackPanelLayout();
 }
 
 function configureQuizInputs() {
