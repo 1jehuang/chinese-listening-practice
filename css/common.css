@@ -220,6 +220,13 @@ body.feedback-left-layout .question-row #questionDisplay {
     min-width: 0;
 }
 
+body.feedback-left-layout #currentWordConfidence {
+    grid-column: 1 / -1;
+    justify-self: center;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
 body.feedback-left-layout .main-content {
     padding: 0.75rem 1.5rem;
 }
