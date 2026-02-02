@@ -9768,6 +9768,35 @@ function stripPlaceholderChars(text = '') {
     return text.replace(/[\.·•…⋯﹒＿_—-]/g, '');
 }
 
+function lookupSingleCharInfo(char) {
+    if (!char) return null;
+    const pool = Array.isArray(quizCharacters) ? quizCharacters : [];
+    const direct = pool.find(item => item && item.char === char);
+    if (direct && (direct.meaning || direct.pinyin)) {
+        return direct;
+    }
+    if (typeof COMMON_2500_CHARS !== 'undefined' && Array.isArray(COMMON_2500_CHARS)) {
+        const fallback = COMMON_2500_CHARS.find(item => item && item.char === char);
+        if (fallback) return fallback;
+    }
+    return null;
+}
+
+function buildIndividualCharMeaningLines(text) {
+    if (!text) return [];
+    const chars = Array.from(text).filter(c => /[\u3400-\u9FFF]/.test(c));
+    if (chars.length <= 1) return [];
+    return chars.map((char) => {
+        const info = lookupSingleCharInfo(char);
+        if (!info) {
+            return `${escapeHtml(char)}: (meaning not in lesson list)`;
+        }
+        const pinyin = info.pinyin ? ` (${escapeHtml(info.pinyin)})` : '';
+        const meaning = info.meaning ? escapeHtml(info.meaning) : '—';
+        return `${escapeHtml(char)}${pinyin}: ${meaning}`;
+    });
+}
+
 function prettifyHandwritingPinyin(pinyin = '') {
     // Remove placeholder dots/ellipsis and collapse whitespace for display
     return pinyin.replace(/[\.·•…⋯﹒＿_—-]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -9813,6 +9842,17 @@ function revealDrawingAnswer() {
     const revealText = isFirstReveal ? 'ⓘ Answer: ' : 'ⓘ Answer (shown again): ';
     feedback.textContent = `${revealText}${expectedChar} (${currentQuestion.pinyin})${meaningSuffix}`;
     feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
+
+    const perCharLines = buildIndividualCharMeaningLines(expectedChar);
+    if (hint) {
+        if (perCharLines.length > 0) {
+            hint.innerHTML = `<div class="text-sm text-gray-600">Characters</div><div class="text-sm text-gray-700 mt-1">${perCharLines.join('<br>')}</div>`;
+            hint.className = 'text-center my-2';
+        } else {
+            hint.textContent = '';
+            hint.className = 'text-center my-2';
+        }
+    }
 
     updateStats();
 
@@ -10361,7 +10401,11 @@ function showFullscreenAnswer() {
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt) {
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
-        prompt.innerHTML = `<span class="text-red-600">✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}</span>`;
+        const perCharLines = buildIndividualCharMeaningLines(currentQuestion.char);
+        const perCharHtml = perCharLines.length
+            ? `<div style="margin-top:6px;font-size:0.85rem;color:#cbd5f5;">${perCharLines.join('<br>')}</div>`
+            : '';
+        prompt.innerHTML = `<span class="text-red-600">✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}</span>${perCharHtml}`;
     }
 
     if (!answered) {
