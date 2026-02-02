@@ -3073,14 +3073,14 @@ function updateFeedStatusDisplay() {
         const dueFlag = Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD ? 'Due' : '';
         const ucbScore = getFeedUCBScoreForDisplay(char);
         const curveSvg = renderFeedCurveSparkline(halfLife, elapsedMinutes, {
-            width: 100,
-            height: 28,
+            width: 84,
+            height: 26,
             windowMinutes: FEED_CURVE_WINDOW_MINUTES
         });
         const cardClass = highlight ? 'border-purple-300 bg-purple-50' : 'border-purple-100 bg-white';
 
         return `
-            <div class="rounded-xl border ${cardClass} p-1.5 shadow-sm">
+            <div class="rounded-xl border ${cardClass} p-1 shadow-sm">
                 <div class="flex items-center justify-between text-xs text-purple-900 font-semibold">
                     <span>${escapeHtml(char)}</span>
                     <span>${attempts ? `${recallPct}%` : 'new'} ${dueFlag}</span>
@@ -3089,7 +3089,7 @@ function updateFeedStatusDisplay() {
                     HL ${formatFeedDuration(halfLife)} · Seen ${formatFeedDuration(elapsedHours)}
                 </div>
                 <div class="mt-1 text-[10px] text-purple-700">
-                    Acc ${attempts ? Math.round((correct / attempts) * 100) : 0}% · Avg ${avgResponse} · UCB ${ucbScore !== null ? ucbScore.toFixed(2) : '—'}
+                    Acc ${attempts ? Math.round((correct / attempts) * 100) : 0}% · Avg ${avgResponse}
                 </div>
                 <div class="mt-1">${curveSvg}</div>
             </div>
@@ -3103,12 +3103,12 @@ function updateFeedStatusDisplay() {
 
     statusEl.className = 'mt-1 text-xs text-purple-800';
     statusEl.style.width = '100%';
-    statusEl.style.maxWidth = '980px';
+    statusEl.style.maxWidth = '720px';
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
         <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
         <div class="text-[11px] text-purple-700">${statsLine}</div>
-        ${focusCard ? `<div class="mt-2">${focusCard}</div>` : ''}
+        ${focusCard ? `<div class="mt-2" style="max-width: 240px;">${focusCard}</div>` : ''}
         ${hand.length > 1 ? `
             <button id="feedDetailsToggle" type="button" class="mt-2 text-[11px] font-semibold text-purple-700 hover:text-purple-900">
                 ${showDetails ? 'Hide hand details' : 'Show hand details'}
@@ -7015,11 +7015,7 @@ function checkFuzzyAnswer(answer) {
         }
 
         threeColumnInlineFeedback = {
-            message: (() => {
-                const perCharText = buildPerCharMeaningText(currentQuestion.char);
-                const suffix = perCharText ? ` · ${perCharText}` : '';
-                return `✗ Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})${suffix}`;
-            })(),
+            message: `✗ Correct: ${formatMeaningCorrectionText(currentQuestion)}`,
             type: 'incorrect'
         };
 
@@ -7067,7 +7063,7 @@ function checkFuzzyAnswer(answer) {
         if (isFirstAttempt) {
             markSchedulerOutcome(false);
         }
-        feedback.textContent = `✗ Wrong! Correct: ${currentQuestion.meaning} - ${currentQuestion.char} (${currentQuestion.pinyin})`;
+        feedback.textContent = `✗ Wrong! Correct: ${formatMeaningCorrectionText(currentQuestion)}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         renderMeaningHint(currentQuestion, 'incorrect');
         renderCharacterComponents(currentQuestion);
@@ -7140,7 +7136,11 @@ function checkMultipleChoice(answer) {
         scheduleNextQuestion(mode === 'audio-to-meaning' ? 0 : 600);
     } else {
         playWrongSound();
-        feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
+        if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
+            feedback.textContent = `✗ Wrong! Correct: ${formatMeaningCorrectionText(currentQuestion)}`;
+        } else {
+            feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
+        }
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         lastAnswerCorrect = false;
         markSchedulerOutcome(false);
@@ -10389,9 +10389,25 @@ function buildPerCharMeaningText(text) {
         }
         const pinyin = info.pinyin ? ` (${info.pinyin})` : '';
         const meaning = info.meaning ? info.meaning : '—';
-        lines.push(`${char}${pinyin}: ${meaning}`);
+        lines.push(`${char}${pinyin} = ${meaning}`);
     });
     return lines.join(' · ');
+}
+
+function formatMeaningCorrectionText(question, { includeChars = true } = {}) {
+    if (!question) return '';
+    const charText = question.char || '';
+    const pinyinText = (question.pinyin || '').split('/').map(p => p.trim())[0] || '';
+    const meaningText = question.meaning || '';
+    const wordPart = charText ? `${charText}${pinyinText ? ` (${pinyinText})` : ''}` : '';
+    const parts = [];
+    if (wordPart) parts.push(`Word: ${wordPart}`);
+    if (meaningText) parts.push(`Meaning: ${meaningText}`);
+    if (includeChars) {
+        const perCharText = buildPerCharMeaningText(charText);
+        if (perCharText) parts.push(`Characters: ${perCharText}`);
+    }
+    return parts.filter(Boolean).join(' | ');
 }
 
 function renderPerCharMeaning(text, targetEl, options = {}) {

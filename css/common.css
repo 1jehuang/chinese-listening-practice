@@ -1675,3 +1675,11 @@ body.feed-mode-active .quiz-display {
     font-weight: 700;
     margin-bottom: 0.5rem;
 }
+
+.choice-sidebar-slot #choiceMode {
+    width: 100%;
+}
+
+.choice-sidebar-slot #choiceMode .choice-grid button {
+    width: 100%;
+}
