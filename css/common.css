@@ -190,9 +190,10 @@
     max-width: 720px;
     margin: 0.5rem auto;
     padding: 0 0.75rem;
-    white-space: normal;
+    white-space: pre-line;
     word-break: break-word;
     overflow-wrap: anywhere;
+    line-height: 1.35;
 }
 
 .meaning-question-layout {
@@ -905,7 +906,7 @@
     background: transparent;
     color: #0f172a;
     text-align: center;
-    white-space: normal;
+    white-space: pre-line;
     word-break: break-word;
     overflow-wrap: anywhere;
 }

@@ -3096,25 +3096,31 @@ function updateFeedStatusDisplay() {
         `;
     };
 
-    const focusCard = focusChar ? renderCard(focusChar, { highlight: true }) : '';
+    const orderedHand = focusChar
+        ? [focusChar, ...hand.filter(char => char !== focusChar)]
+        : hand.slice();
+    const compactCount = Math.min(orderedHand.length, 4);
+    const compactCards = orderedHand.slice(0, compactCount)
+        .map(char => renderCard(char, { highlight: char === focusChar }))
+        .join('');
     const detailCards = showDetails
-        ? hand.map(char => renderCard(char, { highlight: char === focusChar })).join('')
+        ? orderedHand.map(char => renderCard(char, { highlight: char === focusChar })).join('')
         : '';
 
     statusEl.className = 'mt-1 text-xs text-purple-800';
     statusEl.style.width = '100%';
-    statusEl.style.maxWidth = '720px';
+    statusEl.style.maxWidth = '900px';
     statusEl.innerHTML = `
         <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
         <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
         <div class="text-[11px] text-purple-700">${statsLine}</div>
-        ${focusCard ? `<div class="mt-2" style="max-width: 240px;">${focusCard}</div>` : ''}
+        ${compactCards ? `<div class="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">${compactCards}</div>` : ''}
         ${hand.length > 1 ? `
             <button id="feedDetailsToggle" type="button" class="mt-2 text-[11px] font-semibold text-purple-700 hover:text-purple-900">
                 ${showDetails ? 'Hide hand details' : 'Show hand details'}
             </button>
         ` : ''}
-        ${detailCards ? `<div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2" style="max-height: 240px; overflow: auto;">${detailCards}</div>` : ''}
+        ${detailCards ? `<div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2" style="max-height: 260px; overflow: auto;">${detailCards}</div>` : ''}
         ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduation: ready ${masteredCount}/${seenCount || 1} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
     `;
 
@@ -3424,11 +3430,12 @@ function getMeasuredWidth(element) {
 function updateRightSideSpacing() {
     const appContainer = document.querySelector('.app-container');
     const mainContent = document.querySelector('.main-content');
-    if (!appContainer) return;
+    const target = appContainer || document.body;
+    if (!target) return;
     const gutter = 16;
 
     if (document.body?.classList?.contains('study-mode-active') || isNarrowViewport()) {
-        appContainer.style.paddingRight = '0px';
+        target.style.paddingRight = '0px';
         return;
     }
 
@@ -3440,12 +3447,17 @@ function updateRightSideSpacing() {
     // Chat panel takes priority when visible
     if (chatPanelVisible) {
         const chatPanelWidth = 320; // w-80 = 20rem
-        appContainer.style.paddingRight = `${chatPanelWidth + gutter}px`;
+        target.style.paddingRight = `${chatPanelWidth + gutter}px`;
     } else if (confidencePanelVisible) {
         const panelWidth = getMeasuredWidth(confidencePanel);
-        appContainer.style.paddingRight = panelWidth ? `${panelWidth + gutter}px` : '0px';
+        target.style.paddingRight = panelWidth ? `${panelWidth + gutter}px` : '0px';
     } else {
-        appContainer.style.paddingRight = '0px';
+        target.style.paddingRight = '0px';
+    }
+
+    // Add extra safety margin so fixed panels never overlap inputs on smaller widths
+    if (mainContent) {
+        mainContent.style.marginRight = confidencePanelVisible ? '24px' : '';
     }
 }
 
@@ -7015,7 +7027,7 @@ function checkFuzzyAnswer(answer) {
         }
 
         threeColumnInlineFeedback = {
-            message: `✗ Correct: ${formatMeaningCorrectionText(currentQuestion)}`,
+            message: `✗ Correct:\n${formatMeaningCorrectionText(currentQuestion)}`,
             type: 'incorrect'
         };
 
@@ -7063,8 +7075,8 @@ function checkFuzzyAnswer(answer) {
         if (isFirstAttempt) {
             markSchedulerOutcome(false);
         }
-        feedback.textContent = `✗ Wrong! Correct: ${formatMeaningCorrectionText(currentQuestion)}`;
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+        feedback.innerHTML = formatMeaningCorrectionHtml(currentQuestion);
+        feedback.className = 'text-center my-4';
         renderMeaningHint(currentQuestion, 'incorrect');
         renderCharacterComponents(currentQuestion);
         if (mode === 'char-to-meaning') {
@@ -7137,11 +7149,12 @@ function checkMultipleChoice(answer) {
     } else {
         playWrongSound();
         if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
-            feedback.textContent = `✗ Wrong! Correct: ${formatMeaningCorrectionText(currentQuestion)}`;
+            feedback.innerHTML = formatMeaningCorrectionHtml(currentQuestion);
+            feedback.className = 'text-center my-4';
         } else {
             feedback.textContent = `✗ Wrong. The answer is: ${correctAnswer}`;
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         }
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         lastAnswerCorrect = false;
         markSchedulerOutcome(false);
         if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
@@ -10394,20 +10407,52 @@ function buildPerCharMeaningText(text) {
     return lines.join(' · ');
 }
 
+function buildPerCharMeaningLineList(text) {
+    if (!text) return [];
+    const chars = Array.from(text).filter(c => /[\u3400-\u9FFF]/.test(c));
+    if (chars.length <= 1) return [];
+    const lines = [];
+    chars.forEach((char) => {
+        const info = lookupSingleCharInfo(char);
+        if (!info) {
+            lines.push(`${char}: not in word list`);
+            return;
+        }
+        const pinyin = info.pinyin ? ` (${info.pinyin})` : '';
+        const meaning = info.meaning ? info.meaning : '—';
+        lines.push(`${char}${pinyin} = ${meaning}`);
+    });
+    return lines;
+}
+
 function formatMeaningCorrectionText(question, { includeChars = true } = {}) {
     if (!question) return '';
-    const charText = question.char || '';
-    const pinyinText = (question.pinyin || '').split('/').map(p => p.trim())[0] || '';
     const meaningText = question.meaning || '';
-    const wordPart = charText ? `${charText}${pinyinText ? ` (${pinyinText})` : ''}` : '';
     const parts = [];
-    if (wordPart) parts.push(`Word: ${wordPart}`);
     if (meaningText) parts.push(`Meaning: ${meaningText}`);
     if (includeChars) {
-        const perCharText = buildPerCharMeaningText(charText);
-        if (perCharText) parts.push(`Characters: ${perCharText}`);
+        const perCharLines = buildPerCharMeaningLineList(question.char || '');
+        if (perCharLines.length) parts.push(...perCharLines);
     }
-    return parts.filter(Boolean).join(' | ');
+    return parts.filter(Boolean).join('\n');
+}
+
+function formatMeaningCorrectionHtml(question, options = {}) {
+    if (!question) return '';
+    const meaningText = escapeHtml(question.meaning || '');
+    const perCharLines = buildPerCharMeaningLineList(question.char || '');
+    const accent = options.accentClass || 'text-red-700';
+    const accentSoft = options.accentSoftClass || 'text-red-500';
+
+    const charHtml = perCharLines.length
+        ? `<div class="mt-1 text-sm text-gray-700">${perCharLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')}</div>`
+        : '';
+
+    return `
+        <div class="text-[11px] uppercase tracking-[0.25em] ${accentSoft}">Correct</div>
+        ${meaningText ? `<div class="text-base font-semibold ${accent}">Meaning: ${meaningText}</div>` : ''}
+        ${charHtml}
+    `;
 }
 
 function renderPerCharMeaning(text, targetEl, options = {}) {
