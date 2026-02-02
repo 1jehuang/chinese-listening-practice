@@ -118,7 +118,6 @@ let toneFlowIndex = 0;              // current syllable index
 let toneFlowUseFuzzy = false;
 let toneFlowCompleted = [];         // tracks completed tones for progress display
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
-let commonCharDataPromise = null;
 
 // Char-to-tones MC mode state (three-column layout with tone buttons)
 let charToTonesMcIndex = 0;             // current character index
@@ -9739,7 +9738,8 @@ function submitDrawing() {
         const label = mode === 'draw-missing-component'
             ? `Missing: ${expectedChar}`
             : `${currentQuestion.char}`;
-        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${label} (${currentQuestion.pinyin})${tryAgainText}`;
+        const recognizedWithPinyin = formatRecognizedText(recognized);
+        feedback.textContent = `✗ Wrong! You wrote: ${recognizedWithPinyin}, Correct: ${label} (${currentQuestion.pinyin})${tryAgainText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
 
         if (mode === 'draw-missing-component') {
@@ -9776,6 +9776,12 @@ function stripPlaceholderChars(text = '') {
     return text.replace(/[\.·•…⋯﹒＿_—-]/g, '');
 }
 
+function lookupWordInfo(text) {
+    if (!text) return null;
+    const pool = Array.isArray(quizCharacters) ? quizCharacters : [];
+    return pool.find(item => item && item.char === text) || null;
+}
+
 function lookupSingleCharInfo(char) {
     if (!char) return null;
     const pool = Array.isArray(quizCharacters) ? quizCharacters : [];
@@ -9783,29 +9789,37 @@ function lookupSingleCharInfo(char) {
     if (direct && (direct.meaning || direct.pinyin)) {
         return direct;
     }
-    if (typeof COMMON_2500_CHARS !== 'undefined' && Array.isArray(COMMON_2500_CHARS)) {
-        const fallback = COMMON_2500_CHARS.find(item => item && item.char === char);
-        if (fallback) return fallback;
-    }
     return null;
 }
 
-function ensureCommonCharDataLoaded() {
-    if (typeof COMMON_2500_CHARS !== 'undefined' && Array.isArray(COMMON_2500_CHARS)) {
-        return Promise.resolve(true);
-    }
-    if (commonCharDataPromise) return commonCharDataPromise;
-    if (typeof document === 'undefined') return Promise.resolve(false);
+function getPinyinForText(text) {
+    if (!text) return '';
+    const direct = lookupWordInfo(text);
+    if (direct && direct.pinyin) return direct.pinyin;
 
-    commonCharDataPromise = new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = 'js/common-2500-chars.js';
-        script.async = true;
-        script.onload = () => resolve(true);
-        script.onerror = () => resolve(false);
-        document.head.appendChild(script);
+    const chars = Array.from(text).filter(c => /[\u3400-\u9FFF]/.test(c));
+    if (!chars.length) return '';
+
+    const parts = chars.map((char) => {
+        const info = lookupSingleCharInfo(char);
+        return info?.pinyin || '';
     });
-    return commonCharDataPromise;
+
+    if (parts.every(p => !p)) return '';
+    if (parts.some(p => !p)) return '';
+    return parts.join(' ');
+}
+
+function formatRecognizedText(text, { html = false } = {}) {
+    const value = (text || '').trim();
+    const pinyin = getPinyinForText(value);
+    if (!pinyin) {
+        return html ? escapeHtml(value) : value;
+    }
+    if (html) {
+        return `${escapeHtml(value)} (${escapeHtml(pinyin)})`;
+    }
+    return `${value} (${pinyin})`;
 }
 
 function buildIndividualCharMeaningLines(text, options = {}) {
@@ -9813,15 +9827,12 @@ function buildIndividualCharMeaningLines(text, options = {}) {
     const chars = Array.from(text).filter(c => /[\u3400-\u9FFF]/.test(c));
     if (chars.length <= 1) return { lines: [], missing: [] };
 
-    const hasCommon = typeof COMMON_2500_CHARS !== 'undefined' && Array.isArray(COMMON_2500_CHARS);
-    const placeholder = options.final || hasCommon ? 'meaning unavailable' : '…';
+    const placeholder = 'not in word list';
     const lines = [];
-    const missing = [];
 
     chars.forEach((char) => {
         const info = lookupSingleCharInfo(char);
         if (!info) {
-            missing.push(char);
             lines.push(`${escapeHtml(char)}: ${placeholder}`);
             return;
         }
@@ -9830,12 +9841,12 @@ function buildIndividualCharMeaningLines(text, options = {}) {
         lines.push(`${escapeHtml(char)}${pinyin}: ${meaning}`);
     });
 
-    return { lines, missing };
+    return { lines, missing: [] };
 }
 
 function renderPerCharMeaning(text, targetEl, options = {}) {
     if (!targetEl) return;
-    const { lines, missing } = buildIndividualCharMeaningLines(text, options);
+    const { lines } = buildIndividualCharMeaningLines(text, options);
     if (!lines.length) {
         targetEl.textContent = '';
         targetEl.className = options.wrapperClass || 'text-center my-2';
@@ -9845,27 +9856,15 @@ function renderPerCharMeaning(text, targetEl, options = {}) {
     const bodyClass = options.bodyClass ?? 'text-sm text-gray-700 mt-1';
     targetEl.innerHTML = `${headerHtml}<div class="${bodyClass}">${lines.join('<br>')}</div>`;
     targetEl.className = options.wrapperClass || 'text-center my-2';
-
-    if (missing.length && typeof COMMON_2500_CHARS === 'undefined' && !options.final) {
-        ensureCommonCharDataLoaded().then(() => {
-            renderPerCharMeaning(text, targetEl, { ...options, final: true });
-        });
-    }
 }
 
 function renderPerCharMeaningInline(text, targetEl, baseHtml, options = {}) {
     if (!targetEl) return;
-    const { lines, missing } = buildIndividualCharMeaningLines(text, options);
+    const { lines } = buildIndividualCharMeaningLines(text, options);
     const perCharHtml = lines.length
         ? `<div style="margin-top:6px;font-size:0.85rem;color:#cbd5f5;">${lines.join('<br>')}</div>`
         : '';
     targetEl.innerHTML = `${baseHtml}${perCharHtml}`;
-
-    if (missing.length && typeof COMMON_2500_CHARS === 'undefined' && !options.final) {
-        ensureCommonCharDataLoaded().then(() => {
-            renderPerCharMeaningInline(text, targetEl, baseHtml, { ...options, final: true });
-        });
-    }
 }
 
 function prettifyHandwritingPinyin(pinyin = '') {
@@ -10425,7 +10424,8 @@ function submitFullscreenDrawing() {
             const baseHtml = `<span class="text-green-600">✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
             renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
         } else {
-            const baseHtml = `<span class="text-red-600">✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
+            const recognizedWithPinyin = formatRecognizedText(recognized, { html: true });
+            const baseHtml = `<span class="text-red-600">✗ Wrong! You wrote: ${recognizedWithPinyin}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
             renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
         }
     }
@@ -10435,7 +10435,8 @@ function submitFullscreenDrawing() {
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
     } else {
-        feedback.textContent = `✗ Wrong! You wrote: ${recognized}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}`;
+        const recognizedWithPinyin = formatRecognizedText(recognized);
+        feedback.textContent = `✗ Wrong! You wrote: ${recognizedWithPinyin}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     }
 
