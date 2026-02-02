@@ -118,6 +118,7 @@ let toneFlowIndex = 0;              // current syllable index
 let toneFlowUseFuzzy = false;
 let toneFlowCompleted = [];         // tracks completed tones for progress display
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
+let lessonCharMap = null;
 
 // Char-to-tones MC mode state (three-column layout with tone buttons)
 let charToTonesMcIndex = 0;             // current character index
@@ -1644,6 +1645,35 @@ function ensureCharGlossesLoaded() {
             return {};
         });
     return charGlossPromise;
+}
+
+function buildLessonCharMap() {
+    const datasets = (typeof window !== 'undefined' && window.__LESSON_DATASETS__) ? window.__LESSON_DATASETS__ : {};
+    const map = {};
+    Object.values(datasets || {}).forEach((dataset) => {
+        if (!dataset) return;
+        const list = dataset.charMap || dataset.chars || dataset.charList;
+        if (Array.isArray(list)) {
+            list.forEach((item) => {
+                if (item && item.char) {
+                    map[item.char] = item;
+                }
+            });
+            return;
+        }
+        if (list && typeof list === 'object') {
+            Object.entries(list).forEach(([char, entry]) => {
+                if (!char) return;
+                if (entry && typeof entry === 'object') {
+                    map[char] = entry.char ? entry : { char, ...entry };
+                } else {
+                    map[char] = { char, meaning: String(entry || '') };
+                }
+            });
+        }
+    });
+    lessonCharMap = map;
+    return lessonCharMap;
 }
 
 function loadSchedulerMode() {
@@ -9784,6 +9814,9 @@ function lookupWordInfo(text) {
 
 function lookupSingleCharInfo(char) {
     if (!char) return null;
+    if (lessonCharMap && lessonCharMap[char]) {
+        return lessonCharMap[char];
+    }
     const pool = Array.isArray(quizCharacters) ? quizCharacters : [];
     const direct = pool.find(item => item && item.char === char);
     if (direct && (direct.meaning || direct.pinyin)) {
@@ -12804,6 +12837,8 @@ function initQuizPersistentState(charactersData, userConfig) {
     quizCharacters = charactersData;
     config = userConfig || {};
     initQuizDebugInterface();
+
+    buildLessonCharMap();
 
     loadConfidencePanelVisibility();
     loadConfidenceTrackingEnabled();
