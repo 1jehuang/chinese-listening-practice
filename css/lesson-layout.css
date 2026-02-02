@@ -656,3 +656,194 @@ body.dictation-chat-active #feedback {
         align-items: start;
     }
 }
+
+@media (prefers-color-scheme: dark) {
+    body.experimental-layout #confidencePanel {
+        background: linear-gradient(180deg, #0f172a 0%, #0b1020 100%);
+        border-left-color: var(--dm-border);
+        box-shadow: -6px 0 20px rgba(0, 0, 0, 0.45);
+        color: var(--dm-text-soft);
+    }
+
+    .sidebar,
+    .sidebar-content {
+        background: var(--dm-surface);
+        box-shadow: var(--dm-shadow);
+        color: var(--dm-text);
+    }
+
+    .sidebar h2 {
+        color: var(--dm-text);
+    }
+
+    .sidebar .mode-desc {
+        color: var(--dm-text-soft);
+    }
+
+    .sidebar .mode-btn {
+        background: var(--dm-surface-2);
+        border-color: var(--dm-border-strong);
+        color: var(--dm-text-muted);
+    }
+
+    .sidebar .mode-btn:hover {
+        background: #1f2937;
+    }
+
+    .sidebar .mode-btn.active {
+        background: var(--dm-accent-strong);
+        border-color: var(--dm-accent-strong);
+        color: #f8fafc;
+    }
+
+    .quiz-header h1 {
+        color: var(--dm-text);
+    }
+
+    .input-section input[type="text"] {
+        background: var(--dm-surface-2);
+        border-color: var(--dm-border-strong);
+        color: var(--dm-text);
+    }
+
+    .input-section input[type="text"]:focus {
+        border-color: var(--dm-accent);
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+    }
+
+    .choice-grid button {
+        background: var(--dm-surface-2);
+        border-color: var(--dm-border);
+        color: var(--dm-text);
+    }
+
+    .choice-grid button:hover {
+        border-color: var(--dm-accent);
+        background: rgba(59, 130, 246, 0.14);
+    }
+
+    .stats-bar {
+        color: var(--dm-text-faint);
+        border-top-color: var(--dm-border);
+    }
+
+    .home-btn {
+        background: var(--dm-surface);
+        border-color: var(--dm-border);
+        color: var(--dm-text-muted);
+    }
+
+    .home-btn:hover {
+        background: var(--dm-surface-2);
+    }
+
+    .sidebar-toggle {
+        background: var(--dm-surface);
+        border-color: var(--dm-border);
+        color: var(--dm-text-faint);
+    }
+
+    .sidebar-toggle:hover {
+        background: var(--dm-surface-2);
+        color: var(--dm-text-muted);
+    }
+
+    .dictation-chat-main {
+        background: var(--dm-surface);
+        border-color: var(--dm-border);
+        box-shadow: var(--dm-shadow);
+    }
+
+    .dictation-chat-header {
+        border-bottom-color: var(--dm-border);
+        background: linear-gradient(180deg, #0f172a 0%, #0b1020 100%);
+    }
+
+    .dictation-chat-title {
+        color: var(--dm-text);
+    }
+
+    .dictation-chat-subtitle {
+        color: var(--dm-text-soft);
+    }
+
+    .dictation-chat-messages {
+        background: #0b1020;
+    }
+
+    .dictation-chat-input {
+        border-top-color: var(--dm-border);
+        background: var(--dm-surface-2);
+    }
+
+    .dictation-chat-textarea {
+        background: #0b1020;
+        border-color: var(--dm-border-strong);
+        color: var(--dm-text);
+    }
+
+    .dictation-chat-textarea:focus {
+        border-color: var(--dm-accent);
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+    }
+
+    .dictation-chat-hint {
+        color: var(--dm-text-faint);
+    }
+
+    .dictation-chat-card {
+        background: var(--dm-surface);
+        border-color: var(--dm-border);
+        box-shadow: var(--dm-shadow);
+    }
+
+    .dictation-chat-card-label {
+        color: var(--dm-text-faint);
+    }
+
+    .dictation-chat-card-text {
+        color: var(--dm-text);
+    }
+
+    .dictation-chat-toggle-btn {
+        background: var(--dm-surface-2);
+        border-color: var(--dm-border);
+        color: var(--dm-text-soft);
+    }
+
+    .dictation-chat-toggle-btn.is-active {
+        background: var(--dm-accent-strong);
+        border-color: var(--dm-accent-strong);
+        color: #f8fafc;
+    }
+
+    .dictation-chat-action {
+        background: var(--dm-surface-2);
+        border-color: var(--dm-border);
+        color: var(--dm-text-soft);
+    }
+
+    .dictation-chat-action-primary {
+        background: #10b981;
+        border-color: #10b981;
+        color: #f0fdf4;
+    }
+
+    .dictation-chat-mini-stats {
+        color: var(--dm-text-faint);
+    }
+
+    .dictation-chat-bubble-label {
+        color: rgba(148, 163, 184, 0.7);
+    }
+
+    .dictation-chat-bubble.is-assistant {
+        background: var(--dm-surface-2);
+        border-color: var(--dm-border);
+        color: var(--dm-text);
+    }
+
+    .dictation-chat-bubble.is-typing {
+        color: var(--dm-text-soft);
+    }
+}
