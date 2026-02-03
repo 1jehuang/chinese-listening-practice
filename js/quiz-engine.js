@@ -154,7 +154,8 @@ const studyModeState = {
     searchRaw: '',
     searchQuery: '',
     sortBy: 'original',
-    shuffleOrder: null
+    shuffleOrder: null,
+    filterMarked: 'all' // 'all' | 'needs-work' | 'learned'
 };
 
 // Word marking state
@@ -4448,6 +4449,7 @@ function selectOrdered(pool, exclusionSet = new Set()) {
 
 function selectWeighted(pool) {
     const now = Date.now();
+    const MARKING_NEEDS_WORK_BOOST = 2.5;  // Boost for marked words
     const weights = pool.map(item => {
         const stats = getSchedulerStats(item.char);
         const lastServed = stats.lastServed || 0;
@@ -4459,7 +4461,10 @@ function selectWeighted(pool) {
         const confidenceScore = getConfidenceScore(item.char);
         // Lower confidence → higher multiplier; taper as confidence grows
         const confidenceBoost = Math.pow(Math.max(0.35, 2.8 - confidenceScore), 1.6);
-        const weight = Math.pow(ageSec + 15, 1.3) * wrongBonus * exposureFactor * confidenceBoost;
+        // Boost words marked as "needs work"
+        const marking = getWordMarking(item.char);
+        const markingBoost = marking === 'needs-work' ? MARKING_NEEDS_WORK_BOOST : 1.0;
+        const weight = Math.pow(ageSec + 15, 1.3) * wrongBonus * exposureFactor * confidenceBoost * markingBoost;
         return { item, weight };
     }).filter(entry => entry.weight > 0);
 
@@ -11173,6 +11178,12 @@ function ensureStudyModeLayout() {
                             >
                         </div>
                         <div class="flex flex-wrap gap-3 items-center text-sm md:justify-end">
+                            <label for="studyFilterSelect" class="font-semibold text-gray-600">Filter:</label>
+                            <select id="studyFilterSelect" class="px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-700 bg-white">
+                                <option value="all">All words</option>
+                                <option value="needs-work">⚠ Needs work</option>
+                                <option value="learned">✓ Learned</option>
+                            </select>
                             <label for="studySortSelect" class="font-semibold text-gray-600">Sort:</label>
                             <select id="studySortSelect" class="px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-700 bg-white">
                                 <option value="original">Original order</option>
@@ -11219,6 +11230,14 @@ function ensureStudyModeLayout() {
         });
     }
 
+    const filterSelect = document.getElementById('studyFilterSelect');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', (event) => {
+            studyModeState.filterMarked = event.target.value || 'all';
+            renderStudyListContents();
+        });
+    }
+
     const shuffleBtn = document.getElementById('studyShuffleBtn');
     if (shuffleBtn) {
         shuffleBtn.addEventListener('click', () => {
@@ -11240,6 +11259,7 @@ function ensureStudyModeLayout() {
             studyModeState.searchQuery = '';
             studyModeState.sortBy = 'original';
             studyModeState.shuffleOrder = null;
+            studyModeState.filterMarked = 'all';
 
             const searchEl = document.getElementById('studySearchInput');
             if (searchEl) {
@@ -11249,6 +11269,10 @@ function ensureStudyModeLayout() {
             const selectEl = document.getElementById('studySortSelect');
             if (selectEl) {
                 selectEl.value = 'original';
+            }
+            const filterEl = document.getElementById('studyFilterSelect');
+            if (filterEl) {
+                filterEl.value = 'all';
             }
             renderStudyListContents();
         });
@@ -11286,8 +11310,18 @@ function renderStudyListContents() {
     const loweredQuery = studyModeState.searchQuery;
 
     let filteredCharacters = orderedCharacters;
+
+    // Apply marking filter first
+    if (studyModeState.filterMarked !== 'all') {
+        filteredCharacters = filteredCharacters.filter(item => {
+            const marking = getWordMarking(item.char);
+            return marking === studyModeState.filterMarked;
+        });
+    }
+
+    // Then apply search filter
     if (rawQuery) {
-        filteredCharacters = orderedCharacters.filter(item => {
+        filteredCharacters = filteredCharacters.filter(item => {
             const charMatch = (item.char || '').includes(rawQuery);
             const pinyinMatch = (item.pinyin || '').toLowerCase().includes(loweredQuery);
             const meaningMatch = (item.meaning || '').toLowerCase().includes(loweredQuery);
@@ -11325,6 +11359,13 @@ function createStudyRow(item, displayIndex) {
     const row = document.createElement('div');
     row.className = 'study-row flex flex-col gap-2 p-4 md:grid md:grid-cols-12 md:items-center md:gap-4 hover:bg-gray-50 transition';
 
+    const marking = getWordMarking(item.char);
+    if (marking === 'needs-work') {
+        row.classList.add('study-row-needs-work');
+    } else if (marking === 'learned') {
+        row.classList.add('study-row-learned');
+    }
+
     const charCell = document.createElement('div');
     charCell.className = 'text-4xl font-bold text-gray-900 tracking-tight md:col-span-2 min-w-0 overflow-hidden';
     charCell.textContent = item.char || '—';
@@ -11339,11 +11380,11 @@ function createStudyRow(item, displayIndex) {
     pinyinCell.textContent = displayPinyin || '—';
 
     const meaningCell = document.createElement('div');
-    meaningCell.className = 'text-sm text-gray-600 leading-snug md:col-span-6 min-w-0 overflow-hidden break-words';
+    meaningCell.className = 'text-sm text-gray-600 leading-snug md:col-span-5 min-w-0 overflow-hidden break-words';
     meaningCell.textContent = item.meaning || '—';
 
     const actionsCell = document.createElement('div');
-    actionsCell.className = 'flex items-center justify-start md:justify-end md:col-span-1 min-w-0 flex-shrink-0';
+    actionsCell.className = 'flex items-center justify-start md:justify-end md:col-span-2 min-w-0 flex-shrink-0 gap-2';
 
     const audioButton = document.createElement('button');
     audioButton.type = 'button';
@@ -11357,12 +11398,78 @@ function createStudyRow(item, displayIndex) {
 
     actionsCell.appendChild(audioButton);
 
+    const markButton = createStudyMarkButton(item.char, row);
+    actionsCell.appendChild(markButton);
+
     row.appendChild(charCell);
     row.appendChild(pinyinCell);
     row.appendChild(meaningCell);
     row.appendChild(actionsCell);
 
     return row;
+}
+
+function createStudyMarkButton(char, rowElement) {
+    const marking = getWordMarking(char);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'study-mark-btn inline-flex items-center justify-center w-10 h-10 rounded-lg border text-sm font-semibold transition bg-white';
+    button.title = 'Click to mark: needs work, learned, or clear';
+
+    function updateButtonState() {
+        const currentMarking = getWordMarking(char);
+        if (currentMarking === 'needs-work') {
+            button.innerHTML = '⚠';
+            button.className = 'study-mark-btn inline-flex items-center justify-center w-10 h-10 rounded-lg border text-lg font-semibold transition bg-amber-50 border-amber-300 text-amber-700';
+            button.title = 'Needs work - click to mark as learned';
+        } else if (currentMarking === 'learned') {
+            button.innerHTML = '✓';
+            button.className = 'study-mark-btn inline-flex items-center justify-center w-10 h-10 rounded-lg border text-lg font-semibold transition bg-green-50 border-green-300 text-green-700';
+            button.title = 'Learned - click to clear marking';
+        } else {
+            button.innerHTML = '○';
+            button.className = 'study-mark-btn inline-flex items-center justify-center w-10 h-10 rounded-lg border text-sm font-semibold transition bg-white border-gray-300 text-gray-400 hover:border-amber-300 hover:text-amber-600';
+            button.title = 'Click to mark as needs work';
+        }
+    }
+
+    updateButtonState();
+
+    button.addEventListener('click', () => {
+        const currentMarking = getWordMarking(char);
+        let newMarking;
+        let toastMessage;
+        let toastType;
+
+        if (!currentMarking) {
+            newMarking = 'needs-work';
+            toastMessage = `"${char}" marked as needs work`;
+            toastType = 'warning';
+        } else if (currentMarking === 'needs-work') {
+            newMarking = 'learned';
+            toastMessage = `"${char}" marked as learned`;
+            toastType = 'success';
+        } else {
+            newMarking = null;
+            toastMessage = `"${char}" unmarked`;
+            toastType = 'info';
+        }
+
+        markWord(char, newMarking);
+        updateButtonState();
+
+        // Update row styling
+        rowElement.classList.remove('study-row-needs-work', 'study-row-learned');
+        if (newMarking === 'needs-work') {
+            rowElement.classList.add('study-row-needs-work');
+        } else if (newMarking === 'learned') {
+            rowElement.classList.add('study-row-learned');
+        }
+
+        showMarkingToast(toastMessage, toastType);
+    });
+
+    return button;
 }
 
 function getShuffledIndices(length) {

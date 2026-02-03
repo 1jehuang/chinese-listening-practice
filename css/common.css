@@ -1322,6 +1322,25 @@ body.study-mode-active .main-content {
     color: #92400e;
 }
 
+/* Study mode row markings */
+.study-row-needs-work {
+    background: #fffbeb !important;
+    border-left: 3px solid #f59e0b;
+}
+
+.study-row-needs-work:hover {
+    background: #fef3c7 !important;
+}
+
+.study-row-learned {
+    background: #f0fdf4 !important;
+    border-left: 3px solid #22c55e;
+}
+
+.study-row-learned:hover {
+    background: #dcfce7 !important;
+}
+
 /* Dark mode */
 
 /* Dark mode (opt-in): add .theme-dark to <body> to enable. */
