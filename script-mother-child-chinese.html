@@ -436,6 +436,18 @@
         .live-feedback .char-expected {
             color: #d1d5db;
         }
+        .live-feedback .char-punct {
+            color: #e5e7eb;
+            font-size: 0.9em;
+        }
+        .live-feedback .char-punct-typed {
+            color: #9ca3af;
+            font-size: 0.9em;
+        }
+        .live-feedback .char-skipped {
+            color: #fbbf24;
+            text-decoration: underline dotted;
+        }
         .live-feedback .char-cursor {
             border-left: 2px solid #6366f1;
             animation: blink 1s infinite;
@@ -633,52 +645,106 @@
             document.getElementById('speakAnswer').classList.add('show');
         }
 
+        // Chinese and common punctuation to ignore
+        const PUNCTUATION = /[，。？！、：；""''（）,.\?!:;"'()\s]/g;
+
+        function stripPunctuation(str) {
+            return str.replace(PUNCTUATION, '');
+        }
+
         function onInputChange() {
             const input = document.getElementById('writeInput').value;
             const expected = script[writeIndex].text;
             const liveFeedback = document.getElementById('liveFeedback');
             const charCount = document.getElementById('charCount');
 
-            let html = '';
-            let allCorrect = true;
+            // Strip punctuation for comparison
+            const inputClean = stripPunctuation(input);
+            const expectedClean = stripPunctuation(expected);
 
-            // Show typed characters with feedback
-            for (let i = 0; i < input.length; i++) {
-                if (i < expected.length) {
-                    if (input[i] === expected[i]) {
-                        html += `<span class="char-correct">${input[i]}</span>`;
+            // Build display with smart matching
+            let html = '';
+            let inputIdx = 0;
+            let expectedIdx = 0;
+            let correctCount = 0;
+
+            // Process expected characters, matching against input
+            while (expectedIdx < expected.length) {
+                const expChar = expected[expectedIdx];
+
+                if (PUNCTUATION.test(expChar)) {
+                    // Punctuation - show as optional/skippable
+                    html += `<span class="char-punct">${expChar}</span>`;
+                    expectedIdx++;
+                    continue;
+                }
+
+                if (inputIdx < input.length) {
+                    const inChar = input[inputIdx];
+
+                    if (PUNCTUATION.test(inChar)) {
+                        // User typed punctuation - just skip it in input, show dimmed
+                        html += `<span class="char-punct-typed">${inChar}</span>`;
+                        inputIdx++;
+                        continue;
+                    }
+
+                    if (inChar === expChar) {
+                        // Correct character
+                        html += `<span class="char-correct">${inChar}</span>`;
+                        correctCount++;
+                        inputIdx++;
+                        expectedIdx++;
                     } else {
-                        html += `<span class="char-wrong">${input[i]}</span>`;
-                        allCorrect = false;
+                        // Check if this char appears soon in expected (user might have skipped)
+                        const lookAhead = expectedClean.indexOf(inChar, expectedIdx - countNonPunct(expected.slice(0, expectedIdx)));
+                        if (lookAhead !== -1 && lookAhead < expectedIdx + 3) {
+                            // User skipped ahead - mark current expected as missed, but continue
+                            html += `<span class="char-skipped">${expChar}</span>`;
+                            expectedIdx++;
+                        } else {
+                            // Wrong character
+                            html += `<span class="char-wrong">${inChar}</span>`;
+                            inputIdx++;
+                            expectedIdx++;
+                        }
                     }
                 } else {
-                    // Extra characters beyond expected
-                    html += `<span class="char-wrong">${input[i]}</span>`;
-                    allCorrect = false;
+                    // No more input - show remaining as expected
+                    html += `<span class="char-expected">${expChar}</span>`;
+                    expectedIdx++;
                 }
             }
 
-            // Show cursor
-            html += '<span class="char-cursor"></span>';
-
-            // Show remaining expected characters
-            for (let i = input.length; i < expected.length; i++) {
-                html += `<span class="char-expected">${expected[i]}</span>`;
+            // Any extra input characters
+            while (inputIdx < input.length) {
+                const inChar = input[inputIdx];
+                if (PUNCTUATION.test(inChar)) {
+                    html += `<span class="char-punct-typed">${inChar}</span>`;
+                } else {
+                    html += `<span class="char-wrong">${inChar}</span>`;
+                }
+                inputIdx++;
             }
 
-            liveFeedback.innerHTML = html;
-            charCount.textContent = `${input.length} / ${expected.length}`;
+            // Add cursor at current position
+            const cursorPos = html.lastIndexOf('</span>') + 7;
+            html = html.slice(0, cursorPos) + '<span class="char-cursor"></span>' + html.slice(cursorPos);
 
-            // Check if complete and correct
-            if (input.length === expected.length && allCorrect) {
+            liveFeedback.innerHTML = html;
+            charCount.textContent = `${inputClean.length} / ${expectedClean.length}`;
+
+            // Check if complete - compare stripped versions
+            const isComplete = inputClean.length >= expectedClean.length;
+            const isCorrect = inputClean === expectedClean;
+
+            if (isComplete && isCorrect) {
                 liveFeedback.classList.add('complete');
-                // Auto-mark as correct
                 writeResults[writeIndex] = true;
                 updateProgressBar();
                 updateScore();
                 saveProgress();
 
-                // Auto-advance if enabled
                 const indices = getRoleIndices();
                 const currentPos = getRolePosition(writeIndex);
                 if (document.getElementById('autoAdvanceCheck').checked && currentPos < indices.length - 1) {
@@ -692,19 +758,29 @@
             }
         }
 
+        function countNonPunct(str) {
+            return stripPunctuation(str).length;
+        }
+
         function initLiveFeedback() {
             const expected = script[writeIndex].text;
+            const expectedClean = stripPunctuation(expected);
             const liveFeedback = document.getElementById('liveFeedback');
             const charCount = document.getElementById('charCount');
 
             let html = '<span class="char-cursor"></span>';
             for (let i = 0; i < expected.length; i++) {
-                html += `<span class="char-expected">${expected[i]}</span>`;
+                const char = expected[i];
+                if (PUNCTUATION.test(char)) {
+                    html += `<span class="char-punct">${char}</span>`;
+                } else {
+                    html += `<span class="char-expected">${char}</span>`;
+                }
             }
 
             liveFeedback.innerHTML = html;
             liveFeedback.classList.remove('complete');
-            charCount.textContent = `0 / ${expected.length}`;
+            charCount.textContent = `0 / ${expectedClean.length}`;
         }
 
         // Load saved progress
