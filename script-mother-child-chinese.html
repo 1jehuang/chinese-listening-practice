@@ -257,6 +257,11 @@
             height: 12px;
             border-radius: 50%;
             background: #e5e7eb;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .progress-dot:hover {
+            transform: scale(1.3);
         }
         .progress-dot.current {
             background: #6366f1;
@@ -266,6 +271,35 @@
         }
         .progress-dot.incorrect {
             background: #ef4444;
+        }
+        .line-counter {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
+        }
+        .answer-details .grammar-ref {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.75rem;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        .settings-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            cursor: pointer;
+        }
+        .settings-row input[type="checkbox"] {
+            cursor: pointer;
         }
         .score-display {
             text-align: center;
@@ -339,21 +373,29 @@
 
         <div id="writeMode" class="write-mode-container">
             <div class="progress-bar" id="progressBar"></div>
+            <div class="line-counter" id="lineCounter">Line 1 of 12</div>
             <div class="score-display" id="scoreDisplay">Score: 0/0</div>
+
+            <div class="settings-row">
+                <label><input type="checkbox" id="autoPlayCheck" checked> Auto-play audio</label>
+                <label><input type="checkbox" id="autoAdvanceCheck"> Auto-advance on correct</label>
+            </div>
 
             <div class="write-prompt" id="writePrompt">
                 <div class="speaker-label" id="writeSpeaker"></div>
                 <button class="play-btn" onclick="playCurrentLine()" style="font-size: 1.5rem; padding: 0.75rem 1rem;">🔊 Play Audio</button>
                 <div class="hint-text">Listen and type the Chinese characters</div>
-                <div class="hotkey-hint"><kbd>;</kbd> play audio · <kbd>Enter</kbd> check · <kbd>Ctrl+→</kbd> next</div>
+                <div class="hotkey-hint"><kbd>;</kbd> play · <kbd>Enter</kbd> check · <kbd>Ctrl+←/→</kbd> prev/next</div>
             </div>
 
             <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..."></textarea>
 
             <div class="write-controls">
+                <button class="control-btn" onclick="prevWriteLine()">← Prev</button>
                 <button class="control-btn" onclick="checkWriteAnswer()">Check (Enter)</button>
                 <button class="control-btn" onclick="showWriteAnswer()">Show Answer</button>
-                <button class="control-btn" onclick="nextWriteLine()">Next (→)</button>
+                <button class="control-btn" onclick="nextWriteLine()">Next →</button>
+                <button class="control-btn" onclick="restartWrite()">Restart</button>
             </div>
 
             <div class="write-feedback" id="writeFeedback">
@@ -378,6 +420,7 @@
             { speaker: '孩子', text: '谢谢！我以前以为中国父母都比较凶，其实我知道你们也是为了我好。', pinyin: 'Xièxie! Wǒ yǐqián yǐwéi Zhōngguó fùmǔ dōu bǐjiào xiōng, qíshí wǒ zhīdào nǐmen yě shì wèile wǒ hǎo.', english: "Thank you! I used to think Chinese parents were all rather fierce, but actually I know you're doing it for my own good.", refs: 'L11-4' }
         ];
 
+        const STORAGE_KEY = 'script-mother-child-progress';
         let currentAudio = null;
         let playbackSpeed = 1.0;
         let isHidden = false;
@@ -386,6 +429,28 @@
         let currentMode = 'read';
         let writeIndex = 0;
         let writeResults = [];
+
+        // Load saved progress
+        function loadProgress() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    writeIndex = data.writeIndex || 0;
+                    writeResults = data.writeResults || new Array(script.length).fill(null);
+                }
+            } catch (e) {}
+        }
+
+        // Save progress
+        function saveProgress() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    writeIndex,
+                    writeResults
+                }));
+            } catch (e) {}
+        }
 
         function renderScript() {
             const container = document.getElementById('scriptLines');
@@ -478,13 +543,15 @@
             document.getElementById('writeModeBtn').classList.toggle('active', mode === 'write');
 
             if (mode === 'write') {
-                writeIndex = 0;
-                writeResults = new Array(script.length).fill(null);
+                loadProgress();
+                if (!writeResults || writeResults.length !== script.length) {
+                    writeResults = new Array(script.length).fill(null);
+                }
                 updateWriteMode();
             }
         }
 
-        function updateWriteMode() {
+        function updateWriteMode(skipAutoPlay = false) {
             const line = script[writeIndex];
             document.getElementById('writeSpeaker').textContent = line.speaker + ':';
             document.getElementById('writeSpeaker').className = 'speaker-label' + (line.speaker === '孩子' ? ' child' : '');
@@ -495,6 +562,12 @@
 
             updateProgressBar();
             updateScore();
+            saveProgress();
+
+            // Auto-play audio if enabled
+            if (!skipAutoPlay && document.getElementById('autoPlayCheck').checked) {
+                setTimeout(() => playCurrentLine(), 100);
+            }
         }
 
         function updateProgressBar() {
@@ -504,7 +577,7 @@
                 if (i === writeIndex) cls += ' current';
                 else if (writeResults[i] === true) cls += ' correct';
                 else if (writeResults[i] === false) cls += ' incorrect';
-                return `<div class="${cls}"></div>`;
+                return `<div class="${cls}" onclick="jumpToLine(${i})" title="Line ${i + 1}"></div>`;
             }).join('');
         }
 
@@ -512,6 +585,19 @@
             const correct = writeResults.filter(r => r === true).length;
             const attempted = writeResults.filter(r => r !== null).length;
             document.getElementById('scoreDisplay').textContent = `Score: ${correct}/${attempted}`;
+            document.getElementById('lineCounter').textContent = `Line ${writeIndex + 1} of ${script.length}`;
+        }
+
+        function jumpToLine(index) {
+            writeIndex = index;
+            updateWriteMode();
+        }
+
+        function restartWrite() {
+            writeIndex = 0;
+            writeResults = new Array(script.length).fill(null);
+            saveProgress();
+            updateWriteMode();
         }
 
         function playCurrentLine() {
@@ -542,6 +628,13 @@
 
             if (isCorrect) {
                 diffEl.innerHTML = '<span class="diff-correct">✓ Correct!</span>';
+                // Auto-advance if enabled
+                if (document.getElementById('autoAdvanceCheck').checked && writeIndex < script.length - 1) {
+                    setTimeout(() => {
+                        writeIndex++;
+                        updateWriteMode();
+                    }, 800);
+                }
             } else {
                 const line = script[writeIndex];
                 diffEl.innerHTML = `
@@ -553,12 +646,14 @@
                         <div class="pinyin">${line.pinyin}</div>
                         <div class="label">English</div>
                         <div class="english">${line.english}</div>
+                        ${line.refs ? `<div class="grammar-ref">Grammar: ${line.refs}</div>` : ''}
                     </div>
                 `;
             }
 
             updateProgressBar();
             updateScore();
+            saveProgress();
         }
 
         function generateDiff(input, expected) {
