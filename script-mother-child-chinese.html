@@ -415,6 +415,46 @@
             color: #6366f1;
             font-size: 0.95rem;
         }
+        /* Live feedback display */
+        .live-feedback {
+            font-size: 1.5rem;
+            line-height: 2;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            min-height: 3rem;
+            border: 2px solid #e5e7eb;
+        }
+        .live-feedback .char-correct {
+            color: #10b981;
+        }
+        .live-feedback .char-wrong {
+            color: #ef4444;
+            text-decoration: underline;
+        }
+        .live-feedback .char-expected {
+            color: #d1d5db;
+        }
+        .live-feedback .char-cursor {
+            border-left: 2px solid #6366f1;
+            animation: blink 1s infinite;
+            margin-left: 1px;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .live-feedback.complete {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        .char-count {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
         kbd {
             background: #e5e7eb;
             padding: 0.125rem 0.375rem;
@@ -487,7 +527,9 @@
 
             <!-- Type mode input -->
             <div id="typeSection">
-                <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..."></textarea>
+                <div class="live-feedback" id="liveFeedback"></div>
+                <div class="char-count" id="charCount">0 / 0</div>
+                <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..." oninput="onInputChange()"></textarea>
             </div>
 
             <!-- Speak mode section -->
@@ -589,6 +631,80 @@
             document.getElementById('speakChinese').textContent = line.text;
             document.getElementById('speakPinyin').textContent = line.pinyin;
             document.getElementById('speakAnswer').classList.add('show');
+        }
+
+        function onInputChange() {
+            const input = document.getElementById('writeInput').value;
+            const expected = script[writeIndex].text;
+            const liveFeedback = document.getElementById('liveFeedback');
+            const charCount = document.getElementById('charCount');
+
+            let html = '';
+            let allCorrect = true;
+
+            // Show typed characters with feedback
+            for (let i = 0; i < input.length; i++) {
+                if (i < expected.length) {
+                    if (input[i] === expected[i]) {
+                        html += `<span class="char-correct">${input[i]}</span>`;
+                    } else {
+                        html += `<span class="char-wrong">${input[i]}</span>`;
+                        allCorrect = false;
+                    }
+                } else {
+                    // Extra characters beyond expected
+                    html += `<span class="char-wrong">${input[i]}</span>`;
+                    allCorrect = false;
+                }
+            }
+
+            // Show cursor
+            html += '<span class="char-cursor"></span>';
+
+            // Show remaining expected characters
+            for (let i = input.length; i < expected.length; i++) {
+                html += `<span class="char-expected">${expected[i]}</span>`;
+            }
+
+            liveFeedback.innerHTML = html;
+            charCount.textContent = `${input.length} / ${expected.length}`;
+
+            // Check if complete and correct
+            if (input.length === expected.length && allCorrect) {
+                liveFeedback.classList.add('complete');
+                // Auto-mark as correct
+                writeResults[writeIndex] = true;
+                updateProgressBar();
+                updateScore();
+                saveProgress();
+
+                // Auto-advance if enabled
+                const indices = getRoleIndices();
+                const currentPos = getRolePosition(writeIndex);
+                if (document.getElementById('autoAdvanceCheck').checked && currentPos < indices.length - 1) {
+                    setTimeout(() => {
+                        writeIndex = indices[currentPos + 1];
+                        updateWriteMode();
+                    }, 500);
+                }
+            } else {
+                liveFeedback.classList.remove('complete');
+            }
+        }
+
+        function initLiveFeedback() {
+            const expected = script[writeIndex].text;
+            const liveFeedback = document.getElementById('liveFeedback');
+            const charCount = document.getElementById('charCount');
+
+            let html = '<span class="char-cursor"></span>';
+            for (let i = 0; i < expected.length; i++) {
+                html += `<span class="char-expected">${expected[i]}</span>`;
+            }
+
+            liveFeedback.innerHTML = html;
+            liveFeedback.classList.remove('complete');
+            charCount.textContent = `0 / ${expected.length}`;
         }
 
         // Load saved progress
@@ -754,6 +870,7 @@
                 speakSection.style.display = 'none';
                 writeControls.style.display = 'flex';
                 document.getElementById('writeInput').focus();
+                initLiveFeedback();
 
                 if (practiceMode === 'english') {
                     promptHint.textContent = line.english;
