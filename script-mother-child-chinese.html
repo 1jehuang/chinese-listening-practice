@@ -249,6 +249,45 @@
             color: #6b7280;
             margin-bottom: 1rem;
         }
+        .answer-details {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #fecaca;
+        }
+        .answer-details .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af;
+            margin-bottom: 0.25rem;
+        }
+        .answer-details .pinyin {
+            font-size: 1rem;
+            color: #6366f1;
+            margin-bottom: 0.75rem;
+        }
+        .answer-details .english {
+            font-size: 0.95rem;
+            color: #374151;
+            font-style: italic;
+        }
+        .answer-details .correct-answer {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            color: #1f2937;
+        }
+        .hotkey-hint {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+        kbd {
+            background: #e5e7eb;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-family: inherit;
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -282,6 +321,7 @@
                 <div class="speaker-label" id="writeSpeaker"></div>
                 <button class="play-btn" onclick="playCurrentLine()" style="font-size: 1.5rem; padding: 0.75rem 1rem;">🔊 Play Audio</button>
                 <div class="hint-text">Listen and type the Chinese characters</div>
+                <div class="hotkey-hint"><kbd>;</kbd> play audio · <kbd>Enter</kbd> check · <kbd>Ctrl+→</kbd> next</div>
             </div>
 
             <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..."></textarea>
@@ -300,18 +340,18 @@
 
     <script>
         const script = [
-            { speaker: '妈妈', text: '你在干嘛？', refs: '' },
-            { speaker: '孩子', text: '我就在随便写写汉字，都是小时候在中文学校学的。我可能会趁暑假的机会上一门中文课。', refs: 'L9-6, L9-8' },
-            { speaker: '妈妈', text: '你不是从小就不喜欢去中文学校吗？现在怎么把学中文看得这么重要？', refs: 'L8-1' },
-            { speaker: '孩子', text: '因为我越学越觉得有意思，跟以前真的不一样了。', refs: 'L9-1' },
-            { speaker: '妈妈', text: '看到你这么努力，我想起来还觉得以前对你太严肃了。有时爸妈也许逼得太紧，使我们的关系很紧张。', refs: 'L10-4, L10-3' },
-            { speaker: '孩子', text: '其实，与其说是你们逼我，不如说是我小时候不懂学中文的意义。', refs: 'L11-6' },
-            { speaker: '妈妈', text: '没关系，你只要现在想学就好。我觉得所有的华裔孩子都应该学中文。', refs: 'L11-2' },
-            { speaker: '孩子', text: '我之所以学中文，是为了了解自己的背景。在学中文的过程中，我发现我对中文真的有兴趣。', refs: 'L11-5, L11-2, L9-3' },
-            { speaker: '妈妈', text: '作为一个住在美国的中国人，我们一方面要美国化，另一方面却要保持自己原来的语言和文化。', refs: 'L11-3' },
-            { speaker: '孩子', text: '我也希望更进一步了解中国社会。我想利用今年春假的时间去上海看看您的老家。', refs: 'L11-6, L9-7' },
-            { speaker: '妈妈', text: '看到你现在这么认真，我们不但很高兴，而且真的为你骄傲。我们一定会支持你。', refs: 'L8-5' },
-            { speaker: '孩子', text: '谢谢！我以前以为中国父母都比较凶，其实我知道你们也是为了我好。', refs: 'L11-4' }
+            { speaker: '妈妈', text: '你在干嘛？', pinyin: 'Nǐ zài gàn ma?', english: 'What are you doing?', refs: '' },
+            { speaker: '孩子', text: '我就在随便写写汉字，都是小时候在中文学校学的。我可能会趁暑假的机会上一门中文课。', pinyin: 'Wǒ jiù zài suíbiàn xiěxie Hànzì, dōu shì xiǎoshíhou zài Zhōngwén xuéxiào xué de. Wǒ kěnéng huì chèn shǔjià de jīhuì shàng yī mén Zhōngwén kè.', english: "I'm just casually writing some Chinese characters, all learned from Chinese school when I was little. I might take the opportunity during summer break to take a Chinese class.", refs: 'L9-6, L9-8' },
+            { speaker: '妈妈', text: '你不是从小就不喜欢去中文学校吗？现在怎么把学中文看得这么重要？', pinyin: 'Nǐ bú shì cóngxiǎo jiù bù xǐhuan qù Zhōngwén xuéxiào ma? Xiànzài zěnme bǎ xué Zhōngwén kàn de zhème zhòngyào?', english: "Didn't you dislike going to Chinese school since you were little? How come now you consider learning Chinese so important?", refs: 'L8-1' },
+            { speaker: '孩子', text: '因为我越学越觉得有意思，跟以前真的不一样了。', pinyin: 'Yīnwèi wǒ yuè xué yuè juéde yǒu yìsi, gēn yǐqián zhēn de bù yíyàng le.', english: "Because the more I study, the more interesting I find it. It's really different from before.", refs: 'L9-1' },
+            { speaker: '妈妈', text: '看到你这么努力，我想起来还觉得以前对你太严肃了。有时爸妈也许逼得太紧，使我们的关系很紧张。', pinyin: 'Kàndào nǐ zhème nǔlì, wǒ xiǎng qǐlái hái juéde yǐqián duì nǐ tài yánsù le. Yǒushí bàmā yěxǔ bī de tài jǐn, shǐ wǒmen de guānxi hěn jǐnzhāng.', english: "Seeing you work so hard, I think back and feel I was too strict with you before. Sometimes mom and dad perhaps pushed too hard, making our relationship tense.", refs: 'L10-4, L10-3' },
+            { speaker: '孩子', text: '其实，与其说是你们逼我，不如说是我小时候不懂学中文的意义。', pinyin: 'Qíshí, yǔqí shuō shì nǐmen bī wǒ, bùrú shuō shì wǒ xiǎoshíhou bù dǒng xué Zhōngwén de yìyì.', english: "Actually, rather than saying you pushed me, it's better to say I didn't understand the meaning of learning Chinese when I was young.", refs: 'L11-6' },
+            { speaker: '妈妈', text: '没关系，你只要现在想学就好。我觉得所有的华裔孩子都应该学中文。', pinyin: 'Méi guānxi, nǐ zhǐyào xiànzài xiǎng xué jiù hǎo. Wǒ juéde suǒyǒu de Huáyì háizi dōu yīnggāi xué Zhōngwén.', english: "It's okay, as long as you want to learn now. I think all Chinese-American children should learn Chinese.", refs: 'L11-2' },
+            { speaker: '孩子', text: '我之所以学中文，是为了了解自己的背景。在学中文的过程中，我发现我对中文真的有兴趣。', pinyin: 'Wǒ zhī suǒyǐ xué Zhōngwén, shì wèile liǎojiě zìjǐ de bèijǐng. Zài xué Zhōngwén de guòchéng zhōng, wǒ fāxiàn wǒ duì Zhōngwén zhēn de yǒu xìngqù.', english: "The reason I study Chinese is to understand my own background. In the process of learning Chinese, I discovered I'm really interested in Chinese.", refs: 'L11-5, L11-2, L9-3' },
+            { speaker: '妈妈', text: '作为一个住在美国的中国人，我们一方面要美国化，另一方面却要保持自己原来的语言和文化。', pinyin: 'Zuòwéi yí ge zhù zài Měiguó de Zhōngguó rén, wǒmen yī fāngmiàn yào Měiguóhuà, lìng yī fāngmiàn què yào bǎochí zìjǐ yuánlái de yǔyán hé wénhuà.', english: "As Chinese people living in America, on one hand we need to Americanize, but on the other hand we need to maintain our original language and culture.", refs: 'L11-3' },
+            { speaker: '孩子', text: '我也希望更进一步了解中国社会。我想利用今年春假的时间去上海看看您的老家。', pinyin: 'Wǒ yě xīwàng gèng jìn yī bù liǎojiě Zhōngguó shèhuì. Wǒ xiǎng lìyòng jīnnián chūnjià de shíjiān qù Shànghǎi kànkan nín de lǎojiā.', english: "I also hope to further understand Chinese society. I want to use this year's spring break to visit your hometown in Shanghai.", refs: 'L11-6, L9-7' },
+            { speaker: '妈妈', text: '看到你现在这么认真，我们不但很高兴，而且真的为你骄傲。我们一定会支持你。', pinyin: 'Kàndào nǐ xiànzài zhème rènzhēn, wǒmen búdàn hěn gāoxìng, érqiě zhēn de wèi nǐ jiāoào. Wǒmen yídìng huì zhīchí nǐ.', english: "Seeing how serious you are now, we're not only happy, but really proud of you. We will definitely support you.", refs: 'L8-5' },
+            { speaker: '孩子', text: '谢谢！我以前以为中国父母都比较凶，其实我知道你们也是为了我好。', pinyin: 'Xièxie! Wǒ yǐqián yǐwéi Zhōngguó fùmǔ dōu bǐjiào xiōng, qíshí wǒ zhīdào nǐmen yě shì wèile wǒ hǎo.', english: "Thank you! I used to think Chinese parents were all rather fierce, but actually I know you're doing it for my own good.", refs: 'L11-4' }
         ];
 
         let currentAudio = null;
@@ -475,7 +515,18 @@
             if (isCorrect) {
                 diffEl.innerHTML = '<span class="diff-correct">✓ Correct!</span>';
             } else {
-                diffEl.innerHTML = generateDiff(input, expected);
+                const line = script[writeIndex];
+                diffEl.innerHTML = `
+                    ${generateDiff(input, expected)}
+                    <div class="answer-details">
+                        <div class="label">Correct Answer</div>
+                        <div class="correct-answer">${expected}</div>
+                        <div class="label">Pinyin</div>
+                        <div class="pinyin">${line.pinyin}</div>
+                        <div class="label">English</div>
+                        <div class="english">${line.english}</div>
+                    </div>
+                `;
             }
 
             updateProgressBar();
@@ -537,7 +588,7 @@
                     nextWriteLine();
                 } else if (e.key === 'ArrowLeft' && e.ctrlKey) {
                     prevWriteLine();
-                } else if (e.key === ' ' && e.ctrlKey) {
+                } else if (e.key === ';') {
                     e.preventDefault();
                     playCurrentLine();
                 }
