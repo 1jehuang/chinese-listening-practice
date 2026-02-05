@@ -911,7 +911,8 @@
                     <button class="play-btn" onclick="playLine(${i})">🔊</button>
                     <span class="speaker ${line.speaker === '孩子' ? 'child' : ''}">${line.speaker}:</span>
                     <div class="line-content">
-                        ${createAlignedDisplay(line.text, line.pinyin)}
+                        <div class="chinese">${line.text}</div>
+                        <div class="line-pinyin">${line.pinyin}</div>
                         <div class="line-english">${line.english}</div>
                     </div>
                     ${line.refs ? `<span class="grammar-refs">${line.refs}</span>` : ''}
