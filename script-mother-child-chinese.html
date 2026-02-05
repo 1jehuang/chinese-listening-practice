@@ -600,6 +600,8 @@
                     Blank %: <input type="range" id="clozePercent" min="10" max="80" value="30" onchange="renderCloze()">
                     <span id="clozePercentLabel">30%</span>
                 </label>
+                <label><input type="checkbox" id="clozeHidePinyin" onchange="renderCloze()"> Hide Pinyin</label>
+                <label><input type="checkbox" id="clozeHideEnglish" onchange="renderCloze()"> Hide English</label>
                 <button class="control-btn" onclick="renderCloze()">Randomize</button>
                 <button class="control-btn" onclick="revealAllCloze()">Reveal All</button>
             </div>
@@ -1067,6 +1069,8 @@
         function renderCloze() {
             const container = document.getElementById('clozeLines');
             const percent = parseInt(document.getElementById('clozePercent').value);
+            const hidePinyin = document.getElementById('clozeHidePinyin').checked;
+            const hideEnglish = document.getElementById('clozeHideEnglish').checked;
             document.getElementById('clozePercentLabel').textContent = percent + '%';
 
             container.innerHTML = script.map((line, i) => {
@@ -1079,8 +1083,8 @@
                         <span class="speaker ${line.speaker === '孩子' ? 'child' : ''}">${line.speaker}:</span>
                         <div class="line-content">
                             <div class="chinese">${clozeText}</div>
-                            <div class="line-pinyin">${line.pinyin}</div>
-                            <div class="line-english">${line.english}</div>
+                            ${hidePinyin ? '' : `<div class="line-pinyin">${line.pinyin}</div>`}
+                            ${hideEnglish ? '' : `<div class="line-english">${line.english}</div>`}
                         </div>
                         ${line.refs ? `<span class="grammar-refs">${line.refs}</span>` : ''}
                     </div>
