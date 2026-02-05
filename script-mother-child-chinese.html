@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Script: Mother-Child Chinese Learning Dialogue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="js/command-palette.js"></script>
+    <style>
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 300;
+            background: #f3f4f6;
+        }
+        .script-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        .line {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            align-items: flex-start;
+        }
+        .line:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .speaker {
+            font-weight: 500;
+            min-width: 3.5rem;
+            color: #6366f1;
+            flex-shrink: 0;
+        }
+        .speaker.child {
+            color: #10b981;
+        }
+        .chinese {
+            font-size: 1.25rem;
+            line-height: 1.8;
+            flex: 1;
+        }
+        .grammar-refs {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .play-btn {
+            background: #e5e7eb;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .play-btn:hover {
+            background: #d1d5db;
+        }
+        .play-btn.playing {
+            background: #fecaca;
+        }
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .control-btn {
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.875rem;
+        }
+        .control-btn:hover {
+            background: #f9fafb;
+        }
+        .control-btn.active {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+        }
+        .hidden-text .chinese {
+            color: transparent;
+            background: #e5e7eb;
+            border-radius: 0.25rem;
+            user-select: none;
+        }
+        .hidden-text .line:hover .chinese {
+            color: inherit;
+            background: transparent;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-weight: 400;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+        .home-btn {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            text-decoration: none;
+            color: #374151;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 0.875rem;
+            z-index: 100;
+        }
+        .home-btn:hover {
+            background: #f9fafb;
+        }
+        /* Write mode styles */
+        .write-mode-container {
+            display: none;
+            margin-top: 1rem;
+        }
+        .write-mode-container.active {
+            display: block;
+        }
+        .write-prompt {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .write-prompt .speaker-label {
+            font-size: 1rem;
+            color: #6366f1;
+            margin-bottom: 0.5rem;
+        }
+        .write-prompt .speaker-label.child {
+            color: #10b981;
+        }
+        .write-prompt .hint-text {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+        .write-input-area {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.25rem;
+            font-family: inherit;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            min-height: 100px;
+            resize: vertical;
+        }
+        .write-input-area:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+        .write-input-area.correct {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        .write-input-area.incorrect {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .write-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        .write-feedback {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        .write-feedback.show {
+            display: block;
+        }
+        .write-feedback.correct {
+            background: #f0fdf4;
+            border: 1px solid #10b981;
+        }
+        .write-feedback.incorrect {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+        }
+        .diff-display {
+            font-size: 1.25rem;
+            line-height: 2;
+        }
+        .diff-correct {
+            color: #10b981;
+        }
+        .diff-wrong {
+            color: #ef4444;
+            text-decoration: line-through;
+        }
+        .diff-missing {
+            color: #6366f1;
+            background: #eef2ff;
+            padding: 0 0.25rem;
+            border-radius: 0.25rem;
+        }
+        .progress-bar {
+            display: flex;
+            gap: 0.25rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e5e7eb;
+        }
+        .progress-dot.current {
+            background: #6366f1;
+        }
+        .progress-dot.correct {
+            background: #10b981;
+        }
+        .progress-dot.incorrect {
+            background: #ef4444;
+        }
+        .score-display {
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <a href="home.html" class="home-btn">← Home</a>
+
+    <div class="script-container">
+        <h1>Learning Chinese: Mother-Child Dialogue</h1>
+        <p class="subtitle">Grammar points from Lessons 8-11</p>
+
+        <div class="controls">
+            <button class="control-btn" id="readModeBtn" onclick="setMode('read')">Read Mode</button>
+            <button class="control-btn" id="writeModeBtn" onclick="setMode('write')">Write Mode</button>
+            <span style="border-left: 1px solid #d1d5db; margin: 0 0.5rem;"></span>
+            <button class="control-btn" onclick="playAll()">Play All</button>
+            <button class="control-btn" onclick="stopAudio()">Stop</button>
+            <button class="control-btn" id="hideBtn" onclick="toggleHide()">Hide Text</button>
+            <button class="control-btn" onclick="setSpeed(0.8)">0.8x</button>
+            <button class="control-btn active" onclick="setSpeed(1.0)">1.0x</button>
+            <button class="control-btn" onclick="setSpeed(1.2)">1.2x</button>
+        </div>
+
+        <div id="readMode">
+            <div id="scriptLines"></div>
+        </div>
+
+        <div id="writeMode" class="write-mode-container">
+            <div class="progress-bar" id="progressBar"></div>
+            <div class="score-display" id="scoreDisplay">Score: 0/0</div>
+
+            <div class="write-prompt" id="writePrompt">
+                <div class="speaker-label" id="writeSpeaker"></div>
+                <button class="play-btn" onclick="playCurrentLine()" style="font-size: 1.5rem; padding: 0.75rem 1rem;">🔊 Play Audio</button>
+                <div class="hint-text">Listen and type the Chinese characters</div>
+            </div>
+
+            <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..."></textarea>
+
+            <div class="write-controls">
+                <button class="control-btn" onclick="checkWriteAnswer()">Check (Enter)</button>
+                <button class="control-btn" onclick="showWriteAnswer()">Show Answer</button>
+                <button class="control-btn" onclick="nextWriteLine()">Next (→)</button>
+            </div>
+
+            <div class="write-feedback" id="writeFeedback">
+                <div class="diff-display" id="diffDisplay"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const script = [
+            { speaker: '妈妈', text: '你在干嘛？', refs: '' },
+            { speaker: '孩子', text: '我就在随便写写汉字，都是小时候在中文学校学的。我可能会趁暑假的机会上一门中文课。', refs: 'L9-6, L9-8' },
+            { speaker: '妈妈', text: '你不是从小就不喜欢去中文学校吗？现在怎么把学中文看得这么重要？', refs: 'L8-1' },
+            { speaker: '孩子', text: '因为我越学越觉得有意思，跟以前真的不一样了。', refs: 'L9-1' },
+            { speaker: '妈妈', text: '看到你这么努力，我想起来还觉得以前对你太严肃了。有时爸妈也许逼得太紧，使我们的关系很紧张。', refs: 'L10-4, L10-3' },
+            { speaker: '孩子', text: '其实，与其说是你们逼我，不如说是我小时候不懂学中文的意义。', refs: 'L11-6' },
+            { speaker: '妈妈', text: '没关系，你只要现在想学就好。我觉得所有的华裔孩子都应该学中文。', refs: 'L11-2' },
+            { speaker: '孩子', text: '我之所以学中文，是为了了解自己的背景。在学中文的过程中，我发现我对中文真的有兴趣。', refs: 'L11-5, L11-2, L9-3' },
+            { speaker: '妈妈', text: '作为一个住在美国的中国人，我们一方面要美国化，另一方面却要保持自己原来的语言和文化。', refs: 'L11-3' },
+            { speaker: '孩子', text: '我也希望更进一步了解中国社会。我想利用今年春假的时间去上海看看您的老家。', refs: 'L11-6, L9-7' },
+            { speaker: '妈妈', text: '看到你现在这么认真，我们不但很高兴，而且真的为你骄傲。我们一定会支持你。', refs: 'L8-5' },
+            { speaker: '孩子', text: '谢谢！我以前以为中国父母都比较凶，其实我知道你们也是为了我好。', refs: 'L11-4' }
+        ];
+
+        let currentAudio = null;
+        let playbackSpeed = 1.0;
+        let isHidden = false;
+        let playAllIndex = -1;
+        let isPlayingAll = false;
+        let currentMode = 'read';
+        let writeIndex = 0;
+        let writeResults = [];
+
+        function renderScript() {
+            const container = document.getElementById('scriptLines');
+            container.innerHTML = script.map((line, i) => `
+                <div class="line" data-index="${i}">
+                    <button class="play-btn" onclick="playLine(${i})">🔊</button>
+                    <span class="speaker ${line.speaker === '孩子' ? 'child' : ''}">${line.speaker}:</span>
+                    <span class="chinese">${line.text}</span>
+                    ${line.refs ? `<span class="grammar-refs">${line.refs}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function playLine(index) {
+            stopAudio();
+            const line = script[index];
+            const text = line.text;
+            const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-CN&q=${encodeURIComponent(text)}`;
+
+            currentAudio = new Audio(url);
+            currentAudio.playbackRate = playbackSpeed;
+
+            const btn = document.querySelector(`.line[data-index="${index}"] .play-btn`);
+            if (btn) btn.classList.add('playing');
+
+            currentAudio.onended = () => {
+                if (btn) btn.classList.remove('playing');
+                if (isPlayingAll && playAllIndex < script.length - 1) {
+                    playAllIndex++;
+                    setTimeout(() => playLine(playAllIndex), 500);
+                } else {
+                    isPlayingAll = false;
+                    playAllIndex = -1;
+                }
+            };
+
+            currentAudio.onerror = () => {
+                if (btn) btn.classList.remove('playing');
+                isPlayingAll = false;
+            };
+
+            currentAudio.play();
+        }
+
+        function playAll() {
+            stopAudio();
+            isPlayingAll = true;
+            playAllIndex = 0;
+            playLine(0);
+        }
+
+        function stopAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            isPlayingAll = false;
+            playAllIndex = -1;
+            document.querySelectorAll('.play-btn').forEach(btn => btn.classList.remove('playing'));
+        }
+
+        function setSpeed(speed) {
+            playbackSpeed = speed;
+            if (currentAudio) {
+                currentAudio.playbackRate = speed;
+            }
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                if (btn.textContent.includes('x')) {
+                    btn.classList.toggle('active', btn.textContent === speed + 'x');
+                }
+            });
+        }
+
+        function toggleHide() {
+            isHidden = !isHidden;
+            document.getElementById('scriptLines').classList.toggle('hidden-text', isHidden);
+            document.getElementById('hideBtn').textContent = isHidden ? 'Show Text' : 'Hide Text';
+            document.getElementById('hideBtn').classList.toggle('active', isHidden);
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('readMode').style.display = mode === 'read' ? 'block' : 'none';
+            document.getElementById('writeMode').classList.toggle('active', mode === 'write');
+            document.getElementById('readModeBtn').classList.toggle('active', mode === 'read');
+            document.getElementById('writeModeBtn').classList.toggle('active', mode === 'write');
+
+            if (mode === 'write') {
+                writeIndex = 0;
+                writeResults = new Array(script.length).fill(null);
+                updateWriteMode();
+            }
+        }
+
+        function updateWriteMode() {
+            const line = script[writeIndex];
+            document.getElementById('writeSpeaker').textContent = line.speaker + ':';
+            document.getElementById('writeSpeaker').className = 'speaker-label' + (line.speaker === '孩子' ? ' child' : '');
+            document.getElementById('writeInput').value = '';
+            document.getElementById('writeInput').className = 'write-input-area';
+            document.getElementById('writeFeedback').className = 'write-feedback';
+            document.getElementById('writeInput').focus();
+
+            updateProgressBar();
+            updateScore();
+        }
+
+        function updateProgressBar() {
+            const bar = document.getElementById('progressBar');
+            bar.innerHTML = script.map((_, i) => {
+                let cls = 'progress-dot';
+                if (i === writeIndex) cls += ' current';
+                else if (writeResults[i] === true) cls += ' correct';
+                else if (writeResults[i] === false) cls += ' incorrect';
+                return `<div class="${cls}"></div>`;
+            }).join('');
+        }
+
+        function updateScore() {
+            const correct = writeResults.filter(r => r === true).length;
+            const attempted = writeResults.filter(r => r !== null).length;
+            document.getElementById('scoreDisplay').textContent = `Score: ${correct}/${attempted}`;
+        }
+
+        function playCurrentLine() {
+            const line = script[writeIndex];
+            const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-CN&q=${encodeURIComponent(line.text)}`;
+            if (currentAudio) currentAudio.pause();
+            currentAudio = new Audio(url);
+            currentAudio.playbackRate = playbackSpeed;
+            currentAudio.play();
+        }
+
+        function checkWriteAnswer() {
+            const input = document.getElementById('writeInput').value.trim();
+            const expected = script[writeIndex].text;
+            const isCorrect = input === expected;
+
+            writeResults[writeIndex] = isCorrect;
+
+            const inputEl = document.getElementById('writeInput');
+            const feedbackEl = document.getElementById('writeFeedback');
+            const diffEl = document.getElementById('diffDisplay');
+
+            inputEl.classList.remove('correct', 'incorrect');
+            inputEl.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+            feedbackEl.classList.remove('correct', 'incorrect');
+            feedbackEl.classList.add('show', isCorrect ? 'correct' : 'incorrect');
+
+            if (isCorrect) {
+                diffEl.innerHTML = '<span class="diff-correct">✓ Correct!</span>';
+            } else {
+                diffEl.innerHTML = generateDiff(input, expected);
+            }
+
+            updateProgressBar();
+            updateScore();
+        }
+
+        function generateDiff(input, expected) {
+            let result = '';
+            const maxLen = Math.max(input.length, expected.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                if (i < input.length && i < expected.length) {
+                    if (input[i] === expected[i]) {
+                        result += `<span class="diff-correct">${expected[i]}</span>`;
+                    } else {
+                        result += `<span class="diff-wrong">${input[i]}</span><span class="diff-missing">${expected[i]}</span>`;
+                    }
+                } else if (i < input.length) {
+                    result += `<span class="diff-wrong">${input[i]}</span>`;
+                } else {
+                    result += `<span class="diff-missing">${expected[i]}</span>`;
+                }
+            }
+
+            return result;
+        }
+
+        function showWriteAnswer() {
+            const expected = script[writeIndex].text;
+            document.getElementById('writeInput').value = expected;
+            document.getElementById('writeInput').classList.add('correct');
+
+            const feedbackEl = document.getElementById('writeFeedback');
+            feedbackEl.classList.add('show', 'correct');
+            document.getElementById('diffDisplay').innerHTML = `<span style="color: #6b7280;">Answer shown</span>`;
+        }
+
+        function nextWriteLine() {
+            if (writeIndex < script.length - 1) {
+                writeIndex++;
+                updateWriteMode();
+            }
+        }
+
+        function prevWriteLine() {
+            if (writeIndex > 0) {
+                writeIndex--;
+                updateWriteMode();
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (currentMode === 'write') {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    checkWriteAnswer();
+                } else if (e.key === 'ArrowRight' && e.ctrlKey) {
+                    nextWriteLine();
+                } else if (e.key === 'ArrowLeft' && e.ctrlKey) {
+                    prevWriteLine();
+                } else if (e.key === ' ' && e.ctrlKey) {
+                    e.preventDefault();
+                    playCurrentLine();
+                }
+            }
+        });
+
+        renderScript();
+        setMode('read');
+    </script>
+</body>
+</html>
