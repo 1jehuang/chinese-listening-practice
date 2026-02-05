@@ -467,6 +467,45 @@
             text-align: right;
             margin-top: 0.25rem;
         }
+        /* Aligned character-pinyin display */
+        .aligned-text {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.125rem;
+            line-height: 1.2;
+            margin: 0.5rem 0;
+        }
+        .char-unit {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0.125rem;
+        }
+        .char-unit .pinyin-char {
+            font-size: 0.7rem;
+            color: #6366f1;
+            min-height: 1rem;
+        }
+        .char-unit .hanzi-char {
+            font-size: 1.25rem;
+        }
+        .char-unit.punct .hanzi-char {
+            color: #9ca3af;
+        }
+        .answer-block {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid #e5e7eb;
+        }
+        .answer-block .english-line {
+            font-style: italic;
+            color: #6b7280;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e5e7eb;
+        }
         kbd {
             background: #e5e7eb;
             padding: 0.125rem 0.375rem;
@@ -762,6 +801,52 @@
             return stripPunctuation(str).length;
         }
 
+        // Split pinyin string into syllables
+        function splitPinyin(pinyin) {
+            // Common pinyin syllable pattern
+            const syllables = pinyin.match(/[A-Za-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+/g) || [];
+            return syllables;
+        }
+
+        // Create aligned character-pinyin HTML
+        function createAlignedDisplay(text, pinyin) {
+            const syllables = splitPinyin(pinyin);
+            let syllableIdx = 0;
+            let html = '<div class="aligned-text">';
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const isPunct = PUNCTUATION.test(char);
+
+                html += `<span class="char-unit${isPunct ? ' punct' : ''}">`;
+
+                if (isPunct) {
+                    html += `<span class="pinyin-char"></span>`;
+                } else if (syllableIdx < syllables.length) {
+                    html += `<span class="pinyin-char">${syllables[syllableIdx]}</span>`;
+                    syllableIdx++;
+                } else {
+                    html += `<span class="pinyin-char">?</span>`;
+                }
+
+                html += `<span class="hanzi-char">${char}</span>`;
+                html += '</span>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // Create full answer block with aligned text and English
+        function createAnswerBlock(line) {
+            return `
+                <div class="answer-block">
+                    ${createAlignedDisplay(line.text, line.pinyin)}
+                    <div class="english-line">${line.english}</div>
+                </div>
+            `;
+        }
+
         function initLiveFeedback() {
             const expected = script[writeIndex].text;
             const expectedClean = stripPunctuation(expected);
@@ -812,8 +897,7 @@
                     <button class="play-btn" onclick="playLine(${i})">🔊</button>
                     <span class="speaker ${line.speaker === '孩子' ? 'child' : ''}">${line.speaker}:</span>
                     <div class="line-content">
-                        <div class="chinese">${line.text}</div>
-                        <div class="line-pinyin">${line.pinyin}</div>
+                        ${createAlignedDisplay(line.text, line.pinyin)}
                         <div class="line-english">${line.english}</div>
                     </div>
                     ${line.refs ? `<span class="grammar-refs">${line.refs}</span>` : ''}
@@ -1062,12 +1146,8 @@
                 diffEl.innerHTML = `
                     ${generateDiff(input, expected)}
                     <div class="answer-details">
-                        <div class="label">Correct Answer</div>
-                        <div class="correct-answer">${expected}</div>
-                        <div class="label">Pinyin</div>
-                        <div class="pinyin">${line.pinyin}</div>
-                        <div class="label">English</div>
-                        <div class="english">${line.english}</div>
+                        <div class="label">Correct Answer (with aligned pinyin)</div>
+                        ${createAnswerBlock(line)}
                         ${line.refs ? `<div class="grammar-ref">Grammar: ${line.refs}</div>` : ''}
                     </div>
                 `;
