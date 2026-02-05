@@ -377,6 +377,44 @@
             font-size: 0.875rem;
             margin-left: 0.5rem;
         }
+        .prompt-hint {
+            font-size: 1.1rem;
+            color: #374151;
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+        }
+        .prompt-hint.english {
+            font-style: italic;
+        }
+        .prompt-hint.pinyin {
+            color: #6366f1;
+        }
+        .speak-mode-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        .speak-mode-answer {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f0fdf4;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        .speak-mode-answer.show {
+            display: block;
+        }
+        .speak-mode-answer .chinese {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .speak-mode-answer .pinyin {
+            color: #6366f1;
+            font-size: 0.95rem;
+        }
         kbd {
             background: #e5e7eb;
             padding: 0.125rem 0.375rem;
@@ -421,6 +459,13 @@
                 <label><input type="radio" name="role" value="mother" onchange="setRole('mother')"> Mother only</label>
             </div>
             <div class="settings-row">
+                <strong>Mode:</strong>
+                <label><input type="radio" name="practiceMode" value="audio" checked onchange="setPracticeMode('audio')"> Audio → Type</label>
+                <label><input type="radio" name="practiceMode" value="english" onchange="setPracticeMode('english')"> English → Type</label>
+                <label><input type="radio" name="practiceMode" value="pinyin" onchange="setPracticeMode('pinyin')"> With Pinyin</label>
+                <label><input type="radio" name="practiceMode" value="speak" onchange="setPracticeMode('speak')"> Listen & Speak</label>
+            </div>
+            <div class="settings-row">
                 <label><input type="checkbox" id="autoPlayCheck" checked> Auto-play audio</label>
                 <label><input type="checkbox" id="autoAdvanceCheck"> Auto-advance on correct</label>
             </div>
@@ -435,11 +480,28 @@
             <div class="write-prompt" id="writePrompt">
                 <div class="speaker-label" id="writeSpeaker"></div>
                 <button class="play-btn" onclick="playCurrentLine()" style="font-size: 1.5rem; padding: 0.75rem 1rem;">🔊 Play Audio</button>
-                <div class="hint-text">Listen and type the Chinese characters</div>
+                <div id="promptHint" class="prompt-hint" style="display: none;"></div>
+                <div class="hint-text" id="hintText">Listen and type the Chinese characters</div>
                 <div class="hotkey-hint"><kbd>;</kbd> play · <kbd>Enter</kbd> check · <kbd>Ctrl+←/→</kbd> prev/next</div>
             </div>
 
-            <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..."></textarea>
+            <!-- Type mode input -->
+            <div id="typeSection">
+                <textarea class="write-input-area" id="writeInput" placeholder="Type Chinese characters here..."></textarea>
+            </div>
+
+            <!-- Speak mode section -->
+            <div id="speakSection" style="display: none;">
+                <div class="speak-mode-controls">
+                    <button class="control-btn" onclick="playCurrentLine()">🔊 Play Again</button>
+                    <button class="control-btn" onclick="showSpeakAnswer()">Show Answer</button>
+                    <button class="control-btn" onclick="nextWriteLine()">Next →</button>
+                </div>
+                <div id="speakAnswer" class="speak-mode-answer">
+                    <div class="chinese" id="speakChinese"></div>
+                    <div class="pinyin" id="speakPinyin"></div>
+                </div>
+            </div>
 
             <div class="write-controls">
                 <button class="control-btn" onclick="prevWriteLine()">← Prev</button>
@@ -481,6 +543,7 @@
         let writeIndex = 0;
         let writeResults = [];
         let selectedRole = 'both'; // 'both', 'child', 'mother'
+        let practiceMode = 'audio'; // 'audio', 'english', 'pinyin', 'speak'
 
         // Get indices of lines for current role
         function getRoleIndices() {
@@ -514,6 +577,18 @@
             writeResults = new Array(script.length).fill(null);
             saveProgress();
             updateWriteMode(true);
+        }
+
+        function setPracticeMode(mode) {
+            practiceMode = mode;
+            updateWriteMode(true);
+        }
+
+        function showSpeakAnswer() {
+            const line = script[writeIndex];
+            document.getElementById('speakChinese').textContent = line.text;
+            document.getElementById('speakPinyin').textContent = line.pinyin;
+            document.getElementById('speakAnswer').classList.add('show');
         }
 
         // Load saved progress
@@ -644,7 +719,6 @@
             document.getElementById('writeInput').value = '';
             document.getElementById('writeInput').className = 'write-input-area';
             document.getElementById('writeFeedback').className = 'write-feedback';
-            document.getElementById('writeInput').focus();
 
             // Show context line (previous line) when in role mode
             const contextEl = document.getElementById('contextLine');
@@ -657,6 +731,45 @@
                 contextEl.style.display = 'block';
             } else {
                 contextEl.style.display = 'none';
+            }
+
+            // Handle different practice modes
+            const promptHint = document.getElementById('promptHint');
+            const hintText = document.getElementById('hintText');
+            const typeSection = document.getElementById('typeSection');
+            const speakSection = document.getElementById('speakSection');
+            const writeControls = document.querySelector('.write-controls');
+
+            if (practiceMode === 'speak') {
+                // Listen & Speak mode - no typing
+                typeSection.style.display = 'none';
+                speakSection.style.display = 'block';
+                writeControls.style.display = 'none';
+                promptHint.style.display = 'none';
+                hintText.textContent = 'Listen and repeat out loud';
+                document.getElementById('speakAnswer').classList.remove('show');
+            } else {
+                // Typing modes
+                typeSection.style.display = 'block';
+                speakSection.style.display = 'none';
+                writeControls.style.display = 'flex';
+                document.getElementById('writeInput').focus();
+
+                if (practiceMode === 'english') {
+                    promptHint.textContent = line.english;
+                    promptHint.className = 'prompt-hint english';
+                    promptHint.style.display = 'block';
+                    hintText.textContent = 'Type the Chinese for this sentence';
+                } else if (practiceMode === 'pinyin') {
+                    promptHint.textContent = line.pinyin;
+                    promptHint.className = 'prompt-hint pinyin';
+                    promptHint.style.display = 'block';
+                    hintText.textContent = 'Type the Chinese characters';
+                } else {
+                    // audio mode
+                    promptHint.style.display = 'none';
+                    hintText.textContent = 'Listen and type the Chinese characters';
+                }
             }
 
             updateProgressBar();
