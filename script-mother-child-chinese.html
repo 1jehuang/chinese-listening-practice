@@ -391,6 +391,17 @@
         .prompt-hint.pinyin {
             color: #6366f1;
         }
+        .prompt-hint.combined {
+            text-align: left;
+        }
+        .prompt-hint .pinyin-hint {
+            color: #6366f1;
+            margin-bottom: 0.5rem;
+        }
+        .prompt-hint .english-hint {
+            color: #374151;
+            font-style: italic;
+        }
         .speak-mode-controls {
             display: flex;
             gap: 1rem;
@@ -550,11 +561,10 @@
                 <label><input type="radio" name="role" value="mother" onchange="setRole('mother')"> Mother only</label>
             </div>
             <div class="settings-row">
-                <strong>Mode:</strong>
-                <label><input type="radio" name="practiceMode" value="audio" checked onchange="setPracticeMode('audio')"> Audio → Type</label>
-                <label><input type="radio" name="practiceMode" value="english" onchange="setPracticeMode('english')"> English → Type</label>
-                <label><input type="radio" name="practiceMode" value="pinyin" onchange="setPracticeMode('pinyin')"> With Pinyin</label>
-                <label><input type="radio" name="practiceMode" value="speak" onchange="setPracticeMode('speak')"> Listen & Speak</label>
+                <strong>Hints:</strong>
+                <label><input type="checkbox" id="showEnglishHint" onchange="updateHints()"> Show English</label>
+                <label><input type="checkbox" id="showPinyinHint" onchange="updateHints()"> Show Pinyin</label>
+                <label><input type="checkbox" id="speakModeCheck" onchange="updateHints()"> Listen & Speak (no typing)</label>
             </div>
             <div class="settings-row">
                 <label><input type="checkbox" id="autoPlayCheck" checked> Auto-play audio</label>
@@ -636,7 +646,9 @@
         let writeIndex = 0;
         let writeResults = [];
         let selectedRole = 'both'; // 'both', 'child', 'mother'
-        let practiceMode = 'audio'; // 'audio', 'english', 'pinyin', 'speak'
+        let showEnglish = false;
+        let showPinyin = false;
+        let speakMode = false;
 
         // Get indices of lines for current role
         function getRoleIndices() {
@@ -672,8 +684,10 @@
             updateWriteMode(true);
         }
 
-        function setPracticeMode(mode) {
-            practiceMode = mode;
+        function updateHints() {
+            showEnglish = document.getElementById('showEnglishHint').checked;
+            showPinyin = document.getElementById('showPinyinHint').checked;
+            speakMode = document.getElementById('speakModeCheck').checked;
             updateWriteMode(true);
         }
 
@@ -1009,14 +1023,14 @@
                 contextEl.style.display = 'none';
             }
 
-            // Handle different practice modes
+            // Handle hints and modes
             const promptHint = document.getElementById('promptHint');
             const hintText = document.getElementById('hintText');
             const typeSection = document.getElementById('typeSection');
             const speakSection = document.getElementById('speakSection');
             const writeControls = document.querySelector('.write-controls');
 
-            if (practiceMode === 'speak') {
+            if (speakMode) {
                 // Listen & Speak mode - no typing
                 typeSection.style.display = 'none';
                 speakSection.style.display = 'block';
@@ -1025,27 +1039,36 @@
                 hintText.textContent = 'Listen and repeat out loud';
                 document.getElementById('speakAnswer').classList.remove('show');
             } else {
-                // Typing modes
+                // Typing mode with optional hints
                 typeSection.style.display = 'block';
                 speakSection.style.display = 'none';
                 writeControls.style.display = 'flex';
                 document.getElementById('writeInput').focus();
                 initLiveFeedback();
 
-                if (practiceMode === 'english') {
-                    promptHint.textContent = line.english;
-                    promptHint.className = 'prompt-hint english';
-                    promptHint.style.display = 'block';
-                    hintText.textContent = 'Type the Chinese for this sentence';
-                } else if (practiceMode === 'pinyin') {
-                    promptHint.textContent = line.pinyin;
-                    promptHint.className = 'prompt-hint pinyin';
-                    promptHint.style.display = 'block';
+                // Build hint content based on checkboxes
+                let hintContent = '';
+                if (showPinyin && showEnglish) {
+                    hintContent = `<div class="pinyin-hint">${line.pinyin}</div><div class="english-hint">${line.english}</div>`;
+                    promptHint.className = 'prompt-hint combined';
                     hintText.textContent = 'Type the Chinese characters';
+                } else if (showPinyin) {
+                    hintContent = line.pinyin;
+                    promptHint.className = 'prompt-hint pinyin';
+                    hintText.textContent = 'Type the Chinese characters';
+                } else if (showEnglish) {
+                    hintContent = line.english;
+                    promptHint.className = 'prompt-hint english';
+                    hintText.textContent = 'Type the Chinese for this sentence';
                 } else {
-                    // audio mode
-                    promptHint.style.display = 'none';
                     hintText.textContent = 'Listen and type the Chinese characters';
+                }
+
+                if (hintContent) {
+                    promptHint.innerHTML = hintContent;
+                    promptHint.style.display = 'block';
+                } else {
+                    promptHint.style.display = 'none';
                 }
             }
 
