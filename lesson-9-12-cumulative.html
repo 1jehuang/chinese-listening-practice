@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>Lessons 9-12 Cumulative - Quiz</title>
+    <title>Lessons 9-11 Cumulative - Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
@@ -201,7 +201,6 @@
     <script src="data/lessons/lesson-9.js"></script>
     <script src="data/lessons/lesson-10.js"></script>
     <script src="data/lessons/lesson-11.js"></script>
-    <script src="data/lessons/lesson-12.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
@@ -211,7 +210,7 @@
     <div class="app-container">
         <aside class="sidebar">
             <h2>Quiz Modes</h2>
-            <p class="mode-desc">Lessons 9–12 combined vocab review.</p>
+            <p class="mode-desc">Lessons 9–11 combined vocab review.</p>
             <nav>
                 <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
                 <button class="mode-btn" data-mode="char-to-pinyin">Char → Pinyin</button>
@@ -233,7 +232,7 @@
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>Lessons 9–12 Cumulative</h1>
+                <h1>Lessons 9–11 Cumulative</h1>
             </header>
 
             <section class="quiz-display">
@@ -294,7 +293,7 @@
                 </div>
 
                 <div id="studyMode">
-                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 9–12</p>
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 9–11</p>
                     <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
 
@@ -319,7 +318,7 @@
     </div>
 
     <script>
-        const lessonIds = [9, 10, 11, 12];
+        const lessonIds = [9, 10, 11];
         const datasets = window.__LESSON_DATASETS__ || {};
 
         const combinedMap = new Map();

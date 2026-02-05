@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>Dictation – Lessons 9-12</title>
+    <title>Dictation – Lessons 9-11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/lesson-layout.css">
@@ -18,7 +18,6 @@
     <script src="data/lessons/lesson-9.js"></script>
     <script src="data/lessons/lesson-10.js"></script>
     <script src="data/lessons/lesson-11.js"></script>
-    <script src="data/lessons/lesson-12.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
@@ -28,7 +27,7 @@
     <div class="app-container">
         <aside class="sidebar">
             <h2>Dictation Modes</h2>
-            <p class="mode-desc">Lessons 9–12 combined dictation. Enter submits instantly; Space replays audio.</p>
+            <p class="mode-desc">Lessons 9–11 combined dictation. Enter submits instantly; Space replays audio.</p>
             <nav>
                 <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
                 <button class="mode-btn" data-mode="char-to-pinyin">Text → Pinyin</button>
@@ -43,7 +42,7 @@
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>Dictation: Lessons 9–12</h1>
+                <h1>Dictation: Lessons 9–11</h1>
             </header>
 
             <section class="quiz-display">
@@ -93,7 +92,7 @@
     </div>
 
     <script>
-        const lessonIds = [9, 10, 11, 12];
+        const lessonIds = [9, 10, 11];
         const datasets = window.__LESSON_DATASETS__ || {};
 
         const combined = [];
