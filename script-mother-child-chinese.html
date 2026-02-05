@@ -517,6 +517,50 @@
             padding-top: 0.75rem;
             border-top: 1px solid #e5e7eb;
         }
+        /* Cloze mode styles */
+        .cloze-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .cloze-controls label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .cloze-controls input[type="range"] {
+            width: 100px;
+        }
+        .cloze-blank {
+            display: inline-block;
+            min-width: 1.5em;
+            height: 1.5em;
+            background: #fef3c7;
+            border-bottom: 2px solid #f59e0b;
+            margin: 0 1px;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 2px;
+        }
+        .cloze-blank:hover {
+            background: #fde68a;
+        }
+        .cloze-blank.revealed {
+            background: #d1fae5;
+            border-bottom-color: #10b981;
+        }
+        .cloze-char {
+            display: inline;
+        }
+        .cloze-line .chinese {
+            font-size: 1.25rem;
+            line-height: 2.2;
+        }
         kbd {
             background: #e5e7eb;
             padding: 0.125rem 0.375rem;
@@ -535,6 +579,7 @@
 
         <div class="controls">
             <button class="control-btn" id="readModeBtn" onclick="setMode('read')">Read Mode</button>
+            <button class="control-btn" id="clozeModeBtn" onclick="setMode('cloze')">Cloze Mode</button>
             <button class="control-btn" id="writeModeBtn" onclick="setMode('write')">Write Mode</button>
             <span style="border-left: 1px solid #d1d5db; margin: 0 0.5rem;"></span>
             <button class="control-btn" onclick="playAll()">Play All</button>
@@ -547,6 +592,18 @@
 
         <div id="readMode">
             <div id="scriptLines"></div>
+        </div>
+
+        <div id="clozeMode" style="display: none;">
+            <div class="cloze-controls">
+                <label>
+                    Blank %: <input type="range" id="clozePercent" min="10" max="80" value="30" onchange="renderCloze()">
+                    <span id="clozePercentLabel">30%</span>
+                </label>
+                <button class="control-btn" onclick="renderCloze()">Randomize</button>
+                <button class="control-btn" onclick="revealAllCloze()">Reveal All</button>
+            </div>
+            <div id="clozeLines"></div>
         </div>
 
         <div id="writeMode" class="write-mode-container">
@@ -990,8 +1047,10 @@
         function setMode(mode) {
             currentMode = mode;
             document.getElementById('readMode').style.display = mode === 'read' ? 'block' : 'none';
+            document.getElementById('clozeMode').style.display = mode === 'cloze' ? 'block' : 'none';
             document.getElementById('writeMode').classList.toggle('active', mode === 'write');
             document.getElementById('readModeBtn').classList.toggle('active', mode === 'read');
+            document.getElementById('clozeModeBtn').classList.toggle('active', mode === 'cloze');
             document.getElementById('writeModeBtn').classList.toggle('active', mode === 'write');
 
             if (mode === 'write') {
@@ -1000,7 +1059,62 @@
                     writeResults = new Array(script.length).fill(null);
                 }
                 updateWriteMode();
+            } else if (mode === 'cloze') {
+                renderCloze();
             }
+        }
+
+        function renderCloze() {
+            const container = document.getElementById('clozeLines');
+            const percent = parseInt(document.getElementById('clozePercent').value);
+            document.getElementById('clozePercentLabel').textContent = percent + '%';
+
+            container.innerHTML = script.map((line, i) => {
+                // Create cloze version of the text
+                const clozeText = createClozeText(line.text, percent);
+
+                return `
+                    <div class="line cloze-line" data-index="${i}">
+                        <button class="play-btn" onclick="playLine(${i})">🔊</button>
+                        <span class="speaker ${line.speaker === '孩子' ? 'child' : ''}">${line.speaker}:</span>
+                        <div class="line-content">
+                            <div class="chinese">${clozeText}</div>
+                            <div class="line-pinyin">${line.pinyin}</div>
+                            <div class="line-english">${line.english}</div>
+                        </div>
+                        ${line.refs ? `<span class="grammar-refs">${line.refs}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function createClozeText(text, percent) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                // Don't blank out punctuation
+                if (PUNCTUATION.test(char)) {
+                    result += `<span class="cloze-char">${char}</span>`;
+                } else if (Math.random() * 100 < percent) {
+                    // Blank this character
+                    result += `<span class="cloze-blank" onclick="revealCloze(this)" data-char="${char}">_</span>`;
+                } else {
+                    result += `<span class="cloze-char">${char}</span>`;
+                }
+            }
+            return result;
+        }
+
+        function revealCloze(el) {
+            el.textContent = el.dataset.char;
+            el.classList.add('revealed');
+        }
+
+        function revealAllCloze() {
+            document.querySelectorAll('.cloze-blank').forEach(el => {
+                el.textContent = el.dataset.char;
+                el.classList.add('revealed');
+            });
         }
 
         function updateWriteMode(skipAutoPlay = false) {
