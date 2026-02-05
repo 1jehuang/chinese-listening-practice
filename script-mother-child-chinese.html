@@ -35,6 +35,20 @@
         .line:hover {
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
+        .line-content {
+            flex: 1;
+        }
+        .line-pinyin {
+            font-size: 0.875rem;
+            color: #6366f1;
+            margin-top: 0.25rem;
+        }
+        .line-english {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-style: italic;
+            margin-top: 0.25rem;
+        }
         .speaker {
             font-weight: 500;
             min-width: 3.5rem;
@@ -94,15 +108,25 @@
             color: white;
             border-color: #6366f1;
         }
-        .hidden-text .chinese {
+        .hidden-text .chinese,
+        .hidden-text .line-pinyin,
+        .hidden-text .line-english {
             color: transparent;
             background: #e5e7eb;
             border-radius: 0.25rem;
             user-select: none;
         }
-        .hidden-text .line:hover .chinese {
+        .hidden-text .line:hover .chinese,
+        .hidden-text .line:hover .line-pinyin,
+        .hidden-text .line:hover .line-english {
             color: inherit;
             background: transparent;
+        }
+        .hidden-text .line:hover .line-pinyin {
+            color: #6366f1;
+        }
+        .hidden-text .line:hover .line-english {
+            color: #6b7280;
         }
         h1 {
             text-align: center;
@@ -369,7 +393,11 @@
                 <div class="line" data-index="${i}">
                     <button class="play-btn" onclick="playLine(${i})">🔊</button>
                     <span class="speaker ${line.speaker === '孩子' ? 'child' : ''}">${line.speaker}:</span>
-                    <span class="chinese">${line.text}</span>
+                    <div class="line-content">
+                        <div class="chinese">${line.text}</div>
+                        <div class="line-pinyin">${line.pinyin}</div>
+                        <div class="line-english">${line.english}</div>
+                    </div>
                     ${line.refs ? `<span class="grammar-refs">${line.refs}</span>` : ''}
                 </div>
             `).join('');
