@@ -339,6 +339,44 @@
             color: #9ca3af;
             margin-top: 0.5rem;
         }
+        .context-line {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+        .context-line .context-speaker {
+            font-size: 0.75rem;
+            color: #6366f1;
+            margin-bottom: 0.25rem;
+        }
+        .context-line .context-speaker.mother {
+            color: #6366f1;
+        }
+        .context-line .context-speaker.child {
+            color: #10b981;
+        }
+        .context-line .context-text {
+            font-size: 1rem;
+            color: #374151;
+        }
+        .context-line .context-english {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            font-style: italic;
+            margin-top: 0.25rem;
+        }
+        .context-play-btn {
+            background: #e5e7eb;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-left: 0.5rem;
+        }
         kbd {
             background: #e5e7eb;
             padding: 0.125rem 0.375rem;
@@ -377,8 +415,21 @@
             <div class="score-display" id="scoreDisplay">Score: 0/0</div>
 
             <div class="settings-row">
+                <strong>Role:</strong>
+                <label><input type="radio" name="role" value="both" checked onchange="setRole('both')"> Both</label>
+                <label><input type="radio" name="role" value="child" onchange="setRole('child')"> Child only</label>
+                <label><input type="radio" name="role" value="mother" onchange="setRole('mother')"> Mother only</label>
+            </div>
+            <div class="settings-row">
                 <label><input type="checkbox" id="autoPlayCheck" checked> Auto-play audio</label>
                 <label><input type="checkbox" id="autoAdvanceCheck"> Auto-advance on correct</label>
+            </div>
+
+            <div id="contextLine" class="context-line" style="display: none;">
+                <span class="context-speaker" id="contextSpeaker"></span>
+                <button class="context-play-btn" onclick="playContextLine()">🔊</button>
+                <div class="context-text" id="contextText"></div>
+                <div class="context-english" id="contextEnglish"></div>
             </div>
 
             <div class="write-prompt" id="writePrompt">
@@ -429,6 +480,41 @@
         let currentMode = 'read';
         let writeIndex = 0;
         let writeResults = [];
+        let selectedRole = 'both'; // 'both', 'child', 'mother'
+
+        // Get indices of lines for current role
+        function getRoleIndices() {
+            if (selectedRole === 'both') {
+                return script.map((_, i) => i);
+            }
+            const targetSpeaker = selectedRole === 'child' ? '孩子' : '妈妈';
+            return script.map((line, i) => line.speaker === targetSpeaker ? i : -1).filter(i => i !== -1);
+        }
+
+        // Get position in role-filtered list
+        function getRolePosition(globalIndex) {
+            const indices = getRoleIndices();
+            return indices.indexOf(globalIndex);
+        }
+
+        // Check if current line is "my" line (needs typing) or other's line (just listen)
+        function isMyLine(index) {
+            if (selectedRole === 'both') return true;
+            const targetSpeaker = selectedRole === 'child' ? '孩子' : '妈妈';
+            return script[index].speaker === targetSpeaker;
+        }
+
+        function setRole(role) {
+            selectedRole = role;
+            // Jump to first line of this role
+            const indices = getRoleIndices();
+            if (indices.length > 0) {
+                writeIndex = indices[0];
+            }
+            writeResults = new Array(script.length).fill(null);
+            saveProgress();
+            updateWriteMode(true);
+        }
 
         // Load saved progress
         function loadProgress() {
@@ -553,12 +639,25 @@
 
         function updateWriteMode(skipAutoPlay = false) {
             const line = script[writeIndex];
-            document.getElementById('writeSpeaker').textContent = line.speaker + ':';
+            document.getElementById('writeSpeaker').textContent = line.speaker + ': (your line)';
             document.getElementById('writeSpeaker').className = 'speaker-label' + (line.speaker === '孩子' ? ' child' : '');
             document.getElementById('writeInput').value = '';
             document.getElementById('writeInput').className = 'write-input-area';
             document.getElementById('writeFeedback').className = 'write-feedback';
             document.getElementById('writeInput').focus();
+
+            // Show context line (previous line) when in role mode
+            const contextEl = document.getElementById('contextLine');
+            if (selectedRole !== 'both' && writeIndex > 0) {
+                const prevLine = script[writeIndex - 1];
+                document.getElementById('contextSpeaker').textContent = prevLine.speaker + ':';
+                document.getElementById('contextSpeaker').className = 'context-speaker ' + (prevLine.speaker === '妈妈' ? 'mother' : 'child');
+                document.getElementById('contextText').textContent = prevLine.text;
+                document.getElementById('contextEnglish').textContent = prevLine.english;
+                contextEl.style.display = 'block';
+            } else {
+                contextEl.style.display = 'none';
+            }
 
             updateProgressBar();
             updateScore();
@@ -570,22 +669,36 @@
             }
         }
 
+        function playContextLine() {
+            if (writeIndex > 0) {
+                const prevLine = script[writeIndex - 1];
+                const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-CN&q=${encodeURIComponent(prevLine.text)}`;
+                if (currentAudio) currentAudio.pause();
+                currentAudio = new Audio(url);
+                currentAudio.playbackRate = playbackSpeed;
+                currentAudio.play();
+            }
+        }
+
         function updateProgressBar() {
             const bar = document.getElementById('progressBar');
-            bar.innerHTML = script.map((_, i) => {
+            const indices = getRoleIndices();
+            bar.innerHTML = indices.map((scriptIdx) => {
                 let cls = 'progress-dot';
-                if (i === writeIndex) cls += ' current';
-                else if (writeResults[i] === true) cls += ' correct';
-                else if (writeResults[i] === false) cls += ' incorrect';
-                return `<div class="${cls}" onclick="jumpToLine(${i})" title="Line ${i + 1}"></div>`;
+                if (scriptIdx === writeIndex) cls += ' current';
+                else if (writeResults[scriptIdx] === true) cls += ' correct';
+                else if (writeResults[scriptIdx] === false) cls += ' incorrect';
+                return `<div class="${cls}" onclick="jumpToLine(${scriptIdx})" title="Line ${scriptIdx + 1}"></div>`;
             }).join('');
         }
 
         function updateScore() {
-            const correct = writeResults.filter(r => r === true).length;
-            const attempted = writeResults.filter(r => r !== null).length;
+            const indices = getRoleIndices();
+            const correct = indices.filter(i => writeResults[i] === true).length;
+            const attempted = indices.filter(i => writeResults[i] !== null).length;
+            const position = getRolePosition(writeIndex) + 1;
             document.getElementById('scoreDisplay').textContent = `Score: ${correct}/${attempted}`;
-            document.getElementById('lineCounter').textContent = `Line ${writeIndex + 1} of ${script.length}`;
+            document.getElementById('lineCounter').textContent = `Line ${position} of ${indices.length}`;
         }
 
         function jumpToLine(index) {
@@ -594,7 +707,8 @@
         }
 
         function restartWrite() {
-            writeIndex = 0;
+            const indices = getRoleIndices();
+            writeIndex = indices.length > 0 ? indices[0] : 0;
             writeResults = new Array(script.length).fill(null);
             saveProgress();
             updateWriteMode();
@@ -629,9 +743,11 @@
             if (isCorrect) {
                 diffEl.innerHTML = '<span class="diff-correct">✓ Correct!</span>';
                 // Auto-advance if enabled
-                if (document.getElementById('autoAdvanceCheck').checked && writeIndex < script.length - 1) {
+                const indices = getRoleIndices();
+                const currentPos = getRolePosition(writeIndex);
+                if (document.getElementById('autoAdvanceCheck').checked && currentPos < indices.length - 1) {
                     setTimeout(() => {
-                        writeIndex++;
+                        writeIndex = indices[currentPos + 1];
                         updateWriteMode();
                     }, 800);
                 }
@@ -688,15 +804,19 @@
         }
 
         function nextWriteLine() {
-            if (writeIndex < script.length - 1) {
-                writeIndex++;
+            const indices = getRoleIndices();
+            const currentPos = getRolePosition(writeIndex);
+            if (currentPos < indices.length - 1) {
+                writeIndex = indices[currentPos + 1];
                 updateWriteMode();
             }
         }
 
         function prevWriteLine() {
-            if (writeIndex > 0) {
-                writeIndex--;
+            const indices = getRoleIndices();
+            const currentPos = getRolePosition(writeIndex);
+            if (currentPos > 0) {
+                writeIndex = indices[currentPos - 1];
                 updateWriteMode();
             }
         }
