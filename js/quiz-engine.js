@@ -130,6 +130,8 @@ let charToTonesMcPreviousResult = null;  // 'correct' | 'incorrect'
 let charToTonesMcUpcomingQuestion = null;
 let charToTonesMcInlineFeedback = null;
 let handwritingAnswerShown = false;
+let handwritingResultMarked = null;
+let handwritingAwaitingAdvance = false;
 let handwritingSpaceDownTime = null;
 let handwritingHoldTimeout = null;
 let studyModeInitialized = false;
@@ -4874,6 +4876,8 @@ function resetForNextQuestion(prefillAnswer) {
     }
     questionAttemptRecorded = false;
     handwritingAnswerShown = false; // Reset handwriting answer shown state
+    handwritingResultMarked = null;
+    handwritingAwaitingAdvance = false;
     handwritingSpaceDownTime = null; // Reset space key timing
     if (handwritingHoldTimeout) {
         clearTimeout(handwritingHoldTimeout);
@@ -9180,6 +9184,8 @@ function initHandwriting() {
 
     writerDiv.innerHTML = '';
     handwritingAnswerShown = false; // Reset answer shown state for new question
+    handwritingResultMarked = null;
+    handwritingAwaitingAdvance = false;
     updateHandwritingSpaceHint(false); // Reset hint UI
 
     // Create HanziWriter instances for all characters (skip placeholders like … or _)
@@ -9277,16 +9283,26 @@ function initHandwriting() {
     };
 
     if (hwShowBtn) {
-        hwShowBtn.onclick = showAnswer;
+        hwShowBtn.onclick = () => {
+            if (handwritingAwaitingAdvance) {
+                advanceHandwritingAfterReview();
+                return;
+            }
+            showAnswer();
+        };
     }
 
     if (hwNextBtn) {
         hwNextBtn.onclick = () => {
-            generateQuestion();
+            if (handwritingAwaitingAdvance) {
+                advanceHandwritingAfterReview();
+            } else {
+                generateQuestion();
+            }
         };
     }
 
-    // Store showAnswer function for space key handler
+    // Store showAnswer function for handwriting hotkey handlers
     window.handwritingShowAnswer = showAnswer;
 }
 
@@ -12097,26 +12113,45 @@ function handleQuizHotkeys(e) {
         }
     }
 
-    // Handwriting mode: after answer shown, space = correct, any other key = wrong
+    // Handwriting mode:
+    // - R = right, W = wrong (works before reveal and reveals answer)
+    // - Space = reveal answer without grading
+    // - After grading, any key moves to next question
     if (mode === 'handwriting' && !e.altKey && !e.ctrlKey && !e.metaKey) {
         if (isTypingTarget(target)) return;
+        const key = e.key;
+        const normalizedKey = key.length === 1 ? key.toLowerCase() : key;
 
-        if (e.key === ' ') {
+        if (handwritingAwaitingAdvance) {
+            if (!['Shift', 'Control', 'Alt', 'Meta'].includes(key)) {
+                e.preventDefault();
+                advanceHandwritingAfterReview();
+            }
+            return;
+        }
+
+        if (normalizedKey === 'r') {
+            e.preventDefault();
+            handleHandwritingResult(true);
+            return;
+        }
+
+        if (normalizedKey === 'w') {
+            e.preventDefault();
+            handleHandwritingResult(false);
+            return;
+        }
+
+        if (key === ' ') {
             e.preventDefault();
             if (!handwritingAnswerShown) {
-                // First space: show the answer
                 if (window.handwritingShowAnswer) {
                     window.handwritingShowAnswer();
                 }
-            } else {
-                // Space after answer shown = correct
+            } else if (handwritingResultMarked === null) {
+                // Keep old flow: space after reveal counts as right.
                 handleHandwritingResult(true);
             }
-            return;
-        } else if (handwritingAnswerShown && e.key.length === 1) {
-            // Any other key after answer shown = wrong
-            e.preventDefault();
-            handleHandwritingResult(false);
             return;
         }
     }
@@ -12184,16 +12219,20 @@ function handleQuizKeyup(e) {
     // Currently unused, but keeping for potential future use
 }
 
-function handleHandwritingResult(correct) {
-    if (!currentQuestion) return;
+function advanceHandwritingAfterReview() {
+    if (!handwritingAwaitingAdvance) return;
+    generateQuestion();
+}
 
-    if (correct) {
-        // Play correct sound and word audio
+function handleHandwritingResult(correct) {
+    if (!currentQuestion || handwritingResultMarked !== null) return;
+
+    handwritingResultMarked = correct;
+    handwritingAwaitingAdvance = true;
+
+    if (handwritingResultMarked) {
+        // Play correct sound
         playCorrectSound();
-        if (currentQuestion.pinyin && typeof playPinyinAudio === 'function') {
-            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-            setTimeout(() => playPinyinAudio(firstPinyin, currentQuestion.char), 200);
-        }
         // Record correct answer
         updateBKT(currentQuestion.char, true);
     } else {
@@ -12203,28 +12242,49 @@ function handleHandwritingResult(correct) {
         updateBKT(currentQuestion.char, false);
     }
 
-    // Go to next question
-    generateQuestion();
+    if (!handwritingAnswerShown && window.handwritingShowAnswer) {
+        window.handwritingShowAnswer();
+    } else {
+        updateHandwritingSpaceHint(false);
+    }
 }
 
 function updateHandwritingSpaceHint(holding) {
     const hint = document.getElementById('hwSpaceHint');
     if (!hint) return;
 
+    if (handwritingAwaitingAdvance) {
+        hint.innerHTML = `
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-blue-50 rounded-full border border-blue-200">
+                <span class="text-blue-700">Answer shown</span>
+                <span class="text-gray-400 mx-1">|</span>
+                <span class="text-blue-700">Press any key/button for next</span>
+            </div>
+        `;
+        return;
+    }
+
     if (handwritingAnswerShown) {
         hint.innerHTML = `
             <div class="inline-flex items-center gap-3 px-6 py-3 bg-green-50 rounded-full border border-green-200">
-                <kbd class="px-3 py-1.5 bg-white border border-green-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
-                <span class="text-green-700">= ✓ correct</span>
+                <kbd class="px-3 py-1.5 bg-white border border-green-300 rounded-md shadow-sm text-sm font-mono">R</kbd>
+                <span class="text-green-700">= ✓ right</span>
                 <span class="text-gray-400 mx-1">|</span>
-                <span class="text-red-600">Any other key = ✗ wrong</span>
+                <kbd class="px-3 py-1.5 bg-white border border-red-300 rounded-md shadow-sm text-sm font-mono">W</kbd>
+                <span class="text-red-600">= ✗ wrong</span>
             </div>
         `;
     } else {
         hint.innerHTML = `
-            <div class="inline-flex items-center gap-3 px-6 py-3 bg-gray-100 rounded-full">
+            <div class="inline-flex items-center gap-3 px-6 py-3 bg-gray-100 rounded-full border border-gray-200">
+                <kbd class="px-3 py-1.5 bg-white border border-green-300 rounded-md shadow-sm text-sm font-mono">R</kbd>
+                <span class="text-gray-700">right + reveal</span>
+                <span class="text-gray-400 mx-1">|</span>
+                <kbd class="px-3 py-1.5 bg-white border border-red-300 rounded-md shadow-sm text-sm font-mono">W</kbd>
+                <span class="text-gray-700">wrong + reveal</span>
+                <span class="text-gray-400 mx-1">|</span>
                 <kbd class="px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-mono">Space</kbd>
-                <span class="text-gray-600">Press to reveal</span>
+                <span class="text-gray-600">show only</span>
             </div>
         `;
     }
