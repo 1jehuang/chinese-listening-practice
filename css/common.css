@@ -21,6 +21,155 @@
     background: #f3f4f6;
 }
 
+/* Choice grid layout for quiz option buttons */
+#fuzzyOptions,
+#options,
+#componentOptions,
+#charBuildingOptions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+#fuzzyOptions button,
+#options button,
+#componentOptions button,
+#charBuildingOptions button {
+    padding: 0.875rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: white;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+#fuzzyOptions button:hover,
+#options button:hover,
+#componentOptions button:hover,
+#charBuildingOptions button:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+#fuzzyOptions button.fuzzy-selected,
+#options button.fuzzy-selected,
+#componentOptions button.fuzzy-selected,
+#charBuildingOptions button.fuzzy-selected {
+    border-color: #3b82f6;
+    background: #dbeafe;
+}
+
+/* Radical/toggle selection states */
+#radicalOptions button.radical-selected {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+}
+
+/* Feedback states for answer buttons */
+#fuzzyOptions button.answer-correct,
+#options button.answer-correct,
+#radicalOptions button.answer-correct {
+    background: #22c55e !important;
+    color: white !important;
+    border-color: #16a34a !important;
+}
+
+#fuzzyOptions button.answer-incorrect,
+#options button.answer-incorrect,
+#radicalOptions button.answer-incorrect {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #dc2626 !important;
+}
+
+#radicalOptions button.answer-missed {
+    background: #dcfce7 !important;
+    border-color: #22c55e !important;
+    border-width: 4px !important;
+}
+
+/* Radical practice */
+#radicalOptions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+#radicalOptions button {
+    padding: 0.875rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: white;
+    font-size: 1.125rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+#radicalOptions button:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+/* Dark mode choice buttons */
+body.theme-dark #fuzzyOptions button,
+body.theme-dark #options button,
+body.theme-dark #componentOptions button,
+body.theme-dark #charBuildingOptions button {
+    background: var(--dm-surface);
+    border-color: var(--dm-border-strong);
+    color: var(--dm-text);
+}
+
+body.theme-dark #fuzzyOptions button:hover,
+body.theme-dark #options button:hover,
+body.theme-dark #componentOptions button:hover,
+body.theme-dark #charBuildingOptions button:hover {
+    border-color: var(--dm-accent);
+    background: rgba(96, 165, 250, 0.12);
+}
+
+body.theme-dark #fuzzyOptions button.fuzzy-selected,
+body.theme-dark #options button.fuzzy-selected,
+body.theme-dark #componentOptions button.fuzzy-selected,
+body.theme-dark #charBuildingOptions button.fuzzy-selected {
+    border-color: var(--dm-accent);
+    background: rgba(96, 165, 250, 0.18);
+}
+
+/* Choice buttons (multiple choice mode) */
+.choice-btn {
+    padding: 1rem 1.5rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.choice-btn:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.choice-btn-large {
+    padding: 2rem 1.5rem;
+    font-size: 3.75rem;
+}
+
+body.theme-dark .choice-btn {
+    background: var(--dm-surface);
+    border-color: var(--dm-border-strong);
+    color: var(--dm-text);
+}
+
+body.theme-dark .choice-btn:hover {
+    border-color: var(--dm-accent);
+    background: rgba(96, 165, 250, 0.12);
+}
+
 /* Selected state for fuzzy matching */
 .selected {
     outline: 3px solid #3b82f6 !important;

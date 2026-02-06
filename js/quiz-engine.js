@@ -6282,7 +6282,7 @@ function generatePinyinOptions() {
 
     allOptions.forEach(option => {
         const btn = document.createElement('button');
-        btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.className = 'choice-btn';
         btn.textContent = option;
         btn.dataset.normalized = normalizePinyinForChoice(option);
         btn.onclick = () => checkMultipleChoice(option);
@@ -6308,7 +6308,7 @@ function generateCharOptions() {
 
     allOptions.forEach(option => {
         const btn = document.createElement('button');
-        btn.className = 'px-6 py-8 text-6xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.className = 'choice-btn choice-btn-large';
         btn.textContent = option;
         btn.onclick = () => checkMultipleChoice(option);
         options.appendChild(btn);
@@ -6333,7 +6333,7 @@ function generateMeaningOptions() {
 
     allOptions.forEach(option => {
         const btn = document.createElement('button');
-        btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.className = 'choice-btn';
         btn.textContent = option;
         btn.onclick = () => checkMultipleChoice(option);
         options.appendChild(btn);
@@ -6360,7 +6360,6 @@ function generateFuzzyMeaningOptions() {
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
         btn.textContent = option;
         btn.dataset.index = index;
         btn.dataset.meaning = option;
@@ -6380,8 +6379,7 @@ function generateFuzzyMeaningOptions() {
         const input = fuzzyInput.value.trim().toLowerCase();
         if (!input) {
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             });
             return;
         }
@@ -6399,11 +6397,9 @@ function generateFuzzyMeaningOptions() {
 
         document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
             if (index === bestMatch) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300');
-                btn.classList.add('bg-blue-200', 'border-blue-500');
+                btn.classList.add('fuzzy-selected');
             } else {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             }
         });
 
@@ -6419,7 +6415,7 @@ function generateFuzzyMeaningOptions() {
 
         if (e.key === 'Enter') {
             e.preventDefault();
-            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            const selected = document.querySelector('#fuzzyOptions button.fuzzy-selected');
             if (selected) {
                 selected.click();
             }
@@ -6432,7 +6428,7 @@ function generateFuzzyMeaningOptions() {
     if (fuzzyInput.value) {
         fuzzyInput.dispatchEvent(new Event('input'));
         // Auto-submit the prefired answer
-        const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+        const selected = document.querySelector('#fuzzyOptions button.fuzzy-selected');
         if (selected) {
             selected.click();
         }
@@ -6472,7 +6468,6 @@ function generateFuzzyPinyinOptions() {
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
         btn.textContent = option;
         btn.dataset.index = index;
         btn.dataset.pinyin = option;
@@ -6492,8 +6487,7 @@ function generateFuzzyPinyinOptions() {
         const input = fuzzyInput.value.trim().toLowerCase();
         if (!input) {
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             });
             return;
         }
@@ -6537,11 +6531,9 @@ function generateFuzzyPinyinOptions() {
 
         document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
             if (index === bestMatch) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300');
-                btn.classList.add('bg-blue-200', 'border-blue-500');
+                btn.classList.add('fuzzy-selected');
             } else {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             }
         });
     };
@@ -6571,7 +6563,7 @@ function generateFuzzyPinyinOptions() {
             }
 
             // Otherwise, click the highlighted option
-            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            const selected = document.querySelector('#fuzzyOptions button.fuzzy-selected');
             if (selected) {
                 selected.click();
             }
@@ -6597,7 +6589,7 @@ function generateFuzzyPinyinOptions() {
         }
 
         // Fall back to clicking highlighted option
-        const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+        const selected = document.querySelector('#fuzzyOptions button.fuzzy-selected');
         if (selected) {
             selected.click();
         }
@@ -7008,7 +7000,7 @@ function generatePinyinOptionsToneFlowSingle() {
 
     allOptions.forEach(option => {
         const btn = document.createElement('button');
-        btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.className = 'choice-btn';
         btn.textContent = option;
         btn.dataset.normalized = normalizePinyinForChoice(option);
         btn.onclick = () => handleToneFlowPinyinChoiceSingle(option, btn);
@@ -7060,7 +7052,6 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
         btn.textContent = option;
         btn.dataset.index = index;
         btn.dataset.pinyin = option;
@@ -7074,8 +7065,7 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
         const input = fuzzyInput.value.trim().toLowerCase();
         if (!input) {
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             });
             return;
         }
@@ -7119,11 +7109,9 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
 
         document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
             if (index === bestMatch) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300');
-                btn.classList.add('bg-blue-200', 'border-blue-500');
+                btn.classList.add('fuzzy-selected');
             } else {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             }
         });
     };
@@ -7190,7 +7178,7 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
             }
 
             // Fall back to highlighted button from fuzzy match
-            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            const selected = document.querySelector('#fuzzyOptions button.fuzzy-selected');
             if (selected) {
                 selected.click();
             }
@@ -7331,7 +7319,7 @@ function renderToneChoices() {
 
     [1,2,3,4,5].forEach(num => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 text-lg bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.className = 'choice-btn';
         btn.textContent = num;
         btn.onclick = () => handleToneFlowToneChoice(num, btn);
         options.appendChild(btn);
@@ -7354,7 +7342,6 @@ function renderFuzzyToneChoices() {
 
     toneLabels.forEach(({ num, label }) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
         btn.textContent = label;
         btn.dataset.tone = num;
         btn.onclick = () => handleToneFlowToneChoice(num, btn);
@@ -7366,8 +7353,7 @@ function renderFuzzyToneChoices() {
         const input = fuzzyInput.value.trim().toLowerCase();
         if (!input) {
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             });
             return;
         }
@@ -7399,8 +7385,7 @@ function renderFuzzyToneChoices() {
         } else {
             // No match - clear highlights
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             });
         }
     };
@@ -7408,11 +7393,9 @@ function renderFuzzyToneChoices() {
     function highlightToneButton(toneNum) {
         document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
             if (parseInt(btn.dataset.tone) === toneNum) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300');
-                btn.classList.add('bg-blue-200', 'border-blue-500');
+                btn.classList.add('fuzzy-selected');
             } else {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
+                btn.classList.remove('fuzzy-selected');
             }
         });
     }
@@ -7421,7 +7404,7 @@ function renderFuzzyToneChoices() {
     fuzzyInput.onkeydown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            const selected = document.querySelector('#fuzzyOptions button.fuzzy-selected');
             if (selected) {
                 selected.click();
             }
@@ -10943,7 +10926,6 @@ function generateRadicalOptions() {
     // Create option buttons
     allOptions.forEach((radical, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
         btn.textContent = radical;
         btn.dataset.radical = radical;
         btn.onclick = () => toggleRadicalSelection(btn, radical);
@@ -10960,13 +10942,11 @@ function toggleRadicalSelection(btn, radical) {
     if (index > -1) {
         // Deselect
         radicalSelectedAnswers.splice(index, 1);
-        btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-600');
-        btn.classList.add('bg-gray-100', 'border-gray-300');
+        btn.classList.remove('radical-selected');
     } else {
         // Select
         radicalSelectedAnswers.push(radical);
-        btn.classList.remove('bg-gray-100', 'border-gray-300');
-        btn.classList.add('bg-blue-500', 'text-white', 'border-blue-600');
+        btn.classList.add('radical-selected');
     }
 }
 
@@ -10993,16 +10973,15 @@ function checkRadicalAnswer() {
 
         if (isCorrect && wasSelected) {
             // Correct and selected - green
-            btn.classList.remove('bg-blue-500', 'bg-gray-100', 'border-blue-600', 'border-gray-300');
-            btn.classList.add('bg-green-500', 'text-white', 'border-green-600');
+            btn.classList.remove('radical-selected');
+            btn.classList.add('answer-correct');
         } else if (isCorrect && !wasSelected) {
             // Correct but not selected - show as missed (green border)
-            btn.classList.remove('bg-gray-100', 'border-gray-300');
-            btn.classList.add('bg-green-100', 'border-green-500', 'border-4');
+            btn.classList.add('answer-missed');
         } else if (!isCorrect && wasSelected) {
             // Incorrect selection - red
-            btn.classList.remove('bg-blue-500', 'border-blue-600');
-            btn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+            btn.classList.remove('radical-selected');
+            btn.classList.add('answer-incorrect');
         }
     });
 
@@ -11334,10 +11313,12 @@ function generateComponentOptions() {
     // Create option buttons - matching fuzzy mode style
     componentAllOptions.forEach((option, index) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition flex items-center gap-3';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.gap = '0.75rem';
         btn.innerHTML = `
-            <span class="text-3xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${option.char}</span>
-            <span class="text-lg text-gray-700">${option.pinyin}</span>
+            <span style="font-size: 1.875rem; color: #1f2937; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${option.char}</span>
+            <span style="font-size: 1.125rem; color: #374151;">${option.pinyin}</span>
         `;
         btn.dataset.pinyin = option.pinyin;
         btn.dataset.char = option.char;
@@ -11360,8 +11341,7 @@ function generateComponentOptions() {
 
             if (!input) {
                 buttons.forEach(btn => {
-                    btn.classList.remove('bg-blue-200', 'border-blue-500');
-                    btn.classList.add('bg-gray-100', 'border-gray-300');
+                    btn.classList.remove('fuzzy-selected');
                 });
                 return;
             }
@@ -11396,11 +11376,9 @@ function generateComponentOptions() {
 
             buttons.forEach((btn, index) => {
                 if (index === bestMatch) {
-                    btn.classList.remove('bg-gray-100', 'border-gray-300');
-                    btn.classList.add('bg-blue-200', 'border-blue-500');
+                    btn.classList.add('fuzzy-selected');
                 } else {
-                    btn.classList.remove('bg-blue-200', 'border-blue-500');
-                    btn.classList.add('bg-gray-100', 'border-gray-300');
+                    btn.classList.remove('fuzzy-selected');
                 }
             });
         };
@@ -11415,7 +11393,7 @@ function generateComponentOptions() {
 
                 e.preventDefault();
                 // Find highlighted button and click it
-                const highlighted = document.querySelector('#componentOptions button.bg-blue-200');
+                const highlighted = document.querySelector('#componentOptions button.fuzzy-selected');
                 if (highlighted) {
                     const idx = parseInt(highlighted.dataset.index);
                     checkComponentAnswer(componentAllOptions[idx]);
