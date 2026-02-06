@@ -14,6 +14,9 @@ let quizCharacters = [];
 let originalQuizCharacters = []; // Store original characters array
 let config = {};
 let nextAnswerBuffer = ''; // carry typed text into the next question after showing feedback
+let deckSessionStartedAt = Date.now();
+let deckSessionKeys = new Set();
+let deckSessionSeenKeys = new Set();
 
 const debugState = {
     events: [],
@@ -1857,6 +1860,8 @@ function getSchedulerStats(char, skillKey = getCurrentSkillKey()) {
 
 function markSchedulerServed(question) {
     if (!question || !question.char) return;
+    markDeckQuestionSeen(question);
+    updateDeckEtaDisplay();
     if (!confidenceTrackingEnabled) return;
     const stats = getSchedulerStats(question.char);
     stats.served += 1;
@@ -4922,6 +4927,10 @@ function maybeGenerateChunksQuestion() {
 
     currentQuestion = sentenceChunks[currentChunkIndex];
     window.currentQuestion = currentQuestion;
+    if (currentChunkIndex === 0) {
+        markDeckQuestionSeen(currentFullSentence || currentQuestion);
+    }
+    updateDeckEtaDisplay();
 
     // Pre-compute upcoming chunk for three-column layout
     if (currentChunkIndex + 1 < sentenceChunks.length) {
@@ -7493,11 +7502,109 @@ function updateStats() {
     if (percentageEl) percentageEl.textContent = percentage;
     if (accuracyEl) accuracyEl.textContent = percentage + '%';
 
+    updateDeckEtaDisplay();
     updateTimerDisplay();
     if (typeof updateDictationChatMiniStats === 'function') {
         updateDictationChatMiniStats();
     }
     checkComposerAdvance();
+}
+
+function getDeckQuestionKey(question) {
+    if (!question || typeof question !== 'object') return '';
+    const char = String(question.char || '').trim();
+    if (!char) return '';
+    const pinyin = String(question.pinyin || '').trim();
+    const meaning = String(question.meaning || '').trim();
+    return `${char}::${pinyin}::${meaning}`;
+}
+
+function rebuildDeckSessionKeys() {
+    const source = (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
+        ? originalQuizCharacters
+        : quizCharacters;
+    const keys = new Set();
+    if (Array.isArray(source)) {
+        source.forEach(item => {
+            const key = getDeckQuestionKey(item);
+            if (key) keys.add(key);
+        });
+    }
+    deckSessionKeys = keys;
+}
+
+function resetDeckSessionProgress() {
+    deckSessionStartedAt = Date.now();
+    deckSessionSeenKeys = new Set();
+}
+
+function markDeckQuestionSeen(question) {
+    if (!question) return;
+    const key = getDeckQuestionKey(question);
+    if (!key) return;
+    if (deckSessionKeys.size && !deckSessionKeys.has(key)) return;
+    deckSessionSeenKeys.add(key);
+}
+
+function ensureDeckEtaElement() {
+    const statsEl = document.getElementById('stats');
+    if (!statsEl) return null;
+
+    let etaEl = document.getElementById('deckEtaStat');
+    if (!etaEl) {
+        const firstTag = statsEl.firstElementChild?.tagName?.toLowerCase();
+        const tagName = firstTag === 'div' ? 'div' : 'span';
+        etaEl = document.createElement(tagName);
+        etaEl.id = 'deckEtaStat';
+        statsEl.appendChild(etaEl);
+    }
+    return etaEl;
+}
+
+function formatDeckEtaMinutes(minutes) {
+    if (!Number.isFinite(minutes) || minutes < 0) return '—';
+    if (minutes < 1) return '<1m';
+    if (minutes < 10) return `${minutes.toFixed(1)}m`;
+    if (minutes < 90) return `${Math.round(minutes)}m`;
+    if (minutes < 24 * 60) return `${(minutes / 60).toFixed(1)}h`;
+    return `${(minutes / (24 * 60)).toFixed(1)}d`;
+}
+
+function updateDeckEtaDisplay() {
+    const etaEl = ensureDeckEtaElement();
+    if (!etaEl) return;
+
+    const deckSize = deckSessionKeys.size || 0;
+    if (!deckSize) {
+        etaEl.textContent = 'Deck ETA: —';
+        etaEl.title = 'No deck loaded';
+        return;
+    }
+
+    const seenCount = Math.min(deckSize, deckSessionSeenKeys.size);
+    const remaining = Math.max(deckSize - seenCount, 0);
+
+    if (remaining === 0) {
+        etaEl.textContent = `Deck ETA: done (${seenCount}/${deckSize} seen)`;
+        etaEl.title = 'All cards in this deck have been seen this session';
+        return;
+    }
+
+    const elapsedMs = Math.max(1, Date.now() - deckSessionStartedAt);
+    const elapsedMinutes = elapsedMs / 60000;
+    const seenPerMinute = seenCount / elapsedMinutes;
+    const hasEnoughSignal = seenCount >= 2 && elapsedMs >= 20000 && seenPerMinute > 0;
+
+    if (!hasEnoughSignal) {
+        etaEl.textContent = `Deck ETA: warming up (${seenCount}/${deckSize} seen)`;
+        etaEl.title = 'Estimate appears after a bit more data';
+        return;
+    }
+
+    const etaMinutes = remaining / seenPerMinute;
+    const etaText = formatDeckEtaMinutes(etaMinutes);
+    etaEl.textContent = `Deck ETA: ${etaText} (${seenCount}/${deckSize} seen)`;
+    etaEl.title = `Estimated time remaining to see all cards in this deck at your current pace`;
 }
 
 function updateTimerDisplay() {
@@ -12789,6 +12896,8 @@ function initQuizPersistentState(charactersData, userConfig) {
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};
+    rebuildDeckSessionKeys();
+    resetDeckSessionProgress();
     initQuizDebugInterface();
 
     loadConfidencePanelVisibility();
@@ -13047,6 +13156,7 @@ function initModeButtons() {
 
             score = 0;
             total = 0;
+            resetDeckSessionProgress();
             updateStats();
             generateQuestion();
             updateComposerStatusDisplay();
