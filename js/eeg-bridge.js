@@ -229,11 +229,11 @@
     }
 
     function getFocusZone(engagement, relaxation) {
-        if (engagement >= 0.4) return { label: 'Deep Focus', color: '#4fc3f7', icon: '🎯', level: 4 };
-        if (engagement >= 0.2) return { label: 'Focused', color: '#66bb6a', icon: '✅', level: 3 };
-        if (engagement >= 0.1 && relaxation < 0.7) return { label: 'Light Focus', color: '#ffb74d', icon: '💡', level: 2 };
-        if (relaxation >= 0.7) return { label: 'Relaxed', color: '#9575cd', icon: '😌', level: 1 };
-        return { label: 'Drifting', color: '#ef5350', icon: '💤', level: 0 };
+        if (engagement >= 0.4) return { label: 'Deep Focus', color: '#4fc3f7', level: 4 };
+        if (engagement >= 0.2) return { label: 'Focused', color: '#66bb6a', level: 3 };
+        if (engagement >= 0.1 && relaxation < 0.7) return { label: 'Light Focus', color: '#ffb74d', level: 2 };
+        if (relaxation >= 0.7) return { label: 'Relaxed', color: '#9575cd', level: 1 };
+        return { label: 'Drifting', color: '#ef5350', level: 0 };
     }
 
     function getSessionMinutes() {
@@ -401,7 +401,7 @@
 
         // Update the small toggle button
         if (!state.connected) {
-            overlayEl.innerHTML = '<span style="color:#78909c">🧠 EEG offline</span>';
+            overlayEl.innerHTML = '<span style="color:#78909c">EEG offline</span>';
             overlayEl.style.borderColor = 'rgba(120,144,156,0.3)';
             if (panelEl) panelEl.style.display = 'none';
             overlayEl.style.display = '';
@@ -409,7 +409,7 @@
         }
 
         if (!state.museConnected || !state.ready) {
-            overlayEl.innerHTML = '<span style="color:#ffb74d">🧠 Connecting…</span>';
+            overlayEl.innerHTML = '<span style="color:#ffb74d">EEG connecting…</span>';
             overlayEl.style.borderColor = 'rgba(255,183,77,0.3)';
             return;
         }
@@ -420,7 +420,7 @@
 
         // Update toggle button
         overlayEl.style.borderColor = zone.color + '66';
-        overlayEl.innerHTML = '<span style="color:' + zone.color + '">' + zone.icon + ' ' + zone.label + '</span>';
+        overlayEl.innerHTML = '<span style="color:' + zone.color + '">' + zone.label + '</span>';
 
         // Track focus history for sparkline
         _focusHistory.push(engAvg);
@@ -445,7 +445,7 @@
         var html = [];
 
         // Header with zone
-        html.push('<div style="font-weight:700;font-size:14px;color:' + zone.color + ';margin-bottom:8px;padding-right:20px">' + zone.icon + ' ' + zone.label + '</div>');
+        html.push('<div style="font-weight:700;font-size:14px;color:' + zone.color + ';margin-bottom:8px;padding-right:20px">' + zone.label + '</div>');
 
         // Focus sparkline (30 seconds)
         html.push('<div style="margin-bottom:8px">');
@@ -481,7 +481,7 @@
         html.push('<span>Session</span><span>' + sessionMin + ' min</span>');
         html.push('</div>');
         if (fatigue) {
-            html.push('<div style="color:' + fatigue.color + ';font-weight:600;margin-top:4px">⚠ ' + fatigue.label + '</div>');
+            html.push('<div style="color:' + fatigue.color + ';font-weight:600;margin-top:4px">' + fatigue.label + '</div>');
         }
         html.push('</div>');
 
@@ -536,7 +536,7 @@
         }
 
         // Battery
-        html.push('<div style="margin-top:6px;color:#546e7a;font-size:10px;text-align:right">🔋 ' + state.battery.toFixed(0) + '%</div>');
+        html.push('<div style="margin-top:6px;color:#546e7a;font-size:10px;text-align:right">Batt ' + state.battery.toFixed(0) + '%</div>');
 
         // Keep the close button, replace everything after it
         while (panelEl.childNodes.length > 1) {
