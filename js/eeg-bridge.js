@@ -80,6 +80,7 @@
                 }
 
                 if (state.lastBlink) {
+                    _blinkTimestamps.push(Date.now());
                     fireEvent('blink', { total: state.blinkTotal, ts: state.ts });
                 }
 
@@ -210,7 +211,37 @@
         }
     }
 
-    // Overlay UI — small indicator in the corner
+    // Blink rate tracking (blinks per minute, rolling 60s window)
+    let _blinkTimestamps = [];
+    let _sessionStartTime = Date.now();
+    let _focusDipNotified = 0;
+
+    function getBlinkRate() {
+        var now = Date.now();
+        var cutoff = now - 60000;
+        _blinkTimestamps = _blinkTimestamps.filter(function (t) { return t > cutoff; });
+        return _blinkTimestamps.length;
+    }
+
+    function getFocusZone(engagement, relaxation) {
+        if (engagement >= 0.4) return { label: 'Deep Focus', color: '#4fc3f7', icon: '🎯' };
+        if (engagement >= 0.2) return { label: 'Focused', color: '#66bb6a', icon: '✅' };
+        if (engagement >= 0.1 && relaxation < 0.7) return { label: 'Light Focus', color: '#ffb74d', icon: '💡' };
+        if (relaxation >= 0.7) return { label: 'Relaxed', color: '#9575cd', icon: '😌' };
+        return { label: 'Drifting', color: '#ef5350', icon: '💤' };
+    }
+
+    function getSessionMinutes() {
+        return Math.floor((Date.now() - _sessionStartTime) / 60000);
+    }
+
+    function getFatigueLevel(blinkRate, sessionMin) {
+        if (blinkRate > 25 || sessionMin > 40) return { label: 'Take a break', color: '#ef5350' };
+        if (blinkRate > 18 || sessionMin > 25) return { label: 'Getting tired', color: '#ffb74d' };
+        return null;
+    }
+
+    // Overlay UI
     function createOverlay() {
         if (overlayEl) return;
         overlayEl = document.createElement('div');
@@ -220,22 +251,23 @@
             'bottom: 12px',
             'right: 12px',
             'z-index: 9999',
-            'font-family: monospace',
-            'font-size: 11px',
-            'background: rgba(30, 30, 30, 0.9)',
+            'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+            'font-size: 12px',
+            'background: rgba(30, 30, 30, 0.92)',
             'color: #e0e0e0',
-            'padding: 8px 12px',
-            'border-radius: 8px',
+            'padding: 10px 14px',
+            'border-radius: 10px',
             'border: 1px solid rgba(255,255,255,0.1)',
             'backdrop-filter: blur(8px)',
             'pointer-events: auto',
             'cursor: pointer',
             'transition: all 200ms ease',
-            'min-width: 140px',
+            'min-width: 150px',
+            'line-height: 1.5',
         ].join(';');
-        overlayEl.title = 'Click to toggle EEG details';
+        overlayEl.title = 'Click to expand/collapse';
 
-        let expanded = false;
+        var expanded = false;
         overlayEl.addEventListener('click', function () {
             expanded = !expanded;
             overlayEl.dataset.expanded = expanded ? '1' : '';
@@ -247,49 +279,66 @@
 
     function updateOverlay() {
         if (!overlayEl) return;
-        const expanded = overlayEl.dataset.expanded === '1';
+        var expanded = overlayEl.dataset.expanded === '1';
 
         if (!state.connected) {
-            overlayEl.innerHTML = '<span style="color:#ef5350">🧠 EEG offline</span>';
-            overlayEl.style.borderColor = 'rgba(239,83,80,0.3)';
+            overlayEl.innerHTML = '<span style="color:#78909c">🧠 EEG offline</span>';
+            overlayEl.style.borderColor = 'rgba(120,144,156,0.3)';
             return;
         }
 
         if (!state.museConnected || !state.ready) {
-            overlayEl.innerHTML = '<span style="color:#ffb74d">🧠 Muse connecting…</span>';
+            overlayEl.innerHTML = '<span style="color:#ffb74d">🧠 Connecting to Muse…</span>';
             overlayEl.style.borderColor = 'rgba(255,183,77,0.3)';
             return;
         }
 
-        overlayEl.style.borderColor = 'rgba(102,187,106,0.3)';
+        var engAvg = rollingAvg(state._engagementHistory);
+        var relAvg = rollingAvg(state._relaxationHistory);
+        var zone = getFocusZone(engAvg, relAvg);
+        var blinkRate = getBlinkRate();
+        var sessionMin = getSessionMinutes();
+        var fatigue = getFatigueLevel(blinkRate, sessionMin);
+
+        overlayEl.style.borderColor = zone.color.replace(')', ', 0.4)').replace('rgb', 'rgba');
 
         if (!expanded) {
-            const eng = (state.engagement * 100).toFixed(0);
-            overlayEl.innerHTML =
-                '<span style="color:#66bb6a">🧠</span> ' +
-                '<span style="color:#4fc3f7">E:' + eng + '%</span> ' +
-                '<span style="color:#78909c">👁' + state.blinkTotal + '</span>';
+            var html = '<span style="color:' + zone.color + '">' + zone.icon + ' ' + zone.label + '</span>';
+            if (fatigue) {
+                html += ' <span style="color:' + fatigue.color + ';font-size:10px">⚠ ' + fatigue.label + '</span>';
+            }
+            overlayEl.innerHTML = html;
             return;
         }
 
-        const b = state.bands || {};
-        const asym = state.alphaAsymmetry;
-        const asymLabel = asym > 0.2 ? '→ R' : asym < -0.2 ? '← L' : '≈';
-        const engPct = (state.engagement * 100).toFixed(0);
-        const relPct = (state.relaxation * 100).toFixed(0);
+        // Expanded view — study-relevant info
+        var engBar = makeBar(engAvg, '#4fc3f7');
+        var relBar = makeBar(relAvg, '#9575cd');
 
-        overlayEl.innerHTML = [
-            '<div style="color:#66bb6a;font-weight:bold;margin-bottom:4px">🧠 Muse EEG Live</div>',
-            '<div>δ:' + fmt(b.delta) + ' θ:' + fmt(b.theta) + ' α:' + fmt(b.alpha) + '</div>',
-            '<div>β:' + fmt(b.beta) + '  γ:' + fmt(b.gamma) + '</div>',
-            '<div style="margin-top:3px">Engage: <b style="color:#4fc3f7">' + engPct + '%</b>  Relax: <b style="color:#9575cd">' + relPct + '%</b></div>',
-            '<div>α Asym: ' + asym.toFixed(2) + ' ' + asymLabel + '</div>',
-            '<div>Blinks: ' + state.blinkTotal + '  🔋' + state.battery.toFixed(0) + '%</div>',
-        ].join('');
+        var lines = [
+            '<div style="font-weight:600;color:' + zone.color + ';margin-bottom:4px">' + zone.icon + ' ' + zone.label + '</div>',
+            '<div style="display:flex;justify-content:space-between;align-items:center"><span>Focus</span>' + engBar + '</div>',
+            '<div style="display:flex;justify-content:space-between;align-items:center"><span>Calm</span>' + relBar + '</div>',
+            '<div style="margin-top:4px;color:#b0bec5;font-size:11px">Blinks: ' + blinkRate + '/min · ' + sessionMin + ' min session</div>',
+        ];
+
+        if (fatigue) {
+            lines.push('<div style="margin-top:3px;color:' + fatigue.color + ';font-weight:600">⚠ ' + fatigue.label + '</div>');
+        }
+
+        lines.push('<div style="margin-top:3px;color:#546e7a;font-size:10px">🔋 ' + state.battery.toFixed(0) + '%</div>');
+
+        overlayEl.innerHTML = lines.join('');
     }
 
-    function fmt(v) {
-        return v !== undefined && v !== null ? v.toFixed(0) + 'dB' : '—';
+    function makeBar(value, color) {
+        var pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
+        return '<div style="display:inline-flex;align-items:center;gap:5px;margin-left:8px">' +
+            '<div style="width:60px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">' +
+            '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:width 0.5s"></div>' +
+            '</div>' +
+            '<span style="font-size:10px;color:' + color + ';min-width:28px;text-align:right">' + pct + '%</span>' +
+            '</div>';
     }
 
     // Auto-start
