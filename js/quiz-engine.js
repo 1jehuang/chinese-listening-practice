@@ -2512,6 +2512,53 @@ function getFeedUCBScore(char) {
         score -= MARKING_LEARNED_PENALTY;
     }
 
+    // EEG-modulated bandit scoring: adjust arm values based on brain state
+    if (schedulerMode === SCHEDULER_MODES.FEED_EEG && typeof eeg !== 'undefined' && eeg.state && eeg.state.ready) {
+        var eegSignalOk = typeof eeg.isSignalUsable === 'function' ? eeg.isSignalUsable() : true;
+
+        if (eegSignalOk) {
+            // Get composite focus (blends ratio-based engagement + ML model)
+            var compositeFocus = typeof eeg.getCompositeFocusScore === 'function'
+                ? eeg.getCompositeFocusScore() : (eeg.state.engagement || 0);
+            var headMove = eeg.state.headMovement || 0;
+
+            // Focused → boost harder cards (low accuracy, high difficulty)
+            // Unfocused → boost easier cards (high accuracy, low difficulty)
+            var focusBias = (compositeFocus - 0.2) * 3.0; // range roughly -0.6 to +2.4
+            focusBias = Math.max(-1.5, Math.min(1.5, focusBias));
+
+            // Modulate: when focused, difficulty score contributes MORE to the score
+            // (hard cards become more attractive). When unfocused, urgency dominates
+            // (you review due/easy cards instead of pushing into new hard ones).
+            if (focusBias > 0) {
+                score += focusBias * difficultyScore * 0.8;
+                score += focusBias * explorationBonus * 0.3;
+            } else {
+                score += Math.abs(focusBias) * (1 - difficultyScore) * 0.6;
+                score -= Math.abs(focusBias) * explorationBonus * 0.2;
+            }
+
+            // Head movement penalty: fidgeting = don't push hard cards
+            if (headMove > 0.5) {
+                score -= (headMove - 0.5) * difficultyScore * 1.2;
+            }
+
+            // Per-character brain profile: if this card was previously wrong
+            // during unfocused states, boost it when we ARE focused now
+            if (typeof neuro !== 'undefined' && typeof neuro.getCharBrainProfile === 'function') {
+                var brainProfile = neuro.getCharBrainProfile(char);
+                if (brainProfile) {
+                    if (brainProfile.mlUnfocusedAccuracy !== null && brainProfile.mlUnfocusedAccuracy < 0.5 && focusBias > 0.3) {
+                        score += 0.8;
+                    }
+                    if (brainProfile.fragile && focusBias > 0) {
+                        score += 0.5;
+                    }
+                }
+            }
+        }
+    }
+
     return score;
 }
 
