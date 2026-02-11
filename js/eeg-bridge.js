@@ -236,8 +236,8 @@
     }
 
     function getFatigueLevel(blinkRate, sessionMin) {
-        if (blinkRate > 25 || sessionMin > 40) return { label: 'Take a break', color: '#ef5350' };
-        if (blinkRate > 18 || sessionMin > 25) return { label: 'Getting tired', color: '#ffb74d' };
+        if (blinkRate > 30 && sessionMin > 45) return { label: 'Take a break', color: '#ef5350' };
+        if (blinkRate > 25 && sessionMin > 30) return { label: 'Getting tired', color: '#ffb74d' };
         return null;
     }
 
