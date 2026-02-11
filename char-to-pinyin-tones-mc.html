@@ -7,6 +7,7 @@
     <title>Char → Pinyin → Tones (MC)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/common.css">
+    <script src="js/eeg-bridge.js"></script>
     <style>
         body { background: #f8fafc; }
         .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
@@ -134,12 +135,15 @@
             return shuffle(options);
         }
 
+        let questionStartMs = 0;
+
         function renderQuestion() {
             stage = 'pinyin';
             el.nextBtn.classList.add('hidden');
             currentWord = data[order[idx]];
             toneSteps = getTonesForWord(currentWord.pinyin);
             toneIndex = 0;
+            questionStartMs = performance.now();
 
             el.character.textContent = currentWord.char;
             el.prompt.textContent = 'Select the correct pinyin';
@@ -148,6 +152,16 @@
 
             const options = buildPinyinOptions(currentWord.pinyin);
             renderChoices(options, handlePinyinChoice);
+
+            if (typeof eeg !== 'undefined' && eeg.logQuizEvent) {
+                eeg.logQuizEvent('question-shown', {
+                    char: currentWord.char,
+                    pinyin: currentWord.pinyin,
+                    mode: 'char-to-pinyin-tones-mc',
+                    questionIndex: idx + 1,
+                    totalQuestions: data.length,
+                });
+            }
         }
 
         function renderChoices(options, handler) {
@@ -165,6 +179,16 @@
             disableChoices();
             const correct = choice === currentWord.pinyin;
             btn.classList.add(correct ? 'correct' : 'wrong');
+            if (typeof eeg !== 'undefined' && eeg.logQuizEvent) {
+                eeg.logQuizEvent('pinyin-choice', {
+                    char: currentWord.char,
+                    chosen: choice,
+                    expected: currentWord.pinyin,
+                    correct: correct,
+                    responseMs: performance.now() - questionStartMs,
+                    stage: 'pinyin',
+                });
+            }
             if (correct) {
                 el.feedback.textContent = 'Good! Now pick the tones.';
                 setTimeout(() => startToneStep(), 350);
@@ -198,6 +222,16 @@
                     updateScore();
                     el.feedback.textContent = 'Nice! Word complete.';
                     el.nextBtn.classList.remove('hidden');
+                    if (typeof eeg !== 'undefined' && eeg.logQuizEvent) {
+                        eeg.logQuizEvent('word-complete', {
+                            char: currentWord.char,
+                            pinyin: currentWord.pinyin,
+                            correct: true,
+                            totalResponseMs: performance.now() - questionStartMs,
+                            score: score,
+                            attempted: attempted,
+                        });
+                    }
                 } else {
                     setTimeout(() => renderTonePrompt(), 300);
                 }

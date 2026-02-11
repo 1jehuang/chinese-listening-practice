@@ -1879,6 +1879,17 @@ function markSchedulerServed(question) {
         served: stats.served,
         mode: schedulerMode
     });
+    if (typeof eeg !== 'undefined' && eeg.logQuizEvent) {
+        eeg.logQuizEvent('question-shown', {
+            char: question.char,
+            pinyin: question.pinyin,
+            meaning: question.meaning,
+            mode: mode,
+            skill: getCurrentSkillKey(),
+            scheduler: schedulerMode,
+            served: stats.served,
+        });
+    }
     saveSchedulerStats();
     renderConfidenceList();
 
@@ -1921,6 +1932,19 @@ function markSchedulerOutcome(correct) {
         streak: stats.streak,
         mode: schedulerMode
     });
+    if (typeof eeg !== 'undefined' && eeg.logQuizEvent) {
+        eeg.logQuizEvent('answer', {
+            char: char,
+            correct: Boolean(correct),
+            mode: mode,
+            skill: getCurrentSkillKey(),
+            responseMs: getQuestionResponseMs(),
+            streak: stats.streak,
+            served: stats.served,
+            correctCount: stats.correct,
+            wrongCount: stats.wrong,
+        });
+    }
 
     saveSchedulerStats();
 
