@@ -5737,7 +5737,10 @@ function checkAnswer() {
         if (answerInput) answerInput.value = '';
         handleWrongAnswer();
         updateStats();
-        scheduleNextQuestion(2000);
+        // In pinyin dictation modes, don't auto-advance - let user review the answer
+        if (mode !== 'char-to-pinyin' && mode !== 'audio-to-pinyin') {
+            scheduleNextQuestion(2000);
+        }
         return;
     }
 
@@ -13077,6 +13080,13 @@ function initQuizEventListeners() {
         if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
             e.preventDefault();
             goToNextQuestionAfterCorrect();
+            return;
+        }
+
+        // In pinyin dictation modes, Enter after wrong answer advances to next question
+        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && !lastAnswerCorrect && (mode === 'char-to-pinyin' || mode === 'audio-to-pinyin')) {
+            e.preventDefault();
+            generateQuestion();
             return;
         }
 
