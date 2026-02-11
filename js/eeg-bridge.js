@@ -24,10 +24,21 @@
         lastBlink: false,
         battery: 0,
         ts: 0,
+        // ML focus model predictions from Python
+        focusModel: null,    // { label, model, confidence, probs }
+        // Signal quality per channel
+        signalQuality: null, // { TP9: { clip_frac, std_uv, usable }, AF7: ..., AF8: ..., TP10: ... }
+        // Head movement from accelerometer + gyroscope
+        headMovement: 0,     // 0-1 normalized movement intensity
+        headMovementRaw: null, // { accel: {x,y,z}, gyro: {x,y,z} }
+        _accelHistory: [],   // rolling acceleration magnitude history
+        _gyroHistory: [],    // rolling gyro magnitude history
+        _movementHistoryMaxLen: 40, // 40 × 250ms = 10s window
         // Rolling averages (5-second window for smoothing)
         _engagementHistory: [],
         _relaxationHistory: [],
         _asymmetryHistory: [],
+        _focusConfidenceHistory: [],
         _historyMaxLen: 20,  // 20 samples × 250ms = 5s
     };
 
@@ -79,6 +90,22 @@
                     pushRolling(state._asymmetryHistory, m.alpha_asymmetry);
                 }
 
+                if (m.focus_model) {
+                    state.focusModel = m.focus_model;
+                    if (m.focus_model.confidence !== undefined) {
+                        pushRolling(state._focusConfidenceHistory, m.focus_model.confidence);
+                    }
+                    fireEvent('focus-model', state.focusModel);
+                }
+
+                if (m.signal_quality) {
+                    state.signalQuality = m.signal_quality;
+                }
+
+                if (m.raw_accel || m.raw_gyro) {
+                    updateHeadMovement(m.raw_accel, m.raw_gyro);
+                }
+
                 if (state.lastBlink) {
                     _blinkTimestamps.push(Date.now());
                     fireEvent('blink', { total: state.blinkTotal, ts: state.ts });
@@ -122,6 +149,54 @@
         return sum / arr.length;
     }
 
+    function updateHeadMovement(rawAccel, rawGyro) {
+        if (rawAccel) {
+            state.headMovementRaw = state.headMovementRaw || {};
+            state.headMovementRaw.accel = rawAccel;
+            var ax = rawAccel.x, ay = rawAccel.y, az = rawAccel.z;
+            if (Array.isArray(ax)) ax = ax[ax.length - 1];
+            if (Array.isArray(ay)) ay = ay[ay.length - 1];
+            if (Array.isArray(az)) az = az[az.length - 1];
+            if (ax != null && ay != null && az != null) {
+                var mag = Math.sqrt(ax * ax + ay * ay + az * az);
+                pushRolling(state._accelHistory, mag);
+            }
+        }
+        if (rawGyro) {
+            state.headMovementRaw = state.headMovementRaw || {};
+            state.headMovementRaw.gyro = rawGyro;
+            var gx = rawGyro.x, gy = rawGyro.y, gz = rawGyro.z;
+            if (Array.isArray(gx)) gx = gx[gx.length - 1];
+            if (Array.isArray(gy)) gy = gy[gy.length - 1];
+            if (Array.isArray(gz)) gz = gz[gz.length - 1];
+            if (gx != null && gy != null && gz != null) {
+                var gyroMag = Math.sqrt(gx * gx + gy * gy + gz * gz);
+                pushRolling(state._gyroHistory, gyroMag);
+            }
+        }
+        var movement = computeHeadMovementLevel();
+        state.headMovement = movement;
+        if (movement > 0.7) {
+            fireEvent('movement-high', { level: movement });
+        }
+    }
+
+    function computeHeadMovementLevel() {
+        if (state._gyroHistory.length < 4) return 0;
+        var recent = state._gyroHistory.slice(-10);
+        var mean = 0;
+        for (var i = 0; i < recent.length; i++) mean += recent[i];
+        mean /= recent.length;
+        var variance = 0;
+        for (var j = 0; j < recent.length; j++) {
+            var d = recent[j] - mean;
+            variance += d * d;
+        }
+        variance /= recent.length;
+        var std = Math.sqrt(variance);
+        return Math.min(1, std / 5000);
+    }
+
     // Public: get a snapshot of the current EEG state
     function snapshot() {
         return {
@@ -138,6 +213,10 @@
             asymmetryAvg: rollingAvg(state._asymmetryHistory),
             blinkTotal: state.blinkTotal,
             battery: state.battery,
+            focusModel: state.focusModel,
+            focusConfidenceAvg: rollingAvg(state._focusConfidenceHistory),
+            signalQuality: state.signalQuality,
+            headMovement: state.headMovement,
         };
     }
 
@@ -463,6 +542,38 @@
         html.push(waveBars(bands));
         html.push('</div>');
 
+        // ML Focus Model prediction
+        if (state.focusModel && state.focusModel.label) {
+            var fm = state.focusModel;
+            var mlLabel = fm.label;
+            var mlConf = fm.confidence !== undefined ? (fm.confidence * 100).toFixed(0) + '%' : '';
+            var mlColor = mlLabel === 'focused' ? '#4fc3f7' : mlLabel === 'relaxed' ? '#9575cd' : '#ffb74d';
+            html.push('<div style="margin-top:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px">');
+            html.push('<div style="font-size:10px;color:#78909c;margin-bottom:2px">ML MODEL</div>');
+            html.push('<div style="display:flex;justify-content:space-between;align-items:center">');
+            html.push('<span style="color:' + mlColor + ';font-weight:600;text-transform:capitalize">' + mlLabel + '</span>');
+            html.push('<span style="font-size:10px;color:#78909c">' + mlConf + (fm.model ? ' · ' + fm.model : '') + '</span>');
+            html.push('</div>');
+            if (fm.probs) {
+                var probKeys = Object.keys(fm.probs);
+                html.push('<div style="display:flex;gap:3px;margin-top:4px">');
+                for (var pi = 0; pi < probKeys.length; pi++) {
+                    var pk = probKeys[pi];
+                    var pv = fm.probs[pk];
+                    var pPct = (pv * 100).toFixed(0);
+                    var pColor = pk === mlLabel ? mlColor : 'rgba(255,255,255,0.3)';
+                    html.push('<div style="flex:1;text-align:center">');
+                    html.push('<div style="height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">');
+                    html.push('<div style="width:' + pPct + '%;height:100%;background:' + pColor + '"></div>');
+                    html.push('</div>');
+                    html.push('<div style="font-size:8px;color:#546e7a;margin-top:1px">' + pk + '</div>');
+                    html.push('</div>');
+                }
+                html.push('</div>');
+            }
+            html.push('</div>');
+        }
+
         // Asymmetry
         var asymLabel = asym > 0.2 ? 'Approach ↗' : asym < -0.2 ? 'Withdraw ↙' : 'Balanced';
         var asymColor = asym > 0.2 ? '#66bb6a' : asym < -0.2 ? '#ef5350' : '#78909c';
@@ -471,11 +582,40 @@
         html.push('<span style="color:' + asymColor + '">' + asymLabel + ' (' + asym.toFixed(2) + ')</span>');
         html.push('</div>');
 
-        // Blink rate & session
+        // Signal Quality indicator
+        if (state.signalQuality) {
+            html.push('<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08)">');
+            html.push('<div style="color:#78909c;font-size:10px;margin-bottom:4px">SIGNAL QUALITY</div>');
+            html.push('<div style="display:flex;gap:6px">');
+            var sqChannels = ['TP9', 'AF7', 'AF8', 'TP10'];
+            for (var si = 0; si < sqChannels.length; si++) {
+                var ch = sqChannels[si];
+                var sq = state.signalQuality[ch];
+                if (!sq) continue;
+                var sqUsable = sq.usable;
+                var sqClip = sq.clip_frac || 0;
+                var sqColor = sqUsable ? (sqClip < 0.01 ? '#66bb6a' : '#ffb74d') : '#ef5350';
+                var sqLabel = sqUsable ? (sqClip < 0.01 ? '●' : '◐') : '○';
+                html.push('<div style="flex:1;text-align:center">');
+                html.push('<div style="font-size:14px;color:' + sqColor + '">' + sqLabel + '</div>');
+                html.push('<div style="font-size:8px;color:#546e7a">' + ch + '</div>');
+                html.push('</div>');
+            }
+            html.push('</div>');
+            html.push('</div>');
+        }
+
+        // Blink rate, head movement & session
         html.push('<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08)">');
         html.push('<div style="color:#78909c;font-size:10px;margin-bottom:4px">BODY</div>');
         html.push('<div style="display:flex;justify-content:space-between">');
         html.push('<span>Blink rate</span><span>' + blinkRate + '/min</span>');
+        html.push('</div>');
+        var movePct = Math.round(state.headMovement * 100);
+        var moveColor = movePct > 70 ? '#ef5350' : movePct > 30 ? '#ffb74d' : '#66bb6a';
+        var moveLabel = movePct > 70 ? 'Fidgeting' : movePct > 30 ? 'Some movement' : 'Still';
+        html.push('<div style="display:flex;justify-content:space-between">');
+        html.push('<span>Head</span><span style="color:' + moveColor + '">' + moveLabel + '</span>');
         html.push('</div>');
         html.push('<div style="display:flex;justify-content:space-between">');
         html.push('<span>Session</span><span>' + sessionMin + ' min</span>');
@@ -625,6 +765,170 @@
         connect();
     }
 
+    // Send a message back to the Python bridge via WebSocket
+    function sendToBridge(type, payload) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+        try {
+            ws.send(JSON.stringify({ type: type, ts: Date.now() / 1000, payload: payload }));
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Get the ML focus label for use by quiz engine
+    function getMLFocusLabel() {
+        if (!state.focusModel || !state.focusModel.label) return null;
+        return state.focusModel.label;
+    }
+
+    function getMLFocusConfidence() {
+        if (!state.focusModel) return 0;
+        return state.focusModel.confidence || 0;
+    }
+
+    function getMLFocusProb(label) {
+        if (!state.focusModel || !state.focusModel.probs) return 0;
+        return state.focusModel.probs[label] || 0;
+    }
+
+    // Composite focus score: combines ratio-based engagement with ML model
+    // Returns 0-1 where higher = more focused
+    function getCompositeFocusScore() {
+        var ratioScore = state.engagement || 0;
+        var mlScore = 0;
+        if (state.focusModel && state.focusModel.probs) {
+            mlScore = state.focusModel.probs['focused'] || state.focusModel.probs['active'] || 0;
+        }
+        if (mlScore > 0) {
+            return ratioScore * 0.4 + mlScore * 0.6;
+        }
+        return ratioScore;
+    }
+
+    // Is signal quality good enough for reliable readings?
+    function isSignalUsable() {
+        if (!state.signalQuality) return false;
+        var usableCount = 0;
+        var channels = ['TP9', 'AF7', 'AF8', 'TP10'];
+        for (var i = 0; i < channels.length; i++) {
+            var sq = state.signalQuality[channels[i]];
+            if (sq && sq.usable) usableCount++;
+        }
+        return usableCount >= 2;
+    }
+
+    // EEG-aware break suggestion banner (injected into quiz UI, not just overlay)
+    var _breakBannerEl = null;
+    var _breakBannerDismissed = false;
+
+    function showBreakBanner(fatigueScore, sessionMin) {
+        if (_breakBannerDismissed) return;
+        if (_breakBannerEl) return;
+
+        _breakBannerEl = document.createElement('div');
+        _breakBannerEl.id = 'eeg-break-banner';
+        _breakBannerEl.style.cssText = [
+            'position: fixed',
+            'top: 0',
+            'left: 0',
+            'right: 0',
+            'z-index: 9999',
+            'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            'color: #e0e0e0',
+            'padding: 16px 24px',
+            'display: flex',
+            'align-items: center',
+            'justify-content: center',
+            'gap: 16px',
+            'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+            'font-size: 14px',
+            'border-bottom: 2px solid #9575cd',
+            'box-shadow: 0 4px 20px rgba(0,0,0,0.3)',
+            'animation: eeg-slide-down 0.4s ease-out',
+        ].join(';');
+
+        var style = document.createElement('style');
+        style.textContent = '@keyframes eeg-slide-down { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }';
+        document.head.appendChild(style);
+
+        _breakBannerEl.innerHTML = [
+            '<span style="font-size: 24px">🧠</span>',
+            '<div>',
+            '<div style="font-weight: 600">Your brain signals suggest fatigue</div>',
+            '<div style="font-size: 12px; color: #9ca3af">' + sessionMin + ' min session · Consider a 5-minute break to recharge</div>',
+            '</div>',
+            '<button id="eeg-break-dismiss" style="padding: 6px 16px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; cursor: pointer; font-size: 13px;">Got it</button>',
+            '<button id="eeg-break-snooze" style="padding: 6px 16px; background: rgba(149,117,205,0.3); border: 1px solid rgba(149,117,205,0.5); color: white; border-radius: 6px; cursor: pointer; font-size: 13px;">Snooze 10m</button>',
+        ].join('');
+
+        document.body.appendChild(_breakBannerEl);
+
+        document.getElementById('eeg-break-dismiss').addEventListener('click', function () {
+            dismissBreakBanner();
+        });
+        document.getElementById('eeg-break-snooze').addEventListener('click', function () {
+            dismissBreakBanner();
+            _breakBannerDismissed = false;
+            setTimeout(function () { _breakBannerDismissed = false; }, 600000);
+        });
+    }
+
+    function dismissBreakBanner() {
+        _breakBannerDismissed = true;
+        if (_breakBannerEl && _breakBannerEl.parentElement) {
+            _breakBannerEl.parentElement.removeChild(_breakBannerEl);
+        }
+        _breakBannerEl = null;
+    }
+
+    // End-of-session summary
+    function getSessionSummary() {
+        var quizStats = getQuizStats();
+        var activeMin = getActiveStudyMinutes();
+        var sessionMin = getSessionMinutes();
+        var engHistory = state._engagementHistory.slice();
+        var peakEng = _peakEngagement;
+        var baseline = _engagementBaseline;
+
+        var summary = {
+            sessionId: getSessionId(),
+            sessionMinutes: sessionMin,
+            activeStudyMinutes: activeMin,
+            peakEngagement: peakEng,
+            baselineEngagement: baseline,
+            currentEngagement: rollingAvg(state._engagementHistory),
+            blinkRate: getBlinkRate(),
+            headMovement: state.headMovement,
+            focusModel: state.focusModel,
+            signalQuality: state.signalQuality,
+            quiz: quizStats,
+            events: sessionLog.length,
+        };
+
+        if (typeof neuro !== 'undefined') {
+            summary.fatigueScore = neuro.getFatigueScore();
+            summary.inFlow = neuro.isInFlow();
+            summary.flowDuration = neuro.getFlowDuration();
+            summary.optimalStudyTimes = neuro.getOptimalStudyTimes();
+            summary.neuroSummary = neuro.getSessionSummary();
+        }
+
+        return summary;
+    }
+
+    // Auto-trigger break banner from neuro events
+    if (typeof addEventListener === 'function') {
+        var _neuroBreakCheck = setInterval(function () {
+            if (typeof neuro !== 'undefined' && neuro.on) {
+                clearInterval(_neuroBreakCheck);
+                neuro.on('break-prompt', function (data) {
+                    showBreakBanner(data.fatigueScore, Math.round(data.sessionMin));
+                });
+            }
+        }, 1000);
+    }
+
     // Public API
     window.eeg = {
         snapshot: snapshot,
@@ -635,5 +939,15 @@
         off: off,
         state: state,
         getSessionId: getSessionId,
+        sendToBridge: sendToBridge,
+        getMLFocusLabel: getMLFocusLabel,
+        getMLFocusConfidence: getMLFocusConfidence,
+        getMLFocusProb: getMLFocusProb,
+        getCompositeFocusScore: getCompositeFocusScore,
+        isSignalUsable: isSignalUsable,
+        showBreakBanner: showBreakBanner,
+        dismissBreakBanner: dismissBreakBanner,
+        getSessionSummary: getSessionSummary,
+        getActiveStudyMinutes: getActiveStudyMinutes,
     };
 })();
