@@ -539,6 +539,7 @@
         // Brain waves section
         html.push('<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08)">');
         html.push('<div style="color:#78909c;font-size:10px;margin-bottom:4px">BRAIN WAVES</div>');
+        html.push(bandInterpretation(bands));
         html.push(waveBars(bands));
         html.push('</div>');
 
@@ -696,6 +697,95 @@
             '</div>' +
             '<span style="font-size:10px;color:' + color + ';min-width:30px;text-align:right">' + pct + '%</span>' +
             '</div>';
+    }
+
+    function bandInterpretation(bands) {
+        if (!bands) return '';
+        var d = bands.delta, t = bands.theta, a = bands.alpha, b = bands.beta, g = bands.gamma;
+        if (d === undefined && t === undefined) return '';
+
+        // Convert dB to linear power for ratio comparisons
+        var tL = Math.pow(10, (t || -20) / 10);
+        var aL = Math.pow(10, (a || -20) / 10);
+        var bL = Math.pow(10, (b || -20) / 10);
+        var gL = Math.pow(10, (g || -20) / 10);
+        var dL = Math.pow(10, (d || -20) / 10);
+
+        var tags = [];
+
+        // Dominant band
+        var max = Math.max(dL, tL, aL, bL, gL);
+        if (max === bL || max === gL) {
+            if (bL > aL * 1.5 && bL > tL * 1.5) {
+                tags.push({ text: 'Active thinking', color: '#ffb74d' });
+            }
+            if (gL > aL * 1.2 && gL > tL * 1.2) {
+                tags.push({ text: 'Intense processing', color: '#ef5350' });
+            }
+        }
+
+        // High beta + gamma together = deep focus or muscle artifact
+        if (b > 5 && g > 5) {
+            tags.push({ text: 'Deep focus', color: '#ff7043' });
+        } else if (b > 5 && g <= 0) {
+            tags.push({ text: 'Engaged', color: '#ffb74d' });
+        }
+
+        // Alpha dominant = relaxed / eyes closed / idle
+        if (aL > bL * 1.3 && aL > tL * 1.2) {
+            tags.push({ text: 'Relaxed', color: '#66bb6a' });
+        }
+
+        // Theta dominant = drowsy / deep thought / fatigue
+        if (tL > bL * 1.3 && tL > aL * 0.9) {
+            if (tL > aL * 1.3) {
+                tags.push({ text: 'Drowsy', color: '#9575cd' });
+            } else {
+                tags.push({ text: 'Reflective', color: '#9575cd' });
+            }
+        }
+
+        // Theta/beta ratio — classic attention metric
+        var tbr = bL > 0 ? tL / bL : 0;
+        if (tbr > 2.5) {
+            tags.push({ text: 'Low alertness', color: '#78909c' });
+        } else if (tbr < 0.5 && bL > aL) {
+            tags.push({ text: 'High alertness', color: '#4fc3f7' });
+        }
+
+        // Alpha asymmetry context (frontal alpha suppression)
+        if (a > 5 && b < 0) {
+            tags.push({ text: 'Idling', color: '#78909c' });
+        }
+
+        // Delta high = movement artifact or deep sleep (shouldn't happen while studying)
+        if (dL > bL * 2 && dL > aL * 2) {
+            tags.push({ text: 'Movement artifact?', color: '#546e7a' });
+        }
+
+        if (!tags.length) {
+            tags.push({ text: 'Neutral', color: '#78909c' });
+        }
+
+        // Deduplicate and cap at 2 tags
+        var seen = {};
+        var unique = [];
+        for (var i = 0; i < tags.length; i++) {
+            if (!seen[tags[i].text]) {
+                seen[tags[i].text] = true;
+                unique.push(tags[i]);
+            }
+        }
+        tags = unique.slice(0, 2);
+
+        var html = '<div style="margin-bottom:4px;display:flex;gap:4px;flex-wrap:wrap">';
+        for (var j = 0; j < tags.length; j++) {
+            html += '<span style="font-size:10px;padding:1px 6px;border-radius:4px;' +
+                'background:' + tags[j].color + '22;color:' + tags[j].color + ';' +
+                'border:1px solid ' + tags[j].color + '44">' + tags[j].text + '</span>';
+        }
+        html += '</div>';
+        return html;
     }
 
     function waveBars(bands) {
