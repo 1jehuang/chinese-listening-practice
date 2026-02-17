@@ -180,39 +180,34 @@
         panelEl.id = PANEL_ID;
         Object.assign(panelEl.style, {
             position: 'fixed',
-            top: '0',
-            left: '0',
-            bottom: '0',
-            width: '220px',
+            bottom: '16px',
+            left: '16px',
             zIndex: '9998',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
             fontSize: '11px',
             background: 'rgba(18, 18, 22, 0.92)',
             color: '#ccc',
-            padding: '10px 12px',
-            borderRight: '1px solid rgba(255,255,255,0.08)',
+            padding: '12px 14px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)',
             overflowY: 'auto',
+            maxHeight: '60vh',
+            width: '230px',
             lineHeight: '1.45',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
             display: 'none',
         });
         document.body.appendChild(panelEl);
-
-        // push page content right
-        var style = document.createElement('style');
-        style.textContent = '#' + PANEL_ID + ':not([hidden]) ~ *, body.eeg-panel-open .app-container { margin-left: 220px; }';
-        document.head.appendChild(style);
     }
 
     function show() {
         ensurePanel();
         panelEl.style.display = '';
-        document.body.classList.add('eeg-panel-open');
     }
 
     function hide() {
         if (panelEl) panelEl.style.display = 'none';
-        document.body.classList.remove('eeg-panel-open');
     }
 
     // ── Rendering ──────────────────────────────────────────────────────
