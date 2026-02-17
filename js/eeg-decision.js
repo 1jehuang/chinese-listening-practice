@@ -237,14 +237,24 @@
         var d = lastData.chosenData;
         var html = [];
 
+        // Figure out what we can safely show without spoiling the answer
+        var m = (typeof mode !== 'undefined') ? mode : '';
+        var showChar = true, showMeaning = true, showPinyin = true;
+        // Modes where the character IS the answer
+        if (/pinyin-to-char|meaning-to-char|draw-char|handwriting|stroke-order|char-building/.test(m)) showChar = false;
+        // Modes where meaning is the answer
+        if (/char-to-meaning|audio-to-meaning/.test(m)) showMeaning = false;
+        // Modes where pinyin/tones are the answer
+        if (/char-to-pinyin|audio-to-pinyin|char-to-tones/.test(m)) showPinyin = false;
+
         // ── Header
         html.push('<div style="font-weight:700;font-size:12px;color:#9575cd;margin-bottom:6px">');
         html.push(lastData.isEEG ? '🧠 Why this card?' : '📊 Why this card?');
         html.push('</div>');
 
-        // ── Chosen character
-        var charLabel = d.char;
-        if (typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
+        // ── Chosen character (redact if it's the answer)
+        var charLabel = showChar ? d.char : '?';
+        if (showChar && showMeaning && typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
             var found = quizCharacters.find(function (q) { return q.char === d.char; });
             if (found && found.meaning) charLabel += ' <span style="color:#777;font-size:11px">' + found.meaning + '</span>';
         }
@@ -289,14 +299,14 @@
             html.push('</div>');
         }
 
-        // ── Runners up (compact)
+        // ── Runners up (compact, redacted)
         if (lastData.runners.length) {
             html.push('<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px">');
             html.push('<div style="font-size:9px;color:#666;margin-bottom:4px">Also considered (' + lastData.handSize + ' in hand)</div>');
             for (var i = 0; i < lastData.runners.length; i++) {
                 var ru = lastData.runners[i];
-                var ruLabel = ru.char;
-                if (typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
+                var ruLabel = showChar ? ru.char : '?';
+                if (showChar && showMeaning && typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
                     var f2 = quizCharacters.find(function (q) { return q.char === ru.char; });
                     if (f2 && f2.meaning) ruLabel += ' ' + f2.meaning;
                 }
