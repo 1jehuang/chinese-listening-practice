@@ -48,6 +48,17 @@
     let overlayEl = null;
     let listeners = [];
 
+    var _overlayRafPending = false;
+
+    function scheduleOverlayUpdate() {
+        if (_overlayRafPending) return;
+        _overlayRafPending = true;
+        requestAnimationFrame(function () {
+            _overlayRafPending = false;
+            updateOverlay();
+        });
+    }
+
     function connect() {
         if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
@@ -60,7 +71,7 @@
 
         ws.onopen = function () {
             state.connected = true;
-            updateOverlay();
+            scheduleOverlayUpdate();
             console.log('[EEG] Connected to bridge');
         };
 
@@ -111,7 +122,7 @@
                     fireEvent('blink', { total: state.blinkTotal, ts: state.ts });
                 }
 
-                updateOverlay();
+                scheduleOverlayUpdate();
                 fireEvent('update', snapshot());
             } catch (e) {
                 // ignore parse errors
@@ -120,7 +131,7 @@
 
         ws.onclose = function () {
             state.connected = false;
-            updateOverlay();
+            scheduleOverlayUpdate();
             scheduleReconnect();
         };
 
