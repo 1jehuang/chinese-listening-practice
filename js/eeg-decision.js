@@ -180,8 +180,9 @@
         panelEl.id = PANEL_ID;
         Object.assign(panelEl.style, {
             position: 'fixed',
-            bottom: '16px',
-            left: '16px',
+            top: '50%',
+            right: '16px',
+            transform: 'translateY(-50%)',
             zIndex: '9998',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
             fontSize: '11px',
@@ -191,12 +192,13 @@
             borderRadius: '12px',
             border: '1px solid rgba(255,255,255,0.1)',
             overflowY: 'auto',
-            maxHeight: '60vh',
-            width: '230px',
+            maxHeight: '70vh',
+            width: '210px',
             lineHeight: '1.45',
             backdropFilter: 'blur(12px)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
             display: 'none',
+            pointerEvents: 'auto',
         });
         document.body.appendChild(panelEl);
     }
