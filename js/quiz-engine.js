@@ -2610,75 +2610,28 @@ function getFeedTargetHandSize() {
         }
     }
 
-    // Calculate timing-based max hand size
-    // max_hand_size = min_half_life_in_hand / avg_response_time
-    // This ensures we can cycle through hand before shortest half-life expires
-    let timingMaxHandSize = FEED_MAX_HAND_SIZE;
-    const avgResponseTime = feedModeState.globalAvgResponseTime;
-
-    if (avgResponseTime && avgResponseTime > 0) {
-        // Find minimum half-life among cards in hand (or default)
-        let minHalfLifeInHand = FEED_DEFAULT_HALF_LIFE_MS;
-        for (const char of feedModeState.hand || []) {
-            const stats = feedModeState.seen[char];
-            if (stats && stats.halfLife && stats.halfLife < minHalfLifeInHand) {
-                minHalfLifeInHand = stats.halfLife;
-            }
-        }
-
-        // Hand size should allow cycling through all cards before shortest half-life
-        // We want to see each card at least once per half-life period
-        timingMaxHandSize = Math.floor(minHalfLifeInHand / avgResponseTime);
-        timingMaxHandSize = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_MAX_HAND_SIZE, timingMaxHandSize));
-    }
+    const unseenCount = poolSize - seenCount;
 
     // Start small like 5-card sets: begin with 2 cards, expand as you learn
-    let baseHandSize;
+    let target;
     if (seenCount < 2) {
-        // Very beginning - start with just 2 cards
-        baseHandSize = 2;
+        target = 2;
     } else if (explorationRatio < 0.15) {
-        // Early phase - small sets of 3-4
-        baseHandSize = Math.min(4, Math.max(2, weakCount + 2));
+        target = Math.min(4, Math.max(2, weakCount + 2));
     } else if (explorationRatio < 0.3) {
-        // Growing phase - expand to 5-6
-        baseHandSize = Math.min(6, Math.max(3, weakCount + 2));
+        target = Math.min(6, Math.max(3, weakCount + 2));
     } else if (explorationRatio < 0.6) {
-        // Middle phase - moderate hand size
-        baseHandSize = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE + 2, weakCount + 3));
+        target = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE + 2, weakCount + 3));
     } else {
-        // Explored most of the deck - shrink to focus on weak cards
-        baseHandSize = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE, weakCount + 2));
+        target = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE, weakCount + 2));
     }
 
-    // Return the minimum of exploration-based size and timing-based max
-    return Math.min(baseHandSize, timingMaxHandSize);
-}
-
-function getTimingBasedHandSizeInfo() {
-    // Helper function to get timing details for UI
-    const avgResponseTime = feedModeState.globalAvgResponseTime;
-    if (!avgResponseTime || avgResponseTime <= 0) {
-        return { avgResponseTime: null, minHalfLife: null, maxHandSize: FEED_MAX_HAND_SIZE, isConstrained: false };
+    // Guarantee room for new cards when unseen cards remain
+    if (unseenCount > 0 && target < FEED_MIN_HAND_SIZE + 1) {
+        target = FEED_MIN_HAND_SIZE + 1;
     }
 
-    let minHalfLife = FEED_DEFAULT_HALF_LIFE_MS;
-    for (const char of feedModeState.hand || []) {
-        const stats = feedModeState.seen[char];
-        if (stats && stats.halfLife && stats.halfLife < minHalfLife) {
-            minHalfLife = stats.halfLife;
-        }
-    }
-
-    const maxHandSize = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_MAX_HAND_SIZE, Math.floor(minHalfLife / avgResponseTime)));
-    const baseHandSize = getFeedExplorationRatio() < 0.3 ? 6 : FEED_DEFAULT_HAND_SIZE + 2;
-
-    return {
-        avgResponseTime,
-        minHalfLife,
-        maxHandSize,
-        isConstrained: maxHandSize < baseHandSize
-    };
+    return target;
 }
 
 function ensureFeedHand() {
@@ -2723,8 +2676,8 @@ function ensureFeedHand() {
         !feedModeState.seen[char] || feedModeState.seen[char].attempts === 0
     );
 
-    // If under 80% explored and no unseen in hand, kick out lowest-priority seen card and add unseen
-    if (explorationRatio < 0.8 && unseenCards.length > 0 && !handHasUnseen && feedModeState.hand.length > 0) {
+    // If unseen cards remain and hand has none, kick out lowest-priority seen card to make room
+    if (unseenCards.length > 0 && !handHasUnseen && feedModeState.hand.length > 0) {
         // Find the card with highest confidence (least needed) to remove
         let worstIdx = 0;
         let worstScore = Infinity;
@@ -2739,7 +2692,7 @@ function ensureFeedHand() {
     }
 
     // Add unseen cards to fill reserved slots
-    const reservedSlots = explorationRatio < 0.8 && unseenCards.length > 0 ? Math.min(2, Math.ceil(targetSize * 0.3)) : 0;
+    const reservedSlots = unseenCards.length > 0 ? Math.min(2, Math.max(1, Math.ceil(targetSize * 0.3))) : 0;
     for (let i = 0; i < reservedSlots && feedModeState.hand.length < targetSize && unseenCards.length > 0; i++) {
         const idx = Math.floor(Math.random() * unseenCards.length);
         const randomUnseen = unseenCards[idx];
@@ -2749,17 +2702,49 @@ function ensureFeedHand() {
         }
     }
 
-    // Fill hand up to target size using UCB scores
-    while (feedModeState.hand.length < targetSize && feedModeState.hand.length < fullPool.length) {
-        // Get all candidates not in hand
-        const candidates = fullPool.filter(item => !feedModeState.hand.includes(item.char));
-        if (!candidates.length) break;
+    // Build set of graduated chars to deprioritize in fill loop
+    const graduatedChars = new Set();
+    if (useSRGraduation) {
+        for (const item of fullPool) {
+            if (feedModeState.hand.includes(item.char)) continue;
+            const st = feedModeState.seen[item.char];
+            if (!st || !st.attempts) continue;
+            if (st.attempts >= FEED_SR_MIN_SESSION_ATTEMPTS && isConfidenceHighEnough(item.char)) {
+                const rp = getFeedRecallProbability(item.char);
+                if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
+                    graduatedChars.add(item.char);
+                }
+            }
+        }
+    } else {
+        for (const item of fullPool) {
+            if (feedModeState.hand.includes(item.char)) continue;
+            const st = feedModeState.seen[item.char];
+            if (!st || st.attempts < 2) continue;
+            if ((st.streak || 0) >= FEED_STREAK_TO_REMOVE) {
+                const rp = getFeedRecallProbability(item.char);
+                if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
+                    graduatedChars.add(item.char);
+                }
+            }
+        }
+    }
 
-        // Pick the one with highest UCB score
+    // Fill hand up to target size — prefer unseen/non-graduated cards
+    while (feedModeState.hand.length < targetSize && feedModeState.hand.length < fullPool.length) {
+        const candidates = fullPool.filter(item =>
+            !feedModeState.hand.includes(item.char) && !graduatedChars.has(item.char)
+        );
+
+        // Fall back to graduated cards only if no other candidates
+        const pool = candidates.length > 0 ? candidates
+            : fullPool.filter(item => !feedModeState.hand.includes(item.char));
+        if (!pool.length) break;
+
         let bestChar = null;
         let bestScore = -Infinity;
 
-        for (const item of candidates) {
+        for (const item of pool) {
             const score = getFeedUCBScore(item.char);
             if (score > bestScore) {
                 bestScore = score;
