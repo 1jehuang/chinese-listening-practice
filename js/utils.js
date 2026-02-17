@@ -344,10 +344,13 @@ function pinyinToAudioKey(pinyin) {
 let cachedVoices = [];
 let voicesLoaded = false;
 
-function setTtsDebug(engine, voiceLabel) {
+function setTtsDebug(engine, voiceLabel, status) {
     if (typeof window !== 'undefined') {
         window.__lastTtsEngine = engine;
         window.__lastTtsVoice = voiceLabel || '';
+        if (typeof status !== 'undefined') {
+            window.__lastTtsStatus = status;
+        }
     }
     if (typeof document !== 'undefined' && document.body) {
         document.body.dataset.ttsEngine = engine;
@@ -355,6 +358,9 @@ function setTtsDebug(engine, voiceLabel) {
             document.body.dataset.ttsVoice = voiceLabel;
         } else {
             delete document.body.dataset.ttsVoice;
+        }
+        if (typeof status !== 'undefined') {
+            document.body.dataset.ttsStatus = status;
         }
     }
 }
@@ -424,8 +430,13 @@ function playTTS(chineseChar) {
             const audio = new Audio(sentenceTtsUrl(text, rate));
             audio.preload = 'auto';
             setActiveAudio(audio);
-            setTtsDebug('remote', 'baidu');
+            setTtsDebug('remote', 'baidu', 'pending');
+            const onPlay = () => {
+                setTtsDebug('remote', 'baidu', 'playing');
+            };
+            audio.addEventListener('playing', onPlay, { once: true });
             audio.addEventListener('error', () => {
+                audio.removeEventListener('playing', onPlay);
                 detachActiveAudio(audio);
                 if (hasSpeech) {
                     const fallback = new SpeechSynthesisUtterance(text);
@@ -436,7 +447,7 @@ function playTTS(chineseChar) {
                     if (chineseVoice) {
                         fallback.voice = chineseVoice;
                     }
-                    setTtsDebug('speech', chineseVoice?.name || 'default');
+                    setTtsDebug('speech', chineseVoice?.name || 'default', 'fallback');
                     speechSynthesis.cancel();
                     speechSynthesis.speak(fallback);
                 }
@@ -460,7 +471,7 @@ function playTTS(chineseChar) {
     if (chineseVoice) {
         utterance.voice = chineseVoice;
     }
-    setTtsDebug('speech', chineseVoice?.name || 'default');
+    setTtsDebug('speech', chineseVoice?.name || 'default', 'speaking');
 
     // Cancel any ongoing speech before starting new one
     if (typeof speechSynthesis.cancel === 'function') {
@@ -485,6 +496,10 @@ function sentenceTtsUrl(sentence, rate) {
     const speedParam = mapRateToSentenceSpeed(effectiveRate);
     const base = `https://fanyi.baidu.com/gettts?lan=zh&spd=${speedParam}&source=web&text=`;
     return base + encodeURIComponent(sentence);
+}
+
+function googleTtsUrl(sentence) {
+    return `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=zh-CN&client=tw-ob&q=${encodeURIComponent(sentence)}`;
 }
 
 function playSentenceAudio(sentence) {
@@ -523,13 +538,47 @@ function playSentenceAudio(sentence) {
     }
 
     setActiveAudio(audio);
-    setTtsDebug('remote', 'baidu');
+    setTtsDebug('remote', 'baidu', 'pending');
+
+    const onPlay = () => {
+        setTtsDebug('remote', 'baidu', 'playing');
+    };
+    audio.addEventListener('playing', onPlay, { once: true });
 
     const onError = () => {
         console.log(`Sentence audio failed for "${cacheKey}", using SpeechSynthesis fallback`);
         audio.removeEventListener('error', onError);
+        audio.removeEventListener('playing', onPlay);
         detachActiveAudio(audio);
         globalScope.__sentenceAudioCache.delete(cacheKey);
+
+        // Try Google TTS as a secondary fallback before SpeechSynthesis
+        if (typeof Audio !== 'undefined') {
+            const googleAudio = new Audio(googleTtsUrl(trimmedSentence));
+            setActiveAudio(googleAudio);
+            setTtsDebug('remote', 'google', 'pending');
+
+            const onGooglePlay = () => {
+                setTtsDebug('remote', 'google', 'playing');
+            };
+            const onGoogleError = () => {
+                googleAudio.removeEventListener('error', onGoogleError);
+                googleAudio.removeEventListener('playing', onGooglePlay);
+                detachActiveAudio(googleAudio);
+                setTtsDebug('remote', 'google', 'error');
+                playTTS(trimmedSentence);
+            };
+
+            googleAudio.addEventListener('playing', onGooglePlay, { once: true });
+            googleAudio.addEventListener('error', onGoogleError, { once: true });
+
+            const googlePlayPromise = googleAudio.play();
+            if (googlePlayPromise && typeof googlePlayPromise.catch === 'function') {
+                googlePlayPromise.catch(() => onGoogleError());
+            }
+            return;
+        }
+
         playTTS(trimmedSentence);
     };
 
@@ -540,12 +589,14 @@ function playSentenceAudio(sentence) {
         playPromise.catch(err => {
             console.log(`Sentence audio playback rejected for "${cacheKey}", fallback to SpeechSynthesis`, err);
             audio.removeEventListener('error', onError);
+            audio.removeEventListener('playing', onPlay);
             if (globalScope.__activeAudio === audio) {
                 stopActiveAudio();
             } else {
                 detachActiveAudio(audio);
             }
             globalScope.__sentenceAudioCache.delete(cacheKey);
+            setTtsDebug('remote', 'baidu', 'error');
             playTTS(trimmedSentence);
         });
     }
@@ -580,26 +631,36 @@ function playPinyinAudio(pinyin, chineseChar) {
     }
 
     const audio = new Audio(audioUrl);
+    audio.preload = 'auto';
     setActiveAudio(audio);
-    setTtsDebug('remote', 'purpleculture');
+    setTtsDebug('remote', 'purpleculture', 'pending');
+
+    const onPlay = () => {
+        setTtsDebug('remote', 'purpleculture', 'playing');
+    };
 
     const handleError = () => {
         console.log(`Audio file not found for ${audioKey}, falling back to TTS`);
         audio.removeEventListener('error', handleError);
+        audio.removeEventListener('playing', onPlay);
         detachActiveAudio(audio);
+        setTtsDebug('remote', 'purpleculture', 'error');
         playTTS(chineseChar || pinyin);
     };
 
-    audio.addEventListener('error', handleError);
+    audio.addEventListener('playing', onPlay, { once: true });
+    audio.addEventListener('error', handleError, { once: true });
 
     audio.play().catch(e => {
         console.log(`Audio play failed for ${audioKey}, falling back to TTS:`, e);
         audio.removeEventListener('error', handleError);
+        audio.removeEventListener('playing', onPlay);
         if (globalScope.__activeAudio === audio) {
             stopActiveAudio();
         } else {
             detachActiveAudio(audio);
         }
+        setTtsDebug('remote', 'purpleculture', 'error');
         playTTS(chineseChar || pinyin);
     });
 }

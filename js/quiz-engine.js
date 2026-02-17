@@ -5613,6 +5613,7 @@ function generateQuestion(options = {}) {
         mode,
         schedulerMode
     });
+    try { document.dispatchEvent(new CustomEvent('feed-question-served')); } catch (_) {}
     if (!shouldDeferServingForMode(mode)) {
         markSchedulerServed(currentQuestion);
     }
