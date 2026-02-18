@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TTS Debug</title>
+  <script src="js/utils.js?v=debug-tts"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { margin: 6px 0; padding: 10px 14px; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>TTS Debug</h1>
+  <div>UA: <code id="ua"></code></div>
+  <div>Last engine: <code id="engine">(none)</code></div>
+  <div>Last voice: <code id="voice">(none)</code></div>
+
+  <button id="btnTts">playTTS('你好')</button>
+  <button id="btnSentence">playSentenceAudio('你好')</button>
+  <button id="btnPinyin">playPinyinAudio('ni3 hao3', '你好')</button>
+
+  <script>
+    const uaEl = document.getElementById('ua');
+    const engineEl = document.getElementById('engine');
+    const voiceEl = document.getElementById('voice');
+
+    uaEl.textContent = navigator.userAgent;
+
+    function refreshDebug() {
+      engineEl.textContent = document.body.dataset.ttsEngine || '(none)';
+      voiceEl.textContent = document.body.dataset.ttsVoice || '(none)';
+    }
+
+    document.getElementById('btnTts').addEventListener('click', () => {
+      playTTS('你好');
+      setTimeout(refreshDebug, 100);
+    });
+
+    document.getElementById('btnSentence').addEventListener('click', () => {
+      playSentenceAudio('你好');
+      setTimeout(refreshDebug, 100);
+    });
+
+    document.getElementById('btnPinyin').addEventListener('click', () => {
+      playPinyinAudio('ni3 hao3', '你好');
+      setTimeout(refreshDebug, 100);
+    });
+
+    refreshDebug();
+  </script>
+</body>
+</html>

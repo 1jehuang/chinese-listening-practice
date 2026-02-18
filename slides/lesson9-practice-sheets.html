@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Lesson 9 Writing Practice</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .page {
+      width: 190mm;
+      height: 277mm;
+      padding: 5mm;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* Reference box at top */
+    .reference {
+      display: flex;
+      border: 2px solid #333;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .ref-word {
+      flex: 1;
+      text-align: center;
+      padding: 6px 4px;
+      border-right: 1px solid #ccc;
+    }
+
+    .ref-word:last-child {
+      border-right: none;
+    }
+
+    .ref-char {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .ref-pinyin {
+      font-size: 12px;
+      color: #555;
+    }
+
+    .ref-meaning {
+      font-size: 10px;
+      color: #777;
+    }
+
+    /* Grid of boxes */
+    .box-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      gap: 3px;
+    }
+
+    .practice-box {
+      border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .prompt {
+      font-size: 9px;
+      color: #666;
+      text-align: center;
+      padding: 2px;
+      border-bottom: 1px solid #ccc;
+      background: #fafafa;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .write-area {
+      flex: 1;
+      display: flex;
+      position: relative;
+    }
+
+    .char-cell {
+      flex: 1;
+      border-right: 1px solid #333;
+      position: relative;
+    }
+
+    .char-cell:last-child {
+      border-right: none;
+    }
+
+    /* Guide lines */
+    .char-cell::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      border-top: 1px dashed #ddd;
+    }
+
+    .char-cell::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      border-left: 1px dashed #ddd;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+// Lesson 9 vocabulary
+const allVocab = [
+  { char: '进步', pinyin: 'jìnbù', meaning: 'progress' },
+  { char: '实验室', pinyin: 'shíyànshì', meaning: 'laboratory' },
+  { char: '慢', pinyin: 'màn', meaning: 'slow' },
+  { char: '机会', pinyin: 'jīhuì', meaning: 'opportunity' },
+  { char: '语法', pinyin: 'yǔfǎ', meaning: 'grammar' },
+  { char: '重', pinyin: 'zhòng', meaning: 'heavy' },
+  { char: '训练班', pinyin: 'xùnliànbān', meaning: 'training class' },
+  { char: '兴趣', pinyin: 'xìngqù', meaning: 'interest' },
+  { char: '能', pinyin: 'néng', meaning: 'can' },
+  { char: '中文桌子', pinyin: 'zhōngwén zhuōzi', meaning: 'Chinese table' },
+  { char: '平常', pinyin: 'píngcháng', meaning: 'ordinary' },
+  { char: '祝', pinyin: 'zhù', meaning: 'wish' },
+  { char: '趁机会', pinyin: 'chènjīhuì', meaning: 'seize chance' },
+  { char: '非常', pinyin: 'fēicháng', meaning: 'extremely' },
+  { char: '月', pinyin: 'yuè', meaning: 'month' },
+  { char: '只有…才', pinyin: 'zhǐyǒu...cái', meaning: 'only if' },
+  { char: '练习', pinyin: 'liànxí', meaning: 'practice' },
+  { char: '日', pinyin: 'rì', meaning: 'day' },
+  { char: '敬祝', pinyin: 'jìngzhù', meaning: 'respectfully wish' },
+  { char: '晚上', pinyin: 'wǎnshang', meaning: 'evening' },
+  { char: '今年', pinyin: 'jīnnián', meaning: 'this year' },
+  { char: '敬上', pinyin: 'jìngshàng', meaning: 'respectfully' },
+  { char: '谈谈', pinyin: 'tántan', meaning: 'chat' },
+  { char: '结构', pinyin: 'jiégòu', meaning: 'structure' },
+  { char: '口语', pinyin: 'kǒuyǔ', meaning: 'spoken language' },
+  { char: '北京', pinyin: 'Běijīng', meaning: 'Beijing' },
+  { char: '设备', pinyin: 'shèbèi', meaning: 'equipment' },
+  { char: '社会', pinyin: 'shèhuì', meaning: 'society' },
+  { char: '暑假', pinyin: 'shǔjià', meaning: 'summer break' },
+  { char: '希望', pinyin: 'xīwàng', meaning: 'hope' },
+  { char: '利用', pinyin: 'lìyòng', meaning: 'utilize' },
+  { char: '参加', pinyin: 'cānjiā', meaning: 'participate' },
+  { char: '计划', pinyin: 'jìhuà', meaning: 'plan' },
+  { char: '支持', pinyin: 'zhīchí', meaning: 'support' },
+  { char: '短期', pinyin: 'duǎnqī', meaning: 'short term' },
+  { char: '健康', pinyin: 'jiànkāng', meaning: 'health' },
+  { char: '语言', pinyin: 'yǔyán', meaning: 'language' },
+  { char: '生活', pinyin: 'shēnghuó', meaning: 'life' },
+  { char: '女儿', pinyin: "nǚ'ér", meaning: 'daughter' },
+  { char: '随便', pinyin: 'suíbiàn', meaning: 'casually' },
+  { char: '了解', pinyin: 'liǎojiě', meaning: 'understand' }
+];
+
+// Shuffle array
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Get character count (excluding punctuation)
+function charCount(str) {
+  return str.replace(/[…\.]/g, '').length;
+}
+
+// Create a practice box
+function createBox(word) {
+  const box = document.createElement('div');
+  box.className = 'practice-box';
+
+  // Prompt (randomly pinyin or meaning)
+  const prompt = document.createElement('div');
+  prompt.className = 'prompt';
+  prompt.textContent = Math.random() > 0.5 ? word.pinyin : word.meaning;
+  box.appendChild(prompt);
+
+  // Writing area with character cells
+  const writeArea = document.createElement('div');
+  writeArea.className = 'write-area';
+  const count = charCount(word.char);
+  for (let i = 0; i < count; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'char-cell';
+    writeArea.appendChild(cell);
+  }
+  box.appendChild(writeArea);
+
+  return box;
+}
+
+// Create a page
+function createPage(words) {
+  const page = document.createElement('div');
+  page.className = 'page';
+
+  // Reference box
+  const ref = document.createElement('div');
+  ref.className = 'reference';
+  words.forEach(w => {
+    ref.innerHTML += `
+      <div class="ref-word">
+        <div class="ref-char">${w.char}</div>
+        <div class="ref-pinyin">${w.pinyin}</div>
+        <div class="ref-meaning">${w.meaning}</div>
+      </div>
+    `;
+  });
+  page.appendChild(ref);
+
+  // Grid of boxes
+  const grid = document.createElement('div');
+  grid.className = 'box-grid';
+
+  // Create 40 boxes (5x8 grid), randomly distributed among the 3 words
+  const boxes = [];
+  for (let i = 0; i < 40; i++) {
+    const word = words[Math.floor(Math.random() * words.length)];
+    boxes.push(createBox(word));
+  }
+
+  // Shuffle the boxes
+  shuffle(boxes).forEach(box => grid.appendChild(box));
+
+  page.appendChild(grid);
+  return page;
+}
+
+// Shuffle all vocab and create pages
+const shuffledVocab = shuffle(allVocab);
+
+for (let i = 0; i < shuffledVocab.length; i += 3) {
+  const pageWords = shuffledVocab.slice(i, i + 3);
+  if (pageWords.length > 0) {
+    document.body.appendChild(createPage(pageWords));
+  }
+}
+</script>
+
+</body>
+</html>

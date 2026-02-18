@@ -1,0 +1,172 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper,margin=0.4in]{geometry}
+\usepackage{xeCJK}
+\usepackage{tikz}
+\usepackage{tabularx}
+\usepackage{calc}
+
+\setCJKmainfont{Noto Sans CJK SC}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% Base character box size
+\newcommand{\charsize}{1.3cm}
+
+% Draw a practice row: prompt box + empty boxes for writing
+% #1 = prompt (pinyin or meaning), #2 = number of characters
+\newcommand{\practicerow}[2]{%
+  \begin{tikzpicture}[baseline=(current bounding box.center)]
+    % Prompt box (wider, contains text)
+    \node[draw, minimum height=\charsize, minimum width=2.5cm, align=center, font=\scriptsize] at (0,0) {#1};
+    % Character boxes
+    \foreach \i in {1,...,#2} {%
+      \pgfmathsetmacro{\xpos}{2.5 + (\i-0.5)*\charsize}
+      \draw (\xpos - \charsize/2, -\charsize/2) rectangle (\xpos + \charsize/2, \charsize/2);
+      \draw[gray!30] (\xpos, -\charsize/2) -- (\xpos, \charsize/2);
+      \draw[gray!30] (\xpos - \charsize/2, 0) -- (\xpos + \charsize/2, 0);
+    }
+  \end{tikzpicture}%
+}
+
+% Word block: multiple rows for one word
+\newcommand{\wordblock}[2]{%
+  \practicerow{#1}{#2}\\[3pt]
+  \practicerow{}{#2}\\[3pt]
+  \practicerow{}{#2}\\[3pt]
+  \practicerow{}{#2}\\[3pt]
+  \practicerow{}{#2}\\[0.25cm]
+}
+
+% Reference box at top
+\newcommand{\refbox}[9]{%
+  \begin{tabularx}{\textwidth}{|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|}
+    \hline
+    \textbf{\Large #1} & \textbf{\Large #4} & \textbf{\Large #7} \\
+    {\small #2} & {\small #5} & {\small #8} \\
+    {\scriptsize #3} & {\scriptsize #6} & {\scriptsize #9} \\
+    \hline
+  \end{tabularx}
+  \vspace{0.3cm}
+}
+
+\begin{document}
+
+% Page 1
+\refbox{进步}{jìnbù}{make progress}{实验室}{shíyànshì}{laboratory}{慢}{màn}{slow}
+\wordblock{jìnbù}{2}
+\wordblock{laboratory}{3}
+\wordblock{slow}{1}
+
+\newpage
+
+% Page 2
+\refbox{机会}{jīhuì}{opportunity}{语法}{yǔfǎ}{grammar}{重}{zhòng}{heavy}
+\wordblock{opportunity}{2}
+\wordblock{yǔfǎ}{2}
+\wordblock{heavy}{1}
+
+\newpage
+
+% Page 3
+\refbox{训练班}{xùnliànbān}{training class}{兴趣}{xìngqù}{interest}{能}{néng}{can}
+\wordblock{training class}{3}
+\wordblock{xìngqù}{2}
+\wordblock{néng}{1}
+
+\newpage
+
+% Page 4
+\refbox{中文桌子}{zhōngwén zhuōzi}{Chinese table}{平常}{píngcháng}{ordinary}{祝}{zhù}{wish}
+\wordblock{Chinese table}{4}
+\wordblock{ordinary}{2}
+\wordblock{zhù}{1}
+
+\newpage
+
+% Page 5
+\refbox{趁机会}{chènjīhuì}{take opportunity}{非常}{fēicháng}{extremely}{月}{yuè}{month}
+\wordblock{chènjīhuì}{3}
+\wordblock{extremely}{2}
+\wordblock{yuè}{1}
+
+\newpage
+
+% Page 6
+\refbox{只有…才}{zhǐyǒu...cái}{only if...then}{练习}{liànxí}{practice}{日}{rì}{day}
+\wordblock{only if...then}{3}
+\wordblock{liànxí}{2}
+\wordblock{rì}{1}
+
+\newpage
+
+% Page 7
+\refbox{敬祝}{jìngzhù}{respectful wish}{晚上}{wǎnshang}{evening}{今年}{jīnnián}{this year}
+\wordblock{jìngzhù}{2}
+\wordblock{evening}{2}
+\wordblock{this year}{2}
+
+\newpage
+
+% Page 8
+\refbox{敬上}{jìngshàng}{respectfully}{谈谈}{tántan}{chat}{结构}{jiégòu}{structure}
+\wordblock{respectfully}{2}
+\wordblock{tántan}{2}
+\wordblock{structure}{2}
+
+\newpage
+
+% Page 9
+\refbox{口语}{kǒuyǔ}{spoken language}{北京}{Běijīng}{Beijing}{设备}{shèbèi}{equipment}
+\wordblock{spoken language}{2}
+\wordblock{Běijīng}{2}
+\wordblock{shèbèi}{2}
+
+\newpage
+
+% Page 10
+\refbox{社会}{shèhuì}{society}{暑假}{shǔjià}{summer vacation}{希望}{xīwàng}{hope}
+\wordblock{shèhuì}{2}
+\wordblock{summer vacation}{2}
+\wordblock{xīwàng}{2}
+
+\newpage
+
+% Page 11
+\refbox{利用}{lìyòng}{make use of}{参加}{cānjiā}{participate}{计划}{jìhuà}{plan}
+\wordblock{make use of}{2}
+\wordblock{cānjiā}{2}
+\wordblock{plan}{2}
+
+\newpage
+
+% Page 12
+\refbox{支持}{zhīchí}{support}{短期}{duǎnqī}{short term}{健康}{jiànkāng}{health}
+\wordblock{zhīchí}{2}
+\wordblock{short term}{2}
+\wordblock{jiànkāng}{2}
+
+\newpage
+
+% Page 13
+\refbox{语言}{yǔyán}{language}{生活}{shēnghuó}{life}{女儿}{nǚ'ér}{daughter}
+\wordblock{language}{2}
+\wordblock{shēnghuó}{2}
+\wordblock{nǚ'ér}{2}
+
+\newpage
+
+% Page 14 (last 2 words)
+\begin{tabularx}{\textwidth}{|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|}
+  \hline
+  \textbf{\Large 随便} & \textbf{\Large 了解} \\
+  {\small suíbiàn} & {\small liǎojiě} \\
+  {\scriptsize casually} & {\scriptsize understand} \\
+  \hline
+\end{tabularx}
+\vspace{0.3cm}
+
+\wordblock{suíbiàn}{2}
+\wordblock{understand}{2}
+
+\end{document}

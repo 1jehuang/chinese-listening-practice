@@ -70,7 +70,16 @@ let previousQuestionResult = null; // 'correct' or 'incorrect'
 let upcomingQuestion = null;
 let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
-// 3-column layout state for translation modes (audio-to-meaning, text-to-meaning)
+// Blend mode state
+let blendDirection = null; // current direction: 'char-to-meaning', 'char-to-pinyin', 'audio-to-meaning', 'audio-to-pinyin', 'meaning-to-char', 'pinyin-to-char'
+let blendPreviousDirection = null; // direction of the previous question (for display in left column)
+const BLEND_DIRECTIONS = [
+    'char-to-meaning', 'char-to-pinyin',
+    'audio-to-meaning', 'audio-to-pinyin',
+    'meaning-to-char', 'pinyin-to-char'
+];
+
+// 3-column layout state for translation modes (text-to-meaning)
 let translationPreviousQuestion = null;
 let translationPreviousResult = null; // { grade: number, explanation: string, userAnswer: string }
 let translationUpcomingQuestion = null;
@@ -140,6 +149,17 @@ let handwritingHoldTimeout = null;
 let studyModeInitialized = false;
 let drawModeInitialized = false;
 let fullscreenDrawInitialized = false;
+let drawHintWriter = null;
+let drawHintRequestId = 0;
+let fullscreenHintWriter = null;
+let fullscreenHintRequestId = 0;
+let drawHintUsed = false;
+let drawMeaningChoices = [];
+let drawSelectedMeaning = null;
+let feedStatusTicker = null;
+let feedDetailsExpanded = false;
+let choiceModeHome = null;
+let choiceModeHomeNext = null;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
@@ -1811,7 +1831,7 @@ function getSchedulerModeDescription(mode = schedulerMode) {
 
 function getCurrentSkillKey(customMode = mode) {
     const m = customMode;
-    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning' || m === 'dictation-chat') {
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'blend') {
         return 'meaning';
     }
     if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
@@ -5031,6 +5051,7 @@ function resetForNextQuestion(prefillAnswer) {
     hideDrawNextButton();
     clearDrawHint();
     drawHintUsed = false;
+    drawSelectedMeaning = null;
     setChoiceModeListLayout(false);
     restoreChoiceModeHome();
     syncModeLayoutState();
@@ -5224,14 +5245,15 @@ function renderQuestionUiForTypingModes() {
         return true;
     }
 
-    if (mode === 'audio-to-meaning' && audioSection && typeMode) {
-        renderThreeColumnTranslationLayout(true); // true = audio mode
+    if (mode === 'audio-to-meaning' && audioSection && fuzzyMode) {
+        renderThreeColumnMeaningLayout();
+        generateFuzzyMeaningOptions();
+        fuzzyMode.style.display = 'block';
         audioSection.classList.remove('hidden');
-        typeMode.style.display = 'block';
-        if (answerInput) {
-            answerInput.placeholder = 'Type your translation...';
+        setupAudioMode({ focusAnswer: false });
+        if (fuzzyInput) {
+            setTimeout(() => fuzzyInput.focus(), 100);
         }
-        setupAudioMode({ focusAnswer: true });
         return true;
     }
 
@@ -5342,6 +5364,19 @@ function renderQuestionUiForChoiceModes() {
         return true;
     }
 
+    if (mode === 'blend' && fuzzyMode) {
+        pickBlendDirection();
+        renderBlendLayout();
+        generateBlendOptions();
+        fuzzyMode.style.display = 'block';
+        if (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') {
+            if (audioSection) audioSection.classList.remove('hidden');
+            setupAudioMode({ focusAnswer: false });
+            if (fuzzyInput) setTimeout(() => fuzzyInput.focus(), 100);
+        }
+        return true;
+    }
+
     if (mode === 'meaning-to-char' && choiceMode) {
         questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
         generateCharOptions();
@@ -5392,11 +5427,13 @@ function renderQuestionUiForHandwritingModes() {
 
     if (mode === 'draw-char' && drawCharMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
-        const meaningText = currentQuestion.meaning ? `<div class="text-lg text-gray-500 mt-1">${currentQuestion.meaning}</div>` : '';
-        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div>${meaningText}</div>`;
+        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div></div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
+        generateDrawMeaningChoices();
+        renderDrawMeaningChoices('drawMeaningChoicesInline');
+        renderDrawMeaningChoices('fullscreenMeaningChoices');
         return true;
     }
 
@@ -5987,7 +6024,7 @@ function checkAnswer() {
         if (!syllableMatched) {
             handleWrongAnswer();
         }
-    } else if (mode === 'audio-to-meaning' || mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning' || mode === 'text-to-meaning-chunks') {
+    } else if (mode === 'audio-to-meaning-chunks' || mode === 'text-to-meaning' || mode === 'text-to-meaning-chunks') {
         // Use Groq API with Kimi K2 to grade the translation
         checkTranslationWithGroq(userAnswer);
         return;
@@ -6099,7 +6136,7 @@ Grade this translation with percentage, feedback, and word-by-word markup.`
         updateStats();
 
         // For non-chunk translation modes, use three-column instant transition
-        if (mode === 'audio-to-meaning' || mode === 'text-to-meaning') {
+        if (mode === 'text-to-meaning') {
             // Store the current question as previous with explanation and reference
             translationPreviousQuestion = currentQuestion;
             translationPreviousResult = {
@@ -6571,8 +6608,14 @@ function generateFuzzyMeaningOptions() {
 
     };
 
-    // Enter key handler
+    // Enter key handler + space replay for audio-to-meaning
     fuzzyInput.onkeydown = (e) => {
+        if (e.key === ' ' && mode === 'audio-to-meaning' && window.currentAudioPlayFunc) {
+            e.preventDefault();
+            window.currentAudioPlayFunc();
+            return;
+        }
+
         if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
             e.preventDefault();
             goToNextQuestionAfterCorrect();
@@ -6877,12 +6920,11 @@ function checkFuzzyAnswer(answer) {
         }
     }
 
-    // For 3-column layout in char-to-meaning-type: immediately advance
-    if (mode === 'char-to-meaning-type') {
+    // For 3-column layout in char-to-meaning-type and audio-to-meaning: immediately advance
+    if (mode === 'char-to-meaning-type' || mode === 'audio-to-meaning') {
         lastAnswerCorrect = correct;
 
         if (correct) {
-            // Record the finished card on the left and advance
             previousQuestion = currentQuestion;
             previousQuestionResult = 'correct';
             threeColumnInlineFeedback = null;
@@ -6895,7 +6937,6 @@ function checkFuzzyAnswer(answer) {
 
             updateStats();
 
-            // Move upcoming to current (pick fresh if none queued)
             if (upcomingQuestion) {
                 currentQuestion = upcomingQuestion;
                 window.currentQuestion = currentQuestion;
@@ -6906,26 +6947,27 @@ function checkFuzzyAnswer(answer) {
             }
             notifyChatQuestionChanged();
 
-            // Mark the new question as served and update confidence display
             markSchedulerServed(currentQuestion);
             updateCurrentWordConfidence();
 
-            // Clear input and immediately show next question
             if (fuzzyInput) {
                 fuzzyInput.value = '';
             }
 
-            // Re-render with updated columns and generate new options
             answered = false;
             questionAttemptRecorded = false;
             renderThreeColumnMeaningLayout();
             generateFuzzyMeaningOptions();
             feedback.textContent = '';
             hint.textContent = '';
+
+            if (mode === 'audio-to-meaning') {
+                setupAudioMode({ focusAnswer: false });
+                if (fuzzyInput) setTimeout(() => fuzzyInput.focus(), 50);
+            }
             return;
         }
 
-        // Incorrect: stay on the same card and show inline feedback in the center column
         playWrongSound();
         if (isFirstAttempt) {
             markSchedulerOutcome(false);
@@ -6995,6 +7037,378 @@ function checkFuzzyAnswer(answer) {
     }
 }
 
+// ============================================================
+// Blend Mode
+// ============================================================
+
+function pickBlendDirection() {
+    blendDirection = BLEND_DIRECTIONS[Math.floor(Math.random() * BLEND_DIRECTIONS.length)];
+}
+
+function getBlendDirectionLabel(dir) {
+    switch (dir) {
+        case 'char-to-meaning': return 'Char → Meaning';
+        case 'char-to-pinyin': return 'Char → Pinyin';
+        case 'audio-to-meaning': return 'Audio → Meaning';
+        case 'audio-to-pinyin': return 'Audio → Pinyin';
+        case 'meaning-to-char': return 'Meaning → Char';
+        case 'pinyin-to-char': return 'Pinyin → Char';
+        default: return 'Blend';
+    }
+}
+
+function getBlendPromptHtml(question, direction) {
+    const char = escapeHtml(question.char || '');
+    const meaning = escapeHtml(question.meaning || '');
+    const pinyin = escapeHtml(question.pinyin || '');
+    const fontSize = getCharLargeFontSize(question.char || '');
+
+    switch (direction) {
+        case 'char-to-meaning':
+        case 'char-to-pinyin':
+            return `<div class="column-char-large" style="font-size: ${fontSize};">${char}</div>`;
+        case 'audio-to-meaning':
+        case 'audio-to-pinyin':
+            return `
+                <div style="font-size: 64px; margin-bottom: 8px; cursor: pointer;" onclick="if(window.currentAudioPlayFunc) window.currentAudioPlayFunc();">🔊</div>
+                <div style="font-size: 14px; color: #64748b;">Listen and choose</div>
+            `;
+        case 'meaning-to-char':
+            return `<div style="font-size: 24px; color: #334155; max-width: 220px; word-wrap: break-word; line-height: 1.4;">${meaning}</div>`;
+        case 'pinyin-to-char':
+            return `<div style="font-size: 28px; color: #1d4ed8;">${pinyin}</div>`;
+        default:
+            return `<div class="column-char-large" style="font-size: ${fontSize};">${char}</div>`;
+    }
+}
+
+function getBlendCorrectAnswer(question, direction) {
+    switch (direction) {
+        case 'char-to-meaning':
+        case 'audio-to-meaning':
+            return question.meaning;
+        case 'char-to-pinyin':
+        case 'audio-to-pinyin':
+            return question.pinyin.split('/')[0].trim();
+        case 'meaning-to-char':
+        case 'pinyin-to-char':
+            return question.char;
+        default:
+            return question.meaning;
+    }
+}
+
+function getBlendCorrectionText(question, direction) {
+    const char = question.char || '';
+    const pinyin = question.pinyin || '';
+    const meaning = question.meaning || '';
+    switch (direction) {
+        case 'char-to-meaning':
+        case 'audio-to-meaning':
+            return `${meaning}\n${char} (${pinyin})`;
+        case 'char-to-pinyin':
+        case 'audio-to-pinyin':
+            return `${pinyin}\n${char} — ${meaning}`;
+        case 'meaning-to-char':
+        case 'pinyin-to-char':
+            return `${char}\n(${pinyin}) — ${meaning}`;
+        default:
+            return `${char} (${pinyin}) — ${meaning}`;
+    }
+}
+
+function renderBlendLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    if (!upcomingQuestion) {
+        const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
+        upcomingQuestion = selectNextQuestion(exclusions);
+    }
+
+    const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
+    const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
+    const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
+    const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
+                           previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
+    const prevResultIcon = previousQuestionResult === 'correct' ? '✓' :
+                           previousQuestionResult === 'incorrect' ? '✗' : '•';
+    const prevFeedbackText = previousQuestionResult === 'correct' ? 'Got it right' :
+                             previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
+
+    const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
+    const inlineFeedback = threeColumnInlineFeedback;
+    const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
+
+    const dirLabel = getBlendDirectionLabel(blendDirection);
+    const prevDirLabel = blendPreviousDirection ? getBlendDirectionLabel(blendPreviousDirection) : '';
+
+    questionDisplay.innerHTML = `
+        <div class="three-column-meaning-layout">
+            <div class="column-previous column-card ${prevResultClass}">
+                <div class="column-label">Previous</div>
+                ${previousQuestion ? `
+                    <div class="column-feedback">
+                        <span class="column-result-icon">${prevResultIcon}</span>
+                        <span class="column-feedback-text">${prevFeedbackText}</span>
+                    </div>
+                    <div class="column-char">${prevChar}</div>
+                    <div class="column-pinyin">${prevPinyin}</div>
+                    <div class="column-meaning">${prevMeaning}</div>
+                    ${prevDirLabel ? `<div style="font-size: 10px; color: #94a3b8; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em;">${prevDirLabel}</div>` : ''}
+                ` : `
+                    <div class="column-placeholder">Your last answer will appear here</div>
+                `}
+            </div>
+            <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
+                <div class="column-label">Now · <span style="font-weight: 600; color: #6366f1;">${dirLabel}</span></div>
+                ${currentMarkingBadge}
+                <div class="column-focus-ring">
+                    ${getBlendPromptHtml(currentQuestion, blendDirection)}
+                </div>
+                ${inlineFeedback ? `
+                    <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
+                        ${inlineFeedbackMessage}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="column-upcoming column-card">
+                <div class="column-label">Upcoming</div>
+                ${upcomingQuestion ? `
+                    <div class="column-ondeck">
+                        <div style="font-size: 28px; color: #d1d5db;">?</div>
+                        <div class="ondeck-note">On deck</div>
+                    </div>
+                ` : `
+                    <div class="column-placeholder">Next card is loading</div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function generateBlendOptions() {
+    const options = document.getElementById('fuzzyOptions');
+    if (!options || !fuzzyInput) return;
+
+    options.innerHTML = '';
+    fuzzyInput.value = '';
+
+    const dir = blendDirection;
+    let correctAnswer, wrongOptions, allOptions;
+
+    if (dir === 'char-to-meaning' || dir === 'audio-to-meaning') {
+        correctAnswer = currentQuestion.meaning;
+        wrongOptions = [];
+        while (wrongOptions.length < 3) {
+            const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+            if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
+                wrongOptions.push(random.meaning);
+            }
+        }
+        allOptions = [...wrongOptions, correctAnswer];
+    } else if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin') {
+        const currentPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        correctAnswer = currentPinyin;
+        wrongOptions = [];
+        const usedNormalized = new Set([normalizePinyinForChoice(currentPinyin)]);
+        let safety = 0;
+        while (wrongOptions.length < 3 && safety < 500) {
+            safety++;
+            const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+            if (random.char === currentQuestion.char) continue;
+            const randomPinyin = random.pinyin.split('/')[0].trim();
+            const normalizedRandom = normalizePinyinForChoice(randomPinyin);
+            if (usedNormalized.has(normalizedRandom)) continue;
+            wrongOptions.push(randomPinyin);
+            usedNormalized.add(normalizedRandom);
+        }
+        allOptions = [...wrongOptions, correctAnswer];
+    } else {
+        correctAnswer = currentQuestion.char;
+        wrongOptions = [];
+        while (wrongOptions.length < 3) {
+            const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+            if (random.char !== currentQuestion.char && !wrongOptions.includes(random.char)) {
+                wrongOptions.push(random.char);
+            }
+        }
+        allOptions = [...wrongOptions, correctAnswer];
+    }
+
+    allOptions.sort(() => Math.random() - 0.5);
+
+    const isCharOptions = (dir === 'meaning-to-char' || dir === 'pinyin-to-char');
+
+    allOptions.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = isCharOptions
+            ? 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-3xl'
+            : 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition';
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.onclick = () => checkBlendAnswer(option);
+        options.appendChild(btn);
+    });
+
+    fuzzyInput.oninput = () => {
+        if (answered && lastAnswerCorrect) {
+            nextAnswerBuffer = fuzzyInput.value;
+        } else {
+            nextAnswerBuffer = '';
+        }
+
+        const input = fuzzyInput.value.trim().toLowerCase();
+        if (!input) {
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+            return;
+        }
+
+        let bestMatch = null;
+        let bestScore = -1;
+
+        allOptions.forEach((option, index) => {
+            const score = fuzzyMatch(input, option.toLowerCase());
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = index;
+            }
+        });
+
+        document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
+            if (index === bestMatch) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-blue-200', 'border-blue-500');
+            } else {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            }
+        });
+    };
+
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === ' ' && (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') && window.currentAudioPlayFunc) {
+            e.preventDefault();
+            window.currentAudioPlayFunc();
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            if (selected) {
+                selected.click();
+            }
+        }
+    };
+
+    fuzzyInput.focus();
+}
+
+function checkBlendAnswer(answer) {
+    if (answered) return;
+    if (!answer) return;
+
+    const isFirstAttempt = !questionAttemptRecorded;
+    if (isFirstAttempt) {
+        total++;
+        questionAttemptRecorded = true;
+    }
+
+    const dir = blendDirection;
+    let correct = false;
+
+    if (dir === 'char-to-meaning' || dir === 'audio-to-meaning') {
+        correct = answer === currentQuestion.meaning;
+    } else if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin') {
+        const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+        const normalizedAnswer = normalizePinyinForChoice(answer);
+        correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
+    } else {
+        correct = answer === currentQuestion.char;
+    }
+
+    if (dir !== 'audio-to-meaning' && dir !== 'audio-to-pinyin') {
+        const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+        if (window.playPinyinAudio) {
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        }
+    }
+
+    lastAnswerCorrect = correct;
+
+    if (correct) {
+        blendPreviousDirection = blendDirection;
+        previousQuestion = currentQuestion;
+        previousQuestionResult = 'correct';
+        threeColumnInlineFeedback = null;
+
+        playCorrectSound();
+        if (isFirstAttempt) {
+            score++;
+            markSchedulerOutcome(true);
+        }
+
+        updateStats();
+
+        if (upcomingQuestion) {
+            currentQuestion = upcomingQuestion;
+            window.currentQuestion = currentQuestion;
+            upcomingQuestion = null;
+        } else {
+            currentQuestion = selectNextQuestion();
+            window.currentQuestion = currentQuestion;
+        }
+        notifyChatQuestionChanged();
+
+        markSchedulerServed(currentQuestion);
+        updateCurrentWordConfidence();
+
+        if (fuzzyInput) fuzzyInput.value = '';
+
+        answered = false;
+        questionAttemptRecorded = false;
+        pickBlendDirection();
+        renderBlendLayout();
+        generateBlendOptions();
+        feedback.textContent = '';
+        hint.textContent = '';
+
+        if (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') {
+            if (audioSection) audioSection.classList.remove('hidden');
+            setupAudioMode({ focusAnswer: false });
+            if (fuzzyInput) setTimeout(() => fuzzyInput.focus(), 50);
+        } else {
+            if (audioSection) audioSection.classList.add('hidden');
+        }
+        return;
+    }
+
+    playWrongSound();
+    if (isFirstAttempt) {
+        markSchedulerOutcome(false);
+    }
+
+    threeColumnInlineFeedback = {
+        message: `✗ Correct:\n${getBlendCorrectionText(currentQuestion, dir)}`,
+        type: 'incorrect'
+    };
+
+    updateStats();
+
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+        setTimeout(() => fuzzyInput.focus(), 0);
+    }
+
+    renderBlendLayout();
+    generateBlendOptions();
+    feedback.textContent = '';
+    hint.textContent = '';
+}
+
 function checkMultipleChoice(answer) {
     if (answered) return;
 
@@ -7015,7 +7429,7 @@ function checkMultipleChoice(answer) {
         const normalizedAnswer = normalizePinyinForChoice(answer);
         correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
         correctAnswer = pinyinOptions.join(' / ');
-    } else if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
+    } else if (mode === 'char-to-meaning') {
         correct = answer === currentQuestion.meaning;
         correctAnswer = currentQuestion.meaning;
     } else if (mode === 'pinyin-to-char' || mode === 'meaning-to-char') {
@@ -7032,7 +7446,7 @@ function checkMultipleChoice(answer) {
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         lastAnswerCorrect = true;
         markSchedulerOutcome(true);
-        if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
+        if (mode === 'char-to-meaning') {
             renderMeaningHint(currentQuestion, 'correct');
         } else {
             hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
@@ -7049,11 +7463,10 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        // Instant transition for audio-to-meaning, tighter delay for others
-        scheduleNextQuestion(mode === 'audio-to-meaning' ? 0 : 600);
+        scheduleNextQuestion(600);
     } else {
         playWrongSound();
-        if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
+        if (mode === 'char-to-meaning') {
             feedback.innerHTML = formatMeaningCorrectionHtml(currentQuestion);
             feedback.className = 'text-center my-4';
         } else {
@@ -7062,7 +7475,7 @@ function checkMultipleChoice(answer) {
         }
         lastAnswerCorrect = false;
         markSchedulerOutcome(false);
-        if (mode === 'char-to-meaning' || mode === 'audio-to-meaning') {
+        if (mode === 'char-to-meaning') {
             renderMeaningHint(currentQuestion, 'incorrect');
         } else {
             hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
@@ -7079,8 +7492,7 @@ function checkMultipleChoice(answer) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
 
-        // Shorter delay for audio-to-meaning wrong answers
-        scheduleNextQuestion(mode === 'audio-to-meaning' ? 500 : 1200);
+        scheduleNextQuestion(1200);
     }
 
     updateStats();
@@ -8328,7 +8740,12 @@ function renderThreeColumnMeaningLayout() {
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
                 <div class="column-focus-ring">
-                    <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
+                    ${mode === 'audio-to-meaning' ? `
+                        <div style="font-size: 64px; margin-bottom: 8px; cursor: pointer;" onclick="if(window.currentAudioPlayFunc) window.currentAudioPlayFunc();">🔊</div>
+                        <div style="font-size: 14px; color: #64748b;">Listen and choose meaning</div>
+                    ` : `
+                        <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
+                    `}
                 </div>
                 ${inlineFeedback ? `
                     <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
@@ -8340,7 +8757,11 @@ function renderThreeColumnMeaningLayout() {
                 <div class="column-label">Upcoming</div>
                 ${upcomingQuestion ? `
                     <div class="column-ondeck">
-                        <div class="column-char">${upcomingChar}</div>
+                        ${mode === 'audio-to-meaning' ? `
+                            <div style="font-size: 32px; color: #d1d5db;">🔊</div>
+                        ` : `
+                            <div class="column-char">${upcomingChar}</div>
+                        `}
                         <div class="ondeck-note">On deck</div>
                     </div>
                 ` : `
@@ -8459,14 +8880,15 @@ function displayQuestion() {
         // Re-setup audio mode for the new question
         setupAudioMode({ focusAnswer: true });
     } else if (mode === 'audio-to-meaning') {
-        renderThreeColumnTranslationLayout(true);
-        if (typeMode) typeMode.style.display = 'block';
+        renderThreeColumnMeaningLayout();
+        generateFuzzyMeaningOptions();
+        if (fuzzyMode) fuzzyMode.style.display = 'block';
         if (audioSection) audioSection.classList.remove('hidden');
-        if (answerInput) {
-            answerInput.placeholder = 'Type your translation...';
-            setTimeout(() => answerInput.focus(), 50);
+        setupAudioMode({ focusAnswer: false });
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+            setTimeout(() => fuzzyInput.focus(), 50);
         }
-        setupAudioMode({ focusAnswer: true });
     } else if (mode === 'dictation-chat') {
         renderDictationChatQuestion({ reset: false });
     } else if (mode === 'text-to-meaning') {
@@ -8476,6 +8898,18 @@ function displayQuestion() {
             answerInput.placeholder = 'Type your translation...';
             setTimeout(() => answerInput.focus(), 50);
         }
+    } else if (mode === 'blend') {
+        if (!blendDirection) pickBlendDirection();
+        renderBlendLayout();
+        generateBlendOptions();
+        if (fuzzyMode) fuzzyMode.style.display = 'block';
+        if (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') {
+            if (audioSection) audioSection.classList.remove('hidden');
+            setupAudioMode({ focusAnswer: false });
+            if (fuzzyInput) setTimeout(() => fuzzyInput.focus(), 50);
+        } else {
+            if (audioSection) audioSection.classList.add('hidden');
+        }
     } else {
         // Fallback: for other modes, just call generateQuestion
         generateQuestion();
@@ -8483,7 +8917,7 @@ function displayQuestion() {
 }
 
 // ============================================================
-// Three-Column Translation Layout (audio-to-meaning, text-to-meaning)
+// Three-Column Translation Layout (text-to-meaning)
 // ============================================================
 
 function getTranslationFontSize(text) {
@@ -10105,7 +10539,13 @@ function submitDrawing() {
         return;
     }
 
-    // Play submit sound
+    const isDrawCharMode = mode === 'draw-char';
+    if (isDrawCharMode && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
+        feedback.textContent = '✗ Please select a meaning!';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
+        return;
+    }
+
     playSubmitSound();
 
     const expectedChar = (mode === 'draw-missing-component' && currentMissingComponent)
@@ -10114,7 +10554,9 @@ function submitDrawing() {
 
     const normalizedRecognized = normalizeDrawAnswer(recognized);
     const normalizedTarget = normalizeDrawAnswer(expectedChar);
-    const correct = normalizedRecognized === normalizedTarget;
+    const drawCorrect = normalizedRecognized === normalizedTarget;
+    const meaningCorrect = !isDrawCharMode || !drawMeaningChoices.length || drawSelectedMeaning === currentQuestion.meaning;
+    const correct = drawCorrect && meaningCorrect;
     const isFirstAttempt = !answered;
 
     if (isFirstAttempt) {
@@ -10124,6 +10566,10 @@ function submitDrawing() {
             score++;
         }
         markSchedulerOutcome(correct);
+    }
+
+    if (isDrawCharMode && drawMeaningChoices.length > 0) {
+        showDrawMeaningResult('drawMeaningChoicesInline', correct);
     }
 
     if (correct) {
@@ -10137,7 +10583,6 @@ function submitDrawing() {
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
 
         if (mode === 'draw-missing-component') {
-            // Record previous question for left column
             componentPreviousQuestion = {
                 question: currentQuestion,
                 decomposition: currentDecomposition
@@ -10145,7 +10590,6 @@ function submitDrawing() {
             componentPreviousResult = 'correct';
             componentInlineFeedback = null;
 
-            // Advance to next component question
             if (componentUpcomingQuestion) {
                 currentQuestion = componentUpcomingQuestion.question;
                 window.currentQuestion = currentQuestion;
@@ -10181,7 +10625,16 @@ function submitDrawing() {
             ? `Missing: ${expectedChar}`
             : `${currentQuestion.char}`;
         const recognizedWithPinyin = formatRecognizedText(recognized);
-        feedback.textContent = `✗ Wrong! You wrote: ${recognizedWithPinyin}, Correct: ${label} (${currentQuestion.pinyin})${tryAgainText}`;
+        let wrongMsg = `✗ Wrong!`;
+        if (!drawCorrect) {
+            wrongMsg += ` You wrote: ${recognizedWithPinyin}, Correct: ${label} (${currentQuestion.pinyin})`;
+        }
+        if (isDrawCharMode && !meaningCorrect) {
+            wrongMsg += drawCorrect ? ` Wrong meaning selected.` : ` Also wrong meaning.`;
+            wrongMsg += ` Correct: ${currentQuestion.meaning}`;
+        }
+        wrongMsg += tryAgainText;
+        feedback.textContent = wrongMsg;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
 
         if (mode === 'draw-missing-component') {
@@ -10207,6 +10660,66 @@ function submitDrawing() {
     } else if (!correct) {
         hideDrawNextButton();
     }
+}
+
+function generateDrawMeaningChoices() {
+    if (!currentQuestion || !currentQuestion.meaning) {
+        drawMeaningChoices = [];
+        drawSelectedMeaning = null;
+        return;
+    }
+    const correctMeaning = currentQuestion.meaning;
+    const pool = Array.isArray(quizCharacters) ? quizCharacters : [];
+    const distractors = pool
+        .filter(q => q && q.meaning && q.meaning !== correctMeaning && q.char !== currentQuestion.char)
+        .map(q => q.meaning);
+    const uniqueDistractors = [...new Set(distractors)];
+    const shuffled = uniqueDistractors.sort(() => Math.random() - 0.5);
+    const picked = shuffled.slice(0, 3);
+    drawMeaningChoices = [correctMeaning, ...picked].sort(() => Math.random() - 0.5);
+    drawSelectedMeaning = null;
+}
+
+function renderDrawMeaningChoices(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!drawMeaningChoices.length) {
+        container.innerHTML = '';
+        return;
+    }
+    container.innerHTML = drawMeaningChoices.map((m, i) => {
+        const selected = drawSelectedMeaning === m;
+        const selectedClass = selected
+            ? 'bg-blue-500 text-white border-blue-600'
+            : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600';
+        return `<button type="button" data-meaning-index="${i}" class="draw-meaning-btn px-4 py-2 rounded-xl border font-semibold transition text-sm ${selectedClass}">${escapeHtml(m)}</button>`;
+    }).join('');
+    container.querySelectorAll('.draw-meaning-btn').forEach(btn => {
+        btn.onclick = () => {
+            const idx = parseInt(btn.dataset.meaningIndex, 10);
+            drawSelectedMeaning = drawMeaningChoices[idx];
+            renderDrawMeaningChoices(containerId);
+        };
+    });
+}
+
+function showDrawMeaningResult(containerId, correct) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const correctMeaning = currentQuestion?.meaning;
+    container.querySelectorAll('.draw-meaning-btn').forEach(btn => {
+        const idx = parseInt(btn.dataset.meaningIndex, 10);
+        const m = drawMeaningChoices[idx];
+        btn.disabled = true;
+        btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-600', 'bg-gray-50', 'text-gray-700', 'border-gray-300', 'hover:border-blue-400', 'hover:text-blue-600');
+        if (m === correctMeaning) {
+            btn.classList.add('bg-green-500', 'text-white', 'border-green-600');
+        } else if (m === drawSelectedMeaning && m !== correctMeaning) {
+            btn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+        } else {
+            btn.classList.add('bg-gray-100', 'text-gray-400', 'border-gray-200');
+        }
+    });
 }
 
 function normalizeDrawAnswer(text = '') {
@@ -10450,6 +10963,11 @@ function revealDrawingAnswer() {
 
     updateStats();
 
+    if (mode === 'draw-char' && drawMeaningChoices.length > 0) {
+        drawSelectedMeaning = null;
+        showDrawMeaningResult('drawMeaningChoicesInline', false);
+    }
+
     // Show the next button after first reveal
     if (isFirstReveal) {
         showDrawNextButton();
@@ -10497,8 +11015,9 @@ function enterFullscreenDrawing() {
         prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
     }
 
-    // Update confidence display
     updateFullscreenConfidence();
+
+    renderDrawMeaningChoices('fullscreenMeaningChoices');
 
     // Initialize fullscreen canvas
     fullscreenCanvas = document.getElementById('fullscreenDrawCanvas');
@@ -10922,7 +11441,13 @@ function submitFullscreenDrawing() {
         return;
     }
 
-    // Play submit sound
+    const isDrawCharMode = mode === 'draw-char';
+    if (isDrawCharMode && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
+        const prompt = document.getElementById('fullscreenPrompt');
+        if (prompt) prompt.innerHTML = `<span class="text-red-600">Please select a meaning!</span>`;
+        return;
+    }
+
     playSubmitSound();
 
     if (isFirstAttempt) {
@@ -10932,9 +11457,10 @@ function submitFullscreenDrawing() {
 
     const normalizedRecognized = normalizeDrawAnswer(recognized);
     const normalizedTarget = normalizeDrawAnswer(currentQuestion.char);
-    const correct = normalizedRecognized === normalizedTarget;
+    const drawCorrect = normalizedRecognized === normalizedTarget;
+    const meaningCorrect = !isDrawCharMode || !drawMeaningChoices.length || drawSelectedMeaning === currentQuestion.meaning;
+    const correct = drawCorrect && meaningCorrect;
 
-    // Play sounds and update score
     if (correct) {
         playCorrectSound();
         if (isFirstAttempt) {
@@ -10948,7 +11474,10 @@ function submitFullscreenDrawing() {
         markSchedulerOutcome(correct);
     }
 
-    // Show feedback in fullscreen
+    if (isDrawCharMode && drawMeaningChoices.length > 0) {
+        showDrawMeaningResult('fullscreenMeaningChoices', correct);
+    }
+
     const prompt = document.getElementById('fullscreenPrompt');
     const meaningText = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
     if (prompt) {
@@ -10956,13 +11485,20 @@ function submitFullscreenDrawing() {
             const baseHtml = `<span class="text-green-600">✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
             renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
         } else {
-            const recognizedWithPinyin = formatRecognizedText(recognized, { html: true });
-            const baseHtml = `<span class="text-red-600">✗ Wrong! You wrote: ${recognizedWithPinyin}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}</span>`;
-            renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
+            let wrongHtml = `<span class="text-red-600">✗ Wrong!`;
+            if (!drawCorrect) {
+                const recognizedWithPinyin = formatRecognizedText(recognized, { html: true });
+                wrongHtml += ` You wrote: ${recognizedWithPinyin}, Correct: ${currentQuestion.char} (${currentQuestion.pinyin})`;
+            }
+            if (isDrawCharMode && !meaningCorrect) {
+                wrongHtml += drawCorrect ? ` Wrong meaning.` : ` Also wrong meaning.`;
+                wrongHtml += ` Correct: ${escapeHtml(currentQuestion.meaning)}`;
+            }
+            wrongHtml += `</span>`;
+            renderPerCharMeaningInline(currentQuestion.char, prompt, wrongHtml);
         }
     }
 
-    // Also update main feedback for when user exits fullscreen
     if (correct) {
         feedback.textContent = `✓ Correct! ${currentQuestion.char} (${currentQuestion.pinyin})${meaningText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
@@ -10975,17 +11511,15 @@ function submitFullscreenDrawing() {
     updateStats();
 
     if (correct) {
-        // Stay in fullscreen and auto-advance after 1.5 seconds
         setTimeout(() => {
             clearFullscreenCanvas();
             generateQuestion();
-            // Update prompt for new question
             const prompt = document.getElementById('fullscreenPrompt');
             if (prompt && currentQuestion) {
                 prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
             }
+            renderDrawMeaningChoices('fullscreenMeaningChoices');
 
-            // Play character pronunciation audio for new question
             if (currentQuestion && currentQuestion.pinyin) {
                 const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
                 playPinyinAudio(firstPinyin, currentQuestion.char);
@@ -11009,16 +11543,20 @@ function showFullscreenAnswer() {
         renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
     }
 
+    if (mode === 'draw-char' && drawMeaningChoices.length > 0) {
+        drawSelectedMeaning = null;
+        showDrawMeaningResult('fullscreenMeaningChoices', false);
+        showDrawMeaningResult('drawMeaningChoicesInline', false);
+    }
+
     if (!answered) {
         answered = true;
         total++;
-        // Score not incremented = counts as wrong
 
         markSchedulerOutcome(false);
 
         updateStats();
 
-        // Also update main feedback - show as wrong (red)
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
         feedback.textContent = `✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
@@ -11029,16 +11567,14 @@ function nextFullscreenQuestion() {
     clearFullscreenCanvas();
     generateQuestion();
 
-    // Update prompt for new question
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
         prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
     }
 
-    // Update confidence display
     updateFullscreenConfidence();
+    renderDrawMeaningChoices('fullscreenMeaningChoices');
 
-    // Play character pronunciation audio
     if (currentQuestion && currentQuestion.pinyin) {
         const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
         playPinyinAudio(firstPinyin, currentQuestion.char);
@@ -11411,6 +11947,10 @@ function ensureDrawModeLayout() {
                     </div>
                 </div>
             </div>
+            <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.35em] text-gray-400 mb-3">Select Meaning</div>
+                <div id="drawMeaningChoicesInline" class="flex flex-wrap gap-2"></div>
+            </div>
             <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
                 <div class="flex flex-wrap gap-2">
                     <button id="undoBtn" type="button" class="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed transition">↶ Undo</button>
@@ -11476,6 +12016,14 @@ function ensureFullscreenDrawLayout() {
             <!-- Pinyin display near bottom -->
             <div class="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-none z-10">
                 <div id="fullscreenOcrPinyin" class="text-2xl font-semibold text-blue-600 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-gray-200"></div>
+            </div>
+
+            <!-- Right panel with meaning choices -->
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200 w-56">
+                    <div class="text-xs uppercase tracking-[0.25em] text-gray-400 mb-3">Select Meaning</div>
+                    <div id="fullscreenMeaningChoices" class="flex flex-col gap-2"></div>
+                </div>
             </div>
 
             <!-- Bottom toolbar -->
@@ -12675,6 +13223,7 @@ function getCurrentPromptText() {
         case 'audio-to-pinyin':
         case 'audio-to-meaning':
         case 'dictation-chat':
+        case 'blend':
             return asString(question.char) || firstFromList(question.pinyin);
         default:
             break;
@@ -12712,7 +13261,7 @@ function fallbackCopy(text) {
 }
 
 function getActiveInputField() {
-    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'audio-to-meaning' || mode === 'blend') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
         return fuzzyInput;
     }
     if (answerInput && isElementReallyVisible(answerInput)) {
@@ -12984,6 +13533,7 @@ function initQuizCommandPalette() {
         { name: 'Pinyin → Char', mode: 'pinyin-to-char', type: 'mode' },
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
         { name: 'Char → Meaning (Fuzzy)', mode: 'char-to-meaning-type', type: 'mode' },
+        { name: 'Blend (Mixed Directions)', mode: 'blend', type: 'mode' },
         { name: 'Meaning → Char', mode: 'meaning-to-char', type: 'mode' },
         { name: 'Stroke Order', mode: 'stroke-order', type: 'mode' },
         { name: 'Handwriting', mode: 'handwriting', type: 'mode' },
@@ -13725,9 +14275,7 @@ function initQuizEventListeners() {
             } else {
                 playCurrentDictationPart();
             }
-        } else if (e.key === ' ' && mode === 'audio-to-pinyin' && audioSection) {
-            // Space replays audio in audio-to-pinyin mode only
-            // audio-to-meaning needs spaces for typing English sentences
+        } else if (e.key === ' ' && (mode === 'audio-to-pinyin' || mode === 'audio-to-meaning') && audioSection) {
             e.preventDefault();
             if (window.currentAudioPlayFunc) {
                 window.currentAudioPlayFunc();
