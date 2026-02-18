@@ -12255,7 +12255,7 @@ function ensureFullscreenDrawLayout() {
             </div>
 
             <!-- Right panel with meaning choices -->
-            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+            <div class="absolute right-4 top-20 pointer-events-none z-10">
                 <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200 w-56">
                     <div class="text-xs uppercase tracking-[0.25em] text-gray-400 mb-3">Select Meaning</div>
                     <div id="fullscreenMeaningChoices" class="flex flex-col gap-2"></div>
