@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>小皇帝 Vocab: 家里的小皇帝 - Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/lesson-layout.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/etymology-loader.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <script src="js/engine/ai-service.js"></script>
+    <script src="js/engine/chat.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="data/lessons/xiao-huangdi.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-sync.js"></script>
+    <script src="js/eeg-bridge.js"></script>
+    <script src="js/eeg-neuro.js"></script>
+    <script src="js/eeg-decision.js"></script>
+</head>
+<body class="experimental-layout">
+    <a href="home.html" class="home-btn">← Home</a>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Quiz Modes</h2>
+            <p class="mode-desc">Choose a mode, then answer in the panel to the right.</p>
+            <nav>
+                <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
+                <button class="mode-btn" data-mode="char-to-pinyin">Char → Pinyin</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
+                <button class="mode-btn" data-mode="char-to-pinyin-tones-mc">Char → Pinyin → Tones (MC)</button>
+                <button class="mode-btn" data-mode="char-to-tones">Char → Tones</button>
+                <button class="mode-btn" data-mode="audio-to-pinyin">Audio → Pinyin</button>
+                <button class="mode-btn" data-mode="pinyin-to-char">Pinyin → Char</button>
+                <button class="mode-btn" data-mode="audio-to-meaning">Audio → Meaning</button>
+                <button class="mode-btn" data-mode="meaning-to-char">Meaning → Char</button>
+                <button class="mode-btn" data-mode="blend">🔀 Blend</button>
+                <button class="mode-btn" data-mode="stroke-order">Stroke Order</button>
+                <button class="mode-btn" data-mode="handwriting">Handwriting</button>
+                <button class="mode-btn" data-mode="draw-char">Draw Character</button>
+                <button class="mode-btn" data-mode="missing-component">Missing Component</button>
+                <button class="mode-btn" data-mode="char-building">Build Character</button>
+                <button class="mode-btn" data-mode="study">Study Mode</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>小皇帝 · 家里的小皇帝 · The Little Emperor at Home</h1>
+            </header>
+
+            <section class="quiz-display">
+                <div id="questionDisplay"></div>
+
+                <div id="upcomingCharacters" class="hidden" style="margin-top: 1rem;">
+                    <div class="preview-list" style="display: flex; justify-content: center; gap: 1rem; font-size: 2rem; color: #d1d5db;"></div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 0.5rem;">Upcoming</div>
+                </div>
+
+                <div id="hint" style="font-size: 1.5rem; font-weight: 600; margin: 1rem 0;"></div>
+
+                <div id="audioSection" class="hidden" style="margin: 1rem 0;">
+                    <button id="playAudioBtn">🔊 Play Sound</button>
+                </div>
+            </section>
+
+            <section class="input-section">
+                <div id="typeMode">
+                    <input type="text" id="answerInput" placeholder="Type your answer...">
+                    <button id="checkBtn" style="display: none;">Check Answer</button>
+                </div>
+
+                <div id="choiceMode">
+                    <div id="options" class="choice-grid"></div>
+                </div>
+
+                <div id="fuzzyMode">
+                    <input type="text" id="fuzzyInput" placeholder="Type your answer...">
+                    <div id="fuzzyOptions" class="choice-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+
+                <div id="strokeOrderMode">
+                    <div id="strokeOrderWriter" style="display: flex; justify-content: center;"></div>
+                </div>
+
+                <div id="handwritingMode">
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Practice writing on paper, then reveal the answer</p>
+                    <div id="handwritingWriter" style="display: flex; justify-content: center; gap: 10px;"></div>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="hwShowBtn" style="padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Show Answer</button>
+                        <button id="hwNextBtn" style="padding: 0.75rem 2rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Next</button>
+                    </div>
+                    <p id="hwSpaceHint" class="text-center text-sm text-gray-500 mt-2">Space: show → tap ✓ correct · hold ✗ wrong</p>
+                </div>
+
+                <div id="drawCharMode">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <div id="ocrResult" style="font-size: 3.5rem; min-height: 5rem; color: #3b82f6; font-weight: 700;"></div>
+                        <div style="font-size: 0.875rem; color: #9ca3af;">Real-time recognition</div>
+                    </div>
+                    <canvas id="drawCanvas" style="display: block; margin: 0 auto; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: crosshair;" width="300" height="300"></canvas>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 1rem;">
+                        <button id="clearCanvasBtn" style="padding: 0.5rem 1.5rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Clear</button>
+                        <button id="submitDrawBtn" style="padding: 0.5rem 1.5rem; background: #22c55e; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Submit</button>
+                        <button id="fullscreenDrawBtn" style="padding: 0.5rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">Fullscreen</button>
+                    </div>
+                </div>
+
+                <div id="studyMode">
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study the vocabulary from 小皇帝 (The Little Emperor at Home).</div>
+                    <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="missingComponentMode" style="display: none;">
+                    <input type="text" id="componentInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="componentOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
+                </div>
+
+                <div id="charBuildingMode" style="display: none;">
+                    <input type="text" id="charBuildingInput" placeholder="Type component pinyin..." style="width: 100%; padding: 0.75rem 1rem; font-size: 1.25rem; border: 2px solid #d1d5db; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;">
+                    <div id="charBuildingOptions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;"></div>
+                </div>
+
+                <div id="feedback"></div>
+            </section>
+
+            <footer class="stats-bar" id="stats">
+                <div>Score: <span id="score">0</span>/<span id="total">0</span></div>
+                <div>Accuracy: <span id="accuracy">0%</span></div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const characters = window.__LESSON_DATASETS__['xiao-huangdi'].vocab.part1;
+
+        initQuiz(characters, {
+            enablePreviewQueue: true,
+            previewQueueSize: 1,
+            previewElementId: 'upcomingCharacters',
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning', 'blend']
+        });
+    </script>
+</body>
+</html>
