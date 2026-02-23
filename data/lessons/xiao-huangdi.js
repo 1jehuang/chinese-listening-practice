@@ -1,7 +1,11 @@
 window.__LESSON_DATASETS__ = window.__LESSON_DATASETS__ || {};
 window.__LESSON_DATASETS__['xiao-huangdi'] = {
   vocab: {
+    part0: [
+      // Reading text (no vocab) - just the story
+    ],
     part1: [
+      // PDF page 2: 皇帝 → 芭蕾舞
       { char: '皇帝', pinyin: 'huángdì', meaning: 'emperor' },
       { char: '肥胖', pinyin: 'féipàng', meaning: 'fat' },
       { char: '成年人', pinyin: 'chéngnián rén', meaning: 'adult, grown-up' },
@@ -29,7 +33,10 @@ window.__LESSON_DATASETS__['xiao-huangdi'] = {
       { char: '情况', pinyin: 'qíngkuàng', meaning: 'situation; condition' },
       { char: '钢琴', pinyin: 'gāngqín', meaning: 'piano' },
       { char: '小提琴', pinyin: 'xiǎotíqín', meaning: 'violin' },
-      { char: '芭蕾舞', pinyin: 'bāléiwǔ', meaning: 'ballet' },
+      { char: '芭蕾舞', pinyin: 'bāléiwǔ', meaning: 'ballet' }
+    ],
+    part2: [
+      // PDF page 3: 游泳 → 日子
       { char: '游泳', pinyin: 'yóuyǒng', meaning: 'to swim; swimming' },
       { char: '打网球', pinyin: 'dǎ wǎngqiú', meaning: 'to play tennis' },
       { char: '恨不得', pinyin: 'hènbudé', meaning: 'itching to; how one wishes one could' },
