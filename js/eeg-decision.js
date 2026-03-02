@@ -9,8 +9,19 @@
     'use strict';
 
     var PANEL_ID = 'eeg-decision-panel';
+    var STORAGE_KEY = 'decision_panel_visible';
     var panelEl = null;
     var lastData = null;
+
+    function isEnabled() {
+        try { return localStorage.getItem(STORAGE_KEY) === 'true'; }
+        catch (e) { return false; }
+    }
+
+    function setEnabled(v) {
+        try { localStorage.setItem(STORAGE_KEY, v ? 'true' : 'false'); }
+        catch (e) { /* ignore */ }
+    }
 
     // ── Score decomposition (mirrors getFeedUCBScore) ──────────────────
 
@@ -232,6 +243,7 @@
 
     function render() {
         if (!lastData || !lastData.chosenData) return;
+        if (!isEnabled()) { hide(); return; }
         show();
 
         var d = lastData.chosenData;
@@ -329,16 +341,22 @@
         });
     }
 
+    function toggle() {
+        var nowEnabled = !isEnabled();
+        setEnabled(nowEnabled);
+        if (nowEnabled) {
+            ensurePanel();
+            show();
+            if (lastData) render();
+        } else {
+            hide();
+        }
+    }
+
     document.addEventListener('keydown', function (e) {
         if (e.ctrlKey && e.shiftKey && e.key === 'D') {
             e.preventDefault();
-            if (!panelEl || panelEl.style.display === 'none') {
-                ensurePanel();
-                show();
-                if (lastData) render();
-            } else {
-                hide();
-            }
+            toggle();
         }
     });
 
@@ -351,8 +369,10 @@
     window.eegDecision = {
         capture: capture,
         getLastDecision: function () { return lastData; },
-        show: function () { show(); if (lastData) render(); },
-        hide: hide,
+        show: function () { setEnabled(true); show(); if (lastData) render(); },
+        hide: function () { setEnabled(false); hide(); },
+        toggle: toggle,
+        isEnabled: isEnabled,
         decompose: decompose,
     };
 

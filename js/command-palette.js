@@ -985,6 +985,28 @@ function initCommandPalette(config = []) {
                 scope: 'Global'
             },
             {
+                name: 'Show "Why This Card?" Panel',
+                type: 'action',
+                description: 'Show the decision panel that explains why each card was chosen in Feed mode',
+                keywords: 'why this card decision panel show enable feed bandit score',
+                action: () => {
+                    if (window.eegDecision) window.eegDecision.show();
+                },
+                available: () => window.eegDecision && !window.eegDecision.isEnabled(),
+                scope: 'Global'
+            },
+            {
+                name: 'Hide "Why This Card?" Panel',
+                type: 'action',
+                description: 'Hide the decision panel that explains card selection',
+                keywords: 'why this card decision panel hide disable feed bandit score',
+                action: () => {
+                    if (window.eegDecision) window.eegDecision.hide();
+                },
+                available: () => window.eegDecision && window.eegDecision.isEnabled(),
+                scope: 'Global'
+            },
+            {
                 name: 'Set Groq API Key',
                 type: 'action',
                 description: 'Configure your Groq API key for Whisper speech recognition',
