@@ -13963,6 +13963,21 @@ function initQuizCommandPalette() {
         });
 
         actions.push({
+            name: 'Reset Quiz Session',
+            type: 'action',
+            description: 'Reset score to 0 and start a fresh question (keeps saved stats)',
+            keywords: 'reset quiz session score zero restart fresh start over',
+            action: () => {
+                score = 0;
+                total = 0;
+                updateStats();
+                resetModeTransientState();
+                generateQuestion();
+            },
+            scope: 'This page only'
+        });
+
+        actions.push({
             name: 'Reset Current Mode Stats',
             type: 'action',
             description: `Clear confidence data for "${getCurrentSkillKey()}" mode on this page`,
@@ -13979,8 +13994,11 @@ function initQuizCommandPalette() {
                     }
                 }
                 saveSchedulerStats();
+                score = 0;
+                total = 0;
+                updateStats();
                 if (typeof renderConfidenceList === 'function') renderConfidenceList();
-                alert(`Reset ${count} "${skillKey}" entries.`);
+                generateQuestion();
             },
             available: () => Object.keys(schedulerStats).length > 0
         });
@@ -13996,8 +14014,11 @@ function initQuizCommandPalette() {
                 const count = Object.keys(schedulerStats).length;
                 schedulerStats = {};
                 saveSchedulerStats();
+                score = 0;
+                total = 0;
+                updateStats();
                 if (typeof renderConfidenceList === 'function') renderConfidenceList();
-                alert(`Reset ${count} entries for this lesson.`);
+                generateQuestion();
             },
             available: () => Object.keys(schedulerStats).length > 0
         });
@@ -14165,7 +14186,11 @@ function initQuizCommandPalette() {
             keywords: 'feed reset clear mab bandit hand',
             action: () => {
                 resetFeedState();
+                score = 0;
+                total = 0;
+                updateStats();
                 prepareFeedForNextQuestion();
+                generateQuestion();
             },
             available: () => schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR || schedulerMode === SCHEDULER_MODES.FEED_EEG,
             scope: 'Feed mode only'
