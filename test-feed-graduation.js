@@ -219,6 +219,39 @@ assert(feedGradSet.has(feedWord), `${feedWord} graduated in regular feed mode`);
 assert(!feedHandAfter.includes(feedWord), `${feedWord} NOT in hand in regular feed mode`);
 
 // ============================================================
+// Test 7: Words with BKT mastery from previous sessions graduate immediately
+// ============================================================
+console.log('\n=== Test 7: Pre-mastered words graduate without feed attempts ===\n');
+
+resetAndInit(vocab);
+ctx.setSchedulerMode('feed-sr');
+
+// Simulate BKT mastery from a previous session (set BKT directly via scheduler stats)
+// This mimics what happens when a user already mastered words in another mode
+const preMasteredWord = vocab[0].char;
+vm.runInContext(`
+    (function() {
+        var stats = getSchedulerStats('${preMasteredWord}');
+        stats.served = 10;
+        stats.correct = 10;
+        stats.streak = 10;
+        stats.bktPLearned = 0.99;
+        saveSchedulerStats();
+    })();
+`, ctx);
+
+const preBkt = ctx.getBKTScore(preMasteredWord);
+assert(preBkt >= 0.85, `Pre-mastered BKT for ${preMasteredWord}: ${preBkt.toFixed(3)} (>= 0.85)`);
+
+// Ensure hand - the pre-mastered word should NOT be in hand
+ctx.ensureFeedHand();
+const handWithPremastered = [...ctx.__getFeedModeState().hand];
+assert(!handWithPremastered.includes(preMasteredWord), `Pre-mastered ${preMasteredWord} is NOT in hand (no feed attempts needed)`);
+
+const gradSetPre = ctx.getFeedGraduatedSet();
+assert(gradSetPre.has(preMasteredWord), `Pre-mastered ${preMasteredWord} IS in graduated set`);
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n' + '='.repeat(50));

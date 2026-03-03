@@ -4,7 +4,7 @@
       "command": "npx",
       "args": ["-y", "canvas-mcp-server"],
       "env": {
-        "CANVAS_API_TOKEN": "10~Gz3RUGy76WNfNNymXmRQh63VeW4nvt9C7Va89Hk2ftZryVa8WX2WneDufRt88W27",
+        "CANVAS_API_TOKEN": "10~GYh6VBm2v3tCDMnhPLD3tyJJzrACD22mcBFWRMXtryfrxVkhAaW4W8Xv4vemvhYT",
         "CANVAS_DOMAIN": "canvas.uw.edu"
       }
     }

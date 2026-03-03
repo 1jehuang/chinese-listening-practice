@@ -2867,16 +2867,16 @@ function getFeedGraduatedSet() {
 
     for (const item of fullPool) {
         const st = feedModeState.seen[item.char];
-        if (!st || !st.attempts) continue;
 
         if (useSRGraduation) {
-            if (st.attempts >= FEED_SR_MIN_SESSION_ATTEMPTS && isConfidenceHighEnough(item.char)) {
-                const rp = getFeedRecallProbability(item.char);
+            if (isConfidenceHighEnough(item.char)) {
+                const rp = st ? getFeedRecallProbability(item.char) : null;
                 if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
                     graduated.add(item.char);
                 }
             }
         } else {
+            if (!st || !st.attempts) continue;
             if (st.attempts >= 2 && (st.streak || 0) >= FEED_STREAK_TO_REMOVE) {
                 const rp = getFeedRecallProbability(item.char);
                 if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
@@ -2959,15 +2959,13 @@ function ensureFeedHand() {
     // Remove cards from hand that have graduated
     feedModeState.hand = feedModeState.hand.filter(char => {
         const stats = feedModeState.seen[char];
-        if (!stats) return true; // keep if never seen (shouldn't happen)
-        const recallProb = getFeedRecallProbability(char);
-        const attempts = stats.attempts || 0;
+        const recallProb = stats ? getFeedRecallProbability(char) : null;
+        const attempts = stats ? (stats.attempts || 0) : 0;
 
         if (useSRGraduation) {
-            // Feed Graduate: graduate when confidence is high enough AND we've seen it this session
-            if (attempts < FEED_SR_MIN_SESSION_ATTEMPTS) return true; // keep until we've tested it
-            if (Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD) return true;
-            return !isConfidenceHighEnough(char);
+            if (!isConfidenceHighEnough(char)) return true;
+            if (attempts > 0 && Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD) return true;
+            return false;
         } else {
             // Regular Feed: graduate on streak
             if (attempts < 2) return true; // keep very fresh cards for quick early repeats
