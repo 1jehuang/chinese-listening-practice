@@ -421,7 +421,7 @@ function isFeedScheduler(m) {
     if (m === undefined) m = schedulerMode;
     return m === SCHEDULER_MODES.FEED || m === SCHEDULER_MODES.FEED_SR || m === SCHEDULER_MODES.FEED_EEG;
 }
-let schedulerMode = SCHEDULER_MODES.WEIGHTED;
+let schedulerMode = SCHEDULER_MODES.FEED_SR;
 let schedulerStats = {}; // per-char-per-skill data (persisted to localStorage)
 let schedulerStatsKey = ''; // localStorage key for schedulerStats
 const SCHEDULER_STATS_KEY_PREFIX = 'quiz_scheduler_stats_';
@@ -1751,14 +1751,14 @@ function loadSchedulerMode() {
         if (stored && Object.values(SCHEDULER_MODES).includes(stored)) {
             schedulerMode = stored;
         } else if (stored === 'fast-loop') {
-            // Legacy mode: map old Fast Loop to weighted scheduler
-            schedulerMode = SCHEDULER_MODES.WEIGHTED;
+            // Legacy mode: map old Fast Loop to Feed Graduate
+            schedulerMode = SCHEDULER_MODES.FEED_SR;
         } else {
-            schedulerMode = SCHEDULER_MODES.WEIGHTED;
+            schedulerMode = SCHEDULER_MODES.FEED_SR;
         }
     } catch (e) {
         console.warn('Failed to load scheduler mode', e);
-        schedulerMode = SCHEDULER_MODES.WEIGHTED;
+        schedulerMode = SCHEDULER_MODES.FEED_SR;
     }
 }
 
@@ -2860,6 +2860,34 @@ function getFeedExplorationRatio() {
     return seenCount / poolSize;
 }
 
+function getFeedGraduatedSet() {
+    const graduated = new Set();
+    const fullPool = Array.isArray(quizCharacters) ? quizCharacters : [];
+    const useSRGraduation = schedulerMode === SCHEDULER_MODES.FEED_SR || schedulerMode === SCHEDULER_MODES.FEED_EEG;
+
+    for (const item of fullPool) {
+        const st = feedModeState.seen[item.char];
+        if (!st || !st.attempts) continue;
+
+        if (useSRGraduation) {
+            if (st.attempts >= FEED_SR_MIN_SESSION_ATTEMPTS && isConfidenceHighEnough(item.char)) {
+                const rp = getFeedRecallProbability(item.char);
+                if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
+                    graduated.add(item.char);
+                }
+            }
+        } else {
+            if (st.attempts >= 2 && (st.streak || 0) >= FEED_STREAK_TO_REMOVE) {
+                const rp = getFeedRecallProbability(item.char);
+                if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
+                    graduated.add(item.char);
+                }
+            }
+        }
+    }
+    return graduated;
+}
+
 function getFeedTargetHandSize() {
     if (schedulerMode !== SCHEDULER_MODES.FEED && schedulerMode !== SCHEDULER_MODES.FEED_SR && schedulerMode !== SCHEDULER_MODES.FEED_EEG) {
         return FEED_DEFAULT_HAND_SIZE;
@@ -2871,9 +2899,11 @@ function getFeedTargetHandSize() {
     const explorationRatio = getFeedExplorationRatio();
     const seenCount = Object.keys(feedModeState.seen || {}).length;
 
-    // Count weak cards (cards we've seen but have low confidence on)
+    const graduatedSet = getFeedGraduatedSet();
+
     let weakCount = 0;
     for (const char of Object.keys(feedModeState.seen || {})) {
+        if (graduatedSet.has(char)) continue;
         const stats = feedModeState.seen[char];
         if (stats && stats.attempts > 0) {
             const confidence = stats.correct / stats.attempts;
@@ -2884,8 +2914,8 @@ function getFeedTargetHandSize() {
     }
 
     const unseenCount = poolSize - seenCount;
+    const nonGraduatedCount = poolSize - graduatedSet.size;
 
-    // Start small like 5-card sets: begin with 2 cards, expand as you learn
     let target;
     if (seenCount < 2) {
         target = 2;
@@ -2899,9 +2929,14 @@ function getFeedTargetHandSize() {
         target = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE, weakCount + 2));
     }
 
-    // Guarantee room for new cards when unseen cards remain
     if (unseenCount > 0 && target < FEED_MIN_HAND_SIZE + 1) {
         target = FEED_MIN_HAND_SIZE + 1;
+    }
+
+    if (nonGraduatedCount > 0) {
+        target = Math.min(target, nonGraduatedCount);
+    } else if (nonGraduatedCount === 0 && graduatedSet.size > 0) {
+        target = 0;
     }
 
     return target;
@@ -2919,7 +2954,7 @@ function ensureFeedHand() {
     }
 
     const targetSize = getFeedTargetHandSize();
-    const useSRGraduation = schedulerMode === SCHEDULER_MODES.FEED_SR;
+    const useSRGraduation = schedulerMode === SCHEDULER_MODES.FEED_SR || schedulerMode === SCHEDULER_MODES.FEED_EEG;
 
     // Remove cards from hand that have graduated
     feedModeState.hand = feedModeState.hand.filter(char => {
@@ -2979,44 +3014,15 @@ function ensureFeedHand() {
         }
     }
 
-    // Build set of graduated chars to deprioritize in fill loop
-    const graduatedChars = new Set();
-    if (useSRGraduation) {
-        for (const item of fullPool) {
-            if (feedModeState.hand.includes(item.char)) continue;
-            const st = feedModeState.seen[item.char];
-            if (!st || !st.attempts) continue;
-            if (st.attempts >= FEED_SR_MIN_SESSION_ATTEMPTS && isConfidenceHighEnough(item.char)) {
-                const rp = getFeedRecallProbability(item.char);
-                if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
-                    graduatedChars.add(item.char);
-                }
-            }
-        }
-    } else {
-        for (const item of fullPool) {
-            if (feedModeState.hand.includes(item.char)) continue;
-            const st = feedModeState.seen[item.char];
-            if (!st || st.attempts < 2) continue;
-            if ((st.streak || 0) >= FEED_STREAK_TO_REMOVE) {
-                const rp = getFeedRecallProbability(item.char);
-                if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
-                    graduatedChars.add(item.char);
-                }
-            }
-        }
-    }
+    const graduatedChars = getFeedGraduatedSet();
 
-    // Fill hand up to target size — prefer unseen/non-graduated cards
     while (feedModeState.hand.length < targetSize && feedModeState.hand.length < fullPool.length) {
         const candidates = fullPool.filter(item =>
             !feedModeState.hand.includes(item.char) && !graduatedChars.has(item.char)
         );
 
-        // Fall back to graduated cards only if no other candidates
-        const pool = candidates.length > 0 ? candidates
-            : fullPool.filter(item => !feedModeState.hand.includes(item.char));
-        if (!pool.length) break;
+        if (!candidates.length) break;
+        const pool = candidates;
 
         let bestChar = null;
         let bestScore = -Infinity;
@@ -3164,16 +3170,14 @@ function updateFeedStatusDisplay() {
     const explorationPct = poolSize > 0 ? Math.round((seenCount / poolSize) * 100) : 0;
     const threshold = getConfidenceMasteryThreshold();
 
-    // Count weak cards and mastered cards
+    const graduatedSet = getFeedGraduatedSet();
     let weakCount = 0;
-    let masteredCount = 0;
+    let masteredCount = graduatedSet.size;
     for (const char of seenKeys) {
+        if (graduatedSet.has(char)) continue;
         const stats = feedModeState.seen[char];
         if (stats && stats.attempts > 0 && (stats.correct / stats.attempts) < FEED_WEAK_THRESHOLD) {
             weakCount++;
-        }
-        if (isFeedSR && isConfidenceHighEnough(char)) {
-            masteredCount++;
         }
     }
 
@@ -3270,7 +3274,7 @@ function updateFeedStatusDisplay() {
             </button>
         ` : ''}
         ${detailCards ? `<div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2" style="max-height: 260px; overflow: auto;">${detailCards}</div>` : ''}
-        ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduation: ready ${masteredCount}/${seenCount || 1} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
+        ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduated: ${masteredCount}/${poolSize} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
     `;
 
     const toggleBtn = document.getElementById('feedDetailsToggle');
