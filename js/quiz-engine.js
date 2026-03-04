@@ -1912,7 +1912,10 @@ function getCurrentSkillKey(customMode = mode) {
     if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'blend') {
         return 'meaning';
     }
-    if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
+    if (m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type') {
+        return 'pinyin-mc';
+    }
+    if (m === 'char-to-pinyin' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
         return 'pinyin';
     }
     if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char' || m === 'draw-missing-component') {
@@ -13761,9 +13764,9 @@ function updateHandwritingSpaceHint(holding) {
 
 function initQuizCommandPalette() {
     const defaultModes = [
-        { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-type', type: 'mode' },
         { name: 'Char → Pinyin → Tones (MC)', mode: 'char-to-pinyin-tones-mc', type: 'mode' },
+        { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
