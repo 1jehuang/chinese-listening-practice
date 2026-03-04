@@ -75,6 +75,10 @@ const BLEND_DIRECTIONS = [
     'audio-to-meaning', 'audio-to-pinyin',
     'meaning-to-char', 'pinyin-to-char'
 ];
+const BLEND_MC_DIRECTIONS = [
+    'char-to-meaning', 'char-to-pinyin',
+    'meaning-to-char', 'pinyin-to-char'
+];
 
 // 3-column layout state for translation modes (text-to-meaning)
 let translationPreviousQuestion = null;
@@ -1909,7 +1913,13 @@ function getSchedulerModeDescription(mode = schedulerMode) {
 
 function getCurrentSkillKey(customMode = mode) {
     const m = customMode;
-    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'blend') {
+    if (m === 'blend' || m === 'blend-mc') {
+        const dir = blendDirection;
+        if (dir === 'char-to-meaning' || dir === 'audio-to-meaning' || dir === 'meaning-to-char') return 'meaning';
+        if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin' || dir === 'pinyin-to-char') return 'pinyin-mc';
+        return 'meaning';
+    }
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning' || m === 'dictation-chat') {
         return 'meaning';
     }
     if (m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type') {
@@ -5605,7 +5615,7 @@ function renderQuestionUiForChoiceModes() {
         return true;
     }
 
-    if (mode === 'blend' && fuzzyMode) {
+    if ((mode === 'blend' || mode === 'blend-mc') && fuzzyMode) {
         pickBlendDirection();
         renderBlendLayout();
         generateBlendOptions();
@@ -7283,7 +7293,8 @@ function checkFuzzyAnswer(answer) {
 // ============================================================
 
 function pickBlendDirection() {
-    blendDirection = BLEND_DIRECTIONS[Math.floor(Math.random() * BLEND_DIRECTIONS.length)];
+    const dirs = mode === 'blend-mc' ? BLEND_MC_DIRECTIONS : BLEND_DIRECTIONS;
+    blendDirection = dirs[Math.floor(Math.random() * dirs.length)];
 }
 
 function getBlendDirectionLabel(dir) {
@@ -9139,7 +9150,7 @@ function displayQuestion() {
             answerInput.placeholder = 'Type your translation...';
             setTimeout(() => answerInput.focus(), 50);
         }
-    } else if (mode === 'blend') {
+    } else if (mode === 'blend' || mode === 'blend-mc') {
         if (!blendDirection) pickBlendDirection();
         renderBlendLayout();
         generateBlendOptions();
@@ -13465,6 +13476,7 @@ function getCurrentPromptText() {
         case 'audio-to-meaning':
         case 'dictation-chat':
         case 'blend':
+        case 'blend-mc':
             return asString(question.char) || firstFromList(question.pinyin);
         default:
             break;
@@ -13502,7 +13514,7 @@ function fallbackCopy(text) {
 }
 
 function getActiveInputField() {
-    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'audio-to-meaning' || mode === 'blend') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'audio-to-meaning' || mode === 'blend' || mode === 'blend-mc') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
         return fuzzyInput;
     }
     if (answerInput && isElementReallyVisible(answerInput)) {
@@ -13775,6 +13787,7 @@ function initQuizCommandPalette() {
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
         { name: 'Char → Meaning (Fuzzy)', mode: 'char-to-meaning-type', type: 'mode' },
         { name: 'Blend (Mixed Directions)', mode: 'blend', type: 'mode' },
+        { name: 'Blend MC (No Audio)', mode: 'blend-mc', type: 'mode' },
         { name: 'Meaning → Char', mode: 'meaning-to-char', type: 'mode' },
         { name: 'Stroke Order', mode: 'stroke-order', type: 'mode' },
         { name: 'Handwriting', mode: 'handwriting', type: 'mode' },
