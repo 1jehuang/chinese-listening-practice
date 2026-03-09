@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Quiz Dates</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl font-bold mb-2">📅 Set Quiz Dates</h1>
+        <p class="text-gray-600 mb-6">Sets quiz target dates for all upcoming exams. These dates are stored in localStorage and used by the forgetting curve model to predict your grade at quiz time.</p>
+        <div id="quizList" class="space-y-3"></div>
+        <div class="mt-6 flex gap-3">
+            <button id="setAllBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">Set All Dates</button>
+            <button id="clearAllBtn" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 transition">Clear All Dates</button>
+        </div>
+        <div id="status" class="mt-4 text-sm text-green-700 hidden"></div>
+    </div>
+
+    <script>
+        const QUIZ_TARGET_DATE_KEY_PREFIX = 'quiz_target_date_';
+
+        const quizSchedule = [
+            {
+                page: 'lesson-11-part-2',
+                label: 'L11 CRQ Part 2',
+                date: '2026-03-09T09:25:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-12-part-2',
+                label: 'L12 CRQ Part 2',
+                date: '2026-03-11T09:25:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'xiao-huangdi-part-1',
+                label: 'Xiao Huang Di CRQ (Part 1)',
+                date: '2026-03-10T11:30:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'xiao-huangdi-part-2',
+                label: 'Xiao Huang Di CRQ (Part 2)',
+                date: '2026-03-10T11:30:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'xiao-huangdi-vocab',
+                label: 'Xiao Huang Di CRQ (Vocab)',
+                date: '2026-03-10T11:30:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-14-part-1',
+                label: 'L14 Comprehensive Quiz (Part 1)',
+                date: '2026-03-10T08:30:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-14-part-2',
+                label: 'L14 Comprehensive Quiz (Part 2)',
+                date: '2026-03-10T08:30:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-14-cumulative',
+                label: 'L14 Comprehensive Quiz (Cumulative)',
+                date: '2026-03-10T08:30:00',
+                tz: 'America/Los_Angeles',
+            },
+        ];
+
+        function getStorageKey(page) {
+            return QUIZ_TARGET_DATE_KEY_PREFIX + page;
+        }
+
+        function getCurrentValue(page) {
+            try {
+                return localStorage.getItem(getStorageKey(page));
+            } catch { return null; }
+        }
+
+        function setDate(page, dateStr, tz) {
+            const iso = dateStr.includes('T')
+                ? new Date(dateStr).toISOString()
+                : new Date(dateStr + 'T00:00:00').toISOString();
+            localStorage.setItem(getStorageKey(page), iso);
+            return iso;
+        }
+
+        function clearDate(page) {
+            localStorage.removeItem(getStorageKey(page));
+        }
+
+        function render() {
+            const list = document.getElementById('quizList');
+            list.innerHTML = quizSchedule.map(q => {
+                const current = getCurrentValue(q.page);
+                const currentLabel = current
+                    ? new Date(current).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                    : 'Not set';
+                const statusClass = current ? 'text-green-700 bg-green-50 border-green-200' : 'text-gray-500 bg-white border-gray-200';
+                const dateDisplay = new Date(q.date).toLocaleString('en-US', {
+                    weekday: 'short', month: 'short', day: 'numeric',
+                    hour: 'numeric', minute: '2-digit',
+                    timeZone: q.tz
+                });
+                return `
+                    <div class="p-4 rounded-lg border ${statusClass} flex items-center justify-between">
+                        <div>
+                            <div class="font-semibold">${q.label}</div>
+                            <div class="text-xs text-gray-500">${q.page}.html &rarr; ${dateDisplay} PST</div>
+                            <div class="text-xs mt-1">${current ? '✅ Set: ' + currentLabel : '⬜ Not set'}</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="setOne('${q.page}', '${q.date}', '${q.tz}')" class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">Set</button>
+                            <button onclick="clearOne('${q.page}')" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">Clear</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setOne(page, date, tz) {
+            setDate(page, date, tz);
+            render();
+            showStatus(`Set date for ${page}`);
+        }
+
+        function clearOne(page) {
+            clearDate(page);
+            render();
+            showStatus(`Cleared date for ${page}`);
+        }
+
+        function showStatus(msg) {
+            const el = document.getElementById('status');
+            el.textContent = '✅ ' + msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        }
+
+        document.getElementById('setAllBtn').addEventListener('click', () => {
+            quizSchedule.forEach(q => setDate(q.page, q.date, q.tz));
+            render();
+            showStatus(`Set dates for all ${quizSchedule.length} quizzes`);
+        });
+
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            quizSchedule.forEach(q => clearDate(q.page));
+            render();
+            showStatus(`Cleared all quiz dates`);
+        });
+
+        render();
+    </script>
+</body>
+</html>

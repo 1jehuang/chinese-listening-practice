@@ -63,10 +63,12 @@ function initQuizDebugInterface() {
         report: printLearningReport,
         exportLog: exportLearningLog,
         quizDate: () => quizTargetDate,
-        setQuizDate: (iso) => { saveQuizTargetDate(iso); updateFeedStatusDisplay(); },
-        clearQuizDate: clearQuizTargetDate,
+        setQuizDate: (iso) => { saveQuizTargetDate(iso); updateFeedStatusDisplay(); updateQuizGradeBanner(); },
+        clearQuizDate: () => { clearQuizTargetDate(); updateQuizGradeBanner(); },
         quizReadiness: getQuizReadinessSummary,
         quizRecallAll: getAllRecallAtQuizTime,
+        simulateGrade: simulateQuizGrade,
+        updateBanner: updateQuizGradeBanner,
     };
 }
 
@@ -3017,6 +3019,148 @@ function formatQuizTargetDateLocal() {
     return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ` ${timeStr}`;
 }
 
+function simulateQuizGrade(options = {}) {
+    const targetMs = getQuizTargetDateMs();
+    if (!targetMs) return null;
+
+    const numWords = options.numWords || 10;
+    const trials = options.trials || 2000;
+    const chars = Array.isArray(quizCharacters) ? quizCharacters : [];
+    if (chars.length === 0) return null;
+
+    const recallProbs = [];
+    for (const item of chars) {
+        const char = typeof item === 'string' ? item : item.char;
+        if (!char) continue;
+        const stats = feedModeState.seen ? feedModeState.seen[char] : null;
+        if (!stats || !stats.lastSeen) {
+            recallProbs.push({ char, prob: 0 });
+            continue;
+        }
+        const halfLife = getFeedHalfLifeHours(stats);
+        const elapsedAtQuiz = Math.max(0, (targetMs - stats.lastSeen) / 3600000);
+        recallProbs.push({ char, prob: getFeedRecallProbabilityAt(halfLife, elapsedAtQuiz) });
+    }
+
+    const poolSize = recallProbs.length;
+    if (poolSize === 0) return null;
+    const sampleSize = Math.min(numWords, poolSize);
+
+    let totalScore = 0;
+    for (let t = 0; t < trials; t++) {
+        const shuffled = recallProbs.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        const sample = shuffled.slice(0, sampleSize);
+        let trialScore = 0;
+        for (const { prob } of sample) {
+            const pinyinCorrect = Math.random() < prob;
+            const meaningCorrect = Math.random() < prob;
+            trialScore += (pinyinCorrect ? 1 : 0) + (meaningCorrect ? 1 : 0);
+        }
+        totalScore += trialScore / (sampleSize * 2);
+    }
+
+    const avgPct = (totalScore / trials) * 100;
+    const expectedCorrect = recallProbs.reduce((sum, r) => sum + r.prob, 0) / poolSize;
+    const expectedPct = expectedCorrect * 100;
+
+    return {
+        predictedGradePct: Math.round(avgPct),
+        expectedRecallPct: Math.round(expectedPct),
+        poolSize,
+        sampleSize,
+        trials,
+    };
+}
+
+function renderQuizGradeBanner() {
+    if (!quizTargetDate) {
+        const existing = document.getElementById('quizGradeBanner');
+        if (existing) existing.remove();
+        return;
+    }
+
+    const grade = simulateQuizGrade();
+    if (!grade) return;
+
+    const summary = getQuizReadinessSummary();
+    if (!summary) return;
+
+    const pct = grade.predictedGradePct;
+    const dateLabel = formatQuizTargetDateLocal() || quizTargetDate;
+    const timeUntil = summary.timeUntil;
+
+    let letterGrade, gradeColor, bgColor, borderColor;
+    if (pct >= 93) { letterGrade = 'A'; gradeColor = '#15803d'; bgColor = '#f0fdf4'; borderColor = '#86efac'; }
+    else if (pct >= 90) { letterGrade = 'A-'; gradeColor = '#15803d'; bgColor = '#f0fdf4'; borderColor = '#86efac'; }
+    else if (pct >= 87) { letterGrade = 'B+'; gradeColor = '#1d4ed8'; bgColor = '#eff6ff'; borderColor = '#93c5fd'; }
+    else if (pct >= 83) { letterGrade = 'B'; gradeColor = '#1d4ed8'; bgColor = '#eff6ff'; borderColor = '#93c5fd'; }
+    else if (pct >= 80) { letterGrade = 'B-'; gradeColor = '#1d4ed8'; bgColor = '#eff6ff'; borderColor = '#93c5fd'; }
+    else if (pct >= 77) { letterGrade = 'C+'; gradeColor = '#b45309'; bgColor = '#fffbeb'; borderColor = '#fcd34d'; }
+    else if (pct >= 73) { letterGrade = 'C'; gradeColor = '#b45309'; bgColor = '#fffbeb'; borderColor = '#fcd34d'; }
+    else if (pct >= 70) { letterGrade = 'C-'; gradeColor = '#b45309'; bgColor = '#fffbeb'; borderColor = '#fcd34d'; }
+    else { letterGrade = pct >= 60 ? 'D' : 'F'; gradeColor = '#dc2626'; bgColor = '#fef2f2'; borderColor = '#fca5a5'; }
+
+    let banner = document.getElementById('quizGradeBanner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'quizGradeBanner';
+        const quizHeader = document.querySelector('.quiz-header');
+        if (quizHeader) {
+            quizHeader.parentElement.insertBefore(banner, quizHeader);
+        } else {
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) mainContent.insertBefore(banner, mainContent.firstChild);
+        }
+    }
+
+    banner.style.cssText = `
+        background: ${bgColor};
+        border: 2px solid ${borderColor};
+        border-radius: 12px;
+        padding: 10px 16px;
+        margin: 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-family: system-ui, -apple-system, sans-serif;
+    `;
+
+    const dangerWords = summary.weakest.filter(w => w.recallAtQuiz < 0.5).slice(0, 3);
+    const dangerHtml = dangerWords.length > 0
+        ? `<span style="color:#dc2626;font-size:11px;margin-left:8px">⚠ ${dangerWords.map(w => escapeHtml(w.char)).join(', ')}</span>`
+        : '';
+
+    banner.innerHTML = `
+        <div style="text-align:center;min-width:64px">
+            <div style="font-size:28px;font-weight:800;color:${gradeColor};line-height:1">${letterGrade}</div>
+            <div style="font-size:18px;font-weight:700;color:${gradeColor};line-height:1.2">${pct}%</div>
+        </div>
+        <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:#6b7280">
+                📅 Predicted grade: ${escapeHtml(dateLabel)} (${timeUntil})
+            </div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px">
+                10-word quiz (pinyin + meaning) from ${grade.poolSize} words
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <div style="flex:1;height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden">
+                    <div style="width:${pct}%;height:100%;border-radius:3px;background:${gradeColor};transition:width 0.3s"></div>
+                </div>
+                <span style="font-size:11px;font-weight:600;color:${gradeColor}">${summary.likely}✓ ${summary.risky}⚠ ${summary.danger}✗</span>
+                ${dangerHtml}
+            </div>
+        </div>
+    `;
+}
+
+function updateQuizGradeBanner() {
+    renderQuizGradeBanner();
+}
+
 function formatFeedDuration(hours) {
     if (!Number.isFinite(hours)) return '—';
     const absHours = Math.max(0, hours);
@@ -3780,6 +3924,8 @@ function updateFeedStatusDisplay() {
             updateFeedStatusDisplay();
         });
     }
+
+    updateQuizGradeBanner();
 }
 
 function toggleFeedStatusTicker() {
@@ -14721,6 +14867,7 @@ function initQuizCommandPalette() {
                 }
                 saveQuizTargetDate(d.toISOString());
                 updateFeedStatusDisplay();
+                updateQuizGradeBanner();
             },
             available: () => true,
             scope: 'This page'
@@ -14733,6 +14880,7 @@ function initQuizCommandPalette() {
                 keywords: 'quiz date clear remove exam test schedule target',
                 action: () => {
                     clearQuizTargetDate();
+                    updateQuizGradeBanner();
                 },
                 available: () => Boolean(quizTargetDate),
                 scope: 'This page'
@@ -14979,6 +15127,7 @@ function initQuizPreviewAndSchedulerUi() {
     toggleFeedStatusTicker();
     renderConfidenceList();
     updateMeaningChoicesVisibility();
+    updateQuizGradeBanner();
 }
 
 function resetModeTransientState() {
