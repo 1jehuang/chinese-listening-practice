@@ -57,7 +57,11 @@ function initQuizDebugInterface() {
         resetSchedulerStats: () => {
             schedulerStats = {};
             saveSchedulerStats();
-        }
+        },
+        learningLog: loadLearningLog,
+        analytics: getLearningAnalytics,
+        report: printLearningReport,
+        exportLog: exportLearningLog,
     };
 }
 
@@ -489,15 +493,17 @@ const FEED_UCB_C = 1.5;                    // exploration constant for UCB
 const FEED_MIN_HAND_SIZE = 3;              // minimum cards in hand
 const FEED_MAX_HAND_SIZE = 10;             // maximum cards in hand
 const FEED_DEFAULT_HAND_SIZE = 5;          // target when balanced
-const FEED_STREAK_TO_REMOVE = 2;           // correct streak to remove from hand
+const FEED_STREAK_TO_REMOVE = 3;           // correct streak to remove from hand
 const FEED_WEAK_THRESHOLD = 0.6;           // confidence below this = "weak"
-const FEED_SR_MIN_SESSION_ATTEMPTS = 2;    // minimum attempts this session before SR graduation
+const FEED_SR_MIN_SESSION_ATTEMPTS = 4;    // minimum attempts this session before SR graduation
 // Feed mode forgetting curve + response-time model
-const FEED_FORGET_MIN_HALFLIFE_HOURS = 0.02;      // ~1.2 minutes
+const FEED_FORGET_MIN_HALFLIFE_HOURS = 0.005;     // ~18 seconds
 const FEED_FORGET_MAX_HALFLIFE_HOURS = 120;       // 5 days
-const FEED_FORGET_INITIAL_HALFLIFE_HOURS = 0.08;  // ~4.8 minutes
-const FEED_FORGET_CORRECT_GROWTH = 0.65;          // growth factor when correct
+const FEED_FORGET_INITIAL_HALFLIFE_HOURS = 0.012; // ~43 seconds - new words decay fast
+const FEED_FORGET_CORRECT_GROWTH = 0.65;          // growth factor when correct (attenuated for early attempts)
 const FEED_FORGET_WRONG_SHRINK = 0.45;            // shrink factor when wrong
+const FEED_FORGET_EARLY_ATTEMPT_CAP = 5;          // attempts below this get reduced halflife growth
+const FEED_FORGET_EARLY_GROWTH_FLOOR = 0.2;       // minimum growth multiplier for first attempt
 const FEED_FORGET_DUE_THRESHOLD = 0.82;           // recall prob below this = due
 const FEED_FORGET_DUE_BOOST = 1.1;                // extra boost for due cards
 const FEED_RESPONSE_TARGET_MS = 3000;             // expected response time
@@ -514,6 +520,258 @@ let feedModeState = {
     seen: {},                              // { char: { attempts, correct, streak, lastSeen } }
     totalPulls: 0                          // total questions asked
 };
+
+// =============================================================================
+// Learning Event Log - append-only record of every answer for analytics
+// =============================================================================
+const LEARNING_LOG_KEY = 'quiz_learning_log';
+const LEARNING_LOG_MAX_EVENTS = 50000;
+const LEARNING_LOG_SESSION_KEY = 'quiz_learning_session_id';
+let learningLogSessionId = null;
+
+function getLearningLogSessionId() {
+    if (learningLogSessionId) return learningLogSessionId;
+    try {
+        const stored = sessionStorage.getItem(LEARNING_LOG_SESSION_KEY);
+        if (stored) {
+            learningLogSessionId = stored;
+        } else {
+            learningLogSessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            sessionStorage.setItem(LEARNING_LOG_SESSION_KEY, learningLogSessionId);
+        }
+    } catch (e) {
+        learningLogSessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+    return learningLogSessionId;
+}
+
+function loadLearningLog() {
+    try {
+        const raw = localStorage.getItem(LEARNING_LOG_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        console.warn('Failed to load learning log', e);
+        return [];
+    }
+}
+
+function appendLearningEvent(event) {
+    try {
+        const log = loadLearningLog();
+        log.push(event);
+        if (log.length > LEARNING_LOG_MAX_EVENTS) {
+            log.splice(0, log.length - LEARNING_LOG_MAX_EVENTS);
+        }
+        localStorage.setItem(LEARNING_LOG_KEY, JSON.stringify(log));
+    } catch (e) {
+        console.warn('Failed to append learning event', e);
+    }
+}
+
+function recordLearningEvent(char, correct, responseMs) {
+    const now = Date.now();
+    const stats = getSchedulerStats(char);
+    const feedStats = feedModeState.seen ? feedModeState.seen[char] : null;
+    const page = getAdaptivePageKey();
+    const skill = getCurrentSkillKey();
+
+    const event = {
+        ts: now,
+        session: getLearningLogSessionId(),
+        page: page,
+        char: char,
+        mode: mode,
+        skill: skill,
+        scheduler: schedulerMode,
+        correct: Boolean(correct),
+        responseMs: Number.isFinite(responseMs) ? Math.round(responseMs) : null,
+        attemptNum: stats.served || 0,
+        totalCorrect: stats.correct || 0,
+        totalWrong: stats.wrong || 0,
+        streak: stats.streak || 0,
+        bktPLearned: stats.bktPLearned ?? null,
+        halfLifeHours: feedStats && Number.isFinite(feedStats.halfLifeHours) ? feedStats.halfLifeHours : null,
+        feedAttempts: feedStats ? (feedStats.attempts || 0) : null,
+        feedCorrect: feedStats ? (feedStats.correct || 0) : null,
+        recallProb: feedStats ? getFeedRecallProbability(char, now) : null,
+    };
+
+    appendLearningEvent(event);
+}
+
+function getLearningAnalytics() {
+    const log = loadLearningLog();
+    if (!log.length) return { totalEvents: 0, message: 'No learning data recorded yet.' };
+
+    const charData = {};
+    for (const evt of log) {
+        if (!evt.char) continue;
+        if (!charData[evt.char]) {
+            charData[evt.char] = {
+                char: evt.char,
+                events: [],
+                firstSeen: evt.ts,
+                lastSeen: evt.ts,
+                totalAttempts: 0,
+                totalCorrect: 0,
+                firstExposureCorrect: null,
+                repsToFirstCorrect: null,
+                repsToThreeStreak: null,
+            };
+        }
+        const cd = charData[evt.char];
+        cd.events.push(evt);
+        cd.totalAttempts++;
+        if (evt.correct) cd.totalCorrect++;
+        cd.lastSeen = Math.max(cd.lastSeen, evt.ts);
+        if (cd.firstSeen > evt.ts) cd.firstSeen = evt.ts;
+    }
+
+    let firstExposureTotal = 0;
+    let firstExposureCorrect = 0;
+    let totalRepsToLearn = 0;
+    let learnedCount = 0;
+    const repsToLearnDistribution = {};
+
+    for (const char of Object.keys(charData)) {
+        const cd = charData[char];
+        const events = cd.events.sort((a, b) => a.ts - b.ts);
+
+        if (events.length > 0) {
+            cd.firstExposureCorrect = events[0].correct;
+            firstExposureTotal++;
+            if (events[0].correct) firstExposureCorrect++;
+        }
+
+        for (let i = 0; i < events.length; i++) {
+            if (events[i].correct && cd.repsToFirstCorrect === null) {
+                cd.repsToFirstCorrect = i + 1;
+            }
+            if (i >= 2 && cd.repsToThreeStreak === null) {
+                if (events[i].correct && events[i - 1].correct && events[i - 2].correct) {
+                    cd.repsToThreeStreak = i + 1;
+                }
+            }
+        }
+
+        if (cd.repsToThreeStreak !== null) {
+            totalRepsToLearn += cd.repsToThreeStreak;
+            learnedCount++;
+            const bucket = cd.repsToThreeStreak;
+            repsToLearnDistribution[bucket] = (repsToLearnDistribution[bucket] || 0) + 1;
+        }
+    }
+
+    const sessions = {};
+    for (const evt of log) {
+        if (!sessions[evt.session]) {
+            sessions[evt.session] = { count: 0, correct: 0, firstTs: evt.ts, lastTs: evt.ts };
+        }
+        const s = sessions[evt.session];
+        s.count++;
+        if (evt.correct) s.correct++;
+        s.firstTs = Math.min(s.firstTs, evt.ts);
+        s.lastTs = Math.max(s.lastTs, evt.ts);
+    }
+
+    const forgettingData = [];
+    for (const char of Object.keys(charData)) {
+        const events = charData[char].events.sort((a, b) => a.ts - b.ts);
+        for (let i = 1; i < events.length; i++) {
+            const gap = events[i].ts - events[i - 1].ts;
+            if (gap > 0 && events[i - 1].correct) {
+                forgettingData.push({
+                    char,
+                    gapMs: gap,
+                    gapHours: gap / 3600000,
+                    rememberedAfterGap: events[i].correct,
+                    attemptNum: i + 1
+                });
+            }
+        }
+    }
+
+    const gapBuckets = [
+        { label: '<1m', maxMs: 60000 },
+        { label: '1-5m', maxMs: 300000 },
+        { label: '5-30m', maxMs: 1800000 },
+        { label: '30m-2h', maxMs: 7200000 },
+        { label: '2-12h', maxMs: 43200000 },
+        { label: '12h-2d', maxMs: 172800000 },
+        { label: '2d+', maxMs: Infinity },
+    ];
+    const retentionByGap = gapBuckets.map(b => ({ label: b.label, total: 0, correct: 0, rate: 0 }));
+    for (const fd of forgettingData) {
+        for (let i = 0; i < gapBuckets.length; i++) {
+            if (fd.gapMs <= gapBuckets[i].maxMs) {
+                retentionByGap[i].total++;
+                if (fd.rememberedAfterGap) retentionByGap[i].correct++;
+                break;
+            }
+        }
+    }
+    retentionByGap.forEach(b => { b.rate = b.total > 0 ? b.correct / b.total : null; });
+
+    return {
+        totalEvents: log.length,
+        uniqueChars: Object.keys(charData).length,
+        sessions: Object.keys(sessions).length,
+        firstExposureAccuracy: firstExposureTotal > 0 ? firstExposureCorrect / firstExposureTotal : null,
+        firstExposureTotal,
+        firstExposureCorrect,
+        avgRepsToLearn: learnedCount > 0 ? totalRepsToLearn / learnedCount : null,
+        learnedCount,
+        repsToLearnDistribution,
+        retentionByGap: retentionByGap.filter(b => b.total > 0),
+        charData,
+        forgettingData,
+        sessionData: sessions,
+        hardestChars: Object.values(charData)
+            .filter(c => c.totalAttempts >= 3)
+            .sort((a, b) => (a.totalCorrect / a.totalAttempts) - (b.totalCorrect / b.totalAttempts))
+            .slice(0, 20)
+            .map(c => ({ char: c.char, accuracy: (c.totalCorrect / c.totalAttempts).toFixed(2), attempts: c.totalAttempts, repsToLearn: c.repsToThreeStreak })),
+    };
+}
+
+function printLearningReport() {
+    const a = getLearningAnalytics();
+    if (!a.totalEvents) {
+        console.log('No learning data recorded yet.');
+        return a;
+    }
+    console.log(`=== Learning Report ===`);
+    console.log(`Total answers logged: ${a.totalEvents}`);
+    console.log(`Unique characters: ${a.uniqueChars}`);
+    console.log(`Sessions: ${a.sessions}`);
+    console.log(`First-exposure accuracy: ${a.firstExposureAccuracy !== null ? (a.firstExposureAccuracy * 100).toFixed(1) + '%' : 'N/A'} (${a.firstExposureCorrect}/${a.firstExposureTotal})`);
+    console.log(`Avg reps to learn (3-streak): ${a.avgRepsToLearn !== null ? a.avgRepsToLearn.toFixed(1) : 'N/A'} (n=${a.learnedCount})`);
+    if (a.retentionByGap.length) {
+        console.log(`\nRetention by time gap (correct after previous correct):`);
+        console.table(a.retentionByGap.map(b => ({ gap: b.label, retention: b.rate !== null ? (b.rate * 100).toFixed(1) + '%' : '-', n: b.total })));
+    }
+    if (a.hardestChars.length) {
+        console.log(`\nHardest characters (>=3 attempts):`);
+        console.table(a.hardestChars);
+    }
+    if (Object.keys(a.repsToLearnDistribution).length) {
+        console.log(`\nReps-to-learn distribution:`);
+        console.table(Object.entries(a.repsToLearnDistribution).sort((a, b) => Number(a[0]) - Number(b[0])).map(([reps, count]) => ({ reps: Number(reps), count })));
+    }
+    return a;
+}
+
+function exportLearningLog() {
+    const log = loadLearningLog();
+    const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `learning-log-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    return `Exported ${log.length} events`;
+}
 
 // Confidence sidebar state
 const CONFIDENCE_PANEL_KEY = 'quiz_confidence_panel_visible';
@@ -2034,6 +2292,9 @@ function markSchedulerOutcome(correct) {
     // Update BKT probability (always, so it's available if user switches formulas)
     updateBKT(char, correct);
 
+    const outcomeResponseMs = getQuestionResponseMs();
+    recordLearningEvent(char, correct, outcomeResponseMs);
+
     logDebugEvent('scheduler-outcome', {
         char,
         correct: Boolean(correct),
@@ -2731,9 +2992,11 @@ function getFeedUCBScore(char) {
         : 0;
     const difficultyScore = getFeedDifficultyScore(stats);
     const elapsedMinutes = Number.isFinite(stats.lastSeen) ? (Date.now() - stats.lastSeen) / 60000 : 0;
-    const freshBoost = (stats.attempts < 2)
-        ? clampNumber((1 - (elapsedMinutes / 5)) * 1.4, 0, 1.4)
+    const freshAttemptThreshold = FEED_FORGET_EARLY_ATTEMPT_CAP;
+    const freshBoost = (stats.attempts < freshAttemptThreshold)
+        ? clampNumber((1 - (elapsedMinutes / 8)) * 1.8 * (1 - stats.attempts / freshAttemptThreshold), 0, 1.8)
         : 0;
+    const recentlyWrongBoost = (!stats.streak && stats.attempts > 0 && elapsedMinutes < 3) ? 1.2 : 0;
     const explorationBonus = FEED_UCB_C * Math.sqrt(Math.log(totalPulls) / stats.attempts);
 
     // Higher score = more likely to pick
@@ -2741,7 +3004,8 @@ function getFeedUCBScore(char) {
         + (FEED_SCORE_DIFFICULTY_WEIGHT * difficultyScore)
         + (FEED_SCORE_UCB_WEIGHT * explorationBonus)
         + dueBoost
-        + freshBoost;
+        + freshBoost
+        + recentlyWrongBoost;
 
     // In Feed Graduate mode, also factor in persistent confidence score
     const srScore = getConfidenceScore(char);
@@ -2841,16 +3105,19 @@ function getFeedUCBScoreForDisplay(char) {
         : 0;
     const difficultyScore = getFeedDifficultyScore(stats);
     const elapsedMinutes = Number.isFinite(stats.lastSeen) ? (Date.now() - stats.lastSeen) / 60000 : 0;
-    const freshBoost = (stats.attempts < 2)
-        ? clampNumber((1 - (elapsedMinutes / 5)) * 1.4, 0, 1.4)
+    const freshAttemptThreshold = FEED_FORGET_EARLY_ATTEMPT_CAP;
+    const freshBoost = (stats.attempts < freshAttemptThreshold)
+        ? clampNumber((1 - (elapsedMinutes / 8)) * 1.8 * (1 - stats.attempts / freshAttemptThreshold), 0, 1.8)
         : 0;
+    const recentlyWrongBoost = (!stats.streak && stats.attempts > 0 && elapsedMinutes < 3) ? 1.2 : 0;
     const explorationBonus = FEED_UCB_C * Math.sqrt(Math.log(totalPulls) / stats.attempts);
 
     let score = (FEED_SCORE_URGENCY_WEIGHT * forgettingUrgency)
         + (FEED_SCORE_DIFFICULTY_WEIGHT * difficultyScore)
         + (FEED_SCORE_UCB_WEIGHT * explorationBonus)
         + dueBoost
-        + freshBoost;
+        + freshBoost
+        + recentlyWrongBoost;
 
     const markingBoost = marking === 'needs-work' ? MARKING_NEEDS_WORK_BOOST
         : marking === 'learned' ? -MARKING_LEARNED_PENALTY
@@ -2883,6 +3150,7 @@ function getFeedGraduatedSet() {
 
         if (useSRGraduation) {
             if (isConfidenceHighEnough(item.char)) {
+                if (!st || st.attempts < FEED_SR_MIN_SESSION_ATTEMPTS) continue;
                 const rp = st ? getFeedRecallProbability(item.char) : null;
                 if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
                     graduated.add(item.char);
@@ -2890,7 +3158,7 @@ function getFeedGraduatedSet() {
             }
         } else {
             if (!st || !st.attempts) continue;
-            if (st.attempts >= 2 && (st.streak || 0) >= FEED_STREAK_TO_REMOVE) {
+            if (st.attempts >= 4 && (st.streak || 0) >= FEED_STREAK_TO_REMOVE) {
                 const rp = getFeedRecallProbability(item.char);
                 if (!Number.isFinite(rp) || rp >= FEED_FORGET_DUE_THRESHOLD) {
                     graduated.add(item.char);
@@ -2977,11 +3245,11 @@ function ensureFeedHand() {
 
         if (useSRGraduation) {
             if (!isConfidenceHighEnough(char)) return true;
+            if (attempts < FEED_SR_MIN_SESSION_ATTEMPTS) return true;
             if (attempts > 0 && Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD) return true;
             return false;
         } else {
-            // Regular Feed: graduate on streak
-            if (attempts < 2) return true; // keep very fresh cards for quick early repeats
+            if (attempts < 4) return true;
             if (Number.isFinite(recallProb) && recallProb < FEED_FORGET_DUE_THRESHOLD) return true;
             return (stats.streak || 0) < FEED_STREAK_TO_REMOVE;
         }
@@ -3128,7 +3396,10 @@ function recordFeedOutcome(char, correct, responseMs = null) {
     }
 
     if (correct) {
-        const growth = FEED_FORGET_CORRECT_GROWTH * responseFactor * (0.6 + 0.4 * confidenceNorm) * spacingBoost;
+        const earlyAttenuation = stats.attempts <= FEED_FORGET_EARLY_ATTEMPT_CAP
+            ? FEED_FORGET_EARLY_GROWTH_FLOOR + (1 - FEED_FORGET_EARLY_GROWTH_FLOOR) * ((stats.attempts - 1) / FEED_FORGET_EARLY_ATTEMPT_CAP)
+            : 1.0;
+        const growth = FEED_FORGET_CORRECT_GROWTH * responseFactor * (0.6 + 0.4 * confidenceNorm) * spacingBoost * earlyAttenuation;
         stats.halfLifeHours = clampNumber(stats.halfLifeHours * (1 + growth), FEED_FORGET_MIN_HALFLIFE_HOURS, FEED_FORGET_MAX_HALFLIFE_HOURS);
     } else {
         const shrink = FEED_FORGET_WRONG_SHRINK * (1 + (1 - responseFactor) * 0.5);
