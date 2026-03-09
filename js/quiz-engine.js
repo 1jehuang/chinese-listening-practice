@@ -3217,10 +3217,10 @@ function getFeedTargetHandSize() {
     if (nonGraduatedCount > 0) {
         target = Math.min(target, nonGraduatedCount);
     } else if (nonGraduatedCount === 0 && graduatedSet.size > 0) {
-        target = 0;
+        target = Math.max(FEED_MIN_HAND_SIZE, Math.min(FEED_DEFAULT_HAND_SIZE, graduatedSet.size));
     }
 
-    return target;
+    return Math.max(poolSize > 0 ? FEED_MIN_HAND_SIZE : 0, target);
 }
 
 function ensureFeedHand() {
@@ -3301,12 +3301,11 @@ function ensureFeedHand() {
         );
 
         if (!candidates.length) break;
-        const pool = candidates;
 
         let bestChar = null;
         let bestScore = -Infinity;
 
-        for (const item of pool) {
+        for (const item of candidates) {
             const score = getFeedUCBScore(item.char);
             if (score > bestScore) {
                 bestScore = score;
@@ -3316,6 +3315,21 @@ function ensureFeedHand() {
 
         if (!bestChar) break;
         feedModeState.hand.push(bestChar);
+    }
+
+    if (feedModeState.hand.length < targetSize && graduatedChars.size > 0) {
+        const graduatedPool = fullPool
+            .filter(item => graduatedChars.has(item.char) && !feedModeState.hand.includes(item.char))
+            .map(item => {
+                const rp = getFeedRecallProbability(item.char);
+                return { item, recallProb: Number.isFinite(rp) ? rp : 1 };
+            })
+            .sort((a, b) => a.recallProb - b.recallProb);
+
+        for (const { item } of graduatedPool) {
+            if (feedModeState.hand.length >= targetSize) break;
+            feedModeState.hand.push(item.char);
+        }
     }
 
     feedModeState.hand = Array.from(new Set(feedModeState.hand));
