@@ -15339,6 +15339,37 @@ function setupCollapsibleSidebars() {
         wrapSidebarWithToggle(leftSidebar, 'left');
     }
 
+    // Inject mobile hamburger toggle (shown only at ≤780px via CSS)
+    if (!document.getElementById('sidebarMobileToggle')) {
+        const btn = document.createElement('button');
+        btn.id = 'sidebarMobileToggle';
+        btn.className = 'sidebar-mobile-toggle';
+        btn.innerHTML = '☰';
+        btn.title = 'Toggle sidebar';
+        document.body.appendChild(btn);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.id = 'sidebarOverlay';
+        document.body.appendChild(overlay);
+
+        const getSidebar = () => document.querySelector('.app-container > .sidebar, .app-container > aside.sidebar');
+        btn.addEventListener('click', () => {
+            const s = getSidebar();
+            if (s) {
+                const open = s.classList.toggle('sidebar-open');
+                overlay.classList.toggle('active', open);
+                btn.innerHTML = open ? '✕' : '☰';
+            }
+        });
+        overlay.addEventListener('click', () => {
+            const s = getSidebar();
+            if (s) s.classList.remove('sidebar-open');
+            overlay.classList.remove('active');
+            btn.innerHTML = '☰';
+        });
+    }
+
     // Don't wrap the confidence panel. It is a fixed-position drawer with its own
     // pull-tab toggle; wrapping it moves the element out of the DOM and strips the
     // id/styles, which hides the panel entirely. Keep it as-is so its fixed layout
