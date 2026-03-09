@@ -312,14 +312,22 @@ async function initSupabaseSync() {
     // Flush pending updates using sendBeacon (survives page close)
     window.addEventListener('beforeunload', () => {
         if (Object.keys(pendingUpdates).length > 0) {
-            flushPendingUpdatesSync(); // Use sync version with sendBeacon
+            flushPendingUpdatesSync();
+        }
+        if (pendingLearningEvents.length > 0) {
+            flushLearningEventsSync();
         }
     });
 
     // Also flush on visibility change (tab hidden/closed)
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden' && Object.keys(pendingUpdates).length > 0) {
-            flushPendingUpdatesSync();
+        if (document.visibilityState === 'hidden') {
+            if (Object.keys(pendingUpdates).length > 0) {
+                flushPendingUpdatesSync();
+            }
+            if (pendingLearningEvents.length > 0) {
+                flushLearningEventsSync();
+            }
         }
     });
 }
@@ -549,6 +557,112 @@ async function applySupabasePreferences() {
 // DEBUG FUNCTIONS
 // =============================================================================
 
+// =============================================================================
+// LEARNING EVENT SYNC
+// =============================================================================
+
+let pendingLearningEvents = [];
+let learningEventSyncTimer = null;
+const LEARNING_SYNC_DEBOUNCE_MS = 2000;
+const LEARNING_SYNC_BATCH_SIZE = 50;
+
+function queueLearningEventSync(event) {
+    if (!syncEnabled || !supabaseClient || !currentUserId) return;
+
+    pendingLearningEvents.push({
+        user_id: currentUserId,
+        ts: event.ts,
+        session_id: event.session || '',
+        page_key: event.page || '',
+        char: event.char || '',
+        pinyin: event.pinyin || null,
+        meaning: event.meaning || null,
+        mode: event.mode || '',
+        skill: event.skill || '',
+        scheduler: event.scheduler || '',
+        correct: Boolean(event.correct),
+        response_ms: Number.isFinite(event.responseMs) ? event.responseMs : null,
+        attempt_num: event.attemptNum || 0,
+        total_correct: event.totalCorrect || 0,
+        total_wrong: event.totalWrong || 0,
+        streak: event.streak || 0,
+        bkt_p_learned: Number.isFinite(event.bktPLearned) ? event.bktPLearned : null,
+        half_life_hours: Number.isFinite(event.halfLifeHours) ? event.halfLifeHours : null,
+        feed_attempts: Number.isFinite(event.feedAttempts) ? event.feedAttempts : null,
+        feed_correct: Number.isFinite(event.feedCorrect) ? event.feedCorrect : null,
+        recall_prob: Number.isFinite(event.recallProb) ? event.recallProb : null,
+        hand_size: Number.isFinite(event.handSize) ? event.handSize : null,
+        pool_size: Number.isFinite(event.poolSize) ? event.poolSize : null,
+        graduated_count: Number.isFinite(event.graduatedCount) ? event.graduatedCount : null,
+    });
+
+    clearTimeout(learningEventSyncTimer);
+    learningEventSyncTimer = setTimeout(flushLearningEvents, LEARNING_SYNC_DEBOUNCE_MS);
+}
+
+async function flushLearningEvents() {
+    if (!supabaseClient || !currentUserId || pendingLearningEvents.length === 0) return;
+
+    const batch = pendingLearningEvents.splice(0, LEARNING_SYNC_BATCH_SIZE);
+
+    try {
+        const { error } = await supabaseClient
+            .from('learning_events')
+            .insert(batch);
+
+        if (error) {
+            console.warn('Learning event sync error:', error);
+            pendingLearningEvents.unshift(...batch);
+        } else {
+            console.log(`Synced ${batch.length} learning events`);
+        }
+    } catch (e) {
+        console.warn('Failed to sync learning events:', e);
+        pendingLearningEvents.unshift(...batch);
+    }
+
+    if (pendingLearningEvents.length > 0) {
+        clearTimeout(learningEventSyncTimer);
+        learningEventSyncTimer = setTimeout(flushLearningEvents, LEARNING_SYNC_DEBOUNCE_MS);
+    }
+}
+
+function flushLearningEventsSync() {
+    if (!currentUserId || pendingLearningEvents.length === 0) return;
+
+    const batch = pendingLearningEvents.splice(0, LEARNING_SYNC_BATCH_SIZE);
+    const url = `${SUPABASE_URL}/rest/v1/learning_events`;
+
+    const sessionData = localStorage.getItem('sb-nekdqvzknuqrhuwxpujt-auth-token');
+    let accessToken = SUPABASE_ANON_KEY;
+    if (sessionData) {
+        try {
+            const parsed = JSON.parse(sessionData);
+            if (parsed.access_token) accessToken = parsed.access_token;
+        } catch (e) {}
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(batch),
+        keepalive: true
+    }).catch(() => {});
+
+    console.log(`Queued ${batch.length} learning events for sync (keepalive)`);
+}
+
+// Expose globally so quiz-engine.js can call it
+window.queueLearningEventSync = queueLearningEventSync;
+
+// =============================================================================
+// DEBUG FUNCTIONS (continued)
+// =============================================================================
+
 // Debug function to check sync status
 async function debugSyncStatus() {
     console.group('🔍 Supabase Sync Debug');
@@ -556,6 +670,7 @@ async function debugSyncStatus() {
     console.log('currentUserId:', currentUserId);
     console.log('syncEnabled:', syncEnabled);
     console.log('pendingUpdates:', Object.keys(pendingUpdates).length, pendingUpdates);
+    console.log('pendingLearningEvents:', pendingLearningEvents.length);
     console.log('pageKey:', getSyncPageKey());
 
     if (supabaseClient) {
@@ -572,14 +687,16 @@ async function debugSyncStatus() {
     console.log('Local schedulerStats:', typeof schedulerStats !== 'undefined' ? Object.keys(schedulerStats).length : 'not defined', 'keys');
     console.groupEnd();
 
-    return { userId: currentUserId, supabaseRows: data?.length || 0, pendingUpdates: Object.keys(pendingUpdates).length };
+    return { userId: currentUserId, supabaseRows: data?.length || 0, pendingUpdates: Object.keys(pendingUpdates).length, pendingLearningEvents: pendingLearningEvents.length };
 }
 
 // Force immediate sync
 async function forceSyncNow() {
     console.log('🔄 Force syncing...');
     clearTimeout(syncDebounceTimer);
+    clearTimeout(learningEventSyncTimer);
     await flushPendingUpdates();
+    await flushLearningEvents();
     console.log('✅ Force sync complete');
 }
 

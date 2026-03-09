@@ -574,12 +574,15 @@ function recordLearningEvent(char, correct, responseMs) {
     const feedStats = feedModeState.seen ? feedModeState.seen[char] : null;
     const page = getAdaptivePageKey();
     const skill = getCurrentSkillKey();
+    const question = currentQuestion || {};
 
     const event = {
         ts: now,
         session: getLearningLogSessionId(),
         page: page,
         char: char,
+        pinyin: question.pinyin || null,
+        meaning: question.meaning || null,
         mode: mode,
         skill: skill,
         scheduler: schedulerMode,
@@ -594,9 +597,16 @@ function recordLearningEvent(char, correct, responseMs) {
         feedAttempts: feedStats ? (feedStats.attempts || 0) : null,
         feedCorrect: feedStats ? (feedStats.correct || 0) : null,
         recallProb: feedStats ? getFeedRecallProbability(char, now) : null,
+        handSize: isFeedScheduler() ? (feedModeState.hand || []).length : null,
+        poolSize: Array.isArray(quizCharacters) ? quizCharacters.length : null,
+        graduatedCount: isFeedScheduler() ? getFeedGraduatedSet().size : null,
     };
 
     appendLearningEvent(event);
+
+    if (typeof queueLearningEventSync === 'function') {
+        queueLearningEventSync(event);
+    }
 }
 
 function getLearningAnalytics() {
