@@ -3900,20 +3900,14 @@ function updateFeedStatusDisplay() {
                 }).join(' · ')
                 : '';
             quizReadinessHtml = `
-                <div class="mt-2 rounded-lg border border-indigo-200 bg-indigo-50 p-2">
-                    <div class="text-[11px] font-semibold uppercase tracking-[0.15em] text-indigo-600">
-                        📅 Quiz: ${escapeHtml(dateLabel)} (${summary.timeUntil})
+                <div class="mt-2 flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px]">
+                    <span class="text-indigo-400">📅</span>
+                    <span class="text-indigo-600 font-medium">${summary.timeUntil}</span>
+                    <div style="width:48px;height:5px;border-radius:3px;background:#e0e7ff;overflow:hidden;flex-shrink:0">
+                        <div style="width:${avgPct}%;height:100%;border-radius:3px;background:${barColor}"></div>
                     </div>
-                    <div class="mt-1 flex items-center gap-2">
-                        <div style="flex:1;height:8px;border-radius:4px;background:#e0e7ff;overflow:hidden">
-                            <div style="width:${avgPct}%;height:100%;border-radius:4px;background:${barColor};transition:width 0.3s"></div>
-                        </div>
-                        <span class="text-xs font-bold" style="color:${barColor}">${avgPct}%</span>
-                    </div>
-                    <div class="mt-1 text-[10px] text-indigo-800">
-                        ✓ ${summary.likely} ready · ⚠ ${summary.risky} risky · ✗ ${summary.danger} danger${summary.unseen > 0 ? ` · 🆕 ${summary.unseen} unseen` : ''}
-                    </div>
-                    ${weakestHtml ? `<div class="mt-1 text-[10px] text-indigo-700">Weakest: ${weakestHtml}</div>` : ''}
+                    <span class="font-bold" style="color:${barColor}">${avgPct}%</span>
+                    <span class="text-indigo-400">· ✓${summary.likely} ⚠${summary.risky} ✗${summary.danger}${summary.unseen > 0 ? ` 🆕${summary.unseen}` : ''}</span>
                 </div>`;
         }
     }
