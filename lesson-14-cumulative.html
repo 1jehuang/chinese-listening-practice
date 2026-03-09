@@ -126,7 +126,7 @@
             display: flex;
             flex-direction: column;
             min-width: 0;
-            padding: 1rem 2rem;
+            padding: 0.4rem 0.75rem;
             overflow: hidden;
         }
 
@@ -134,11 +134,14 @@
         .quiz-header {
             flex-shrink: 0;
             text-align: center;
-            padding-bottom: 0.5rem;
+            padding-bottom: 0.2rem;
         }
 
         .quiz-header h1 {
-            font-size: 1.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.875rem;
             font-weight: 600;
             color: #374151;
             margin: 0;
@@ -152,7 +155,7 @@
             justify-content: center;
             align-items: center;
             min-height: 0;
-            padding: 1rem 0;
+            padding: 0.25rem 0;
         }
 
         #questionDisplay {
@@ -167,11 +170,11 @@
         }
 
         .three-column-meaning-layout .column-char-large {
-            font-size: clamp(56px, 12vw, 120px);
+            font-size: clamp(48px, 8vw, 90px);
         }
 
         .three-column-meaning-layout .column-char {
-            font-size: clamp(28px, 5vw, 40px);
+            font-size: clamp(24px, 4vw, 36px);
         }
 
         .three-column-meaning-layout .column-card {
@@ -185,12 +188,12 @@
             max-width: 32rem;
             width: 100%;
             margin: 0 auto;
-            padding-top: 1rem;
+            padding-top: 0.4rem;
         }
 
         .input-section input[type="text"] {
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 0.75rem;
             border: 2px solid #d1d5db;
             border-radius: 0.5rem;
             font-size: 1rem;
@@ -209,7 +212,7 @@
         }
 
         .choice-grid button {
-            padding: 0.875rem 1rem;
+            padding: 0.5rem 0.75rem;
             border: 2px solid #e5e7eb;
             border-radius: 0.5rem;
             background: white;
@@ -229,8 +232,8 @@
             display: flex;
             justify-content: center;
             gap: 2rem;
-            padding: 0.75rem 0;
-            font-size: 0.875rem;
+            padding: 0.2rem 0;
+            font-size: 0.75rem;
             color: #6b7280;
             border-top: 1px solid #f3f4f6;
             margin-top: auto;

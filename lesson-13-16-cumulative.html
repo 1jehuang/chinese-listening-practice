@@ -69,11 +69,14 @@
 
         .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .quiz-header { padding: 1.5rem 1rem 1rem; text-align: center; }
-        .quiz-header h1 { font-size: 1.75rem; font-weight: 700; color: #111827; }
-        .quiz-display { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0; padding: 1rem 0; }
+        .quiz-header h1 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; font-size: 1.75rem; font-weight: 700; color: #111827; }
+        .quiz-display { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0; padding: 0.25rem 0; }
 
         .input-section { flex-shrink: 0; max-width: 36rem; width: 100%; margin: 0 auto; padding: 0 1rem 1.25rem; }
-        .stats-bar { flex-shrink: 0; display: flex; justify-content: center; gap: 2rem; padding: 0.75rem 0; font-size: 0.875rem; color: #6b7280; border-top: 1px solid #f3f4f6; margin-top: auto; }
+        .stats-bar { flex-shrink: 0; display: flex; justify-content: center; gap: 2rem; padding: 0.2rem 0; font-size: 0.75rem; color: #6b7280; border-top: 1px solid #f3f4f6; margin-top: auto; }
 
         .home-btn {
             position: fixed;

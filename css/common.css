@@ -1112,11 +1112,10 @@ body.feedback-left-layout #questionDisplay .my-8 {
 
 .three-column-meaning-layout .column-focus-ring {
     width: 100%;
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 8px;
+    padding: 4px 4px;
     border-radius: 0;
     background: transparent;
     border: none;
@@ -1155,7 +1154,7 @@ body.feedback-left-layout #questionDisplay .my-8 {
 }
 
 .three-column-meaning-layout .column-char-large {
-    font-size: clamp(72px, 14vw, 140px);
+    font-size: clamp(56px, 10vw, 100px);
     line-height: 1;
     color: #0f172a;
     font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;

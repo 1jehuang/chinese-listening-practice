@@ -3908,17 +3908,19 @@ function updateFeedStatusDisplay() {
     statusEl.style.width = '100%';
     statusEl.style.maxWidth = '900px';
     statusEl.innerHTML = `
-        <div class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</div>
-        <div class="text-sm text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</div>
-        <div class="text-[11px] text-purple-700">${statsLine}</div>
-        ${compactCards ? `<div class="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">${compactCards}</div>` : ''}
-        ${hand.length > 1 ? `
-            <button id="feedDetailsToggle" type="button" class="mt-2 text-[11px] font-semibold text-purple-700 hover:text-purple-900">
-                ${showDetails ? 'Hide hand details' : 'Show hand details'}
-            </button>
-        ` : ''}
-        ${detailCards ? `<div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2" style="max-height: 260px; overflow: auto;">${detailCards}</div>` : ''}
-        ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduated: ${masteredCount}/${poolSize} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-500">${modeLabel}</span>
+            <span class="text-[11px] text-purple-900">Hand (${hand.length}): ${handBadges || '<em>empty</em>'}</span>
+            <span class="text-[11px] text-purple-600">${statsLine}</span>
+            ${isFeedSR ? `<span class="text-[11px] text-purple-600">Grad: ${masteredCount}/${poolSize}</span>` : ''}
+            ${hand.length > 0 ? `
+                <button id="feedDetailsToggle" type="button" class="text-[11px] font-semibold text-purple-500 hover:text-purple-900">
+                    ${showDetails ? '▲ Hide' : '▼ Cards'}
+                </button>
+            ` : ''}
+        </div>
+        ${showDetails && compactCards ? `<div class="mt-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">${compactCards}</div>` : ''}
+        ${detailCards ? `<div class="mt-1 grid grid-cols-2 md:grid-cols-3 gap-1.5" style="max-height: 200px; overflow: auto;">${detailCards}</div>` : ''}
         ${quizReadinessHtml}
     `;
 
@@ -5096,17 +5098,17 @@ function ensureSchedulerToolbar() {
             <div id="adaptiveModeStatus" class="hidden"></div>
             <div id="composerModeStatus" class="hidden"></div>
             <div id="feedModeStatus" class="hidden"></div>
-            <div class="flex flex-nowrap gap-1 justify-center items-center overflow-x-auto max-w-full px-2" style="scrollbar-width: none; -ms-overflow-style: none;">
-                <button id="schedulerRandomBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Random</button>
-                <button id="schedulerWeightedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Confidence</button>
-                <button id="schedulerAdaptiveBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Adaptive 5</button>
-                <button id="schedulerFeedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed</button>
-                <button id="schedulerFeedSRBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">Feed Grad</button>
-                <button id="schedulerFeedEEGBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">🧠 Feed+EEG</button>
-                <button id="schedulerBatchBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">5-Card Sets</button>
-                <button id="schedulerBatch3Btn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">3-Card Sets</button>
-                <button id="schedulerBatch2Btn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">2-Card Sets</button>
-                <button id="schedulerOrderedBtn" type="button" class="px-2 py-1 rounded-lg border border-gray-200 text-gray-700 text-xs font-medium hover:border-blue-400 hover:text-blue-600 transition whitespace-nowrap flex-shrink-0">In Order</button>
+            <div class="flex flex-wrap gap-1 justify-center items-center max-w-full px-1">
+                <button id="schedulerRandomBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
+                <button id="schedulerWeightedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+                <button id="schedulerAdaptiveBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
+                <button id="schedulerFeedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
+                <button id="schedulerFeedSRBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
+                <button id="schedulerFeedEEGBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">🧠 Feed+EEG</button>
+                <button id="schedulerBatchBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
+                <button id="schedulerBatch3Btn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">3-Card Sets</button>
+                <button id="schedulerBatch2Btn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">2-Card Sets</button>
+                <button id="schedulerOrderedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
             </div>
         `;
         // Insert after header on experimental layout, or before question on legacy
