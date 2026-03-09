@@ -2895,6 +2895,17 @@ function getQuizTargetDateKey() {
     return `${QUIZ_TARGET_DATE_KEY_PREFIX}${getAdaptivePageKey()}`;
 }
 
+const AUTO_QUIZ_DATES = {
+    'lesson-11-part-2':      '2026-03-09T09:25:00',
+    'lesson-12-part-2':      '2026-03-11T09:25:00',
+    'xiao-huangdi-part-1':   '2026-03-10T11:30:00',
+    'xiao-huangdi-part-2':   '2026-03-10T11:30:00',
+    'xiao-huangdi-vocab':    '2026-03-10T11:30:00',
+    'lesson-14-part-1':      '2026-03-10T08:30:00',
+    'lesson-14-part-2':      '2026-03-10T08:30:00',
+    'lesson-14-cumulative':  '2026-03-10T08:30:00',
+};
+
 function loadQuizTargetDate() {
     try {
         const raw = localStorage.getItem(getQuizTargetDateKey());
@@ -2906,6 +2917,15 @@ function loadQuizTargetDate() {
             }
         }
     } catch (e) {}
+    const pageKey = getAdaptivePageKey();
+    if (AUTO_QUIZ_DATES[pageKey]) {
+        const autoDate = new Date(AUTO_QUIZ_DATES[pageKey]);
+        if (!isNaN(autoDate.getTime()) && autoDate.getTime() > Date.now()) {
+            quizTargetDate = autoDate.toISOString();
+            try { localStorage.setItem(getQuizTargetDateKey(), quizTargetDate); } catch (e) {}
+            return;
+        }
+    }
     quizTargetDate = null;
 }
 
