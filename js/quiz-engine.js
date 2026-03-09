@@ -62,6 +62,11 @@ function initQuizDebugInterface() {
         analytics: getLearningAnalytics,
         report: printLearningReport,
         exportLog: exportLearningLog,
+        quizDate: () => quizTargetDate,
+        setQuizDate: (iso) => { saveQuizTargetDate(iso); updateFeedStatusDisplay(); },
+        clearQuizDate: clearQuizTargetDate,
+        quizReadiness: getQuizReadinessSummary,
+        quizRecallAll: getAllRecallAtQuizTime,
     };
 }
 
@@ -520,6 +525,10 @@ let feedModeState = {
     seen: {},                              // { char: { attempts, correct, streak, lastSeen } }
     totalPulls: 0                          // total questions asked
 };
+
+// Quiz target date - predict recall at a future quiz/exam time
+const QUIZ_TARGET_DATE_KEY_PREFIX = 'quiz_target_date_';
+let quizTargetDate = null; // ISO string or null
 
 // =============================================================================
 // Learning Event Log - append-only record of every answer for analytics
@@ -2876,6 +2885,138 @@ function getFeedRecallProbabilityAt(halfLifeHours, elapsedHours) {
     return Math.pow(0.5, safeElapsed / safeHalfLife);
 }
 
+// =============================================================================
+// Quiz Target Date - predict recall at a future exam/quiz time
+// =============================================================================
+
+function getQuizTargetDateKey() {
+    return `${QUIZ_TARGET_DATE_KEY_PREFIX}${getAdaptivePageKey()}`;
+}
+
+function loadQuizTargetDate() {
+    try {
+        const raw = localStorage.getItem(getQuizTargetDateKey());
+        if (raw) {
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) {
+                quizTargetDate = raw;
+                return;
+            }
+        }
+    } catch (e) {}
+    quizTargetDate = null;
+}
+
+function saveQuizTargetDate(isoString) {
+    quizTargetDate = isoString || null;
+    try {
+        if (quizTargetDate) {
+            localStorage.setItem(getQuizTargetDateKey(), quizTargetDate);
+        } else {
+            localStorage.removeItem(getQuizTargetDateKey());
+        }
+    } catch (e) {}
+}
+
+function clearQuizTargetDate() {
+    saveQuizTargetDate(null);
+    updateFeedStatusDisplay();
+}
+
+function getQuizTargetDateMs() {
+    if (!quizTargetDate) return null;
+    const d = new Date(quizTargetDate);
+    return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function getTimeUntilQuiz() {
+    const targetMs = getQuizTargetDateMs();
+    if (!targetMs) return null;
+    return targetMs - Date.now();
+}
+
+function formatTimeUntilQuiz() {
+    const ms = getTimeUntilQuiz();
+    if (ms === null) return null;
+    if (ms <= 0) return 'now (past)';
+    const hours = ms / 3600000;
+    if (hours < 1) return `${Math.round(hours * 60)}min`;
+    if (hours < 24) return `${hours.toFixed(1)}h`;
+    const days = hours / 24;
+    if (days < 7) return `${days.toFixed(1)}d`;
+    return `${(days / 7).toFixed(1)}w`;
+}
+
+function getRecallAtQuizTime(char, now) {
+    const targetMs = getQuizTargetDateMs();
+    if (!targetMs) return null;
+    now = now || Date.now();
+
+    const stats = feedModeState.seen ? feedModeState.seen[char] : null;
+    if (!stats || !stats.lastSeen) return null;
+
+    const halfLife = getFeedHalfLifeHours(stats);
+    const elapsedAtQuiz = Math.max(0, (targetMs - stats.lastSeen) / 3600000);
+    return getFeedRecallProbabilityAt(halfLife, elapsedAtQuiz);
+}
+
+function getAllRecallAtQuizTime() {
+    const targetMs = getQuizTargetDateMs();
+    if (!targetMs) return null;
+    const now = Date.now();
+    const results = [];
+    const chars = Array.isArray(quizCharacters) ? quizCharacters : [];
+
+    for (const item of chars) {
+        const char = typeof item === 'string' ? item : item.char;
+        if (!char) continue;
+
+        const stats = feedModeState.seen ? feedModeState.seen[char] : null;
+        if (!stats || !stats.lastSeen) {
+            results.push({ char, recallAtQuiz: 0, halfLife: FEED_FORGET_INITIAL_HALFLIFE_HOURS, seen: false, graduated: false });
+            continue;
+        }
+
+        const halfLife = getFeedHalfLifeHours(stats);
+        const elapsedAtQuiz = Math.max(0, (targetMs - stats.lastSeen) / 3600000);
+        const recall = getFeedRecallProbabilityAt(halfLife, elapsedAtQuiz);
+        const graduated = getFeedGraduatedSet().has(char);
+        results.push({ char, recallAtQuiz: recall, halfLife, seen: true, graduated, attempts: stats.attempts || 0 });
+    }
+
+    results.sort((a, b) => a.recallAtQuiz - b.recallAtQuiz);
+    return results;
+}
+
+function getQuizReadinessSummary() {
+    const all = getAllRecallAtQuizTime();
+    if (!all) return null;
+    const total = all.length;
+    if (total === 0) return null;
+    const avgRecall = all.reduce((sum, r) => sum + r.recallAtQuiz, 0) / total;
+    const likely = all.filter(r => r.recallAtQuiz >= 0.8).length;
+    const risky = all.filter(r => r.recallAtQuiz >= 0.5 && r.recallAtQuiz < 0.8).length;
+    const danger = all.filter(r => r.recallAtQuiz < 0.5).length;
+    const unseen = all.filter(r => !r.seen).length;
+    const weakest = all.slice(0, 5);
+    return { total, avgRecall, likely, risky, danger, unseen, weakest, timeUntil: formatTimeUntilQuiz() };
+}
+
+function formatQuizTargetDateLocal() {
+    if (!quizTargetDate) return null;
+    const d = new Date(quizTargetDate);
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = d.toDateString() === tomorrow.toDateString();
+    const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (isToday) return `Today ${timeStr}`;
+    if (isTomorrow) return `Tomorrow ${timeStr}`;
+    return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ` ${timeStr}`;
+}
+
 function formatFeedDuration(hours) {
     if (!Number.isFinite(hours)) return '—';
     const absHours = Math.max(0, hours);
@@ -3538,6 +3679,19 @@ function updateFeedStatusDisplay() {
         });
         const cardClass = highlight ? 'border-purple-300 bg-purple-50' : 'border-purple-100 bg-white';
 
+        let quizRecallHtml = '';
+        if (quizTargetDate) {
+            const qr = getRecallAtQuizTime(char, now);
+            if (qr !== null) {
+                const qrPct = Math.round(qr * 100);
+                const qrColor = qr >= 0.8 ? 'text-green-700' : qr >= 0.5 ? 'text-amber-700' : 'text-red-700';
+                const qrIcon = qr >= 0.8 ? '✓' : qr >= 0.5 ? '⚠' : '✗';
+                quizRecallHtml = `<div class="mt-1 text-[10px] ${qrColor} font-semibold">Quiz: ${qrPct}% ${qrIcon}</div>`;
+            } else if (!stats || !stats.lastSeen) {
+                quizRecallHtml = `<div class="mt-1 text-[10px] text-red-700 font-semibold">Quiz: unseen ✗</div>`;
+            }
+        }
+
         return `
             <div class="rounded-xl border ${cardClass} p-1 shadow-sm">
                 <div class="flex items-center justify-between text-xs text-purple-900 font-semibold">
@@ -3551,6 +3705,7 @@ function updateFeedStatusDisplay() {
                     Acc ${attempts ? Math.round((correct / attempts) * 100) : 0}% · Avg ${avgResponse}
                 </div>
                 <div class="mt-1">${curveSvg}</div>
+                ${quizRecallHtml}
             </div>
         `;
     };
@@ -3565,6 +3720,39 @@ function updateFeedStatusDisplay() {
     const detailCards = showDetails
         ? orderedHand.map(char => renderCard(char, { highlight: char === focusChar })).join('')
         : '';
+
+    let quizReadinessHtml = '';
+    if (quizTargetDate) {
+        const summary = getQuizReadinessSummary();
+        if (summary) {
+            const avgPct = Math.round(summary.avgRecall * 100);
+            const barColor = avgPct >= 80 ? '#22c55e' : avgPct >= 50 ? '#f59e0b' : '#ef4444';
+            const dateLabel = formatQuizTargetDateLocal() || quizTargetDate;
+            const weakestHtml = summary.weakest.length > 0
+                ? summary.weakest.map(w => {
+                    const pct = Math.round(w.recallAtQuiz * 100);
+                    const c = w.recallAtQuiz >= 0.8 ? '#22c55e' : w.recallAtQuiz >= 0.5 ? '#f59e0b' : '#ef4444';
+                    return `<span style="color:${c}">${escapeHtml(w.char)} ${pct}%</span>`;
+                }).join(' · ')
+                : '';
+            quizReadinessHtml = `
+                <div class="mt-2 rounded-lg border border-indigo-200 bg-indigo-50 p-2">
+                    <div class="text-[11px] font-semibold uppercase tracking-[0.15em] text-indigo-600">
+                        📅 Quiz: ${escapeHtml(dateLabel)} (${summary.timeUntil})
+                    </div>
+                    <div class="mt-1 flex items-center gap-2">
+                        <div style="flex:1;height:8px;border-radius:4px;background:#e0e7ff;overflow:hidden">
+                            <div style="width:${avgPct}%;height:100%;border-radius:4px;background:${barColor};transition:width 0.3s"></div>
+                        </div>
+                        <span class="text-xs font-bold" style="color:${barColor}">${avgPct}%</span>
+                    </div>
+                    <div class="mt-1 text-[10px] text-indigo-800">
+                        ✓ ${summary.likely} ready · ⚠ ${summary.risky} risky · ✗ ${summary.danger} danger${summary.unseen > 0 ? ` · 🆕 ${summary.unseen} unseen` : ''}
+                    </div>
+                    ${weakestHtml ? `<div class="mt-1 text-[10px] text-indigo-700">Weakest: ${weakestHtml}</div>` : ''}
+                </div>`;
+        }
+    }
 
     statusEl.className = 'mt-1 text-xs text-purple-800';
     statusEl.style.width = '100%';
@@ -3581,6 +3769,7 @@ function updateFeedStatusDisplay() {
         ` : ''}
         ${detailCards ? `<div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2" style="max-height: 260px; overflow: auto;">${detailCards}</div>` : ''}
         ${isFeedSR ? `<div class="text-[11px] text-purple-700">Graduated: ${masteredCount}/${poolSize} (confidence ≥ ${threshold.toFixed(2)})</div>` : ''}
+        ${quizReadinessHtml}
     `;
 
     const toggleBtn = document.getElementById('feedDetailsToggle');
@@ -14507,6 +14696,77 @@ function initQuizCommandPalette() {
             scope: 'Feed mode only'
         });
 
+        // Quiz target date
+        actions.push({
+            name: 'Set Quiz Date',
+            type: 'action',
+            description: quizTargetDate
+                ? `Change quiz date (currently ${formatQuizTargetDateLocal() || quizTargetDate})`
+                : 'Set a target quiz/exam date to see predicted recall',
+            keywords: 'quiz date exam test schedule target recall prediction readiness',
+            action: () => {
+                const now = new Date();
+                const defaultVal = quizTargetDate
+                    ? new Date(quizTargetDate).toISOString().slice(0, 16)
+                    : new Date(now.getTime() + 24 * 3600000).toISOString().slice(0, 16);
+                const input = prompt(
+                    `Enter quiz date and time (YYYY-MM-DDTHH:MM format):\n\nExamples:\n  ${new Date(now.getTime() + 2 * 3600000).toISOString().slice(0, 16)}  (2 hours from now)\n  ${new Date(now.getTime() + 24 * 3600000).toISOString().slice(0, 16)}  (tomorrow)\n\nCurrent: ${quizTargetDate ? formatQuizTargetDateLocal() : 'not set'}`,
+                    defaultVal
+                );
+                if (input === null) return;
+                const d = new Date(input);
+                if (isNaN(d.getTime())) {
+                    alert('Invalid date format. Use YYYY-MM-DDTHH:MM (e.g., 2026-03-10T09:30)');
+                    return;
+                }
+                saveQuizTargetDate(d.toISOString());
+                updateFeedStatusDisplay();
+            },
+            available: () => true,
+            scope: 'This page'
+        });
+        if (quizTargetDate) {
+            actions.push({
+                name: 'Clear Quiz Date',
+                type: 'action',
+                description: `Remove quiz target date (${formatQuizTargetDateLocal() || quizTargetDate})`,
+                keywords: 'quiz date clear remove exam test schedule target',
+                action: () => {
+                    clearQuizTargetDate();
+                },
+                available: () => Boolean(quizTargetDate),
+                scope: 'This page'
+            });
+            actions.push({
+                name: 'Show Quiz Readiness Report',
+                type: 'action',
+                description: 'Show detailed predicted recall for all words at quiz time',
+                keywords: 'quiz readiness report recall prediction exam forecast',
+                action: () => {
+                    const all = getAllRecallAtQuizTime();
+                    if (!all) { alert('No quiz date set.'); return; }
+                    const summary = getQuizReadinessSummary();
+                    const lines = [
+                        `Quiz: ${formatQuizTargetDateLocal()} (${summary.timeUntil})`,
+                        `Average recall: ${Math.round(summary.avgRecall * 100)}%`,
+                        `Ready (>=80%): ${summary.likely}  |  Risky (50-80%): ${summary.risky}  |  Danger (<50%): ${summary.danger}  |  Unseen: ${summary.unseen}`,
+                        '',
+                        'All words (sorted by recall):',
+                        ...all.map(r => {
+                            const pct = Math.round(r.recallAtQuiz * 100);
+                            const icon = r.recallAtQuiz >= 0.8 ? '✓' : r.recallAtQuiz >= 0.5 ? '⚠' : '✗';
+                            const status = !r.seen ? '(unseen)' : r.graduated ? '(grad)' : `(${r.attempts} tries)`;
+                            return `  ${icon} ${pct.toString().padStart(3)}%  ${r.char}  ${status}`;
+                        })
+                    ];
+                    console.log(lines.join('\n'));
+                    alert(lines.join('\n'));
+                },
+                available: () => Boolean(quizTargetDate),
+                scope: 'This page'
+            });
+        }
+
         // Chat panel toggle
         actions.push({
             name: chatPanelVisible ? 'Close Chat' : 'Open Chat',
@@ -14611,6 +14871,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     loadBatchState();
     loadAdaptiveState();
     loadFeedState();
+    loadQuizTargetDate();
     loadDecompositionsData(); // Load character decompositions from JSON
     loadComposerState();
     loadWordMarkings(); // Load user word markings
