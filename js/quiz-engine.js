@@ -3139,41 +3139,33 @@ function renderQuizGradeBanner() {
 
     banner.style.cssText = `
         background: ${bgColor};
-        border: 2px solid ${borderColor};
-        border-radius: 12px;
-        padding: 10px 16px;
-        margin: 8px 16px;
+        border: 1px solid ${borderColor};
+        border-radius: 6px;
+        padding: 3px 10px;
+        margin: 4px 8px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 8px;
         font-family: system-ui, -apple-system, sans-serif;
+        font-size: 11px;
+        color: #6b7280;
+        flex-wrap: wrap;
     `;
 
     const dangerWords = summary.weakest.filter(w => w.recallAtQuiz < 0.5).slice(0, 3);
     const dangerHtml = dangerWords.length > 0
-        ? `<span style="color:#dc2626;font-size:11px;margin-left:8px">⚠ ${dangerWords.map(w => escapeHtml(w.char)).join(', ')}</span>`
+        ? `<span style="color:#dc2626">⚠ ${dangerWords.map(w => escapeHtml(w.char)).join(' ')}</span>`
         : '';
 
     banner.innerHTML = `
-        <div style="text-align:center;min-width:64px">
-            <div style="font-size:28px;font-weight:800;color:${gradeColor};line-height:1">${letterGrade}</div>
-            <div style="font-size:18px;font-weight:700;color:${gradeColor};line-height:1.2">${pct}%</div>
+        <span style="font-weight:800;font-size:13px;color:${gradeColor}">${letterGrade}</span>
+        <span style="font-weight:700;color:${gradeColor}">${pct}%</span>
+        <div style="width:40px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden;flex-shrink:0">
+            <div style="width:${pct}%;height:100%;background:${gradeColor}"></div>
         </div>
-        <div style="flex:1;min-width:0">
-            <div style="font-size:12px;font-weight:600;color:#6b7280">
-                📅 Predicted grade: ${escapeHtml(dateLabel)} (${timeUntil})
-            </div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px">
-                10-word quiz (pinyin + meaning) from ${grade.poolSize} words
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                <div style="flex:1;height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden">
-                    <div style="width:${pct}%;height:100%;border-radius:3px;background:${gradeColor};transition:width 0.3s"></div>
-                </div>
-                <span style="font-size:11px;font-weight:600;color:${gradeColor}">${summary.likely}✓ ${summary.risky}⚠ ${summary.danger}✗</span>
-                ${dangerHtml}
-            </div>
-        </div>
+        <span>📅 ${timeUntil}</span>
+        <span>${summary.likely}✓ ${summary.risky}⚠ ${summary.danger}✗</span>
+        ${dangerHtml}
     `;
 }
 
