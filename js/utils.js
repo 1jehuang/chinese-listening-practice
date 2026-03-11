@@ -402,6 +402,18 @@ function getChineseVoice() {
     return preferred || null;
 }
 
+function isFirefoxBrowser() {
+    return typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
+}
+
+function containsChineseText(text) {
+    return /[\u3400-\u9FFF]/.test((text || '').toString());
+}
+
+function shouldAvoidSpeechFallback(text) {
+    return containsChineseText(text) && isFirefoxBrowser();
+}
+
 // Play audio using TTS
 function playTTS(chineseChar) {
     stopActiveAudio();
@@ -414,8 +426,9 @@ function playTTS(chineseChar) {
     const hasSpeech = typeof window !== 'undefined' &&
         typeof window.speechSynthesis !== 'undefined' &&
         typeof window.SpeechSynthesisUtterance !== 'undefined';
-    const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
-    const hasChinese = /[\u3400-\u9FFF]/.test(text);
+    const isFirefox = isFirefoxBrowser();
+    const hasChinese = containsChineseText(text);
+    const avoidSpeechFallback = shouldAvoidSpeechFallback(text);
     const chineseVoice = hasSpeech ? getChineseVoice() : null;
     const voiceName = (chineseVoice?.name || '').toLowerCase();
     const voiceUri = (chineseVoice?.voiceURI || '').toLowerCase();
@@ -438,6 +451,10 @@ function playTTS(chineseChar) {
             audio.addEventListener('error', () => {
                 audio.removeEventListener('playing', onPlay);
                 detachActiveAudio(audio);
+                setTtsDebug('remote', 'baidu', 'error');
+                if (avoidSpeechFallback) {
+                    return;
+                }
                 if (hasSpeech) {
                     const fallback = new SpeechSynthesisUtterance(text);
                     fallback.lang = 'zh-CN';
@@ -452,7 +469,10 @@ function playTTS(chineseChar) {
                     speechSynthesis.speak(fallback);
                 }
             }, { once: true });
-            audio.play().catch(() => detachActiveAudio(audio));
+            audio.play().catch(() => {
+                detachActiveAudio(audio);
+                setTtsDebug('remote', 'baidu', avoidSpeechFallback ? 'blocked' : 'error');
+            });
         } else if (!hasSpeech) {
             console.warn('SpeechSynthesis not supported and Audio unavailable.');
         }
@@ -506,6 +526,7 @@ function playSentenceAudio(sentence) {
     if (!sentence || !sentence.trim()) return;
 
     const trimmedSentence = sentence.trim();
+    const avoidSpeechFallback = shouldAvoidSpeechFallback(trimmedSentence);
     const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
     const cacheKey = `${trimmedSentence}|${rate.toFixed(2)}`;
     if (typeof Audio === 'undefined') {
@@ -566,6 +587,9 @@ function playSentenceAudio(sentence) {
                 googleAudio.removeEventListener('playing', onGooglePlay);
                 detachActiveAudio(googleAudio);
                 setTtsDebug('remote', 'google', 'error');
+                if (avoidSpeechFallback) {
+                    return;
+                }
                 playTTS(trimmedSentence);
             };
 
@@ -596,8 +620,10 @@ function playSentenceAudio(sentence) {
                 detachActiveAudio(audio);
             }
             globalScope.__sentenceAudioCache.delete(cacheKey);
-            setTtsDebug('remote', 'baidu', 'error');
-            playTTS(trimmedSentence);
+            setTtsDebug('remote', 'baidu', avoidSpeechFallback ? 'blocked' : 'error');
+            if (!avoidSpeechFallback) {
+                playTTS(trimmedSentence);
+            }
         });
     }
 }

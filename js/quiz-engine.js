@@ -532,6 +532,13 @@ let feedModeState = {
 const QUIZ_TARGET_DATE_KEY_PREFIX = 'quiz_target_date_';
 let quizTargetDate = null; // ISO string or null
 
+function formatLocalDateTimeInput(dateLike) {
+    const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
+    if (isNaN(date.getTime())) return '';
+    const pad2 = (value) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
 // =============================================================================
 // Learning Event Log - append-only record of every answer for analytics
 // =============================================================================
@@ -2896,30 +2903,46 @@ function getQuizTargetDateKey() {
 }
 
 const AUTO_QUIZ_DATES = {
-    'lesson-11-part-2':      '2026-03-09T09:25:00',
-    'lesson-12-part-2':      '2026-03-11T09:25:00',
-    'xiao-huangdi-part-1':   '2026-03-10T11:30:00',
-    'xiao-huangdi-part-2':   '2026-03-10T11:30:00',
-    'xiao-huangdi-vocab':    '2026-03-10T11:30:00',
-    'lesson-14-part-1':      '2026-03-10T08:30:00',
-    'lesson-14-part-2':      '2026-03-10T08:30:00',
-    'lesson-14-cumulative':  '2026-03-10T08:30:00',
+    'lesson-11-part-2':      '2026-03-09T09:25:00-07:00',
+    'lesson-12-part-2':      '2026-03-12T10:20:00-07:00',
+    'lesson-10-cumulative':  '2026-03-12T10:20:00-07:00',
+    'xiao-huangdi-part-1':   '2026-03-10T11:30:00-07:00',
+    'xiao-huangdi-part-2':   '2026-03-12T09:25:00-07:00',
+    'xiao-huangdi-vocab':    '2026-03-10T11:30:00-07:00',
+    'lesson-14-part-1':      '2026-03-10T08:30:00-07:00',
+    'lesson-14-part-2':      '2026-03-10T08:30:00-07:00',
+    'lesson-14-cumulative':  '2026-03-10T08:30:00-07:00',
 };
 
+function getLegacyAutoQuizDateIso(autoDateString) {
+    if (typeof autoDateString !== 'string') return null;
+    const legacyLocal = autoDateString.replace(/(?:Z|[+-]\d{2}:\d{2})$/, '');
+    const legacyDate = new Date(legacyLocal);
+    return isNaN(legacyDate.getTime()) ? null : legacyDate.toISOString();
+}
+
 function loadQuizTargetDate() {
+    const pageKey = getAdaptivePageKey();
+    const autoDateString = AUTO_QUIZ_DATES[pageKey] || null;
     try {
         const raw = localStorage.getItem(getQuizTargetDateKey());
         if (raw) {
             const d = new Date(raw);
             if (!isNaN(d.getTime())) {
+                const canonicalAutoIso = autoDateString ? new Date(autoDateString).toISOString() : null;
+                const legacyAutoIso = autoDateString ? getLegacyAutoQuizDateIso(autoDateString) : null;
+                if (canonicalAutoIso && legacyAutoIso && raw === legacyAutoIso && raw !== canonicalAutoIso) {
+                    quizTargetDate = canonicalAutoIso;
+                    try { localStorage.setItem(getQuizTargetDateKey(), quizTargetDate); } catch (e) {}
+                    return;
+                }
                 quizTargetDate = raw;
                 return;
             }
         }
     } catch (e) {}
-    const pageKey = getAdaptivePageKey();
-    if (AUTO_QUIZ_DATES[pageKey]) {
-        const autoDate = new Date(AUTO_QUIZ_DATES[pageKey]);
+    if (autoDateString) {
+        const autoDate = new Date(autoDateString);
         if (!isNaN(autoDate.getTime()) && autoDate.getTime() > Date.now()) {
             quizTargetDate = autoDate.toISOString();
             try { localStorage.setItem(getQuizTargetDateKey(), quizTargetDate); } catch (e) {}
@@ -3110,7 +3133,6 @@ function renderQuizGradeBanner() {
     if (!summary) return;
 
     const pct = grade.predictedGradePct;
-    const dateLabel = formatQuizTargetDateLocal() || quizTargetDate;
     const timeUntil = summary.timeUntil;
 
     let letterGrade, gradeColor, bgColor, borderColor;
@@ -3130,7 +3152,12 @@ function renderQuizGradeBanner() {
         banner.id = 'quizGradeBanner';
         const quizHeader = document.querySelector('.quiz-header');
         if (quizHeader) {
-            quizHeader.parentElement.insertBefore(banner, quizHeader);
+            const headerTitle = quizHeader.querySelector('h1');
+            if (headerTitle && headerTitle.nextSibling) {
+                quizHeader.insertBefore(banner, headerTitle.nextSibling);
+            } else {
+                quizHeader.appendChild(banner);
+            }
         } else {
             const mainContent = document.querySelector('.main-content');
             if (mainContent) mainContent.insertBefore(banner, mainContent.firstChild);
@@ -3140,16 +3167,22 @@ function renderQuizGradeBanner() {
     banner.style.cssText = `
         background: ${bgColor};
         border: 1px solid ${borderColor};
-        border-radius: 6px;
-        padding: 3px 10px;
-        margin: 4px 8px;
+        border-radius: 999px;
+        padding: 4px 10px;
+        margin: 6px auto 0;
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         font-family: system-ui, -apple-system, sans-serif;
         font-size: 11px;
         color: #6b7280;
         flex-wrap: wrap;
+        width: fit-content;
+        max-width: min(100%, 560px);
+        line-height: 1.2;
+        box-sizing: border-box;
+        text-align: center;
     `;
 
     const dangerWords = summary.weakest.filter(w => w.recallAtQuiz < 0.5).slice(0, 3);
@@ -3158,9 +3191,10 @@ function renderQuizGradeBanner() {
         : '';
 
     banner.innerHTML = `
+        <span style="font-weight:600;color:#6b7280">Quiz</span>
         <span style="font-weight:800;font-size:13px;color:${gradeColor}">${letterGrade}</span>
         <span style="font-weight:700;color:${gradeColor}">${pct}%</span>
-        <div style="width:40px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden;flex-shrink:0">
+        <div style="width:44px;height:4px;border-radius:999px;background:#e5e7eb;overflow:hidden;flex-shrink:0">
             <div style="width:${pct}%;height:100%;background:${gradeColor}"></div>
         </div>
         <span>📅 ${timeUntil}</span>
@@ -6311,6 +6345,7 @@ function renderQuestionUiForHandwritingModes() {
 
         handwritingMode.style.display = 'block';
         initHandwriting();
+        registerCurrentPromptAudio({ autoplay: true, autoplayDelay: 0 });
         return true;
     }
 
@@ -6746,6 +6781,38 @@ function addKeyboardHints() {
     }
 }
 
+function registerCurrentPromptAudio(options = {}) {
+    const { autoplay = false, autoplayDelay = 200 } = options;
+    if (!currentQuestion) {
+        window.currentAudioPlayFunc = null;
+        return null;
+    }
+
+    const questionForPlayback = currentQuestion;
+    const pinyinOptions = (questionForPlayback.pinyin || '').split('/');
+    const firstPinyin = (pinyinOptions[0] || '').trim();
+
+    const playCurrentPrompt = () => {
+        if (firstPinyin) {
+            playPinyinAudio(firstPinyin, questionForPlayback.char);
+        } else if (questionForPlayback.char) {
+            playSentenceAudio(questionForPlayback.char);
+        }
+    };
+
+    window.currentAudioPlayFunc = playCurrentPrompt;
+
+    if (autoplay) {
+        setTimeout(() => {
+            if (currentQuestion === questionForPlayback) {
+                playCurrentPrompt();
+            }
+        }, autoplayDelay);
+    }
+
+    return playCurrentPrompt;
+}
+
 function setupAudioMode(options = {}) {
     const { focusAnswer = true } = options;
     const playBtn = document.getElementById('playAudioBtn');
@@ -6753,30 +6820,13 @@ function setupAudioMode(options = {}) {
 
     ensureTtsSpeedControl();
     addKeyboardHints();
-
-    const pinyinOptions = (currentQuestion.pinyin || '').split('/');
-    const firstPinyin = (pinyinOptions[0] || '').trim();
-
-    const playCurrentPrompt = () => {
-        if (firstPinyin) {
-            playPinyinAudio(firstPinyin, currentQuestion.char);
-        } else if (currentQuestion.char) {
-            playSentenceAudio(currentQuestion.char);
-        }
-    };
-
-    window.currentAudioPlayFunc = playCurrentPrompt;
+    const playCurrentPrompt = registerCurrentPromptAudio({ autoplay: true });
     playBtn.onclick = playCurrentPrompt;
     playBtn.innerHTML = '🔊 Play Sentence <span class="text-xs opacity-75 ml-1">(Ctrl+J)</span>';
 
     if (focusAnswer && answerInput && isElementReallyVisible(answerInput)) {
         setTimeout(() => answerInput.focus(), 100);
     }
-
-    // Auto-play once
-    setTimeout(() => {
-        playCurrentPrompt();
-    }, 200);
 }
 
 function setupChunkAudioMode(chunkText) {
@@ -7396,7 +7446,7 @@ function generateCharOptions() {
 
     allOptions.forEach(option => {
         const btn = document.createElement('button');
-        btn.className = 'px-6 py-8 text-6xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.className = 'quiz-char-choice';
         btn.textContent = option;
         btn.onclick = () => checkMultipleChoice(option);
         options.appendChild(btn);
@@ -14861,10 +14911,10 @@ function initQuizCommandPalette() {
             action: () => {
                 const now = new Date();
                 const defaultVal = quizTargetDate
-                    ? new Date(quizTargetDate).toISOString().slice(0, 16)
-                    : new Date(now.getTime() + 24 * 3600000).toISOString().slice(0, 16);
+                    ? formatLocalDateTimeInput(quizTargetDate)
+                    : formatLocalDateTimeInput(new Date(now.getTime() + 24 * 3600000));
                 const input = prompt(
-                    `Enter quiz date and time (YYYY-MM-DDTHH:MM format):\n\nExamples:\n  ${new Date(now.getTime() + 2 * 3600000).toISOString().slice(0, 16)}  (2 hours from now)\n  ${new Date(now.getTime() + 24 * 3600000).toISOString().slice(0, 16)}  (tomorrow)\n\nCurrent: ${quizTargetDate ? formatQuizTargetDateLocal() : 'not set'}`,
+                    `Enter quiz date and time (YYYY-MM-DDTHH:MM format):\n\nExamples:\n  ${formatLocalDateTimeInput(new Date(now.getTime() + 2 * 3600000))}  (2 hours from now)\n  ${formatLocalDateTimeInput(new Date(now.getTime() + 24 * 3600000))}  (tomorrow)\n\nCurrent: ${quizTargetDate ? formatQuizTargetDateLocal() : 'not set'}`,
                     defaultVal
                 );
                 if (input === null) return;

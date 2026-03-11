@@ -1951,3 +1951,17 @@ body.feed-mode-active .quiz-display {
 .choice-sidebar-slot #choiceMode .choice-grid button {
     width: 100%;
 }
+
+.choice-grid button.quiz-char-choice {
+    font-size: 3rem !important;
+    line-height: 1.1 !important;
+    font-weight: 500;
+    padding: 1rem 1.5rem !important;
+    text-align: center;
+    min-height: 4.75rem;
+}
+
+#choiceMode.choice-list .choice-grid button.quiz-char-choice,
+.choice-sidebar-slot #choiceMode .choice-grid button.quiz-char-choice {
+    text-align: center;
+}
