@@ -1965,3 +1965,37 @@ body.feed-mode-active .quiz-display {
 .choice-sidebar-slot #choiceMode .choice-grid button.quiz-char-choice {
     text-align: center;
 }
+
+.choice-grid button.quiz-char-pinyin-choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    width: 100%;
+    padding: 0.9rem 1rem !important;
+    text-align: left;
+    min-height: 5rem;
+}
+
+.quiz-char-pinyin-choice-char {
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1;
+    font-weight: 600;
+    color: #111827;
+    flex-shrink: 0;
+}
+
+.quiz-char-pinyin-choice-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
+}
+
+.quiz-char-pinyin-choice-pinyin {
+    font-size: 1rem;
+    line-height: 1.35;
+    color: #475569;
+    text-align: right;
+    word-break: break-word;
+}
