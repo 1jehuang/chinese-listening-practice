@@ -154,7 +154,104 @@
 
         @media (max-width: 768px) {
             .sidebar { display: none; }
-            .main-content { padding: 1rem; }
+            .app-container { height: auto; min-height: 100vh; }
+            .main-content { padding: 0.5rem; overflow: visible; }
+            .quiz-display { overflow: visible; }
+            html, body { height: auto; overflow: auto; }
+
+            .mobile-script-toggle {
+                display: flex;
+                position: fixed;
+                bottom: 1rem;
+                right: 1rem;
+                z-index: 100;
+                background: #8b5cf6;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 3.5rem;
+                height: 3.5rem;
+                font-size: 1.5rem;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                cursor: pointer;
+            }
+
+            .mobile-script-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 200;
+                background: white;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 1rem;
+                padding-bottom: 5rem;
+            }
+
+            .mobile-script-overlay .close-btn {
+                position: fixed;
+                top: 0.75rem;
+                right: 0.75rem;
+                z-index: 210;
+                background: #ef4444;
+                color: white;
+                border: none;
+                border-radius: 0.5rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                cursor: pointer;
+            }
+
+            .mobile-script-overlay .script-line {
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                margin-bottom: 0.5rem;
+                border-left: 3px solid #e5e7eb;
+            }
+
+            .mobile-script-overlay .script-line.jeremy {
+                background: #faf5ff;
+                border-left-color: #8b5cf6;
+            }
+
+            .mobile-script-overlay .script-line.athena {
+                background: #fdf2f8;
+                border-left-color: #ec4899;
+            }
+
+            .mobile-script-overlay .script-line .speaker-name {
+                font-weight: 700;
+                font-size: 0.75rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .mobile-script-overlay .script-line .chinese-text {
+                font-size: 1.125rem;
+                line-height: 1.6;
+                margin-bottom: 0.25rem;
+            }
+
+            .mobile-script-overlay .script-line .pinyin-text {
+                font-size: 0.8rem;
+                color: #6b7280;
+                margin-bottom: 0.25rem;
+            }
+
+            .mobile-script-overlay .script-line .english-text {
+                font-size: 0.8rem;
+                color: #9ca3af;
+            }
+
+            .mobile-script-overlay .script-line .pattern-badge {
+                display: inline-block;
+                font-size: 0.7rem;
+                color: #7c3aed;
+                background: #ede9fe;
+                padding: 0.125rem 0.375rem;
+                border-radius: 0.25rem;
+                margin-top: 0.25rem;
+            }
         }
     </style>
     <script type="module">
@@ -224,6 +321,9 @@
 </head>
 <body>
     <a href="home.html" class="home-btn">← Home</a>
+
+    <button class="mobile-script-toggle" id="mobileScriptBtn" style="display:none" onclick="toggleMobileScript()">📜</button>
+    <div id="mobileScriptOverlay" class="mobile-script-overlay" style="display:none"></div>
 
     <div class="app-container">
         <aside class="sidebar">
@@ -546,7 +646,7 @@
         const jeremyLines = practiceDialogue.filter(d => d.speaker === 'Jeremy');
         const patternLines = practiceDialogue.filter(d => d.patterns.length > 0);
 
-        let currentMode = 'english-to-chinese';
+        let currentMode = window.innerWidth <= 768 ? 'study' : 'english-to-chinese';
         let currentIndex = 0;
         let currentData = practiceDialogue;
         let answerShown = false;
@@ -581,7 +681,8 @@
             });
         });
 
-        document.querySelector('.mode-btn[data-mode="english-to-chinese"]').classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+        const defaultMode = window.innerWidth <= 768 ? 'study' : 'english-to-chinese';
+        document.querySelector(`.mode-btn[data-mode="${defaultMode}"]`).classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
 
         function updateDisplay() {
             const studyMode = document.getElementById('studyMode');
@@ -1369,6 +1470,51 @@ Keep answers concise but helpful. Use pinyin when mentioning Chinese words.`
                 el.querySelector('div').innerHTML = content.replace(/\n/g, '<br>');
             }
         }
+
+        // Mobile script overlay
+        function buildMobileScript() {
+            const overlay = document.getElementById('mobileScriptOverlay');
+            let html = '<button class="close-btn" onclick="toggleMobileScript()">✕ Close</button>';
+            html += '<h2 style="font-size:1.125rem;font-weight:700;margin:0 0 0.75rem;padding-right:4rem">CHIN112 Final Oral Script</h2>';
+            dialogue.forEach(d => {
+                if (d.isStageDirection) return;
+                const cls = d.speaker === 'Jeremy' ? 'jeremy' : 'athena';
+                const color = d.speaker === 'Jeremy' ? 'color:#7c3aed' : 'color:#db2777';
+                const patterns = d.patterns.length > 0
+                    ? d.patterns.map(p => `<span class="pattern-badge">${p}</span>`).join(' ')
+                    : '';
+                html += `<div class="script-line ${cls}" onclick="speakChinese('${d.chinese.replace(/'/g, "\\'")}'${d.speaker === 'Jeremy' ? ',\'Jeremy\'' : ',\'Athena\''}')">
+                    <div class="speaker-name" style="${color}">${d.line}. ${d.speaker}</div>
+                    <div class="chinese-text">${d.chinese}</div>
+                    <div class="pinyin-text">${d.pinyin}</div>
+                    <div class="english-text">${d.english}</div>
+                    ${patterns ? '<div>' + patterns + '</div>' : ''}
+                </div>`;
+            });
+            overlay.innerHTML = html;
+        }
+
+        window.toggleMobileScript = function() {
+            const overlay = document.getElementById('mobileScriptOverlay');
+            if (overlay.style.display === 'none') {
+                buildMobileScript();
+                overlay.style.display = 'block';
+            } else {
+                overlay.style.display = 'none';
+            }
+        };
+
+        // Show mobile script button on small screens
+        function checkMobileBtn() {
+            const btn = document.getElementById('mobileScriptBtn');
+            if (window.innerWidth <= 768) {
+                btn.style.display = 'flex';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+        checkMobileBtn();
+        window.addEventListener('resize', checkMobileBtn);
 
         // Initial render
         updateDisplay();
