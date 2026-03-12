@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>CHIN112 Final Oral Test - Dialogue Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/utils.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/pinyin-utils.js"></script>
+    <style>
+        html, body { height: 100%; overflow: hidden; }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .sidebar {
+            width: 16rem;
+            flex-shrink: 0;
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+            margin-top: 2.5rem;
+        }
+
+        .sidebar .mode-desc {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .sidebar .mode-btn {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 0.5rem;
+            border: 2px solid #e5e7eb;
+            background: #ffffff;
+            text-align: left;
+            font-size: 0.875rem;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .sidebar .mode-btn:hover { background: #f3f4f6; }
+        .sidebar .mode-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .sidebar .speed-section {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .sidebar .speed-btn {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            background: white;
+            cursor: pointer;
+        }
+        .sidebar .speed-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding: 0.4rem 0.75rem;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+
+        .quiz-header {
+            flex-shrink: 0;
+            text-align: center;
+            padding-bottom: 0.2rem;
+        }
+
+        .quiz-header h1 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #374151;
+            margin: 0;
+        }
+
+        .quiz-header p {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin: 0.25rem 0 0;
+        }
+
+        .quiz-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0.25rem 0;
+        }
+
+        .home-btn {
+            position: fixed;
+            top: 0.75rem;
+            left: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            color: #374151;
+            text-decoration: none;
+            z-index: 50;
+            transition: background 0.15s;
+        }
+        .home-btn:hover { background: #f3f4f6; }
+
+        .chat-section {
+            flex-shrink: 0;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+            margin: 0 -2rem -1rem;
+            padding: 0;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { padding: 1rem; }
+        }
+    </style>
+    <script type="module">
+        import { EdgeTTS } from 'https://cdn.jsdelivr.net/npm/edge-tts-universal/dist/browser.js';
+
+        let currentAudio = null;
+        let ttsRequestId = 0;
+
+        window.ttsSpeed = parseFloat(localStorage.getItem('ttsSpeed') || '1');
+
+        window.stopAllTTS = function() {
+            ttsRequestId++;
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            speechSynthesis.cancel();
+        };
+
+        window.edgeTTS = async function(text, voice = 'zh-CN-XiaoxiaoNeural') {
+            window.stopAllTTS();
+            const myRequestId = ttsRequestId;
+
+            return new Promise(async (resolve) => {
+                try {
+                    const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                    if (!cleanText.trim()) { resolve(); return; }
+
+                    const ratePercent = Math.round((window.ttsSpeed - 1) * 100);
+                    const rateStr = ratePercent >= 0 ? `+${ratePercent}%` : `${ratePercent}%`;
+                    const tts = new EdgeTTS(cleanText, voice, { rate: rateStr });
+                    const result = await tts.synthesize();
+
+                    if (myRequestId !== ttsRequestId) { resolve(); return; }
+
+                    const audio = new Audio(URL.createObjectURL(new Blob([result.audio], { type: 'audio/mp3' })));
+                    currentAudio = audio;
+                    audio.onended = () => {
+                        if (currentAudio === audio) currentAudio = null;
+                        resolve();
+                    };
+                    audio.onerror = () => resolve();
+                    audio.play();
+                } catch (err) {
+                    console.error('Edge TTS error:', err);
+                    if (myRequestId !== ttsRequestId) { resolve(); return; }
+                    speechSynthesis.cancel();
+                    const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                    const utterance = new SpeechSynthesisUtterance(cleanText);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = window.ttsSpeed * 0.85;
+                    utterance.onend = () => resolve();
+                    utterance.onerror = () => resolve();
+                    speechSynthesis.speak(utterance);
+                }
+            });
+        };
+
+        window.stopTTS = window.stopAllTTS;
+
+        window.setTTSSpeed = function(speed) {
+            window.ttsSpeed = speed;
+            localStorage.setItem('ttsSpeed', speed.toString());
+        };
+    </script>
+</head>
+<body>
+    <a href="home.html" class="home-btn">← Home</a>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Practice Modes</h2>
+            <p class="mode-desc">Choose how you want to practice the dialogue.</p>
+            <nav>
+                <button class="mode-btn" data-mode="study">Study All</button>
+                <button class="mode-btn active" data-mode="english-to-chinese">English → Chinese</button>
+                <button class="mode-btn" data-mode="role-jeremy">Practice Jeremy</button>
+                <button class="mode-btn" data-mode="fill-blank">Fill Pattern</button>
+                <button class="mode-btn" data-mode="flow">Flow Practice</button>
+                <button class="mode-btn" data-mode="translate">Translate</button>
+            </nav>
+
+            <div class="speed-section">
+                <p class="text-xs text-gray-500 mb-2">TTS Speed</p>
+                <div class="flex gap-1 flex-wrap">
+                    <button class="speed-btn" data-speed="0.7">0.7x</button>
+                    <button class="speed-btn" data-speed="0.85">0.85x</button>
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="1.2">1.2x</button>
+                    <button class="speed-btn" data-speed="1.5">1.5x</button>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">Ctrl+J to replay audio</p>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="quiz-header">
+                <h1>CHIN112 Final Oral Test: Parents & Education</h1>
+                <p>CHIN 112 · Mar 12, 9:30 AM · Jeremy & Athena · 16 lines, 15+ patterns</p>
+            </header>
+
+            <section class="quiz-display">
+
+        <div id="studyMode" class="hidden">
+            <div id="dialogueList" class="space-y-3"></div>
+        </div>
+
+        <div id="practiceMode" class="hidden">
+            <div id="contextDisplay" class="hidden mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div class="text-xs text-amber-600 mb-2 font-semibold">Context (what comes before):</div>
+                <div id="contextLines" class="space-y-2 text-sm"></div>
+            </div>
+
+            <div id="lineNumber" class="text-center text-sm text-gray-500 mb-2"></div>
+            <div id="speaker" class="text-center text-lg font-bold mb-4"></div>
+            <div id="questionDisplay" class="text-center text-2xl mb-6 p-6 bg-gray-50 rounded-lg min-h-[100px] flex items-center justify-center"></div>
+            <div id="patternHint" class="text-center text-sm text-purple-600 mb-4"></div>
+
+            <div class="text-center mb-4 flex flex-wrap gap-2 justify-center">
+                <button id="playAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">
+                    🔊 Play Audio
+                </button>
+                <button id="recordBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition">
+                    🎤 Record
+                </button>
+                <button id="showAnswerBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition">
+                    👁 Show Answer
+                </button>
+            </div>
+
+            <div id="transcriptionDisplay" class="hidden text-center p-4 bg-blue-50 rounded-lg mb-4">
+                <div class="text-sm text-gray-500 mb-1">Your speech:</div>
+                <div id="transcriptionText" class="text-xl mb-2"></div>
+                <div id="transcriptionFeedback" class="text-sm"></div>
+            </div>
+
+            <div id="answerDisplay" class="hidden text-center p-4 bg-green-50 rounded-lg mb-4">
+                <div id="answerChinese" class="text-2xl mb-2"></div>
+                <div id="answerPinyin" class="text-gray-600"></div>
+            </div>
+
+            <div class="flex justify-between items-center mt-6">
+                <button id="prevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">← Prev</button>
+                <span id="progress" class="text-gray-600"></span>
+                <button id="nextBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">Next →</button>
+            </div>
+        </div>
+
+        <div id="fillMode" class="hidden">
+            <div id="fillLineNumber" class="text-center text-sm text-gray-500 mb-2"></div>
+            <div id="fillSpeaker" class="text-center text-lg font-bold mb-4"></div>
+            <div id="fillQuestion" class="text-center text-2xl mb-4 p-6 bg-gray-50 rounded-lg"></div>
+            <div id="fillEnglish" class="text-center text-gray-600 mb-4"></div>
+
+            <input type="text" id="fillInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg text-center mb-4" placeholder="Type the pattern word(s)...">
+
+            <div class="flex gap-2 justify-center mb-4">
+                <button id="fillCheckBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition">Check</button>
+                <button id="fillAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊</button>
+            </div>
+
+            <div id="fillFeedback" class="text-center text-xl font-semibold mb-4 min-h-[28px]"></div>
+
+            <div class="flex justify-between items-center">
+                <button id="fillPrevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">← Prev</button>
+                <span id="fillProgress" class="text-gray-600"></span>
+                <button id="fillNextBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">Next →</button>
+            </div>
+        </div>
+
+        <div id="flowMode" class="hidden">
+            <div class="text-center mb-6">
+                <div class="text-sm text-gray-500 mb-2">Press <kbd class="px-2 py-1 bg-gray-200 rounded">Space</kbd> when it's your turn (within 2 seconds)</div>
+                <button id="flowStartBtn" class="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-lg text-xl transition">▶ Start Flow</button>
+            </div>
+
+            <div id="flowDisplay" class="hidden">
+                <div id="flowSpeaker" class="text-center text-2xl font-bold mb-4"></div>
+                <div id="flowLine" class="text-center text-3xl mb-6 p-8 bg-gray-50 rounded-lg min-h-[120px] flex items-center justify-center"></div>
+                <div id="flowStatus" class="text-center text-xl font-semibold mb-4 min-h-[28px]"></div>
+                <div id="flowTimer" class="hidden text-center">
+                    <div class="inline-block w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="flowTimerBar" class="h-full bg-red-500 transition-all duration-100"></div>
+                    </div>
+                    <div class="text-sm text-gray-500 mt-1">Your turn! Press Space!</div>
+                </div>
+            </div>
+
+            <div id="flowScore" class="hidden text-center mt-6 p-4 bg-gray-100 rounded-lg">
+                <span class="text-lg">Score: <span id="flowHits" class="font-bold text-green-600">0</span> / <span id="flowTotal" class="font-bold">0</span></span>
+                <span class="ml-4 text-gray-500">Missed: <span id="flowMisses" class="text-red-500">0</span></span>
+            </div>
+        </div>
+
+        <div id="translateMode" class="hidden">
+            <div id="translateLineNumber" class="text-center text-sm text-gray-500 mb-2"></div>
+            <div id="translateSpeaker" class="text-center text-lg font-bold mb-4"></div>
+
+            <div id="translatePrompt" class="text-center text-3xl mb-6 p-6 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" title="Click to play audio"></div>
+
+            <textarea id="translateInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg mb-4" rows="2" placeholder="Type your English translation..."></textarea>
+
+            <div class="flex gap-2 justify-center mb-4">
+                <button id="translateCheckBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition">Check Translation</button>
+                <button id="translateAudioBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg transition">🔊</button>
+            </div>
+
+            <div id="translateFeedback" class="hidden p-4 rounded-lg mb-4">
+                <div id="translateResult" class="mb-2"></div>
+                <div id="translateExplanation" class="text-sm text-gray-600"></div>
+                <div id="translateReference" class="text-sm text-gray-500 mt-2 pt-2 border-t"></div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <button id="translatePrevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">← Prev</button>
+                <span id="translateProgress" class="text-gray-600"></span>
+                <button id="translateNextBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">Next →</button>
+            </div>
+        </div>
+
+            </section>
+
+            <div class="chat-section">
+                <button id="chatToggle" class="w-full px-4 py-2 bg-gray-50 hover:bg-gray-100 text-left text-sm font-medium flex justify-between items-center border-b border-gray-200">
+                    <span>💬 Ask a Question</span>
+                    <span id="chatToggleIcon" class="text-gray-400">▼</span>
+                </button>
+                <div id="chatPanel" class="hidden">
+                    <div id="chatMessages" class="h-36 overflow-y-auto p-3 bg-white space-y-2 text-sm"></div>
+                    <div class="p-2 bg-gray-50 border-t flex gap-2">
+                        <input type="text" id="chatInput" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm" placeholder="Ask about vocabulary, grammar, meaning...">
+                        <button id="chatSendBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Send</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const dialogue = [
+            {
+                line: 1,
+                speaker: 'Jeremy',
+                chinese: '我最近读了一篇文章，叫《小皇帝》。你读过吗？',
+                pinyin: 'Wǒ zuìjìn dúle yì piān wénzhāng, jiào "Xiǎo Huángdì". Nǐ dúguò ma?',
+                english: 'I recently read an article called "Little Emperors". Have you read it?',
+                patterns: [],
+                patternWords: ''
+            },
+            {
+                line: 2,
+                speaker: 'Athena',
+                chinese: '读过。我读完才觉得孩子和父母之间的距离往往很大。',
+                pinyin: 'Dúguò. Wǒ dú wán cái juéde háizi hé fùmǔ zhījiān de jùlí wǎngwǎng hěn dà.',
+                english: "I have. Only after reading it did I realize the distance between children and parents is often very large.",
+                patterns: ['A 跟/和B 之间的N', '往往'],
+                patternWords: '之间/往往'
+            },
+            {
+                line: 3,
+                speaker: 'Jeremy',
+                chinese: '对，我觉得所谓的"代沟"，其实就是父母和孩子的想法不一样。',
+                pinyin: 'Duì, wǒ juéde suǒwèi de "dàigōu", qíshí jiùshì fùmǔ hé háizi de xiǎngfǎ bù yíyàng.',
+                english: 'Right, I think the so-called "generation gap" is really just that parents and children think differently.',
+                patterns: ['所谓的N，就是…'],
+                patternWords: '所谓的/就是'
+            },
+            {
+                line: 4,
+                speaker: 'Athena',
+                chinese: '而且现在很多家庭只有一个孩子，父母恨不得把孩子培养成一个什么都能做的人。',
+                pinyin: 'Érqiě xiànzài hěnduō jiātíng zhǐyǒu yí gè háizi, fùmǔ hènbude bǎ háizi péiyǎng chéng yí gè shénme dōu néng zuò de rén.',
+                english: "Moreover, many families now only have one child, and parents can't wait to raise the child into someone who can do everything.",
+                patterns: ['恨不得 + extreme expression'],
+                patternWords: '恨不得'
+            },
+            {
+                line: 5,
+                speaker: 'Jeremy',
+                chinese: '可是有些孩子学了很多东西以后，生活反而变得很紧张。',
+                pinyin: 'Kěshì yǒuxiē háizi xuéle hěnduō dōngxi yǐhòu, shēnghuó fǎn\'ér biànde hěn jǐnzhāng.',
+                english: "But after some children learn so many things, their lives actually become more stressful instead.",
+                patterns: ['反而 + V', '变得 + adj.'],
+                patternWords: '反而/变得'
+            },
+            {
+                line: 6,
+                speaker: 'Athena',
+                chinese: '在我看来，父母希望孩子努力学习也是很正常的。',
+                pinyin: 'Zài wǒ kànlái, fùmǔ xīwàng háizi nǔlì xuéxí yěshì hěn zhèngcháng de.',
+                english: "In my view, it's quite normal for parents to want their children to study hard.",
+                patterns: ['在…看来，SVO'],
+                patternWords: '在/看来'
+            },
+            {
+                line: 7,
+                speaker: 'Jeremy',
+                chinese: '我同意父母关心孩子是好事，但是有些父母常常把自己的想法强加在孩子的身上。',
+                pinyin: 'Wǒ tóngyì fùmǔ guānxīn háizi shì hǎoshì, dànshì yǒuxiē fùmǔ chángcháng bǎ zìjǐ de xiǎngfǎ qiángjiā zài háizi de shēnshang.',
+                english: "I agree that parents caring about children is a good thing, but some parents often force their own ideas onto their children.",
+                patterns: ['把…强加在…身上'],
+                patternWords: '把/强加在/身上'
+            },
+            {
+                line: 8,
+                speaker: 'Athena',
+                chinese: '我明白，不过既然父母希望孩子长大成功，他们有时候就会对孩子要求很高。',
+                pinyin: 'Wǒ míngbai, búguò jìrán fùmǔ xīwàng háizi zhǎngdà chénggōng, tāmen yǒu shíhou jiù huì duì háizi yāoqiú hěn gāo.',
+                english: "I understand, but since parents want their children to grow up and succeed, they sometimes have high expectations for them.",
+                patterns: ['既然…，就…'],
+                patternWords: '既然/就'
+            },
+            {
+                line: 9,
+                speaker: 'Jeremy',
+                chinese: '问题是有些孩子整天学习，却享受不到学习的乐趣。',
+                pinyin: 'Wèntí shì yǒuxiē háizi zhěngtiān xuéxí, què xiǎngshòu bú dào xuéxí de lèqù.',
+                english: "The problem is that some children study all day but can't enjoy the pleasure of learning.",
+                patterns: ['享受得到/享受不到…的乐趣'],
+                patternWords: '享受不到/乐趣'
+            },
+            {
+                line: 10,
+                speaker: 'Athena',
+                chinese: '读书是为了将来找到好工作，而不是只为了享受。父母要求孩子努力学习，也是为了他们好。',
+                pinyin: 'Dúshū shì wèile jiānglái zhǎodào hǎo gōngzuò, ér búshì zhǐ wèile xiǎngshòu. Fùmǔ yāoqiú háizi nǔlì xuéxí, yěshì wèile tāmen hǎo.',
+                english: "Studying is for finding a good job in the future, not just for enjoyment. Parents demanding children study hard is also for their own good.",
+                patterns: ['是 A，而不是 B', '要求 sb V sth'],
+                patternWords: '而不是, 要求'
+            },
+            {
+                line: 11,
+                speaker: 'Jeremy',
+                chinese: '可是父母把所有的希望都放在孩子的身上，读书变成了孩子最大的负担，这样对孩子公平吗？',
+                pinyin: 'Kěshì fùmǔ bǎ suǒyǒu de xīwàng dōu fàng zài háizi de shēnshang, dúshū biànchéngle háizi zuìdà de fùdān, zhèyàng duì háizi gōngpíng ma?',
+                english: "But if parents put all their hopes on their children, and studying becomes the children's biggest burden, is that fair to the children?",
+                patterns: ['把…放在…身上', 'N1 变成 N2'],
+                patternWords: '把/放在/身上, 变成'
+            },
+            {
+                line: 12,
+                speaker: 'Athena',
+                chinese: '据说，很多成功人小时候都是被父母严格要求的，所以逼孩子读书也有它的好处。',
+                pinyin: 'Jùshuō, hěnduō chénggōng rén xiǎoshíhou dōu shì bèi fùmǔ yángé yāoqiú de, suǒyǐ bī háizi dúshū yě yǒu tā de hǎochù.',
+                english: "It is said that many successful people were strictly pushed by their parents when they were young, so pressuring children to study also has its benefits.",
+                patterns: ['据…说/据说'],
+                patternWords: '据说'
+            },
+            {
+                line: 13,
+                speaker: 'Jeremy',
+                chinese: '成功是成功，可是孩子的心理健康也同样重要，不然对他们的成长会有很坏的影响。',
+                pinyin: 'Chénggōng shì chénggōng, kěshì háizi de xīnlǐ jiànkāng yě tóngyàng zhòngyào, bùrán duì tāmen de chéngzhǎng huì yǒu hěn huài de yǐngxiǎng.',
+                english: "Success is success, but children's mental health is equally important, otherwise it will have a very bad impact on their growth.",
+                patterns: ['Adj 是 Adj，可是...', '不然...'],
+                patternWords: '是/可是, 不然'
+            },
+            {
+                line: 14,
+                speaker: 'Athena',
+                chinese: '你这么说也有道理。不过我觉得父母和孩子如果能多沟通，很多问题就不会那么严重。',
+                pinyin: 'Nǐ zhème shuō yě yǒu dàolǐ. Búguò wǒ juéde fùmǔ hé háizi rúguǒ néng duō gōutōng, hěnduō wèntí jiù bú huì nàme yánzhòng.',
+                english: "What you say makes sense. But I think if parents and children can communicate more, many problems wouldn't be so serious.",
+                patterns: [],
+                patternWords: ''
+            },
+            {
+                line: 15,
+                speaker: 'Jeremy',
+                chinese: '对，我也这么想。父母给孩子的压力并不是造成这种距离的唯一原因，教育方式也很重要。',
+                pinyin: 'Duì, wǒ yě zhème xiǎng. Fùmǔ gěi háizi de yālì bìng búshì zàochéng zhè zhǒng jùlí de wéiyī yuányīn, jiàoyù fāngshì yě hěn zhòngyào.',
+                english: "Right, I think so too. The pressure parents put on children isn't the only cause of this distance; the way of education is also important.",
+                patterns: ['造成', '唯一 (的) N'],
+                patternWords: '造成, 唯一'
+            },
+            {
+                line: 16,
+                speaker: 'Athena',
+                chinese: '所以最好的办法可能是父母多支持孩子，让孩子慢慢找到自己的兴趣，而不是一直逼他们读书。',
+                pinyin: 'Suǒyǐ zuìhǎo de bànfǎ kěnéng shì fùmǔ duō zhīchí háizi, ràng háizi mànman zhǎodào zìjǐ de xìngqù, ér búshì yìzhí bī tāmen dúshū.',
+                english: "So the best approach is probably for parents to support their children more, let them gradually find their own interests, rather than always pressuring them to study.",
+                patterns: [],
+                patternWords: ''
+            }
+        ];
+
+        const practiceDialogue = dialogue.filter(d => !d.isStageDirection);
+        const jeremyLines = practiceDialogue.filter(d => d.speaker === 'Jeremy');
+        const patternLines = practiceDialogue.filter(d => d.patterns.length > 0);
+
+        let currentMode = 'english-to-chinese';
+        let currentIndex = 0;
+        let currentData = practiceDialogue;
+        let answerShown = false;
+
+        const speakerColors = {
+            'Jeremy': 'text-purple-600',
+            'Athena': 'text-pink-600'
+        };
+
+        const speakerVoices = {
+            'Jeremy': 'zh-CN-YunxiNeural',
+            'Athena': 'zh-CN-XiaoxiaoNeural'
+        };
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active', 'bg-blue-500', 'text-white', 'border-blue-500'));
+                btn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+                currentMode = btn.dataset.mode;
+                currentIndex = 0;
+                answerShown = false;
+
+                if (currentMode === 'role-jeremy') {
+                    currentData = jeremyLines;
+                } else if (currentMode === 'fill-blank') {
+                    currentData = patternLines;
+                } else {
+                    currentData = practiceDialogue;
+                }
+
+                updateDisplay();
+            });
+        });
+
+        document.querySelector('.mode-btn[data-mode="english-to-chinese"]').classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
+
+        function updateDisplay() {
+            const studyMode = document.getElementById('studyMode');
+            const practiceMode = document.getElementById('practiceMode');
+            const fillMode = document.getElementById('fillMode');
+
+            studyMode.classList.add('hidden');
+            practiceMode.classList.add('hidden');
+            fillMode.classList.add('hidden');
+            flowMode.classList.add('hidden');
+            translateMode.classList.add('hidden');
+            stopFlow();
+
+            if (currentMode === 'study') {
+                studyMode.classList.remove('hidden');
+                renderStudyMode();
+            } else if (currentMode === 'fill-blank') {
+                fillMode.classList.remove('hidden');
+                renderFillMode();
+            } else if (currentMode === 'flow') {
+                flowMode.classList.remove('hidden');
+                renderFlowMode();
+            } else if (currentMode === 'translate') {
+                translateMode.classList.remove('hidden');
+                renderTranslateMode();
+            } else {
+                practiceMode.classList.remove('hidden');
+                renderPracticeMode();
+            }
+        }
+
+        // ========== Translate Mode ==========
+        const translateMode = document.getElementById('translateMode');
+
+        function renderTranslateMode() {
+            const item = currentData[currentIndex];
+            const colorClass = speakerColors[item.speaker] || 'text-gray-800';
+
+            document.getElementById('translateLineNumber').textContent = `Line ${item.line}`;
+            document.getElementById('translateSpeaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
+            document.getElementById('translatePrompt').textContent = item.chinese;
+            document.getElementById('translateInput').value = '';
+            document.getElementById('translateFeedback').classList.add('hidden');
+            document.getElementById('translateProgress').textContent = `${currentIndex + 1} / ${currentData.length}`;
+
+            if (window.translateAutoPlayTimeout) clearTimeout(window.translateAutoPlayTimeout);
+            window.translateAutoPlayTimeout = setTimeout(() => speakChinese(item.chinese, item.speaker), 300);
+        }
+
+        document.getElementById('translatePrompt').addEventListener('click', () => {
+            const item = currentData[currentIndex];
+            speakChinese(item.chinese, item.speaker);
+        });
+
+        document.getElementById('translateAudioBtn').addEventListener('click', () => {
+            const item = currentData[currentIndex];
+            speakChinese(item.chinese, item.speaker);
+        });
+
+        document.getElementById('translatePrevBtn').addEventListener('click', () => {
+            if (currentIndex > 0) { currentIndex--; updateDisplay(); }
+        });
+
+        document.getElementById('translateNextBtn').addEventListener('click', () => {
+            if (currentIndex < currentData.length - 1) { currentIndex++; updateDisplay(); }
+        });
+
+        document.getElementById('translateCheckBtn').addEventListener('click', checkTranslation);
+        document.getElementById('translateInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); checkTranslation(); }
+        });
+
+        async function checkTranslation() {
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            const item = currentData[currentIndex];
+            const userTranslation = document.getElementById('translateInput').value.trim();
+
+            if (!userTranslation) { alert('Please enter a translation first.'); return; }
+
+            const checkBtn = document.getElementById('translateCheckBtn');
+            checkBtn.textContent = 'Checking...';
+            checkBtn.disabled = true;
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'moonshotai/kimi-k2-instruct-0905',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are a Chinese language teacher evaluating English translations of Chinese sentences.
+IMPORTANT: Ignore grammar mistakes, spelling errors, and typos in the English. Only grade the ACCURACY of the translation meaning.
+Give a percentage grade (0-100%) and a brief explanation.
+Format: Start with "GRADE: X%" on its own line, then explain in 1-2 sentences.
+90-100%: Excellent, captures meaning accurately
+70-89%: Good, minor issues or missing nuance
+50-69%: Partial, gets main idea but significant issues
+Below 50%: Needs work, meaning not conveyed`
+                            },
+                            {
+                                role: 'user',
+                                content: `Chinese: ${item.chinese}\nReference translation: ${item.english}\nStudent's translation: ${userTranslation}\n\nGrade this translation with a percentage and brief feedback.`
+                            }
+                        ],
+                        max_tokens: 150,
+                        temperature: 0.3
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+                const result = await response.json();
+                const feedback = result.choices[0]?.message?.content || 'No feedback received.';
+
+                const feedbackEl = document.getElementById('translateFeedback');
+                const resultEl = document.getElementById('translateResult');
+                const explanationEl = document.getElementById('translateExplanation');
+                const referenceEl = document.getElementById('translateReference');
+
+                const gradeMatch = feedback.match(/GRADE:\s*(\d+)%/i) || feedback.match(/(\d+)%/);
+                const grade = gradeMatch ? parseInt(gradeMatch[1]) : null;
+                const explanation = feedback.replace(/GRADE:\s*\d+%\s*/gi, '').trim();
+
+                if (grade !== null) {
+                    if (grade >= 90) {
+                        feedbackEl.className = 'p-4 rounded-lg mb-4 bg-green-50 border border-green-200';
+                        resultEl.innerHTML = `<span class="text-green-600 font-bold text-2xl">${grade}%</span> <span class="text-green-600">Excellent!</span>`;
+                    } else if (grade >= 70) {
+                        feedbackEl.className = 'p-4 rounded-lg mb-4 bg-yellow-50 border border-yellow-200';
+                        resultEl.innerHTML = `<span class="text-yellow-600 font-bold text-2xl">${grade}%</span> <span class="text-yellow-600">Good</span>`;
+                    } else if (grade >= 50) {
+                        feedbackEl.className = 'p-4 rounded-lg mb-4 bg-orange-50 border border-orange-200';
+                        resultEl.innerHTML = `<span class="text-orange-600 font-bold text-2xl">${grade}%</span> <span class="text-orange-600">Partial</span>`;
+                    } else {
+                        feedbackEl.className = 'p-4 rounded-lg mb-4 bg-red-50 border border-red-200';
+                        resultEl.innerHTML = `<span class="text-red-600 font-bold text-2xl">${grade}%</span> <span class="text-red-600">Needs work</span>`;
+                    }
+                } else {
+                    feedbackEl.className = 'p-4 rounded-lg mb-4 bg-gray-50 border border-gray-200';
+                    resultEl.innerHTML = '<span class="text-gray-600 font-bold">Feedback</span>';
+                }
+
+                explanationEl.textContent = explanation;
+                referenceEl.innerHTML = `
+                    <div class="mb-1"><strong>Chinese:</strong> ${item.chinese}</div>
+                    <div class="text-xs text-gray-400 mb-1">${item.pinyin}</div>
+                    <div><strong>Reference:</strong> ${item.english}</div>
+                `;
+                feedbackEl.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Translation check error:', err);
+                alert('Error checking translation: ' + err.message);
+            } finally {
+                checkBtn.textContent = 'Check Translation';
+                checkBtn.disabled = false;
+            }
+        }
+
+        // ========== Flow Mode ==========
+        const flowMode = document.getElementById('flowMode');
+        let flowRunning = false;
+        let flowIndex = 0;
+        let flowHits = 0;
+        let flowMisses = 0;
+        let flowTotal = 0;
+        let flowWaitingForSpace = false;
+        let flowTimeout = null;
+        let flowTimerInterval = null;
+        let flowTimeLeft = 0;
+        const FLOW_WAIT_TIME = 2000;
+
+        function renderFlowMode() {
+            document.getElementById('flowStartBtn').textContent = '▶ Start Flow';
+            document.getElementById('flowDisplay').classList.add('hidden');
+            document.getElementById('flowScore').classList.add('hidden');
+            flowRunning = false;
+        }
+
+        function stopFlow() {
+            flowRunning = false;
+            flowWaitingForSpace = false;
+            if (flowTimeout) clearTimeout(flowTimeout);
+            if (flowTimerInterval) clearInterval(flowTimerInterval);
+        }
+
+        document.getElementById('flowStartBtn').addEventListener('click', () => {
+            if (flowRunning) { stopFlow(); renderFlowMode(); }
+            else { startFlow(); }
+        });
+
+        function startFlow() {
+            flowRunning = true;
+            flowIndex = 0;
+            flowHits = 0;
+            flowMisses = 0;
+            flowTotal = jeremyLines.length;
+
+            document.getElementById('flowStartBtn').textContent = '⏹ Stop';
+            document.getElementById('flowDisplay').classList.remove('hidden');
+            document.getElementById('flowScore').classList.remove('hidden');
+            document.getElementById('flowHits').textContent = '0';
+            document.getElementById('flowTotal').textContent = flowTotal;
+            document.getElementById('flowMisses').textContent = '0';
+
+            playFlowLine(0);
+        }
+
+        function playFlowLine(dialogueIndex) {
+            if (!flowRunning || dialogueIndex >= dialogue.length) {
+                flowRunning = false;
+                document.getElementById('flowStatus').innerHTML = `<span class="text-green-600">Done! ${flowHits}/${flowTotal} correct</span>`;
+                document.getElementById('flowTimer').classList.add('hidden');
+                document.getElementById('flowStartBtn').textContent = '▶ Restart';
+                return;
+            }
+
+            const item = dialogue[dialogueIndex];
+
+            if (item.isStageDirection) {
+                setTimeout(() => playFlowLine(dialogueIndex + 1), 500);
+                return;
+            }
+
+            const colorClass = speakerColors[item.speaker] || 'text-gray-800';
+            document.getElementById('flowSpeaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
+            document.getElementById('flowLine').textContent = item.chinese;
+            document.getElementById('flowStatus').textContent = '';
+            document.getElementById('flowTimer').classList.add('hidden');
+
+            if (item.speaker === 'Jeremy') {
+                flowWaitingForSpace = true;
+                document.getElementById('flowTimer').classList.remove('hidden');
+                document.getElementById('flowTimerBar').style.width = '100%';
+                flowTimeLeft = FLOW_WAIT_TIME;
+
+                flowTimerInterval = setInterval(() => {
+                    flowTimeLeft -= 50;
+                    const pct = Math.max(0, (flowTimeLeft / FLOW_WAIT_TIME) * 100);
+                    document.getElementById('flowTimerBar').style.width = pct + '%';
+                }, 50);
+
+                flowTimeout = setTimeout(() => {
+                    if (flowWaitingForSpace) {
+                        flowWaitingForSpace = false;
+                        clearInterval(flowTimerInterval);
+                        flowMisses++;
+                        document.getElementById('flowMisses').textContent = flowMisses;
+                        document.getElementById('flowStatus').innerHTML = '<span class="text-red-600">❌ Missed! That was your line!</span>';
+                        document.getElementById('flowTimer').classList.add('hidden');
+
+                        speakChinese(item.chinese, item.speaker).then(() => {
+                            if (flowRunning) playFlowLine(dialogueIndex + 1);
+                        });
+                    }
+                }, FLOW_WAIT_TIME);
+            } else {
+                speakChinese(item.chinese, item.speaker).then(() => {
+                    if (flowRunning) playFlowLine(dialogueIndex + 1);
+                });
+            }
+        }
+
+        function handleFlowSpace() {
+            if (!flowRunning || !flowWaitingForSpace) return;
+
+            flowWaitingForSpace = false;
+            clearTimeout(flowTimeout);
+            clearInterval(flowTimerInterval);
+
+            flowHits++;
+            document.getElementById('flowHits').textContent = flowHits;
+            document.getElementById('flowStatus').innerHTML = '<span class="text-green-600">✓ Correct! Your turn!</span>';
+            document.getElementById('flowTimer').classList.add('hidden');
+
+            const jeremyIdx = dialogue.findIndex((d, i) => i >= flowIndex && d.speaker === 'Jeremy');
+            if (jeremyIdx >= 0) {
+                speakChinese(dialogue[jeremyIdx].chinese, 'Jeremy').then(() => {
+                    if (flowRunning) playFlowLine(jeremyIdx + 1);
+                });
+            }
+        }
+
+        const originalPlayFlowLine = playFlowLine;
+        playFlowLine = function(idx) {
+            flowIndex = idx;
+            originalPlayFlowLine(idx);
+        };
+
+        function renderStudyMode() {
+            const list = document.getElementById('dialogueList');
+            list.innerHTML = dialogue.map((d, idx) => {
+                if (d.isStageDirection) {
+                    return `<div class="text-center text-gray-400 italic py-2">${d.chinese}</div>`;
+                }
+                const colorClass = speakerColors[d.speaker] || 'text-gray-800';
+                const patternBadges = d.patterns.length > 0
+                    ? `<div class="text-xs text-purple-500 mt-1">${d.patterns.join(' · ')}</div>`
+                    : '';
+                return `
+                    <div class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <div class="flex items-start gap-3">
+                            <span class="font-bold ${colorClass} w-16 flex-shrink-0">${d.line}. ${d.speaker}</span>
+                            <div class="flex-1">
+                                <div class="text-xl mb-1">${d.chinese}</div>
+                                <div class="text-gray-500 text-sm">${d.pinyin}</div>
+                                <div class="text-gray-600 text-sm mt-1">${d.english}</div>
+                                ${patternBadges}
+                                <div id="study-transcription-${idx}" class="hidden mt-2 p-2 bg-blue-50 rounded text-sm"></div>
+                            </div>
+                            <div class="flex gap-1 flex-shrink-0">
+                                <button class="study-play-btn bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded text-sm" data-idx="${idx}">🔊</button>
+                                <button class="study-record-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" data-idx="${idx}">🎤</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            list.querySelectorAll('.study-play-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.idx);
+                    speakChinese(dialogue[idx].chinese, dialogue[idx].speaker);
+                });
+            });
+
+            list.querySelectorAll('.study-record-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.idx);
+                    toggleStudyRecording(btn, idx);
+                });
+            });
+        }
+
+        let studyRecordingBtn = null;
+        let studyRecordingIdx = null;
+
+        async function toggleStudyRecording(btn, idx) {
+            if (studyRecordingBtn === btn && isRecording) { stopStudyRecording(); return; }
+            if (isRecording && studyRecordingBtn) { stopStudyRecording(); }
+
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await transcribeStudyAudio(audioBlob, idx);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                studyRecordingBtn = btn;
+                studyRecordingIdx = idx;
+                btn.textContent = '⏹';
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+
+                document.getElementById(`study-transcription-${idx}`).classList.add('hidden');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('Could not access microphone.');
+            }
+        }
+
+        function stopStudyRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                if (studyRecordingBtn) {
+                    studyRecordingBtn.textContent = '🎤';
+                    studyRecordingBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+                    studyRecordingBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                }
+                studyRecordingBtn = null;
+            }
+        }
+
+        async function transcribeStudyAudio(audioBlob, idx) {
+            const apiKey = window.getGroqApiKey();
+            const item = dialogue[idx];
+            const btn = document.querySelector(`.study-record-btn[data-idx="${idx}"]`);
+            const transcriptionEl = document.getElementById(`study-transcription-${idx}`);
+
+            if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.webm');
+                formData.append('model', 'whisper-large-v3-turbo');
+                formData.append('language', 'zh');
+                formData.append('response_format', 'json');
+
+                const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}` },
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+                const result = await response.json();
+                const transcription = result.text || '';
+
+                const expected = item.chinese.replace(/\*[^*]+\*/g, '').replace(/[，。！？、]/g, '');
+                const actual = transcription.replace(/[，。！？、]/g, '');
+
+                let feedback;
+                if (actual === expected || transcription.includes(expected) || expected.includes(actual)) {
+                    feedback = `<span class="text-green-600 font-semibold">✓ "${transcription}"</span>`;
+                } else {
+                    const diff = compareStrings(expected, actual);
+                    feedback = `You said: ${diff}`;
+                }
+
+                transcriptionEl.innerHTML = feedback;
+                transcriptionEl.classList.remove('hidden');
+
+            } catch (err) {
+                transcriptionEl.innerHTML = `<span class="text-red-600">Error: ${err.message}</span>`;
+                transcriptionEl.classList.remove('hidden');
+            } finally {
+                if (btn) { btn.textContent = '🎤'; btn.disabled = false; }
+            }
+        }
+
+        function renderPracticeMode() {
+            const item = currentData[currentIndex];
+            const colorClass = speakerColors[item.speaker] || 'text-gray-800';
+
+            const contextDisplay = document.getElementById('contextDisplay');
+            const contextLines = document.getElementById('contextLines');
+
+            if (currentMode === 'role-jeremy') {
+                const dialogueIdx = dialogue.findIndex(d => d.line === item.line);
+                if (dialogueIdx > 0) {
+                    const startIdx = Math.max(0, dialogueIdx - 3);
+                    const precedingLines = dialogue.slice(startIdx, dialogueIdx).filter(d => !d.isStageDirection);
+
+                    if (precedingLines.length > 0) {
+                        contextLines.innerHTML = precedingLines.map(d => {
+                            const color = speakerColors[d.speaker] || 'text-gray-800';
+                            return `<div><span class="font-semibold ${color}">${d.speaker}:</span> ${d.chinese}</div>`;
+                        }).join('');
+                        contextDisplay.classList.remove('hidden');
+                    } else {
+                        contextDisplay.classList.add('hidden');
+                    }
+                } else {
+                    contextDisplay.classList.add('hidden');
+                }
+            } else {
+                contextDisplay.classList.add('hidden');
+            }
+
+            document.getElementById('lineNumber').textContent = `Line ${item.line} of ${dialogue.length}`;
+            document.getElementById('speaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
+            document.getElementById('questionDisplay').textContent = item.english;
+
+            if (item.patterns.length > 0) {
+                document.getElementById('patternHint').textContent = `Patterns: ${item.patterns.join(', ')}`;
+            } else {
+                document.getElementById('patternHint').textContent = '';
+            }
+
+            document.getElementById('answerChinese').textContent = item.chinese;
+            document.getElementById('answerPinyin').textContent = item.pinyin;
+            document.getElementById('answerDisplay').classList.add('hidden');
+            document.getElementById('transcriptionDisplay').classList.add('hidden');
+            answerShown = false;
+
+            document.getElementById('progress').textContent = `${currentIndex + 1} / ${currentData.length}`;
+        }
+
+        function renderFillMode() {
+            const item = currentData[currentIndex];
+            const colorClass = speakerColors[item.speaker] || 'text-gray-800';
+
+            let blanked = item.chinese;
+            const words = item.patternWords.split(', ');
+            words.forEach(w => {
+                const parts = w.split('/');
+                parts.forEach(p => {
+                    blanked = blanked.replace(p, '___');
+                });
+            });
+
+            document.getElementById('fillLineNumber').textContent = `Line ${item.line}`;
+            document.getElementById('fillSpeaker').innerHTML = `<span class="${colorClass}">${item.speaker}</span>`;
+            document.getElementById('fillQuestion').innerHTML = blanked;
+            document.getElementById('fillEnglish').textContent = item.english;
+            document.getElementById('fillInput').value = '';
+            document.getElementById('fillFeedback').textContent = '';
+            document.getElementById('fillProgress').textContent = `${currentIndex + 1} / ${currentData.length}`;
+        }
+
+        // Navigation
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentIndex > 0) { currentIndex--; updateDisplay(); }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentIndex < currentData.length - 1) { currentIndex++; updateDisplay(); }
+        });
+
+        document.getElementById('fillPrevBtn').addEventListener('click', () => {
+            if (currentIndex > 0) { currentIndex--; updateDisplay(); }
+        });
+
+        document.getElementById('fillNextBtn').addEventListener('click', () => {
+            if (currentIndex < currentData.length - 1) { currentIndex++; updateDisplay(); }
+        });
+
+        document.getElementById('showAnswerBtn').addEventListener('click', () => {
+            const display = document.getElementById('answerDisplay');
+            if (answerShown) { display.classList.add('hidden'); answerShown = false; }
+            else { display.classList.remove('hidden'); answerShown = true; }
+        });
+
+        async function speakChinese(text, speaker) {
+            if (window.stopAllTTS) window.stopAllTTS();
+
+            const voice = speakerVoices[speaker] || 'zh-CN-XiaoxiaoNeural';
+
+            if (window.edgeTTS) {
+                return window.edgeTTS(text, voice);
+            } else {
+                return new Promise((resolve) => {
+                    const cleanText = text.replace(/\*[^*]+\*/g, '').replace(/〈[^〉]+〉/g, '');
+                    const utterance = new SpeechSynthesisUtterance(cleanText);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.85;
+                    utterance.onend = resolve;
+                    utterance.onerror = resolve;
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(utterance);
+                });
+            }
+        }
+
+        document.getElementById('playAudioBtn').addEventListener('click', () => {
+            const item = currentData[currentIndex];
+            speakChinese(item.chinese, item.speaker);
+        });
+
+        document.getElementById('fillAudioBtn').addEventListener('click', () => {
+            const item = currentData[currentIndex];
+            speakChinese(item.chinese, item.speaker);
+        });
+
+        document.getElementById('fillCheckBtn').addEventListener('click', checkFillAnswer);
+        document.getElementById('fillInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkFillAnswer();
+        });
+
+        function checkFillAnswer() {
+            const item = currentData[currentIndex];
+            const input = document.getElementById('fillInput').value.trim();
+            const feedback = document.getElementById('fillFeedback');
+
+            const expectedWords = item.patternWords.split(', ').flatMap(w => w.split('/'));
+            const inputWords = input.replace(/[,，/]/g, ' ').split(/\s+/).filter(w => w);
+
+            const allFound = expectedWords.every(exp =>
+                inputWords.some(inp => inp === exp || exp.includes(inp) || inp.includes(exp))
+            );
+
+            if (allFound || input === item.patternWords.replace(/[,/]/g, ' ')) {
+                feedback.innerHTML = `<span class="text-green-600">✓ Correct!</span> <span class="text-gray-600">${item.patternWords}</span>`;
+            } else {
+                feedback.innerHTML = `<span class="text-red-600">✗</span> Expected: <span class="text-gray-800">${item.patternWords}</span>`;
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+                e.preventDefault();
+                if (currentMode === 'translate' || currentMode === 'english-to-chinese' || currentMode === 'role-jeremy') {
+                    const item = currentData[currentIndex];
+                    speakChinese(item.chinese, item.speaker);
+                }
+                return;
+            }
+
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                if (currentMode === 'translate' && e.key === ' ') {
+                    const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
+                    if (feedbackVisible) {
+                        e.preventDefault();
+                        if (currentIndex < currentData.length - 1) { currentIndex++; updateDisplay(); }
+                    }
+                }
+                return;
+            }
+
+            if (currentMode === 'flow' && e.key === ' ') {
+                e.preventDefault();
+                handleFlowSpace();
+                return;
+            }
+
+            if (currentMode === 'translate') {
+                const feedbackVisible = !document.getElementById('translateFeedback').classList.contains('hidden');
+                if (e.key === ' ' && feedbackVisible) {
+                    e.preventDefault();
+                    if (currentIndex < currentData.length - 1) { currentIndex++; updateDisplay(); }
+                    return;
+                }
+            }
+
+            if (e.key === 'ArrowLeft') {
+                if (currentIndex > 0) { currentIndex--; updateDisplay(); }
+            } else if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                if (currentIndex < currentData.length - 1) { currentIndex++; updateDisplay(); }
+            } else if (e.key === 'Enter') {
+                const item = currentData[currentIndex];
+                speakChinese(item.chinese, item.speaker);
+            } else if (e.key === 's') {
+                document.getElementById('showAnswerBtn').click();
+            }
+        });
+
+        if (typeof initCommandPalette === 'function') {
+            initCommandPalette();
+        }
+
+        // Speed button handlers
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const speed = parseFloat(btn.dataset.speed);
+                window.setTTSSpeed(speed);
+                document.querySelectorAll('.speed-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                    b.classList.add('border-gray-300', 'hover:bg-gray-100');
+                });
+                btn.classList.remove('border-gray-300', 'hover:bg-gray-100');
+                btn.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+            });
+        });
+
+        const savedSpeed = localStorage.getItem('ttsSpeed') || '1';
+        const activeBtn = document.querySelector(`.speed-btn[data-speed="${savedSpeed}"]`);
+        if (activeBtn) {
+            document.querySelectorAll('.speed-btn').forEach(b => {
+                b.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                b.classList.add('border-gray-300', 'hover:bg-gray-100');
+            });
+            activeBtn.classList.remove('border-gray-300', 'hover:bg-gray-100');
+            activeBtn.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+        }
+
+        // ========== Chat ==========
+        let chatHistory = [];
+
+        document.getElementById('chatToggle').addEventListener('click', () => {
+            const panel = document.getElementById('chatPanel');
+            const icon = document.getElementById('chatToggleIcon');
+            panel.classList.toggle('hidden');
+            icon.textContent = panel.classList.contains('hidden') ? '▼' : '▲';
+        });
+
+        document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            addChatMessage('user', message);
+            input.value = '';
+
+            const item = currentData[currentIndex];
+            const context = `
+The student is practicing a Chinese dialogue for their CHIN 112 final oral test.
+The dialogue is about parents pressuring children to study, discussing the "Little Emperors" article.
+It's a peer-to-peer conversation between Jeremy (黄藉辉) and Athena (陈乐遥).
+Current mode: ${currentMode}
+Current line being studied:
+- Speaker: ${item.speaker}
+- Chinese: ${item.chinese}
+- Pinyin: ${item.pinyin}
+- English: ${item.english}
+- Grammar patterns: ${item.patterns.join(', ') || 'none'}
+
+Full dialogue context (16 lines between Jeremy and Athena about parenting and education pressure).
+`;
+
+            const messages = [
+                {
+                    role: 'system',
+                    content: `You are a helpful Chinese language tutor. The student is practicing a dialogue for their Chinese class final oral exam.
+${context}
+Help them understand vocabulary, grammar, pronunciation, or anything else about the dialogue.
+Keep answers concise but helpful. Use pinyin when mentioning Chinese words.`
+                },
+                ...chatHistory.slice(-6),
+                { role: 'user', content: message }
+            ];
+
+            const typingId = addChatMessage('assistant', '...');
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'moonshotai/kimi-k2-instruct-0905',
+                        messages: messages,
+                        max_tokens: 300,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+                const result = await response.json();
+                const reply = result.choices[0]?.message?.content || 'Sorry, no response.';
+
+                updateChatMessage(typingId, reply);
+
+                chatHistory.push({ role: 'user', content: message });
+                chatHistory.push({ role: 'assistant', content: reply });
+
+            } catch (err) {
+                console.error('Chat error:', err);
+                updateChatMessage(typingId, 'Error: ' + err.message);
+            }
+        }
+
+        function addChatMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            const id = 'msg-' + Date.now();
+            const isUser = role === 'user';
+            const html = `
+                <div id="${id}" class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="${isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'} px-3 py-2 rounded-lg max-w-[80%]">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+
+        function updateChatMessage(id, content) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.querySelector('div').innerHTML = content.replace(/\n/g, '<br>');
+            }
+        }
+
+        // Initial render
+        updateDisplay();
+
+        // ========== Recording & Transcription ==========
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const recordBtn = document.getElementById('recordBtn');
+
+        recordBtn.addEventListener('click', async () => {
+            if (isRecording) { stopRecording(); }
+            else { await startRecording(); }
+        });
+
+        async function startRecording() {
+            const apiKey = window.getGroqApiKey ? window.getGroqApiKey() : '';
+            if (!apiKey) {
+                alert('Please set your Groq API key first.\n\nPress Ctrl+K and search for "Set Groq API Key"');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await transcribeAudio(audioBlob);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.textContent = '⏹ Stop';
+                recordBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                recordBtn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+
+                document.getElementById('transcriptionDisplay').classList.add('hidden');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('Could not access microphone. Please allow microphone access.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = '🎤 Record';
+                recordBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+                recordBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+            }
+        }
+
+        async function transcribeAudio(audioBlob) {
+            const apiKey = window.getGroqApiKey();
+            const item = currentData[currentIndex];
+
+            recordBtn.textContent = '⏳ Transcribing...';
+            recordBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.webm');
+                formData.append('model', 'whisper-large-v3-turbo');
+                formData.append('language', 'zh');
+                formData.append('response_format', 'json');
+
+                const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}` },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`API error: ${response.status} - ${errText}`);
+                }
+
+                const result = await response.json();
+                const transcription = result.text || '';
+
+                document.getElementById('transcriptionText').textContent = transcription;
+                document.getElementById('transcriptionDisplay').classList.remove('hidden');
+
+                const expected = item.chinese.replace(/\*[^*]+\*/g, '').replace(/[，。！？、]/g, '');
+                const actual = transcription.replace(/[，。！？、]/g, '');
+
+                const feedbackEl = document.getElementById('transcriptionFeedback');
+                if (actual === expected || transcription.includes(expected) || expected.includes(actual)) {
+                    feedbackEl.innerHTML = '<span class="text-green-600 font-semibold">✓ Great match!</span>';
+                } else {
+                    const diff = compareStrings(expected, actual);
+                    feedbackEl.innerHTML = `<span class="text-gray-600">Expected: ${item.chinese}</span><br>${diff}`;
+                }
+
+            } catch (err) {
+                console.error('Transcription error:', err);
+                document.getElementById('transcriptionText').textContent = 'Error: ' + err.message;
+                document.getElementById('transcriptionFeedback').textContent = '';
+                document.getElementById('transcriptionDisplay').classList.remove('hidden');
+            } finally {
+                recordBtn.textContent = '🎤 Record';
+                recordBtn.disabled = false;
+            }
+        }
+
+        function compareStrings(expected, actual) {
+            let result = '';
+            for (let i = 0; i < actual.length; i++) {
+                if (i < expected.length && actual[i] === expected[i]) {
+                    result += `<span class="text-green-600">${actual[i]}</span>`;
+                } else {
+                    result += `<span class="text-red-600">${actual[i]}</span>`;
+                }
+            }
+            return result;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+                recordBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
