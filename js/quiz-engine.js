@@ -79,16 +79,14 @@ let upcomingQuestion = null;
 let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
 // Blend mode state
-let blendDirection = null; // current direction: 'char-to-meaning', 'char-to-pinyin', 'audio-to-meaning', 'audio-to-pinyin', 'meaning-to-char', 'pinyin-to-char'
+let blendDirection = null; // current direction: 'char-to-meaning', 'char-to-pinyin', 'audio-to-pinyin'
 let blendPreviousDirection = null; // direction of the previous question (for display in left column)
 const BLEND_DIRECTIONS = [
     'char-to-meaning', 'char-to-pinyin',
-    'audio-to-meaning', 'audio-to-pinyin',
-    'meaning-to-char', 'pinyin-to-char'
+    'audio-to-pinyin'
 ];
 const BLEND_MC_DIRECTIONS = [
-    'char-to-meaning', 'char-to-pinyin',
-    'meaning-to-char', 'pinyin-to-char'
+    'char-to-meaning', 'char-to-pinyin'
 ];
 
 // 3-column layout state for translation modes (text-to-meaning)
@@ -6288,7 +6286,7 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if ((mode === 'blend' || mode === 'blend-mc') && fuzzyMode) {
-        pickBlendDirection();
+        ensureValidBlendDirection();
         renderBlendLayout();
         generateBlendOptions();
         fuzzyMode.style.display = 'block';
@@ -8159,8 +8157,19 @@ function checkFuzzyAnswer(answer) {
 // Blend Mode
 // ============================================================
 
+function getBlendDirectionsForMode(activeMode = mode) {
+    return activeMode === 'blend-mc' ? BLEND_MC_DIRECTIONS : BLEND_DIRECTIONS;
+}
+
+function ensureValidBlendDirection() {
+    const dirs = getBlendDirectionsForMode();
+    if (!dirs.includes(blendDirection)) {
+        blendDirection = dirs[Math.floor(Math.random() * dirs.length)];
+    }
+}
+
 function pickBlendDirection() {
-    const dirs = mode === 'blend-mc' ? BLEND_MC_DIRECTIONS : BLEND_DIRECTIONS;
+    const dirs = getBlendDirectionsForMode();
     blendDirection = dirs[Math.floor(Math.random() * dirs.length)];
 }
 
@@ -10018,7 +10027,7 @@ function displayQuestion() {
             setTimeout(() => answerInput.focus(), 50);
         }
     } else if (mode === 'blend' || mode === 'blend-mc') {
-        if (!blendDirection) pickBlendDirection();
+        ensureValidBlendDirection();
         renderBlendLayout();
         generateBlendOptions();
         if (fuzzyMode) fuzzyMode.style.display = 'block';
