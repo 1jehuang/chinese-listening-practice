@@ -7441,22 +7441,82 @@ function generateCharOptions() {
     if (!options) return;
     options.innerHTML = '';
 
+    const correctOption = {
+        char: currentQuestion.char,
+        pinyin: (currentQuestion.pinyin || '').split('/').map(p => p.trim()).filter(Boolean)[0] || '',
+        meaning: currentQuestion.meaning || ''
+    };
+
+    const excludeSamePinyin = mode === 'pinyin-to-char';
+    const excludeSameMeaning = mode === 'meaning-to-char';
+    const targetNormalizedPinyin = normalizePinyinForChoice(correctOption.pinyin);
+    const targetMeaning = correctOption.meaning.trim().toLowerCase();
+
     const wrongOptions = [];
-    while (wrongOptions.length < 3) {
+    const usedChars = new Set([correctOption.char]);
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 750) {
+        safety++;
         const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-        if (random.char !== currentQuestion.char && !wrongOptions.includes(random.char)) {
-            wrongOptions.push(random.char);
+        if (!random?.char || usedChars.has(random.char)) continue;
+
+        const randomPinyin = (random.pinyin || '').split('/').map(p => p.trim()).filter(Boolean)[0] || '';
+        const randomMeaning = (random.meaning || '').trim();
+
+        if (excludeSamePinyin && targetNormalizedPinyin && normalizePinyinForChoice(randomPinyin) === targetNormalizedPinyin) {
+            continue;
         }
+
+        if (excludeSameMeaning && targetMeaning && randomMeaning.toLowerCase() === targetMeaning) {
+            continue;
+        }
+
+        wrongOptions.push({
+            char: random.char,
+            pinyin: randomPinyin,
+            meaning: randomMeaning
+        });
+        usedChars.add(random.char);
     }
 
-    const allOptions = [...wrongOptions, currentQuestion.char];
+    while (wrongOptions.length < 3) {
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        if (!random?.char || usedChars.has(random.char)) continue;
+        wrongOptions.push({
+            char: random.char,
+            pinyin: (random.pinyin || '').split('/').map(p => p.trim()).filter(Boolean)[0] || '',
+            meaning: (random.meaning || '').trim()
+        });
+        usedChars.add(random.char);
+    }
+
+    const allOptions = [...wrongOptions, correctOption];
     allOptions.sort(() => Math.random() - 0.5);
 
     allOptions.forEach(option => {
         const btn = document.createElement('button');
-        btn.className = 'quiz-char-choice';
-        btn.textContent = option;
-        btn.onclick = () => checkMultipleChoice(option);
+        const metaText = mode === 'pinyin-to-char'
+            ? option.meaning
+            : (mode === 'meaning-to-char' ? cleanPinyinForDisplay(option.pinyin) : '');
+
+        if (metaText) {
+            btn.className = 'quiz-char-pinyin-choice bg-gray-100 border-gray-300';
+            btn.innerHTML = `
+                <span class="quiz-char-pinyin-choice-char">${escapeHtml(option.char)}</span>
+                <span class="quiz-char-pinyin-choice-meta">
+                    <span class="quiz-char-pinyin-choice-pinyin">${escapeHtml(metaText)}</span>
+                </span>
+            `;
+        } else {
+            btn.className = 'quiz-char-choice';
+            btn.textContent = option.char;
+        }
+
+        btn.dataset.char = option.char;
+        btn.dataset.pinyin = option.pinyin;
+        btn.dataset.meaning = option.meaning;
+        btn.onclick = () => checkMultipleChoice(option.char);
         options.appendChild(btn);
     });
 }
@@ -14670,7 +14730,6 @@ function initQuizCommandPalette() {
         { name: 'Stroke Order', mode: 'stroke-order', type: 'mode' },
         { name: 'Handwriting', mode: 'handwriting', type: 'mode' },
         { name: 'Draw Character', mode: 'draw-char', type: 'mode' },
-        { name: 'Draw Missing Component', mode: 'draw-missing-component', type: 'mode' },
         { name: 'Composer (auto progression)', mode: 'composer', type: 'mode' },
         { name: 'Study Mode', mode: 'study', type: 'mode' }
     ];
@@ -15271,7 +15330,6 @@ function initQuizPersistentState(charactersData, userConfig) {
     loadDecompositionsData(); // Load character decompositions from JSON
     loadComposerState();
     loadWordMarkings(); // Load user word markings
-    ensureModeButton('draw-missing-component', 'Draw Missing Component');
     ensureModeButton('composer', 'Composer');
     ensureModeButton('meaning-to-char-pinyin', 'Meaning → Char + Pinyin');
     buildComposerPipeline();
