@@ -320,6 +320,7 @@ function normalizeSentenceModeDataset(data) {
             const sentence = String(item?.sentence || '').trim();
             const target = String(item?.target || item?.char || '').trim();
             const meaning = String(item?.meaning || '').trim();
+            const prompt = String(item?.prompt || '').trim();
             const acceptedAnswers = Array.isArray(item?.acceptedAnswers)
                 ? item.acceptedAnswers.map(ans => String(ans || '').trim()).filter(Boolean)
                 : [];
@@ -327,13 +328,14 @@ function normalizeSentenceModeDataset(data) {
                 ...item,
                 sentence,
                 target,
-                char: target,
+                prompt,
+                char: target || sentence,
                 pinyin: String(item?.pinyin || '').trim(),
                 meaning,
                 acceptedAnswers
             };
         })
-        .filter(item => item.sentence && item.target && item.meaning);
+        .filter(item => item.sentence && item.meaning);
 }
 
 function getEmbeddedContextDataset(key) {
@@ -3319,6 +3321,20 @@ function estimateQuizSkillProbability(char, skillEstimate, now = Date.now()) {
     };
 }
 
+function backfillMissingQuizSkillEstimates(meaningEstimate, pinyinEstimate, meaningSkill, pinyinSkill) {
+    const updatedMeaning = { ...meaningEstimate };
+    const updatedPinyin = { ...pinyinEstimate };
+
+    if (meaningSkill.served > 0 && pinyinSkill.served === 0) {
+        updatedPinyin.probability = Math.max(updatedPinyin.probability, updatedMeaning.probability * 0.7);
+    }
+    if (pinyinSkill.served > 0 && meaningSkill.served === 0) {
+        updatedMeaning.probability = Math.max(updatedMeaning.probability, updatedPinyin.probability * 0.75);
+    }
+
+    return { meaningEstimate: updatedMeaning, pinyinEstimate: updatedPinyin };
+}
+
 function getAllQuizPredictionItems() {
     const targetMs = getQuizTargetDateMs();
     if (!targetMs) return null;
@@ -3335,8 +3351,14 @@ function getAllQuizPredictionItems() {
 
         const meaningSkill = buildQuizSkillEstimate(char, 'meaning');
         const pinyinSkill = buildQuizSkillEstimate(char, ['pinyin', 'pinyin-mc']);
-        const meaningEstimate = estimateQuizSkillProbability(char, meaningSkill, now);
-        const pinyinEstimate = estimateQuizSkillProbability(char, pinyinSkill, now);
+        let meaningEstimate = estimateQuizSkillProbability(char, meaningSkill, now);
+        let pinyinEstimate = estimateQuizSkillProbability(char, pinyinSkill, now);
+        ({ meaningEstimate, pinyinEstimate } = backfillMissingQuizSkillEstimates(
+            meaningEstimate,
+            pinyinEstimate,
+            meaningSkill,
+            pinyinSkill
+        ));
         const overallProb = clampNumber(
             meaningEstimate.probability * weights.meaning
             + pinyinEstimate.probability * weights.pinyin,
@@ -4507,12 +4529,7 @@ function loadConfidencePanelVisibility() {
         } else if (stored === 'true') {
             confidencePanelVisible = true;
         } else {
-            const deckSize = Array.isArray(originalQuizCharacters)
-                ? originalQuizCharacters.length
-                : Array.isArray(quizCharacters)
-                    ? quizCharacters.length
-                    : 0;
-            confidencePanelVisible = deckSize <= CONFIDENCE_AUTO_HIDE_THRESHOLD && !isNarrowViewport();
+            confidencePanelVisible = !isNarrowViewport();
         }
     } catch (e) {
         console.warn('Failed to load confidence panel visibility', e);
@@ -4653,7 +4670,7 @@ function positionConfidencePullTab() {
     pullTab.style.right = (confidencePanelVisible && panelWidth) ? `${panelWidth}px` : '0';
 }
 
-function setConfidencePanelVisible(visible) {
+function setConfidencePanelVisible(visible, options = {}) {
     confidencePanelVisible = Boolean(visible);
     const pullTab = document.getElementById('confidencePullTab');
     const content = document.getElementById('confidencePanelContent');
@@ -4686,6 +4703,14 @@ function setConfidencePanelVisible(visible) {
 
     updateRightSideSpacing();
     saveConfidencePanelVisibility();
+
+    if (confidencePanelVisible && options.skipRender !== true) {
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => renderConfidenceList());
+        } else {
+            renderConfidenceList();
+        }
+    }
 }
 
 function toggleConfidencePanel() {
@@ -4801,7 +4826,7 @@ function ensureConfidencePanel() {
     }
 
     // Apply persisted visibility and tracking state
-    setConfidencePanelVisible(confidencePanelVisible);
+    setConfidencePanelVisible(confidencePanelVisible, { skipRender: true });
     updateConfidenceTrackingUI();
 }
 
@@ -10207,15 +10232,15 @@ function highlightSentenceModeTarget(sentence, target) {
 function renderSentenceModeLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
-    const sentenceHtml = highlightSentenceModeTarget(currentQuestion.sentence, currentQuestion.target || currentQuestion.char);
-    const targetText = escapeHtml(currentQuestion.target || currentQuestion.char || '');
+    const sentenceHtml = escapeHtml(currentQuestion.sentence || '');
+    const promptText = escapeHtml(currentQuestion.prompt || 'What does the whole sentence mean?');
 
     questionDisplay.innerHTML = `
         <div class="max-w-2xl mx-auto text-center space-y-5">
             <div class="text-xs uppercase tracking-[0.25em] text-gray-400">Sentence Mode</div>
-            <div class="text-base text-gray-500">Listen to the full sentence, read the context, then choose the meaning of the highlighted chunk.</div>
+            <div class="text-base text-gray-500">Listen to the sentence, read it, then choose the best full-sentence meaning.</div>
             <div class="text-3xl leading-relaxed text-gray-900">${sentenceHtml}</div>
-            <div class="text-lg text-gray-700">👉 In this sentence, what does <span class="font-semibold text-gray-900">「${targetText}」</span> mean?</div>
+            <div class="text-lg text-gray-700">👉 ${promptText}</div>
         </div>
     `;
 }

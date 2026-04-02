@@ -145,7 +145,7 @@ const ctx = vm.createContext({
     MutationObserver: class { observe(){} disconnect(){} },
     IntersectionObserver: class { observe(){} disconnect(){} },
     ResizeObserver: class { observe(){} disconnect(){} },
-    requestAnimationFrame: (cb) => setTimeout(cb, 0),
+    requestAnimationFrame: (cb) => { cb(); return 0; },
     cancelAnimationFrame: () => {},
     setTimeout, setInterval, clearTimeout, clearInterval,
     CustomEvent: class { constructor(t){ this.type = t; } },
@@ -177,7 +177,11 @@ vm.runInContext(`
     function __formatLocalDateTimeInput(value) { return formatLocalDateTimeInput(value); }
     function __setSchedulerStats(data) { schedulerStats = data; }
     function __getQuizPredictionSummary() { return getQuizPredictionSummary(); }
-`, ctx);
+    function __getConfidencePanelVisible() { return confidencePanelVisible; }
+    function __loadConfidencePanelVisibility() { return loadConfidencePanelVisibility(); }
+    function __setConfidencePanelVisible(v) { return setConfidencePanelVisible(v); }
+    function __renderConfidenceList() { return renderConfidenceList(); }
+  `, ctx);
 
 let passed = 0;
 let failed = 0;
@@ -282,6 +286,42 @@ test('quiz prediction summary uses tracked history and penalizes unseen cards', 
     assert(summary.predictedPct > 0 && summary.predictedPct < 100, `predicted grade should be between 0 and 100, got ${summary.predictedPct}`);
     assert(summary.danger >= 1, 'unseen card should contribute to danger count');
     assert(summary.memoryPct > 0, 'tracked cards should produce a non-zero memory estimate');
+});
+
+test('quiz prediction stays above zero for partially studied cards even when one skill is missing', () => {
+    resetState();
+    const futureIso = new Date(Date.now() + 6 * 3600000).toISOString();
+    ctx.__setQuizCharacters([{ char: '学' }, { char: '好' }]);
+    ctx.__setSchedulerStats({
+        '学::meaning': { served: 3, correct: 2, wrong: 1, streak: 1, bktPLearned: 0.68 },
+        '好::meaning': { served: 2, correct: 2, wrong: 0, streak: 2, bktPLearned: 0.82 },
+    });
+    ctx.__setQuizTargetDate(futureIso);
+    const summary = ctx.__getQuizPredictionSummary();
+
+    assert(summary, 'prediction summary should exist');
+    assert(summary.predictedPct > 0, `partially studied cards should not collapse to 0, got ${summary.predictedPct}`);
+    assert(summary.meaningPct > 0, `meaning estimate should be non-zero, got ${summary.meaningPct}`);
+});
+
+test('confidence panel defaults visible and rerenders when opened', () => {
+    resetState();
+    ctx.__setQuizCharacters([{ char: '学', pinyin: 'xué', meaning: 'study' }]);
+    ctx.__setSchedulerStats({
+        '学::meaning': { served: 3, correct: 2, wrong: 1, streak: 1, bktPLearned: 0.72 }
+    });
+
+    ctx.__loadConfidencePanelVisibility();
+    assert(ctx.__getConfidencePanelVisible() === true, 'confidence panel should default to visible');
+
+    ctx.__renderConfidenceList();
+    const panel = documentStub.getElementById('confidencePanel');
+    assert(panel, 'confidence panel should be created');
+
+    ctx.__setConfidencePanelVisible(false);
+    assert(ctx.__getConfidencePanelVisible() === false, 'confidence panel should close');
+    ctx.__setConfidencePanelVisible(true);
+    assert(ctx.__getConfidencePanelVisible() === true, 'confidence panel should reopen without going blank');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

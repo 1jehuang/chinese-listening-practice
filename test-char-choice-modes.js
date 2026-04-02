@@ -276,22 +276,22 @@ const vocab = [
 
 (function testSentenceModeDatasetHasExpectedShape() {
   const dataset = JSON.parse(fs.readFileSync('./data/sentence-mode.json', 'utf8'));
-  assert.ok(dataset.length >= 100, 'sentence mode dataset should include the generated prompt set');
+  assert.ok(dataset.length >= 5, 'sentence mode dataset should include the easy prompt set');
   dataset.forEach((item) => {
-    assert.ok(item.sentence && item.target && item.meaning, 'sentence mode entries need sentence, target, and meaning');
+    assert.ok(item.sentence && item.meaning, 'sentence mode entries need sentence and meaning');
     assert.ok(Array.isArray(item.acceptedAnswers) && item.acceptedAnswers.length >= 1, 'sentence mode entries should include accepted answers');
   });
-  console.log('✓ sentence mode dataset includes generated context prompts');
+  console.log('✓ sentence mode dataset includes easy full-sentence prompts');
 })();
 
 (function testSentenceModeOptionsComeFromSentencePool() {
   const { ctx } = createContext();
   const sentencePool = [
-    { sentence: '请把这个文件发给王经理。', target: '发给', char: '发给', meaning: 'send it to' },
-    { sentence: '她把窗帘拉开，让阳光照进来。', target: '拉开', char: '拉开', meaning: 'pull open' },
-    { sentence: '老板夸她做事很踏实。', target: '踏实', char: '踏实', meaning: 'steady and reliable' },
-    { sentence: '请把垃圾分类扔到对应的桶里。', target: '分类', char: '分类', meaning: 'sort' },
-    { sentence: '他把旅行计划安排得井井有条。', target: '井井有条', char: '井井有条', meaning: 'well organized' },
+    { sentence: '老师让我们把作业在星期五前交上去。', prompt: 'What does the whole sentence mean?', char: '老师让我们把作业在星期五前交上去。', meaning: 'The teacher told us to hand in the homework before Friday.' },
+    { sentence: '她从地上捡起那枚硬币，小心地放进口袋。', prompt: 'What does the whole sentence mean?', char: '她从地上捡起那枚硬币，小心地放进口袋。', meaning: 'She picked the coin up from the ground and carefully put it into her pocket.' },
+    { sentence: '会议推迟到下周二举行了。', prompt: 'What does the whole sentence mean?', char: '会议推迟到下周二举行了。', meaning: 'The meeting has been postponed until next Tuesday.' },
+    { sentence: '我们昨天沿着河边散步到了很晚。', prompt: 'What does the whole sentence mean?', char: '我们昨天沿着河边散步到了很晚。', meaning: 'We strolled along the riverbank until late last night.' },
+    { sentence: '别忘了把灯关掉再走。', prompt: 'What does the whole sentence mean?', char: '别忘了把灯关掉再走。', meaning: "Don't forget to turn off the light before you leave." },
   ];
 
   ctx.__setMode('sentence');
@@ -304,9 +304,9 @@ const vocab = [
 
   const options = ctx.__getOptionData();
   assert.strictEqual(options.length, 4, 'sentence mode should render four choices');
-  assert.ok(options.some(option => option.textContent === 'send it to'), 'sentence mode should include the correct meaning');
+  assert.ok(options.some(option => option.textContent === 'The teacher told us to hand in the homework before Friday.'), 'sentence mode should include the whole-sentence meaning');
   assert.ok(options.every(option => option.textContent), 'sentence mode options should render readable text');
-  console.log('✓ sentence mode builds choices from the sentence dataset');
+  console.log('✓ sentence mode builds choices from whole-sentence meanings');
 })();
 
 (function testSentenceModeUsesMeaningSkillKey() {
