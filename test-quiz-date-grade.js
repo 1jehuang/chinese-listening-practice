@@ -175,6 +175,8 @@ vm.runInContext(`
     function __setQuizTargetDate(iso) { quizTargetDate = iso; }
     function __getQuizTargetDate() { return quizTargetDate; }
     function __formatLocalDateTimeInput(value) { return formatLocalDateTimeInput(value); }
+    function __setSchedulerStats(data) { schedulerStats = data; }
+    function __getQuizPredictionSummary() { return getQuizPredictionSummary(); }
 `, ctx);
 
 let passed = 0;
@@ -231,6 +233,14 @@ test('renderQuizGradeBanner inserts compact banner inside quiz header', () => {
         '学': { attempts: 4, correct: 4, lastSeen: Date.now(), halfLifeHours: 48 },
         '好': { attempts: 4, correct: 3, lastSeen: Date.now(), halfLifeHours: 24 },
     });
+    ctx.__setSchedulerStats({
+        '学::meaning': { served: 4, correct: 4, wrong: 0, streak: 4, bktPLearned: 0.96 },
+        '学::pinyin': { served: 4, correct: 4, wrong: 0, streak: 4, bktPLearned: 0.94 },
+        '学::pinyin-mc': { served: 2, correct: 2, wrong: 0, streak: 2, bktPLearned: 0.90 },
+        '好::meaning': { served: 3, correct: 2, wrong: 1, streak: 1, bktPLearned: 0.74 },
+        '好::pinyin': { served: 3, correct: 2, wrong: 1, streak: 1, bktPLearned: 0.71 },
+        '好::pinyin-mc': { served: 2, correct: 1, wrong: 1, streak: 0, bktPLearned: 0.63 },
+    });
     ctx.__setQuizTargetDate(futureIso);
     vm.runInContext(`renderQuizGradeBanner();`, ctx);
 
@@ -240,6 +250,38 @@ test('renderQuizGradeBanner inserts compact banner inside quiz header', () => {
     assert(quizHeader.childNodes[1] === banner, 'banner should appear immediately after the header title');
     assert(String(banner.style.cssText || banner.style.cssText === '' ? banner.style.cssText : '').includes(''), 'banner style object should exist');
     assert(typeof banner.innerHTML === 'string' && banner.innerHTML.includes('Quiz'), 'banner should render quiz label');
+    assert(banner.innerHTML.includes('📚'), 'banner should show tracked coverage');
+    assert(banner.innerHTML.includes('🧠'), 'banner should show memory estimate');
+    assert(banner.innerHTML.includes('M '), 'banner should show meaning estimate');
+    assert(banner.innerHTML.includes('P '), 'banner should show pinyin estimate');
+});
+
+test('quiz prediction summary uses tracked history and penalizes unseen cards', () => {
+    resetState();
+    const futureIso = new Date(Date.now() + 6 * 3600000).toISOString();
+    ctx.__setQuizCharacters([{ char: '学' }, { char: '好' }, { char: '新' }]);
+    ctx.__setFeedSeen({
+        '学': { attempts: 5, correct: 5, streak: 5, lastSeen: Date.now(), halfLifeHours: 48, avgResponseMs: 1200 },
+        '好': { attempts: 4, correct: 3, streak: 1, lastSeen: Date.now(), halfLifeHours: 20, avgResponseMs: 2500 },
+    });
+    ctx.__setSchedulerStats({
+        '学::meaning': { served: 5, correct: 5, wrong: 0, streak: 5, bktPLearned: 0.98 },
+        '学::pinyin': { served: 5, correct: 5, wrong: 0, streak: 5, bktPLearned: 0.95 },
+        '学::pinyin-mc': { served: 3, correct: 3, wrong: 0, streak: 3, bktPLearned: 0.93 },
+        '好::meaning': { served: 4, correct: 3, wrong: 1, streak: 1, bktPLearned: 0.78 },
+        '好::pinyin': { served: 4, correct: 3, wrong: 1, streak: 1, bktPLearned: 0.72 },
+        '好::pinyin-mc': { served: 2, correct: 1, wrong: 1, streak: 0, bktPLearned: 0.61 },
+    });
+    ctx.__setQuizTargetDate(futureIso);
+    const summary = ctx.__getQuizPredictionSummary();
+
+    assert(summary, 'prediction summary should exist');
+    assert(summary.total === 3, `expected 3 total cards, got ${summary.total}`);
+    assert(summary.trackedCount === 2, `expected 2 tracked cards, got ${summary.trackedCount}`);
+    assert(summary.unseenCount === 1, `expected 1 unseen card, got ${summary.unseenCount}`);
+    assert(summary.predictedPct > 0 && summary.predictedPct < 100, `predicted grade should be between 0 and 100, got ${summary.predictedPct}`);
+    assert(summary.danger >= 1, 'unseen card should contribute to danger count');
+    assert(summary.memoryPct > 0, 'tracked cards should produce a non-zero memory estimate');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

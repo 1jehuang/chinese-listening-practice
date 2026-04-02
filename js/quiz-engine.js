@@ -3217,18 +3217,209 @@ function getAllRecallAtQuizTime() {
     return results;
 }
 
+function getQuizPredictionSkillWeights() {
+    const pageKey = getAdaptivePageKey();
+    if (/dictation/.test(pageKey)) {
+        return { meaning: 0.2, pinyin: 0.8 };
+    }
+    if (/dialogue|translation|sentence/.test(pageKey)) {
+        return { meaning: 0.7, pinyin: 0.3 };
+    }
+    return { meaning: 0.55, pinyin: 0.45 };
+}
+
+function normalizeQuizResponseReadiness(responseMs) {
+    if (!Number.isFinite(responseMs)) return null;
+    const factor = getFeedResponseFactor(responseMs);
+    return clampNumber((factor - 0.45) / (1.2 - 0.45), 0, 1);
+}
+
+function getNormalizedConfidenceFromStats(stats) {
+    if (!stats) return 0;
+    const score = confidenceFormula === CONFIDENCE_FORMULAS.BKT
+        ? (stats.bktPLearned ?? BKT_PARAMS.P_L0)
+        : getHeuristicConfidenceScoreFromStats(stats);
+    return normalizeConfidenceScore(score);
+}
+
+function buildQuizSkillEstimate(char, skillKeys) {
+    const keys = Array.isArray(skillKeys) ? skillKeys : [skillKeys];
+    let served = 0;
+    let correct = 0;
+    let weightedConfidence = 0;
+    let weightTotal = 0;
+    let bestStreak = 0;
+
+    keys.forEach((key) => {
+        const stats = getSchedulerStats(char, key);
+        const keyServed = stats.served || 0;
+        const confidence = getNormalizedConfidenceFromStats(stats);
+        const weight = Math.max(1, keyServed);
+        weightedConfidence += confidence * weight;
+        weightTotal += weight;
+        served += keyServed;
+        correct += stats.correct || 0;
+        bestStreak = Math.max(bestStreak, stats.streak || 0);
+    });
+
+    const confidence = weightTotal ? (weightedConfidence / weightTotal) : 0;
+    const accuracy = served > 0 ? correct / served : 0;
+    const exposure = clampNumber(served / 6, 0, 1);
+    const streak = clampNumber(bestStreak / 4, 0, 1);
+
+    let probability = (confidence * 0.58)
+        + (accuracy * 0.18)
+        + (exposure * 0.14)
+        + (streak * 0.10);
+
+    const feedStats = feedModeState?.seen?.[char];
+    const responseReadiness = normalizeQuizResponseReadiness(feedStats?.avgResponseMs);
+    if (responseReadiness !== null) {
+        probability = probability * 0.88 + responseReadiness * 0.12;
+    }
+
+    return {
+        served,
+        correct,
+        confidence,
+        accuracy,
+        exposure,
+        streak,
+        probability: clampNumber(probability, 0, 1)
+    };
+}
+
+function estimateQuizSkillProbability(char, skillEstimate, now = Date.now()) {
+    const feedStats = feedModeState?.seen?.[char] || null;
+    const recallAtQuiz = getRecallAtQuizTime(char, now);
+    const currentRecall = feedStats?.lastSeen ? getFeedRecallProbability(char, now) : null;
+    const memoryProb = Number.isFinite(recallAtQuiz)
+        ? recallAtQuiz
+        : (Number.isFinite(currentRecall) ? currentRecall : null);
+
+    const trainedProb = skillEstimate.probability;
+    let predicted = 0;
+
+    if (memoryProb !== null && skillEstimate.served > 0) {
+        predicted = memoryProb * (0.4 + 0.6 * trainedProb);
+    } else if (memoryProb !== null) {
+        predicted = memoryProb * 0.55;
+    } else if (skillEstimate.served > 0) {
+        predicted = trainedProb * 0.82;
+    }
+
+    const marking = getWordMarking(char);
+    if (marking === 'learned') predicted += 0.04;
+    if (marking === 'needs-work') predicted -= 0.08;
+
+    return {
+        probability: clampNumber(predicted, 0, 1),
+        memoryProb: memoryProb !== null ? clampNumber(memoryProb, 0, 1) : null
+    };
+}
+
+function getAllQuizPredictionItems() {
+    const targetMs = getQuizTargetDateMs();
+    if (!targetMs) return null;
+    const chars = Array.isArray(quizCharacters) ? quizCharacters : [];
+    if (!chars.length) return null;
+
+    const now = Date.now();
+    const weights = getQuizPredictionSkillWeights();
+    const items = [];
+
+    for (const item of chars) {
+        const char = typeof item === 'string' ? item : item.char;
+        if (!char) continue;
+
+        const meaningSkill = buildQuizSkillEstimate(char, 'meaning');
+        const pinyinSkill = buildQuizSkillEstimate(char, ['pinyin', 'pinyin-mc']);
+        const meaningEstimate = estimateQuizSkillProbability(char, meaningSkill, now);
+        const pinyinEstimate = estimateQuizSkillProbability(char, pinyinSkill, now);
+        const overallProb = clampNumber(
+            meaningEstimate.probability * weights.meaning
+            + pinyinEstimate.probability * weights.pinyin,
+            0,
+            1
+        );
+        const feedStats = feedModeState?.seen?.[char] || null;
+        const tracked = (meaningSkill.served + pinyinSkill.served) > 0 || Boolean(feedStats?.attempts);
+        const memoryCandidates = [meaningEstimate.memoryProb, pinyinEstimate.memoryProb].filter(Number.isFinite);
+        const memoryProb = memoryCandidates.length
+            ? memoryCandidates.reduce((sum, value) => sum + value, 0) / memoryCandidates.length
+            : null;
+
+        items.push({
+            char,
+            overallProb,
+            meaningProb: meaningEstimate.probability,
+            pinyinProb: pinyinEstimate.probability,
+            memoryProb,
+            tracked,
+            feedAttempts: feedStats?.attempts || 0,
+            meaningServed: meaningSkill.served,
+            pinyinServed: pinyinSkill.served,
+            weights
+        });
+    }
+
+    items.sort((a, b) => a.overallProb - b.overallProb);
+    return items;
+}
+
+function getQuizPredictionSummary() {
+    const items = getAllQuizPredictionItems();
+    if (!items || !items.length) return null;
+    const total = items.length;
+    const predictedPct = Math.round(items.reduce((sum, item) => sum + item.overallProb, 0) / total * 100);
+    const meaningPct = Math.round(items.reduce((sum, item) => sum + item.meaningProb, 0) / total * 100);
+    const pinyinPct = Math.round(items.reduce((sum, item) => sum + item.pinyinProb, 0) / total * 100);
+    const memoryValues = items.map(item => item.memoryProb).filter(Number.isFinite);
+    const memoryPct = memoryValues.length
+        ? Math.round(memoryValues.reduce((sum, value) => sum + value, 0) / memoryValues.length * 100)
+        : 0;
+    const trackedCount = items.filter(item => item.tracked).length;
+    const unseenCount = total - trackedCount;
+    const likely = items.filter(item => item.overallProb >= 0.85).length;
+    const risky = items.filter(item => item.overallProb >= 0.6 && item.overallProb < 0.85).length;
+    const danger = items.filter(item => item.overallProb < 0.6).length;
+    const weakest = items.slice(0, 5).map(item => ({ char: item.char, recallAtQuiz: item.overallProb }));
+    return {
+        total,
+        predictedPct,
+        meaningPct,
+        pinyinPct,
+        memoryPct,
+        trackedCount,
+        unseenCount,
+        likely,
+        risky,
+        danger,
+        weakest,
+        timeUntil: formatTimeUntilQuiz(),
+        weights: getQuizPredictionSkillWeights()
+    };
+}
+
 function getQuizReadinessSummary() {
-    const all = getAllRecallAtQuizTime();
-    if (!all) return null;
-    const total = all.length;
-    if (total === 0) return null;
-    const avgRecall = all.reduce((sum, r) => sum + r.recallAtQuiz, 0) / total;
-    const likely = all.filter(r => r.recallAtQuiz >= 0.8).length;
-    const risky = all.filter(r => r.recallAtQuiz >= 0.5 && r.recallAtQuiz < 0.8).length;
-    const danger = all.filter(r => r.recallAtQuiz < 0.5).length;
-    const unseen = all.filter(r => !r.seen).length;
-    const weakest = all.slice(0, 5);
-    return { total, avgRecall, likely, risky, danger, unseen, weakest, timeUntil: formatTimeUntilQuiz() };
+    const summary = getQuizPredictionSummary();
+    if (!summary) return null;
+    return {
+        total: summary.total,
+        avgRecall: summary.predictedPct / 100,
+        likely: summary.likely,
+        risky: summary.risky,
+        danger: summary.danger,
+        unseen: summary.unseenCount,
+        weakest: summary.weakest,
+        timeUntil: summary.timeUntil,
+        trackedCount: summary.trackedCount,
+        meaningPct: summary.meaningPct,
+        pinyinPct: summary.pinyinPct,
+        memoryPct: summary.memoryPct,
+        predictedPct: summary.predictedPct,
+        weights: summary.weights
+    };
 }
 
 function formatQuizTargetDateLocal() {
@@ -3249,57 +3440,19 @@ function formatQuizTargetDateLocal() {
 function simulateQuizGrade(options = {}) {
     const targetMs = getQuizTargetDateMs();
     if (!targetMs) return null;
-
-    const numWords = options.numWords || 10;
-    const trials = options.trials || 2000;
-    const chars = Array.isArray(quizCharacters) ? quizCharacters : [];
-    if (chars.length === 0) return null;
-
-    const recallProbs = [];
-    for (const item of chars) {
-        const char = typeof item === 'string' ? item : item.char;
-        if (!char) continue;
-        const stats = feedModeState.seen ? feedModeState.seen[char] : null;
-        if (!stats || !stats.lastSeen) {
-            recallProbs.push({ char, prob: 0 });
-            continue;
-        }
-        const halfLife = getFeedHalfLifeHours(stats);
-        const elapsedAtQuiz = Math.max(0, (targetMs - stats.lastSeen) / 3600000);
-        recallProbs.push({ char, prob: getFeedRecallProbabilityAt(halfLife, elapsedAtQuiz) });
-    }
-
-    const poolSize = recallProbs.length;
-    if (poolSize === 0) return null;
-    const sampleSize = Math.min(numWords, poolSize);
-
-    let totalScore = 0;
-    for (let t = 0; t < trials; t++) {
-        const shuffled = recallProbs.slice();
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        const sample = shuffled.slice(0, sampleSize);
-        let trialScore = 0;
-        for (const { prob } of sample) {
-            const pinyinCorrect = Math.random() < prob;
-            const meaningCorrect = Math.random() < prob;
-            trialScore += (pinyinCorrect ? 1 : 0) + (meaningCorrect ? 1 : 0);
-        }
-        totalScore += trialScore / (sampleSize * 2);
-    }
-
-    const avgPct = (totalScore / trials) * 100;
-    const expectedCorrect = recallProbs.reduce((sum, r) => sum + r.prob, 0) / poolSize;
-    const expectedPct = expectedCorrect * 100;
-
+    const summary = getQuizPredictionSummary();
+    if (!summary) return null;
     return {
-        predictedGradePct: Math.round(avgPct),
-        expectedRecallPct: Math.round(expectedPct),
-        poolSize,
-        sampleSize,
-        trials,
+        predictedGradePct: summary.predictedPct,
+        expectedRecallPct: summary.memoryPct,
+        poolSize: summary.total,
+        sampleSize: summary.total,
+        trials: options.trials || 0,
+        trackedCount: summary.trackedCount,
+        unseenCount: summary.unseenCount,
+        meaningPct: summary.meaningPct,
+        pinyinPct: summary.pinyinPct,
+        weights: summary.weights,
     };
 }
 
@@ -3374,14 +3527,20 @@ function renderQuizGradeBanner() {
         ? `<span style="color:#dc2626">⚠ ${dangerWords.map(w => escapeHtml(w.char)).join(' ')}</span>`
         : '';
 
+    banner.title = 'Estimated quiz score at the target time using forgetting curve, skill confidence, exposure history, and response speed.';
+
     banner.innerHTML = `
-        <span style="font-weight:600;color:#6b7280">Quiz</span>
+        <span style="font-weight:600;color:#6b7280">Quiz Est.</span>
         <span style="font-weight:800;font-size:13px;color:${gradeColor}">${letterGrade}</span>
         <span style="font-weight:700;color:${gradeColor}">${pct}%</span>
         <div style="width:44px;height:4px;border-radius:999px;background:#e5e7eb;overflow:hidden;flex-shrink:0">
             <div style="width:${pct}%;height:100%;background:${gradeColor}"></div>
         </div>
         <span>📅 ${timeUntil}</span>
+        <span title="Tracked cards / total cards">📚 ${summary.trackedCount}/${summary.total}</span>
+        <span title="Estimated memory retention at quiz time">🧠 ${summary.memoryPct}%</span>
+        <span title="Estimated meaning readiness">M ${summary.meaningPct}%</span>
+        <span title="Estimated pinyin readiness">P ${summary.pinyinPct}%</span>
         <span>${summary.likely}✓ ${summary.risky}⚠ ${summary.danger}✗</span>
         ${dangerHtml}
     `;
