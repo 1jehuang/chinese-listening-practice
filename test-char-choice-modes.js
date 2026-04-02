@@ -215,3 +215,24 @@ const vocab = [
   assert.ok(correctOption.innerHTML.includes('dà'), 'meaning-to-char options should show pinyin metadata');
   console.log('✓ meaning-to-char excludes same-meaning distractors and shows pinyin');
 })();
+
+
+(function testBlendDirectionsUseAudioMeaningButNotAudioPinyin() {
+  const { ctx } = createContext();
+
+  const blendDirections = Array.from(ctx.getBlendDirectionsForMode('blend'));
+  assert.deepStrictEqual(
+    blendDirections,
+    ['char-to-meaning', 'char-to-pinyin', 'audio-to-meaning'],
+    'blend should include audio-to-meaning but never audio-to-pinyin'
+  );
+
+  const blendMcDirections = Array.from(ctx.getBlendDirectionsForMode('blend-mc'));
+  assert.deepStrictEqual(
+    blendMcDirections,
+    ['char-to-meaning', 'char-to-pinyin'],
+    'blend-mc should remain the no-audio blend mode'
+  );
+
+  console.log('✓ blend directions exclude audio-to-pinyin and preserve no-audio blend mode');
+})();

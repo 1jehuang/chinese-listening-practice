@@ -79,11 +79,11 @@ let upcomingQuestion = null;
 let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
 // Blend mode state
-let blendDirection = null; // current direction: 'char-to-meaning', 'char-to-pinyin', 'audio-to-pinyin'
+let blendDirection = null; // current direction: 'char-to-meaning', 'char-to-pinyin', 'audio-to-meaning'
 let blendPreviousDirection = null; // direction of the previous question (for display in left column)
 const BLEND_DIRECTIONS = [
     'char-to-meaning', 'char-to-pinyin',
-    'audio-to-pinyin'
+    'audio-to-meaning'
 ];
 const BLEND_MC_DIRECTIONS = [
     'char-to-meaning', 'char-to-pinyin'
@@ -14728,7 +14728,7 @@ function initQuizCommandPalette() {
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
         { name: 'Char → Meaning (Fuzzy)', mode: 'char-to-meaning-type', type: 'mode' },
         { name: 'Blend (Mixed Directions)', mode: 'blend', type: 'mode' },
-        { name: 'Blend MC (No Audio)', mode: 'blend-mc', type: 'mode' },
+        { name: 'Blend (No Audio)', mode: 'blend-mc', type: 'mode' },
         { name: 'Meaning → Char', mode: 'meaning-to-char', type: 'mode' },
         { name: 'Meaning → Char + Pinyin', mode: 'meaning-to-char-pinyin', type: 'mode' },
         { name: 'Stroke Order', mode: 'stroke-order', type: 'mode' },
