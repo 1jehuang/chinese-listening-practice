@@ -314,6 +314,10 @@
     <script src="data/lessons/lesson-14.js"></script>
     <script src="data/lessons/lesson-15.js"></script>
     <script src="data/lessons/lesson-16.js"></script>
+    <script src="data/lessons/lesson-17.js"></script>
+    <script src="data/lessons/lesson-18.js"></script>
+    <script src="data/lessons/lesson-19.js"></script>
+    <script src="data/lessons/lesson-21.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-sync.js"></script>
 </head>
@@ -345,7 +349,7 @@
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>All Lessons Cumulative (Lessons 1-16)</h1>
+                <h1>All Lessons Cumulative (Lessons 1-19, 21)</h1>
             </header>
 
             <section class="quiz-display">
@@ -406,7 +410,7 @@
                 </div>
 
                 <div id="studyMode">
-                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 1-16</p>
+                    <p style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study all vocabulary from Lessons 1-19 and 21</p>
                     <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
 
@@ -870,9 +874,26 @@
 
         const lesson16part2 = window.__LESSON_DATASETS__['lesson-16'].vocab.part2;
 
+
+        // Lesson 17: Chinatown (唐人街)
+        const lesson17part1 = window.__LESSON_DATASETS__['lesson-17'].vocab.part1;
+        const lesson17part2 = window.__LESSON_DATASETS__['lesson-17'].vocab.part2;
+
+        // Lesson 18: Politeness at the Dinner Table (饭桌上的客套)
+        const lesson18part1 = window.__LESSON_DATASETS__['lesson-18'].vocab.part1;
+        const lesson18part2 = window.__LESSON_DATASETS__['lesson-18'].vocab.part2;
+
+        // Lesson 19: Chinese Immigrants in America (美国的华侨)
+        const lesson19part1 = window.__LESSON_DATASETS__['lesson-19'].vocab.part1;
+        const lesson19part2 = window.__LESSON_DATASETS__['lesson-19'].vocab.part2;
+
+        // Lesson 21: Chinese Language Teaching in America (美国的中文教学)
+        const lesson21part1 = window.__LESSON_DATASETS__['lesson-21'].vocab.part1;
+        const lesson21part2 = window.__LESSON_DATASETS__['lesson-21'].vocab.part2;
+
         // Merge all lessons and de-duplicate by character
         const combinedMap = new Map();
-        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2, ...lesson8part1, ...lesson8part2, ...lesson9part1, ...lesson9part2, ...lesson10part1, ...lesson10part2, ...lesson11part1, ...lesson11part2, ...lesson12part1, ...lesson12part2, ...lesson13part1, ...lesson13part2, ...lesson14part1, ...lesson14part2, ...lesson15part1, ...lesson15part2, ...lesson16part1, ...lesson16part2].forEach(item => {
+        [...lesson1, ...lesson2, ...lesson3, ...lesson4, ...lesson5, ...lesson6, ...lesson7part1, ...lesson7part2, ...lesson8part1, ...lesson8part2, ...lesson9part1, ...lesson9part2, ...lesson10part1, ...lesson10part2, ...lesson11part1, ...lesson11part2, ...lesson12part1, ...lesson12part2, ...lesson13part1, ...lesson13part2, ...lesson14part1, ...lesson14part2, ...lesson15part1, ...lesson15part2, ...lesson16part1, ...lesson16part2, ...lesson17part1, ...lesson17part2, ...lesson18part1, ...lesson18part2, ...lesson19part1, ...lesson19part2, ...lesson21part1, ...lesson21part2].forEach(item => {
             if (!combinedMap.has(item.char)) {
                 combinedMap.set(item.char, item);
             }
