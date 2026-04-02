@@ -4,6 +4,8 @@
 
 const SUPABASE_URL = 'https://nekdqvzknuqrhuwxpujt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5la2RxdnprbnVxcmh1d3hwdWp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTE4MjgsImV4cCI6MjA3OTc2NzgyOH0.2paRC5GBr2EY1BIxqND0JS8J7jdfSPBaw0oSMEQ1CRk';
+const SUPABASE_PROJECT_REF = 'nekdqvzknuqrhuwxpujt';
+const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 
 let supabaseClient = null;
 let currentUserId = null;
@@ -17,9 +19,71 @@ function initSupabase() {
         console.warn('Supabase SDK not loaded');
         return false;
     }
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storageKey: SUPABASE_AUTH_STORAGE_KEY,
+            storage: window.localStorage,
+        }
+    });
     console.log('Supabase initialized');
     return true;
+}
+
+function getStoredSupabaseSession() {
+    try {
+        const raw = localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function waitForRecoveredSession(timeoutMs = 1500) {
+    if (!supabaseClient?.auth?.onAuthStateChange) return null;
+
+    return new Promise((resolve) => {
+        let settled = false;
+        let timer = null;
+        let subscription = null;
+
+        const cleanup = () => {
+            if (timer) clearTimeout(timer);
+            try {
+                subscription?.data?.subscription?.unsubscribe?.();
+                subscription?.subscription?.unsubscribe?.();
+                subscription?.unsubscribe?.();
+            } catch (e) {}
+        };
+
+        const finish = (session) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve(session || null);
+        };
+
+        subscription = supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                finish(session);
+                return;
+            }
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+                finish(session || null);
+            }
+        });
+
+        timer = setTimeout(async () => {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                finish(session || null);
+            } catch (e) {
+                finish(null);
+            }
+        }, timeoutMs);
+    });
 }
 
 // Sign in anonymously and get user ID
@@ -34,6 +98,27 @@ async function ensureAuthenticated() {
             currentUserId = session.user.id;
             console.log('Already authenticated:', currentUserId);
             return true;
+        }
+
+        const storedSession = getStoredSupabaseSession();
+        if (storedSession?.refresh_token && supabaseClient.auth.refreshSession) {
+            const { data: refreshed, error: refreshError } = await supabaseClient.auth.refreshSession({
+                refresh_token: storedSession.refresh_token
+            });
+            if (!refreshError && refreshed?.session?.user) {
+                currentUserId = refreshed.session.user.id;
+                console.log('Recovered authenticated session:', currentUserId);
+                return true;
+            }
+        }
+
+        if (storedSession?.access_token || storedSession?.refresh_token) {
+            const recoveredSession = await waitForRecoveredSession();
+            if (recoveredSession?.user) {
+                currentUserId = recoveredSession.user.id;
+                console.log('Recovered delayed session:', currentUserId);
+                return true;
+            }
         }
 
         // Sign in anonymously
@@ -145,7 +230,7 @@ function flushPendingUpdatesSync() {
     const blob = new Blob([JSON.stringify(rows)], { type: 'application/json' });
 
     // Get current session token for auth
-    const sessionData = localStorage.getItem('sb-nekdqvzknuqrhuwxpujt-auth-token');
+    const sessionData = localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY);
     let accessToken = SUPABASE_ANON_KEY;
     if (sessionData) {
         try {
@@ -452,10 +537,12 @@ function createAuthUI() {
 
     // Update on auth state changes
     supabaseClient.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
             updateAuthButton();
             if (session?.user) {
                 currentUserId = session.user.id;
+            } else if (event === 'SIGNED_OUT') {
+                currentUserId = null;
             }
         }
     });
@@ -633,7 +720,7 @@ function flushLearningEventsSync() {
     const batch = pendingLearningEvents.splice(0, LEARNING_SYNC_BATCH_SIZE);
     const url = `${SUPABASE_URL}/rest/v1/learning_events`;
 
-    const sessionData = localStorage.getItem('sb-nekdqvzknuqrhuwxpujt-auth-token');
+    const sessionData = localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY);
     let accessToken = SUPABASE_ANON_KEY;
     if (sessionData) {
         try {
