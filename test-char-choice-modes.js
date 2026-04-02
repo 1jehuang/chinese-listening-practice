@@ -355,3 +355,24 @@ const vocab = [
   assert.ok(options.every(option => option.includes('-')), 'multi-syllable tone options should be word-level combinations');
   console.log('✓ char-to-pinyin-tones-mc phase 2 uses whole-word tone combinations');
 })();
+
+(function testToneMcIgnoresOptionalParentheticalPinyin() {
+  const { ctx } = createContext();
+  const word = { char: '经济(学)', pinyin: 'jīngjì(xué)', meaning: 'economics' };
+  ctx.__setCurrentQuestion(word);
+
+  assert.strictEqual(ctx.__getNoTonePinyinWord(), 'jing ji', 'optional parenthetical pinyin should be ignored in no-tone word parsing');
+
+  ctx.__setQuizCharacters([
+    word,
+    { char: '顺利', pinyin: 'shùn lì', meaning: 'smooth' },
+    { char: '可能', pinyin: 'kě néng', meaning: 'possible' },
+    { char: '音乐', pinyin: 'yīn yuè', meaning: 'music' },
+  ]);
+  ctx.__setMode('char-to-pinyin-tones-mc');
+  ctx.__initTestDomRefs();
+  ctx.startPinyinToneMcFlow(true);
+
+  assert.deepStrictEqual(Array.from(ctx.__getToneFlowExpected()), [1, 4], 'tone flow should ignore optional parenthetical syllables');
+  console.log('✓ char-to-pinyin-tones-mc ignores optional parenthetical pinyin segments');
+})();

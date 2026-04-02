@@ -9323,8 +9323,16 @@ function stripToneMarks(pinyin) {
     return result;
 }
 
+function stripOptionalPinyinSegments(pinyin) {
+    return String(pinyin || '')
+        .replace(/\([^)]*\)/g, '')
+        .replace(/（[^）]*）/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 function getPrimaryPinyinSyllables(question = currentQuestion) {
-    const primaryPinyin = String(question?.pinyin || '').split('/')[0].trim();
+    const primaryPinyin = stripOptionalPinyinSegments(String(question?.pinyin || '').split('/')[0].trim());
     if (!primaryPinyin) return [];
     return (typeof splitPinyinSyllables === 'function')
         ? splitPinyinSyllables(primaryPinyin)
