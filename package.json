@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node test-convert.js && node test-pinyin.js && node test-tone-numbers.js && node test-all-vocab.js && node tests/run-tone-check-tests.js && node tests/run-speak-mode-tests.js && node test-confidence-display.js && node test-feed-mode.js",
+    "test": "node test-convert.js && node test-pinyin.js && node test-tone-numbers.js && node test-all-vocab.js && node tests/run-tone-check-tests.js && node tests/run-speak-mode-tests.js && node test-confidence-display.js && node test-feed-mode.js && node test-quiz-date-grade.js",
     "test:audio": "node test-audio.js"
   },
   "dependencies": {
