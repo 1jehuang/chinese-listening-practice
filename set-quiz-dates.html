@@ -25,49 +25,79 @@
             {
                 page: 'lesson-11-part-2',
                 label: 'L11 CRQ Part 2',
-                date: '2026-03-09T09:25:00',
+                date: '2026-03-09T09:25:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'lesson-12-part-2',
                 label: 'L12 CRQ Part 2',
-                date: '2026-03-11T09:25:00',
+                date: '2026-03-12T10:20:00-07:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-10-cumulative',
+                label: 'L10 Cumulative',
+                date: '2026-03-12T10:20:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'xiao-huangdi-part-1',
                 label: 'Xiao Huang Di CRQ (Part 1)',
-                date: '2026-03-10T11:30:00',
+                date: '2026-03-10T11:30:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'xiao-huangdi-part-2',
                 label: 'Xiao Huang Di CRQ (Part 2)',
-                date: '2026-03-10T11:30:00',
+                date: '2026-03-12T09:25:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'xiao-huangdi-vocab',
                 label: 'Xiao Huang Di CRQ (Vocab)',
-                date: '2026-03-10T11:30:00',
+                date: '2026-03-10T11:30:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'lesson-14-part-1',
                 label: 'L14 Comprehensive Quiz (Part 1)',
-                date: '2026-03-10T08:30:00',
+                date: '2026-03-10T08:30:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'lesson-14-part-2',
                 label: 'L14 Comprehensive Quiz (Part 2)',
-                date: '2026-03-10T08:30:00',
+                date: '2026-03-10T08:30:00-07:00',
                 tz: 'America/Los_Angeles',
             },
             {
                 page: 'lesson-14-cumulative',
                 label: 'L14 Comprehensive Quiz (Cumulative)',
-                date: '2026-03-10T08:30:00',
+                date: '2026-03-10T08:30:00-07:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-15-part-1',
+                label: 'L15 CRQ Part 1',
+                date: '2026-04-01T11:30:00-07:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-15-part-2',
+                label: 'L15 CRQ Part 2',
+                date: '2026-04-02T11:30:00-07:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-15-dictation',
+                label: 'L15 Dictation / HW 15-1',
+                date: '2026-04-03T11:30:00-07:00',
+                tz: 'America/Los_Angeles',
+            },
+            {
+                page: 'lesson-15-cumulative',
+                label: 'L15 Cumulative / CQ 15',
+                date: '2026-04-07T11:30:00-07:00',
                 tz: 'America/Los_Angeles',
             },
         ];
@@ -83,9 +113,7 @@
         }
 
         function setDate(page, dateStr, tz) {
-            const iso = dateStr.includes('T')
-                ? new Date(dateStr).toISOString()
-                : new Date(dateStr + 'T00:00:00').toISOString();
+            const iso = new Date(dateStr).toISOString();
             localStorage.setItem(getStorageKey(page), iso);
             return iso;
         }
@@ -111,7 +139,7 @@
                     <div class="p-4 rounded-lg border ${statusClass} flex items-center justify-between">
                         <div>
                             <div class="font-semibold">${q.label}</div>
-                            <div class="text-xs text-gray-500">${q.page}.html &rarr; ${dateDisplay} PST</div>
+                            <div class="text-xs text-gray-500">${q.page}.html &rarr; ${dateDisplay} PT</div>
                             <div class="text-xs mt-1">${current ? '✅ Set: ' + currentLabel : '⬜ Not set'}</div>
                         </div>
                         <div class="flex gap-2">
@@ -155,6 +183,13 @@
         });
 
         render();
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('autoset') === '1') {
+            quizSchedule.forEach(q => setDate(q.page, q.date, q.tz));
+            render();
+            showStatus(`Auto-set dates for all ${quizSchedule.length} quizzes`);
+        }
     </script>
 </body>
 </html>

@@ -2910,6 +2910,10 @@ const AUTO_QUIZ_DATES = {
     'lesson-14-part-1':      '2026-03-10T08:30:00-07:00',
     'lesson-14-part-2':      '2026-03-10T08:30:00-07:00',
     'lesson-14-cumulative':  '2026-03-10T08:30:00-07:00',
+    'lesson-15-part-1':      '2026-04-01T11:30:00-07:00',
+    'lesson-15-part-2':      '2026-04-02T11:30:00-07:00',
+    'lesson-15-dictation':   '2026-04-03T11:30:00-07:00',
+    'lesson-15-cumulative':  '2026-04-07T11:30:00-07:00',
 };
 
 function getLegacyAutoQuizDateIso(autoDateString) {
