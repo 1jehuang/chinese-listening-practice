@@ -144,6 +144,7 @@ let toneFlowIndex = 0;              // current syllable index
 let toneFlowUseFuzzy = false;
 let toneFlowCompleted = [];         // tracks completed tones for progress display
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
+let toneFlowExpectedNoTone = '';
 let lessonCharMap = null;
 
 // Char-to-tones MC mode state (three-column layout with tone buttons)
@@ -9095,20 +9096,13 @@ function checkMultipleChoice(answer) {
 // =====================
 
 function startPinyinToneMcFlow(useFuzzyInput = false) {
-    const primaryPinyin = currentQuestion.pinyin.split('/')[0].trim();
-    // Split into syllables using the proper pinyin splitter
-    // splitPinyinSyllables handles both spaced and unspaced pinyin
-    toneFlowSyllables = (typeof splitPinyinSyllables === 'function')
-        ? splitPinyinSyllables(primaryPinyin)
-        : primaryPinyin.split(/\s+/).filter(Boolean);
+    toneFlowSyllables = getPrimaryPinyinSyllables(currentQuestion);
     toneFlowChars = (currentQuestion.char || '').replace(/[＿_]/g, '').split('');
-
-    // Each syllable gets its own tone (extract from each syllable individually)
-    toneFlowExpected = toneFlowSyllables.map(syl => {
+    toneFlowExpected = toneFlowSyllables.map((syl) => {
         const toneSeq = extractToneSequence(syl);
-        // toneSeq might be multi-digit if syllable wasn't split properly, take first digit
         return toneSeq ? Number(String(toneSeq).charAt(0)) : 5;
     });
+    toneFlowExpectedNoTone = getNoTonePinyinWord(currentQuestion);
     toneFlowIndex = 0;
     toneFlowCompleted = [];
     toneFlowCompletedPinyin = [];
@@ -9119,7 +9113,7 @@ function startPinyinToneMcFlow(useFuzzyInput = false) {
     hint.textContent = '';
     hint.className = 'text-center text-lg text-gray-600 my-2';
 
-    renderToneFlowCharacterStep();
+    renderToneFlowPinyinWordStep();
 }
 
 function setToneFlowPrompt(text) {
@@ -9131,13 +9125,9 @@ function setToneFlowPrompt(text) {
     }
 }
 
-function renderToneFlowCharacterStep() {
-    // Show progress and current character
+function renderToneFlowPinyinWordStep() {
     updateToneFlowProgress();
-
-    const currentChar = toneFlowChars[toneFlowIndex] || '?';
-    setToneFlowPrompt(`Pick pinyin for: ${currentChar}`);
-
+    setToneFlowPrompt('Pick pinyin for the whole word (no tone marks)');
     toneFlowStage = 'pinyin';
 
     if (toneFlowUseFuzzy && fuzzyMode && fuzzyInput) {
@@ -9151,35 +9141,33 @@ function renderToneFlowCharacterStep() {
     }
 }
 
+function getToneFlowWordPinyinOptions() {
+    const correctWord = toneFlowExpectedNoTone;
+    const options = [];
+    const used = new Set([normalizePinyinForChoice(correctWord)]);
+    let safety = 0;
+
+    while (options.length < 3 && safety < 1000) {
+        safety++;
+        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
+        if (!random || random.char === currentQuestion.char) continue;
+        const candidate = getNoTonePinyinWord(random);
+        if (!candidate) continue;
+        const normalized = normalizePinyinForChoice(candidate);
+        if (used.has(normalized)) continue;
+        used.add(normalized);
+        options.push(candidate);
+    }
+
+    return [...options, correctWord].sort(() => Math.random() - 0.5);
+}
+
 function generatePinyinOptionsToneFlowSingle() {
     const options = document.getElementById('options');
     if (!options) return;
     options.innerHTML = '';
 
-    const currentSyllable = toneFlowSyllables[toneFlowIndex];
-
-    // Generate 3 wrong options from other syllables in the vocab
-    const wrongOptions = [];
-    const usedNormalized = new Set([normalizePinyinForChoice(currentSyllable)]);
-    let safety = 0;
-
-    while (wrongOptions.length < 3 && safety < 500) {
-        safety++;
-        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-        const randomSyllables = random.pinyin.split('/')[0].trim().split(/\s+/);
-        const randomSyl = randomSyllables[Math.floor(Math.random() * randomSyllables.length)];
-        const normalizedRandom = normalizePinyinForChoice(randomSyl);
-
-        if (usedNormalized.has(normalizedRandom)) continue;
-
-        wrongOptions.push(randomSyl);
-        usedNormalized.add(normalizedRandom);
-    }
-
-    const allOptions = [...wrongOptions, currentSyllable];
-    allOptions.sort(() => Math.random() - 0.5);
-
-    allOptions.forEach(option => {
+    getToneFlowWordPinyinOptions().forEach((option) => {
         const btn = document.createElement('button');
         btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
         btn.textContent = option;
@@ -9195,41 +9183,7 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
     options.innerHTML = '';
     fuzzyInput.value = '';
 
-    const currentSyllable = toneFlowSyllables[toneFlowIndex];
-
-    // Build a pool of all single syllables from the vocabulary
-    const syllablePool = [];
-    quizCharacters.forEach(item => {
-        const primaryPinyin = item.pinyin.split('/')[0].trim();
-        const syllables = (typeof splitPinyinSyllables === 'function')
-            ? splitPinyinSyllables(primaryPinyin)
-            : primaryPinyin.split(/\s+/).filter(Boolean);
-        syllables.forEach(syl => {
-            if (syl && !syl.includes('.') && !syl.includes('…')) {
-                syllablePool.push(syl);
-            }
-        });
-    });
-
-    // Generate 3 wrong options from the pool
-    const wrongOptions = [];
-    const usedNormalized = new Set([normalizePinyinForChoice(currentSyllable)]);
-    let safety = 0;
-
-    while (wrongOptions.length < 3 && safety < 500) {
-        safety++;
-        const randomSyl = syllablePool[Math.floor(Math.random() * syllablePool.length)];
-        if (!randomSyl) continue;
-        const normalizedRandom = normalizePinyinForChoice(randomSyl);
-
-        if (usedNormalized.has(normalizedRandom)) continue;
-
-        wrongOptions.push(randomSyl);
-        usedNormalized.add(normalizedRandom);
-    }
-
-    const allOptions = [...wrongOptions, currentSyllable];
-    allOptions.sort(() => Math.random() - 0.5);
+    const allOptions = getToneFlowWordPinyinOptions();
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
@@ -9307,53 +9261,6 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
             e.preventDefault();
             const input = fuzzyInput.value.trim();
 
-            // Check if input includes tone number (e.g., "wan3")
-            const toneMatch = input.match(/^(.+?)([1-5])$/);
-            if (toneMatch) {
-                const pinyinPart = toneMatch[1];
-                const toneNum = parseInt(toneMatch[2]);
-                const expectedTone = toneFlowExpected[toneFlowIndex];
-                const expectedPinyin = normalizePinyinForChoice(currentSyllable);
-                const inputPinyin = normalizePinyinForChoice(pinyinPart);
-
-                // If both pinyin and tone are correct, skip the tone step
-                if (inputPinyin === expectedPinyin && toneNum === expectedTone) {
-                    fuzzyInput.value = '';
-                    playCorrectSound();
-                    const currentChar = toneFlowChars[toneFlowIndex] || '';
-                    const currentSyl = toneFlowSyllables[toneFlowIndex] || '';
-                    if (currentChar && currentSyl) {
-                        playPinyinAudio(currentSyl, currentChar);
-                    }
-                    toneFlowCompletedPinyin.push(currentSyllable);
-                    toneFlowCompleted.push(toneNum);
-                    toneFlowIndex += 1;
-
-                    if (toneFlowIndex >= toneFlowExpected.length) {
-                        // Completed entire word
-                        updateToneFlowProgress();
-                        score++;
-                        total++;
-                        updateStats();
-                        markSchedulerOutcome(true);
-                        previousQuestion = currentQuestion;
-                        previousQuestionResult = 'correct';
-                        threeColumnInlineFeedback = null;
-                        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-                        playPinyinAudio(firstPinyin, currentQuestion.char);
-                        feedback.textContent = '✓ Correct!';
-                        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-                        answered = true;
-                        generateQuestion();
-                    } else {
-                        // Move to next character
-                        feedback.textContent = '';
-                        renderToneFlowCharacterStep();
-                    }
-                    return;
-                }
-            }
-
             // Check for exact match first (normalized)
             const inputNormalized = normalizePinyinForChoice(input);
             const exactMatch = document.querySelector(`#fuzzyOptions button[data-normalized="${inputNormalized}"]`);
@@ -9391,6 +9298,74 @@ function stripToneMarks(pinyin) {
     return result;
 }
 
+function getPrimaryPinyinSyllables(question = currentQuestion) {
+    const primaryPinyin = String(question?.pinyin || '').split('/')[0].trim();
+    if (!primaryPinyin) return [];
+    return (typeof splitPinyinSyllables === 'function')
+        ? splitPinyinSyllables(primaryPinyin)
+        : primaryPinyin.split(/\s+/).filter(Boolean);
+}
+
+function getNoTonePinyinWord(question = currentQuestion) {
+    const syllables = getPrimaryPinyinSyllables(question);
+    return syllables.map(stripToneMarks).join(' ').trim();
+}
+
+function toneNumberToWord(num) {
+    switch (Number(num)) {
+        case 1: return 'first';
+        case 2: return 'second';
+        case 3: return 'third';
+        case 4: return 'fourth';
+        case 5: return 'fifth';
+        default: return String(num || '?');
+    }
+}
+
+function formatTonePatternLabel(pattern) {
+    const tones = Array.isArray(pattern) ? pattern.map(Number) : [];
+    const numeric = tones.join('-');
+    const words = tones.map(toneNumberToWord).join(' ');
+    return `${numeric} · ${words}`;
+}
+
+function normalizeTonePatternInput(value = '') {
+    return String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+function generateRandomTonePattern(length, correctPattern = []) {
+    const result = [];
+    for (let i = 0; i < length; i++) {
+        const fallback = Number(correctPattern[i]) || 1;
+        let tone = fallback;
+        let safety = 0;
+        while (tone === fallback && safety < 20) {
+            safety += 1;
+            tone = 1 + Math.floor(Math.random() * 5);
+        }
+        result.push(tone);
+    }
+    return result;
+}
+
+function generateTonePatternChoices(expectedPattern, count = 4) {
+    const patterns = [expectedPattern.map(Number)];
+    const seen = new Set([patterns[0].join('-')]);
+
+    while (patterns.length < count) {
+        const candidate = generateRandomTonePattern(expectedPattern.length, expectedPattern);
+        const key = candidate.join('-');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        patterns.push(candidate);
+    }
+
+    return patterns.sort(() => Math.random() - 0.5);
+}
+
 function handleToneFlowPinyinChoiceSingle(choice, btn) {
     if (toneFlowStage !== 'pinyin') return;
 
@@ -9399,9 +9374,8 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
         fuzzyInput.value = '';
     }
 
-    const currentSyllable = toneFlowSyllables[toneFlowIndex];
     const normalizedAnswer = normalizePinyinForChoice(choice);
-    const normalizedExpected = normalizePinyinForChoice(currentSyllable);
+    const normalizedExpected = normalizePinyinForChoice(toneFlowExpectedNoTone);
     const correct = normalizedAnswer === normalizedExpected;
 
     disableChoices();
@@ -9409,32 +9383,24 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
     if (correct) {
         btn.classList.add('bg-green-100', 'border-green-500');
         btn.innerHTML = `✓ ${choice}`;
-        toneFlowCompletedPinyin.push(choice);
+        toneFlowCompletedPinyin = [choice];
         playCorrectSound();
-        // Play the character audio
-        const currentChar = toneFlowChars[toneFlowIndex] || '';
-        const currentSyl = toneFlowSyllables[toneFlowIndex] || '';
-        if (currentChar && currentSyl) {
-            playPinyinAudio(currentSyl, currentChar);
-        }
-        setToneFlowPrompt(`Now pick tone for: ${toneFlowChars[toneFlowIndex]}`);
+        setToneFlowPrompt('Now pick the tone pattern for the whole word');
         toneFlowStage = 'tone';
         renderToneFlowToneStep();
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
         btn.innerHTML = `✗ ${choice}`;
-        feedback.innerHTML = `Wrong — correct pinyin is <strong>${currentSyllable}</strong>`;
+        feedback.innerHTML = `Wrong — correct pinyin is <strong>${toneFlowExpectedNoTone}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        // Re-render immediately so user can retry, feedback clears on next action
-        renderToneFlowCharacterStep();
+        renderToneFlowPinyinWordStep();
     }
 }
 
 function renderToneFlowToneStep() {
     if (toneFlowStage !== 'tone') return;
 
-    const currentChar = toneFlowChars[toneFlowIndex] || '?';
-    setToneFlowPrompt(`Pick tone for: ${currentChar}`);
+    setToneFlowPrompt(`Pick tone pattern for: ${toneFlowExpectedNoTone}`);
     updateToneFlowProgress();
 
     if (toneFlowUseFuzzy && fuzzyMode && fuzzyInput) {
@@ -9455,46 +9421,20 @@ function disableChoices() {
 }
 
 function updateToneFlowProgress() {
-    if (toneFlowExpected.length <= 1) {
-        // Single character - show pinyin if we have it, otherwise nothing
-        if (toneFlowCompletedPinyin.length > 0 && toneFlowStage === 'tone') {
-            const char = toneFlowChars[0] || '?';
-            // Strip tone marks so we don't give away the answer
-            const pinyinNoTone = stripToneMarks(toneFlowCompletedPinyin[0]);
-            hint.innerHTML = `<span class="text-blue-600 font-bold">${char} (${pinyinNoTone})</span> → <span class="text-gray-500">tone?</span>`;
-            hint.className = 'text-center text-xl my-2';
-        } else {
-            hint.textContent = '';
-        }
+    const charText = escapeHtml(currentQuestion?.char || '?');
+    const noTone = escapeHtml(toneFlowExpectedNoTone || '');
+    if (toneFlowCompleted.length === toneFlowExpected.length && toneFlowExpected.length > 0) {
+        hint.innerHTML = `<span class="text-green-600 font-bold">${charText} (${noTone}) → ${escapeHtml(toneFlowCompleted.join('-'))}</span>`;
+        hint.className = 'text-center text-xl my-2';
         return;
     }
-
-    // Build progress display showing each character with pinyin and tone
-    const parts = [];
-    for (let i = 0; i < toneFlowExpected.length; i++) {
-        const char = toneFlowChars[i] || '?';
-        if (i < toneFlowCompleted.length) {
-            // Fully completed - show character with pinyin and tone in green
-            const pinyin = toneFlowCompletedPinyin[i] || '';
-            parts.push(`<span class="text-green-600 font-bold">${char}<sub>${toneFlowCompleted[i]}</sub></span>`);
-        } else if (i === toneFlowIndex) {
-            // Current character
-            if (toneFlowStage === 'pinyin') {
-                // Asking for pinyin
-                parts.push(`<span class="text-blue-600 font-bold border-b-2 border-blue-600">${char}<sub>?</sub></span>`);
-            } else {
-                // Asking for tone (pinyin already answered)
-                const pinyin = toneFlowCompletedPinyin[i] || '';
-                parts.push(`<span class="text-blue-600 font-bold border-b-2 border-blue-600">${char}<sub>?</sub></span>`);
-            }
-        } else {
-            // Upcoming - show character grayed out
-            parts.push(`<span class="text-gray-400">${char}<sub>_</sub></span>`);
-        }
+    if (toneFlowStage === 'tone' && toneFlowCompletedPinyin.length > 0) {
+        hint.innerHTML = `<span class="text-blue-600 font-bold">${charText} (${noTone})</span> → <span class="text-gray-500">pick tones</span>`;
+        hint.className = 'text-center text-xl my-2';
+        return;
     }
-
-    hint.innerHTML = parts.join(' ');
-    hint.className = 'text-center text-2xl my-2';
+    hint.innerHTML = `<span class="text-blue-600 font-bold">${charText}</span> → <span class="text-gray-500">pick pinyin</span>`;
+    hint.className = 'text-center text-xl my-2';
 }
 
 function renderToneChoices() {
@@ -9502,11 +9442,12 @@ function renderToneChoices() {
     if (!options) return;
     options.innerHTML = '';
 
-    [1,2,3,4,5].forEach(num => {
+    generateTonePatternChoices(toneFlowExpected).forEach((pattern) => {
         const btn = document.createElement('button');
         btn.className = 'px-4 py-3 text-lg bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
-        btn.textContent = num;
-        btn.onclick = () => handleToneFlowToneChoice(num, btn);
+        btn.textContent = formatTonePatternLabel(pattern);
+        btn.dataset.pattern = pattern.join('-');
+        btn.onclick = () => handleToneFlowToneChoice(pattern, btn);
         options.appendChild(btn);
     });
 }
@@ -9517,26 +9458,25 @@ function renderFuzzyToneChoices() {
     options.innerHTML = '';
     fuzzyInput.value = '';
 
-    const toneLabels = [
-        { num: 1, label: '1 - First', match: 'first' },
-        { num: 2, label: '2 - Second', match: 'second' },
-        { num: 3, label: '3 - Third', match: 'third' },
-        { num: 4, label: '4 - Fourth', match: 'fourth' },
-        { num: 5, label: '5 - Fifth', match: 'fifth' }
-    ];
+    const tonePatterns = generateTonePatternChoices(toneFlowExpected).map((pattern) => ({
+        pattern,
+        key: pattern.join('-'),
+        label: formatTonePatternLabel(pattern),
+        match: normalizeTonePatternInput(formatTonePatternLabel(pattern)),
+        numeric: pattern.join('')
+    }));
 
-    toneLabels.forEach(({ num, label }) => {
+    tonePatterns.forEach(({ pattern, key, label }) => {
         const btn = document.createElement('button');
         btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
         btn.textContent = label;
-        btn.dataset.tone = num;
-        btn.onclick = () => handleToneFlowToneChoice(num, btn);
+        btn.dataset.pattern = key;
+        btn.onclick = () => handleToneFlowToneChoice(pattern, btn);
         options.appendChild(btn);
     });
 
-    // Fuzzy matching on input
     fuzzyInput.oninput = () => {
-        const input = fuzzyInput.value.trim().toLowerCase();
+        const input = fuzzyInput.value.trim();
         if (!input) {
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
                 btn.classList.remove('bg-blue-200', 'border-blue-500');
@@ -9545,32 +9485,41 @@ function renderFuzzyToneChoices() {
             return;
         }
 
-        // Direct number match - auto-submit immediately
-        const numMatch = parseInt(input);
-        if (numMatch >= 1 && numMatch <= 5) {
-            const btn = document.querySelector(`#fuzzyOptions button[data-tone="${numMatch}"]`);
+        const normalized = normalizeTonePatternInput(input);
+        const numericOnly = input.replace(/[^1-5]/g, '');
+        const directPattern = tonePatterns.find(({ key, numeric, match, label }) => (
+            key === numericOnly.split('').join('-')
+            || numeric === numericOnly
+            || normalizeTonePatternInput(key) === normalized
+            || normalized === match
+            || normalizeTonePatternInput(label) === normalized
+        ));
+        if (directPattern) {
+            const btn = document.querySelector(`#fuzzyOptions button[data-pattern="${directPattern.key}"]`);
             if (btn) {
                 btn.click();
             }
             return;
         }
 
-        // Fuzzy match against first/second/third/fourth/fifth
         let bestMatch = null;
         let bestScore = -1;
 
-        toneLabels.forEach(({ num, match }) => {
-            const score = fuzzyMatch(input, match);
+        tonePatterns.forEach(({ key, label, match }) => {
+            const score = Math.max(
+                fuzzyMatch(normalized, match),
+                fuzzyMatch(normalized, normalizeTonePatternInput(label)),
+                fuzzyMatch(normalized, normalizeTonePatternInput(key))
+            );
             if (score > bestScore) {
                 bestScore = score;
-                bestMatch = num;
+                bestMatch = key;
             }
         });
 
         if (bestMatch && bestScore > 0) {
             highlightToneButton(bestMatch);
         } else {
-            // No match - clear highlights
             document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
                 btn.classList.remove('bg-blue-200', 'border-blue-500');
                 btn.classList.add('bg-gray-100', 'border-gray-300');
@@ -9578,9 +9527,9 @@ function renderFuzzyToneChoices() {
         }
     };
 
-    function highlightToneButton(toneNum) {
+    function highlightToneButton(patternKey) {
         document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-            if (parseInt(btn.dataset.tone) === toneNum) {
+            if (btn.dataset.pattern === patternKey) {
                 btn.classList.remove('bg-gray-100', 'border-gray-300');
                 btn.classList.add('bg-blue-200', 'border-blue-500');
             } else {
@@ -9590,7 +9539,6 @@ function renderFuzzyToneChoices() {
         });
     }
 
-    // Enter key handler: pick highlighted option
     fuzzyInput.onkeydown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -9612,52 +9560,37 @@ function handleToneFlowToneChoice(choice, btn) {
         fuzzyInput.value = '';
     }
 
-    const expected = toneFlowExpected[toneFlowIndex];
+    const expected = toneFlowExpected.join('-');
+    const answerKey = Array.isArray(choice) ? choice.join('-') : String(choice);
     disableChoices();
 
-    if (choice === expected) {
+    if (answerKey === expected) {
         btn.classList.add('bg-green-100', 'border-green-500');
         btn.innerHTML = `✓ ${btn.textContent}`;
-        toneFlowCompleted.push(choice);  // Record completed tone
-        toneFlowIndex += 1;
-        if (toneFlowIndex >= toneFlowExpected.length) {
-            // Completed word - show final progress with all checkmarks
-            updateToneFlowProgress();
-            score++;
-            total++;
-            updateStats();
-            playCorrectSound();
-            markSchedulerOutcome(true);
-            // Record for 3-column "last answer" display
-            previousQuestion = currentQuestion;
-            previousQuestionResult = 'correct';
-            threeColumnInlineFeedback = null;
-            // Play the character audio
-            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-            playPinyinAudio(firstPinyin, currentQuestion.char);
-            feedback.textContent = '✓ Correct!';
-            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-            // Show completed tones with characters
-            const charTones = toneFlowChars.map((c, i) => `${c}<sub>${toneFlowCompleted[i] || ''}</sub>`).join(' ');
-            hint.innerHTML = `<span class="text-green-600 font-bold text-2xl">${charTones}</span> <span class="text-gray-600">(${currentQuestion.pinyin}) - ${currentQuestion.meaning}</span>`;
-            hint.className = 'text-center text-xl font-semibold my-4';
-            answered = true;
-            // Move to next question immediately
-            generateQuestion();
-        } else {
-            // Move to next CHARACTER (pinyin step) immediately
-            playCorrectSound();
-            feedback.textContent = '';
-            renderToneFlowCharacterStep();
-        }
+        toneFlowCompleted = toneFlowExpected.slice();
+        toneFlowIndex = toneFlowExpected.length;
+        updateToneFlowProgress();
+        score++;
+        total++;
+        updateStats();
+        playCorrectSound();
+        markSchedulerOutcome(true);
+        previousQuestion = currentQuestion;
+        previousQuestionResult = 'correct';
+        threeColumnInlineFeedback = null;
+        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+        feedback.textContent = '✓ Correct!';
+        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+        hint.innerHTML = `<span class="text-green-600 font-bold text-2xl">${escapeHtml(currentQuestion.char)} (${escapeHtml(toneFlowExpectedNoTone)}) → ${escapeHtml(expected)}</span> <span class="text-gray-600">(${escapeHtml(currentQuestion.pinyin)}) - ${escapeHtml(currentQuestion.meaning)}</span>`;
+        hint.className = 'text-center text-xl font-semibold my-4';
+        answered = true;
+        generateQuestion();
     } else {
         btn.classList.add('bg-red-100', 'border-red-500');
         btn.innerHTML = `✗ ${btn.textContent}`;
-        // Show the correct answer
-        const currentChar = toneFlowChars[toneFlowIndex] || '?';
-        feedback.innerHTML = `Wrong — correct tone for <strong>${currentChar}</strong> is <strong>${expected}</strong>`;
+        feedback.innerHTML = `Wrong — correct tone pattern is <strong>${formatTonePatternLabel(toneFlowExpected)}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        // Re-render immediately so user can retry, feedback clears on next action
         renderToneFlowToneStep();
     }
 }

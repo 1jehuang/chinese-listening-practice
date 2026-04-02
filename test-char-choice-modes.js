@@ -47,7 +47,21 @@ function makeElement(tagName = 'div') {
 function createContext() {
   const storage = {};
   const optionsEl = makeElement('div');
-  const elements = new Map([['options', optionsEl]]);
+  const fuzzyOptionsEl = makeElement('div');
+  const fuzzyInputEl = makeElement('input');
+  const fuzzyModeEl = makeElement('div');
+  const choiceModeEl = makeElement('div');
+  const hintEl = makeElement('div');
+  const feedbackEl = makeElement('div');
+  const elements = new Map([
+    ['options', optionsEl],
+    ['fuzzyOptions', fuzzyOptionsEl],
+    ['fuzzyInput', fuzzyInputEl],
+    ['fuzzyMode', fuzzyModeEl],
+    ['choiceMode', choiceModeEl],
+    ['hint', hintEl],
+    ['feedback', feedbackEl],
+  ]);
   const document = {
     getElementById(id) {
       return elements.get(id) || null;
@@ -139,6 +153,19 @@ function createContext() {
     function __setCurrentQuestion(q) { currentQuestion = q; window.currentQuestion = q; }
     function __setMode(m) { mode = m; }
     function __setSentenceModeDataset(items) { sentenceModeDataset = items; }
+    function __initTestDomRefs() {
+      choiceMode = document.getElementById('choiceMode');
+      fuzzyMode = document.getElementById('fuzzyMode');
+      fuzzyInput = document.getElementById('fuzzyInput');
+      hint = document.getElementById('hint');
+      feedback = document.getElementById('feedback');
+    }
+    function __getNoTonePinyinWord() { return getNoTonePinyinWord(currentQuestion); }
+    function __getToneFlowExpectedNoTone() { return toneFlowExpectedNoTone; }
+    function __getToneFlowExpected() { return Array.from(toneFlowExpected); }
+    function __formatTonePatternLabel(pattern) { return formatTonePatternLabel(pattern); }
+    function __generateTonePatternChoices(pattern) { return generateTonePatternChoices(pattern).map(item => item.join('-')); }
+    function __getWordToneFlowOptions() { return getToneFlowWordPinyinOptions(); }
     function __getOptionData() {
       const options = document.getElementById('options');
       return (options?.children || []).map(btn => ({
@@ -147,6 +174,15 @@ function createContext() {
         meaning: btn.dataset.meaning || '',
         textContent: btn.textContent || '',
         innerHTML: btn.innerHTML || ''
+      }));
+    }
+    function __getFuzzyOptionData() {
+      const options = document.getElementById('fuzzyOptions');
+      return (options?.children || []).map(btn => ({
+        textContent: btn.textContent || '',
+        innerHTML: btn.innerHTML || '',
+        pattern: btn.dataset.pattern || '',
+        normalized: btn.dataset.normalized || ''
       }));
     }
   `, ctx);
@@ -277,4 +313,45 @@ const vocab = [
   const { ctx } = createContext();
   assert.strictEqual(ctx.getCurrentSkillKey('sentence'), 'meaning', 'sentence mode should track contextual meaning skill');
   console.log('✓ sentence mode maps to meaning skill tracking');
+})();
+
+(function testToneMcUsesWholeWordPinyinWithoutToneMarks() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  const pool = [
+    word,
+    { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' },
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+    { char: '朋友', pinyin: 'péng yǒu', meaning: 'friend' },
+  ];
+  ctx.__setQuizCharacters(pool);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin-tones-mc');
+  ctx.__initTestDomRefs();
+
+  ctx.startPinyinToneMcFlow(true);
+
+  assert.strictEqual(ctx.__getNoTonePinyinWord(), 'hao tian', 'phase 1 should use full-word pinyin without tones');
+  assert.strictEqual(ctx.__getToneFlowExpectedNoTone(), 'hao tian', 'tone flow should store full-word no-tone pinyin');
+  assert.deepStrictEqual(Array.from(ctx.__getToneFlowExpected()), [3, 1], 'tone flow should still track the full tone pattern');
+
+  const options = Array.from(ctx.__getWordToneFlowOptions());
+  assert.ok(options.includes('hao tian'), 'phase 1 options should include the whole-word pinyin');
+  assert.ok(!options.includes('hao'), 'phase 1 should not offer per-syllable pinyin');
+  console.log('✓ char-to-pinyin-tones-mc phase 1 uses whole-word pinyin without tones');
+})();
+
+(function testToneMcFormatsWholeWordTonePatternOptions() {
+  const { ctx } = createContext();
+  assert.strictEqual(
+    ctx.__formatTonePatternLabel([3, 1]),
+    '3-1 · third first',
+    'tone pattern labels should include numeric and word forms'
+  );
+
+  const options = Array.from(ctx.__generateTonePatternChoices([3, 1]));
+  assert.ok(options.includes('3-1'), 'tone pattern choices should include the correct full-word tone combination');
+  assert.ok(options.every(option => option.includes('-')), 'multi-syllable tone options should be word-level combinations');
+  console.log('✓ char-to-pinyin-tones-mc phase 2 uses whole-word tone combinations');
 })();
