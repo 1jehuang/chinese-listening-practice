@@ -176,6 +176,8 @@ vm.runInContext(`
     function __getQuizTargetDate() { return quizTargetDate; }
     function __formatLocalDateTimeInput(value) { return formatLocalDateTimeInput(value); }
     function __setSchedulerStats(data) { schedulerStats = data; }
+    function __setMode(value) { composerEnabled = false; mode = value; }
+    function __setBlendDirection(value) { blendDirection = value; }
     function __getQuizPredictionSummary() { return getQuizPredictionSummary(); }
     function __getConfidencePanelVisible() { return confidencePanelVisible; }
     function __loadConfidencePanelVisibility() { return loadConfidencePanelVisibility(); }
@@ -211,6 +213,9 @@ function resetState() {
         quizTargetDate = null;
         feedModeState = { hand: [], seen: {}, totalPulls: 0 };
         quizCharacters = [];
+        composerEnabled = false;
+        blendDirection = null;
+        mode = 'char-to-meaning-type';
     `, ctx);
 }
 
@@ -302,6 +307,36 @@ test('quiz prediction stays above zero for partially studied cards even when one
     assert(summary, 'prediction summary should exist');
     assert(summary.predictedPct > 0, `partially studied cards should not collapse to 0, got ${summary.predictedPct}`);
     assert(summary.meaningPct > 0, `meaning estimate should be non-zero, got ${summary.meaningPct}`);
+});
+
+test('quiz prediction tracks the current mode instead of blending unrelated skills', () => {
+    resetState();
+    const futureIso = new Date(Date.now() + 3 * 3600000).toISOString();
+    ctx.__setMode('char-to-meaning-type');
+    ctx.__setQuizCharacters([{ char: '学' }, { char: '好' }]);
+    ctx.__setSchedulerStats({
+        '学::meaning': { served: 5, correct: 5, wrong: 0, streak: 5, bktPLearned: 0.98 },
+        '好::meaning': { served: 5, correct: 4, wrong: 1, streak: 2, bktPLearned: 0.90 }
+    });
+    ctx.__setQuizTargetDate(futureIso);
+
+    const summary = ctx.__getQuizPredictionSummary();
+    assert(summary, 'prediction summary should exist');
+    assert(Math.abs(summary.predictedPct - summary.meaningPct) <= 1, `meaning-mode prediction should match meaning estimate, got predicted=${summary.predictedPct}, meaning=${summary.meaningPct}`);
+    assert(summary.pinyinPct < summary.predictedPct, 'missing pinyin training should not drag down a meaning-only quiz prediction');
+});
+
+test('option-based quiz modes keep a realistic non-zero score floor for unseen cards', () => {
+    resetState();
+    const futureIso = new Date(Date.now() + 45 * 60000).toISOString();
+    ctx.__setMode('char-to-meaning-type');
+    ctx.__setQuizCharacters([{ char: '一' }, { char: '二' }, { char: '三' }, { char: '四' }]);
+    ctx.__setQuizTargetDate(futureIso);
+
+    const summary = ctx.__getQuizPredictionSummary();
+    assert(summary, 'prediction summary should exist');
+    assert(summary.predictedPct === 25, `4-choice unseen quiz should bottom out at 25%, got ${summary.predictedPct}`);
+    assert(Math.round(summary.expectedCorrect) === 1, `expected correct answers should be about 1 out of 4, got ${summary.expectedCorrect}`);
 });
 
 test('confidence panel defaults visible and rerenders when opened', () => {

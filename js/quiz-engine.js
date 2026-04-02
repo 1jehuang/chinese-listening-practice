@@ -3220,15 +3220,80 @@ function getAllRecallAtQuizTime() {
     return results;
 }
 
-function getQuizPredictionSkillWeights() {
-    const pageKey = getAdaptivePageKey();
-    if (/dictation/.test(pageKey)) {
-        return { meaning: 0.2, pinyin: 0.8 };
+function getQuizPredictionScenarioForMode(activeMode) {
+    switch (activeMode) {
+        case 'char-to-meaning':
+        case 'char-to-meaning-type':
+        case 'audio-to-meaning':
+        case 'sentence':
+        case 'dictation-chat':
+            return { label: activeMode, meaning: 1, pinyin: 0, chanceFloor: 0.25 };
+        case 'meaning-to-char':
+            return { label: activeMode, meaning: 1, pinyin: 0, chanceFloor: 0.25 };
+        case 'meaning-to-char-pinyin':
+            return { label: activeMode, meaning: 0.7, pinyin: 0.3, chanceFloor: 0.25 };
+        case 'char-to-pinyin-mc':
+        case 'char-to-pinyin-type':
+            return { label: activeMode, meaning: 0, pinyin: 1, chanceFloor: 0.25 };
+        case 'char-to-pinyin-tones-mc':
+            return { label: activeMode, meaning: 0, pinyin: 1, chanceFloor: 0.25 };
+        case 'char-to-pinyin':
+        case 'audio-to-pinyin':
+        case 'char-to-tones':
+            return { label: activeMode, meaning: 0, pinyin: 1, chanceFloor: 0 };
+        case 'pinyin-to-char':
+            return { label: activeMode, meaning: 0, pinyin: 1, chanceFloor: 0.25 };
+        case 'stroke-order':
+        case 'handwriting':
+        case 'draw-char':
+        case 'draw-missing-component':
+            return { label: activeMode, meaning: 0.35, pinyin: 0.65, chanceFloor: 0 };
+        default:
+            return { label: activeMode || 'quiz', meaning: 0.55, pinyin: 0.45, chanceFloor: 0 };
     }
-    if (/dialogue|translation|sentence/.test(pageKey)) {
-        return { meaning: 0.7, pinyin: 0.3 };
+}
+
+function getQuizPredictionScenarios() {
+    if (composerEnabled && Array.isArray(composerPipeline) && composerPipeline.length) {
+        return composerPipeline.map(step => ({
+            ...getQuizPredictionScenarioForMode(step.mode),
+            weight: 1 / composerPipeline.length
+        }));
     }
-    return { meaning: 0.55, pinyin: 0.45 };
+
+    if (mode === 'blend' || mode === 'blend-mc') {
+        const dirs = blendDirection
+            ? [blendDirection]
+            : getBlendDirectionsForMode(mode);
+        if (dirs.length) {
+            return dirs.map(dir => ({
+                ...getQuizPredictionScenarioForMode(dir),
+                weight: 1 / dirs.length,
+                label: `${mode}:${dir}`
+            }));
+        }
+    }
+
+    return [{
+        ...getQuizPredictionScenarioForMode(mode),
+        weight: 1
+    }];
+}
+
+function summarizeQuizPredictionScenarios(scenarios) {
+    const safeScenarios = Array.isArray(scenarios) && scenarios.length
+        ? scenarios
+        : [{ meaning: 0.55, pinyin: 0.45, chanceFloor: 0, weight: 1, label: 'quiz' }];
+    const totalWeight = safeScenarios.reduce((sum, scenario) => sum + (Number.isFinite(scenario.weight) ? scenario.weight : 0), 0) || 1;
+    const meaning = safeScenarios.reduce((sum, scenario) => sum + (scenario.meaning || 0) * ((scenario.weight || 0) / totalWeight), 0);
+    const pinyin = safeScenarios.reduce((sum, scenario) => sum + (scenario.pinyin || 0) * ((scenario.weight || 0) / totalWeight), 0);
+    const chanceFloor = safeScenarios.reduce((sum, scenario) => sum + (scenario.chanceFloor || 0) * ((scenario.weight || 0) / totalWeight), 0);
+    return {
+        meaning,
+        pinyin,
+        chanceFloor,
+        labels: safeScenarios.map(scenario => scenario.label || 'quiz')
+    };
 }
 
 function normalizeQuizResponseReadiness(responseMs) {
@@ -3335,6 +3400,27 @@ function backfillMissingQuizSkillEstimates(meaningEstimate, pinyinEstimate, mean
     return { meaningEstimate: updatedMeaning, pinyinEstimate: updatedPinyin };
 }
 
+function getQuizPredictionProbabilityForScenarios(meaningProb, pinyinProb, scenarios) {
+    const safeScenarios = Array.isArray(scenarios) && scenarios.length
+        ? scenarios
+        : [{ meaning: 0.55, pinyin: 0.45, chanceFloor: 0, weight: 1 }];
+    const totalWeight = safeScenarios.reduce((sum, scenario) => sum + (Number.isFinite(scenario.weight) ? scenario.weight : 0), 0) || 1;
+
+    const predicted = safeScenarios.reduce((sum, scenario) => {
+        const scenarioWeight = (scenario.weight || 0) / totalWeight;
+        const baseProb = clampNumber(
+            meaningProb * (scenario.meaning || 0)
+            + pinyinProb * (scenario.pinyin || 0),
+            0,
+            1
+        );
+        const scenarioProb = Math.max(clampNumber(scenario.chanceFloor || 0, 0, 1), baseProb);
+        return sum + scenarioProb * scenarioWeight;
+    }, 0);
+
+    return clampNumber(predicted, 0, 1);
+}
+
 function getAllQuizPredictionItems() {
     const targetMs = getQuizTargetDateMs();
     if (!targetMs) return null;
@@ -3342,7 +3428,8 @@ function getAllQuizPredictionItems() {
     if (!chars.length) return null;
 
     const now = Date.now();
-    const weights = getQuizPredictionSkillWeights();
+    const scenarios = getQuizPredictionScenarios();
+    const scenarioSummary = summarizeQuizPredictionScenarios(scenarios);
     const items = [];
 
     for (const item of chars) {
@@ -3359,11 +3446,10 @@ function getAllQuizPredictionItems() {
             meaningSkill,
             pinyinSkill
         ));
-        const overallProb = clampNumber(
-            meaningEstimate.probability * weights.meaning
-            + pinyinEstimate.probability * weights.pinyin,
-            0,
-            1
+        const overallProb = getQuizPredictionProbabilityForScenarios(
+            meaningEstimate.probability,
+            pinyinEstimate.probability,
+            scenarios
         );
         const feedStats = feedModeState?.seen?.[char] || null;
         const tracked = (meaningSkill.served + pinyinSkill.served) > 0 || Boolean(feedStats?.attempts);
@@ -3382,7 +3468,8 @@ function getAllQuizPredictionItems() {
             feedAttempts: feedStats?.attempts || 0,
             meaningServed: meaningSkill.served,
             pinyinServed: pinyinSkill.served,
-            weights
+            weights: scenarioSummary,
+            scenarios
         });
     }
 
@@ -3393,6 +3480,7 @@ function getAllQuizPredictionItems() {
 function getQuizPredictionSummary() {
     const items = getAllQuizPredictionItems();
     if (!items || !items.length) return null;
+    const weights = summarizeQuizPredictionScenarios(items[0]?.scenarios || getQuizPredictionScenarios());
     const total = items.length;
     const predictedPct = Math.round(items.reduce((sum, item) => sum + item.overallProb, 0) / total * 100);
     const meaningPct = Math.round(items.reduce((sum, item) => sum + item.meaningProb, 0) / total * 100);
@@ -3420,7 +3508,8 @@ function getQuizPredictionSummary() {
         danger,
         weakest,
         timeUntil: formatTimeUntilQuiz(),
-        weights: getQuizPredictionSkillWeights()
+        expectedCorrect: items.reduce((sum, item) => sum + item.overallProb, 0),
+        weights
     };
 }
 
@@ -3441,6 +3530,7 @@ function getQuizReadinessSummary() {
         pinyinPct: summary.pinyinPct,
         memoryPct: summary.memoryPct,
         predictedPct: summary.predictedPct,
+        expectedCorrect: summary.expectedCorrect,
         weights: summary.weights
     };
 }
@@ -3468,6 +3558,7 @@ function simulateQuizGrade(options = {}) {
     return {
         predictedGradePct: summary.predictedPct,
         expectedRecallPct: summary.memoryPct,
+        expectedCorrect: summary.expectedCorrect,
         poolSize: summary.total,
         sampleSize: summary.total,
         trials: options.trials || 0,
