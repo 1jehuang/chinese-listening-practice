@@ -89,6 +89,10 @@ const BLEND_MC_DIRECTIONS = [
     'char-to-meaning', 'char-to-pinyin'
 ];
 
+// Sentence mode state
+let sentenceModeDataset = [];
+let sentenceModeLoadPromise = null;
+
 // 3-column layout state for translation modes (text-to-meaning)
 let translationPreviousQuestion = null;
 let translationPreviousResult = null; // { grade: number, explanation: string, userAnswer: string }
@@ -298,6 +302,184 @@ function ensureModeButton(mode, label) {
     btn.dataset.mode = mode;
     btn.textContent = label || mode;
     container.appendChild(btn);
+}
+
+function cloneQuizDataArray(data) {
+    try {
+        return JSON.parse(JSON.stringify(data));
+    } catch (err) {
+        return Array.isArray(data) ? data.slice() : [];
+    }
+}
+
+function normalizeSentenceModeDataset(data) {
+    if (!Array.isArray(data)) return [];
+    return data
+        .map(item => {
+            const sentence = String(item?.sentence || '').trim();
+            const target = String(item?.target || item?.char || '').trim();
+            const meaning = String(item?.meaning || '').trim();
+            const acceptedAnswers = Array.isArray(item?.acceptedAnswers)
+                ? item.acceptedAnswers.map(ans => String(ans || '').trim()).filter(Boolean)
+                : [];
+            return {
+                ...item,
+                sentence,
+                target,
+                char: target,
+                pinyin: String(item?.pinyin || '').trim(),
+                meaning,
+                acceptedAnswers
+            };
+        })
+        .filter(item => item.sentence && item.target && item.meaning);
+}
+
+function getEmbeddedContextDataset(key) {
+    const store = window.__CONTEXT_DATASETS__;
+    if (!store || !Array.isArray(store[key])) return null;
+    return cloneQuizDataArray(store[key]);
+}
+
+function resolveDataUrl(path) {
+    try {
+        return new URL(path, window.location.href).href;
+    } catch (err) {
+        return path;
+    }
+}
+
+function fetchJsonWithXhrFallback(path) {
+    const resolvedUrl = resolveDataUrl(path);
+    return fetch(resolvedUrl, { cache: 'no-store' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to load ${path}: ${response.status}`);
+            }
+            return response.json();
+        })
+        .catch(err => {
+            if ((window.location.protocol || '') !== 'file:' || typeof XMLHttpRequest === 'undefined') {
+                throw err;
+            }
+            return new Promise((resolve, reject) => {
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', resolvedUrl, true);
+                    xhr.onreadystatechange = () => {
+                        if (xhr.readyState !== XMLHttpRequest.DONE) return;
+                        if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (parseError) {
+                                reject(parseError);
+                            }
+                        } else {
+                            reject(new Error(`XHR failed with status ${xhr.status}`));
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('XHR network error'));
+                    xhr.send();
+                } catch (xhrError) {
+                    reject(xhrError);
+                }
+            });
+        });
+}
+
+function loadScriptFile(src) {
+    return new Promise((resolve, reject) => {
+        if (!document || typeof document.createElement !== 'function') {
+            reject(new Error('Document unavailable for script loading.'));
+            return;
+        }
+
+        const existing = document.querySelector && document.querySelector(`script[data-jcode-src="${src}"]`);
+        if (existing) {
+            if (existing.dataset.loaded === '1') {
+                resolve();
+                return;
+            }
+            existing.addEventListener('load', () => resolve(), { once: true });
+            existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.dataset.jcodeSrc = src;
+        script.addEventListener('load', () => {
+            script.dataset.loaded = '1';
+            resolve();
+        }, { once: true });
+        script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        (document.head || document.body || document.documentElement).appendChild(script);
+    });
+}
+
+function ensureSentenceModeDataset() {
+    if (Array.isArray(sentenceModeDataset) && sentenceModeDataset.length) {
+        return Promise.resolve(sentenceModeDataset);
+    }
+
+    const embedded = getEmbeddedContextDataset('sentence-mode');
+    if (embedded && embedded.length) {
+        sentenceModeDataset = normalizeSentenceModeDataset(embedded);
+        return Promise.resolve(sentenceModeDataset);
+    }
+
+    if (sentenceModeLoadPromise) {
+        return sentenceModeLoadPromise;
+    }
+
+    sentenceModeLoadPromise = loadScriptFile('data/sentence-mode-data.js')
+        .then(() => {
+            const loaded = getEmbeddedContextDataset('sentence-mode');
+            if (!loaded || !loaded.length) {
+                throw new Error('Embedded sentence-mode dataset missing after script load.');
+            }
+            return loaded;
+        })
+        .catch(() => fetchJsonWithXhrFallback('data/sentence-mode.json'))
+        .then(data => {
+            sentenceModeDataset = normalizeSentenceModeDataset(data);
+            return sentenceModeDataset;
+        })
+        .finally(() => {
+            sentenceModeLoadPromise = null;
+        });
+
+    return sentenceModeLoadPromise;
+}
+
+function ensureSentenceModeDatasetOrDefer() {
+    if (Array.isArray(sentenceModeDataset) && sentenceModeDataset.length) {
+        return true;
+    }
+
+    if (questionDisplay) {
+        questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-gray-500">Loading sentence prompts...</div>`;
+    }
+
+    ensureSentenceModeDataset()
+        .then(() => {
+            if (mode === 'sentence') {
+                generateQuestion();
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load sentence mode dataset:', error);
+            if (mode === 'sentence' && questionDisplay) {
+                questionDisplay.innerHTML = `<div class="text-center text-xl my-8 text-red-600">Unable to load sentence prompts.</div>`;
+            }
+        });
+
+    return false;
+}
+
+function getSentenceModeQuestionPool() {
+    return Array.isArray(sentenceModeDataset) ? sentenceModeDataset : [];
 }
 
 // Composer helpers -----------------------------------------------------------
@@ -2203,7 +2385,7 @@ function getCurrentSkillKey(customMode = mode) {
         if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin' || dir === 'pinyin-to-char') return 'pinyin-mc';
         return 'meaning';
     }
-    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'audio-to-meaning' || m === 'dictation-chat') {
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'sentence') {
         return 'meaning';
     }
     if (m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type') {
@@ -5327,6 +5509,10 @@ function selectWeighted(pool) {
 
 function selectNextQuestion(exclusions = []) {
     const exclusionSet = new Set(exclusions || []);
+    if (mode === 'sentence') {
+        const pool = getSentenceModeQuestionPool().filter(item => item && !exclusionSet.has(item.char));
+        return pool.length ? selectRandom(pool) : null;
+    }
     let sourcePool = quizCharacters;
     if (isBatchMode()) {
         sourcePool = getBatchQuestionPool();
@@ -6282,6 +6468,17 @@ function renderQuestionUiForChoiceModes() {
         return true;
     }
 
+    if (mode === 'sentence' && choiceMode) {
+        renderSentenceModeLayout();
+        generateSentenceModeOptions();
+        choiceMode.style.display = 'block';
+        setChoiceModeListLayout(true);
+        attachChoiceModeToSidebar();
+        if (audioSection) audioSection.classList.remove('hidden');
+        setupChunkAudioMode(currentQuestion.sentence);
+        return true;
+    }
+
     if (mode === 'char-to-meaning-type' && fuzzyMode) {
         renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
@@ -6555,6 +6752,7 @@ function generateQuestion(options = {}) {
     resetForNextQuestion(prefillAnswer);
     prepareSchedulerForNextQuestion();
     if (maybeGenerateChunksQuestion()) return;
+    if (mode === 'sentence' && !ensureSentenceModeDatasetOrDefer()) return;
 
     let nextQuestion = selectNextQuizQuestion();
 
@@ -7544,6 +7742,36 @@ function generateMeaningOptions() {
     allOptions.forEach(option => {
         const btn = document.createElement('button');
         btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
+        btn.textContent = option;
+        btn.onclick = () => checkMultipleChoice(option);
+        options.appendChild(btn);
+    });
+}
+
+function generateSentenceModeOptions() {
+    const options = document.getElementById('options');
+    if (!options) return;
+    options.innerHTML = '';
+
+    const pool = getSentenceModeQuestionPool();
+    const correctMeaning = currentQuestion.meaning;
+    const usedMeanings = new Set([correctMeaning]);
+    const wrongOptions = [];
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 1000) {
+        safety++;
+        const random = pool[Math.floor(Math.random() * pool.length)];
+        if (!random || random.char === currentQuestion.char) continue;
+        if (!random.meaning || usedMeanings.has(random.meaning)) continue;
+        wrongOptions.push(random.meaning);
+        usedMeanings.add(random.meaning);
+    }
+
+    const allOptions = [...wrongOptions, correctMeaning].sort(() => Math.random() - 0.5);
+    allOptions.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'px-6 py-4 text-left text-lg bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition leading-relaxed';
         btn.textContent = option;
         btn.onclick = () => checkMultipleChoice(option);
         options.appendChild(btn);
@@ -8624,6 +8852,9 @@ function checkMultipleChoice(answer) {
     } else if (mode === 'char-to-meaning') {
         correct = answer === currentQuestion.meaning;
         correctAnswer = currentQuestion.meaning;
+    } else if (mode === 'sentence') {
+        correct = answer === currentQuestion.meaning;
+        correctAnswer = currentQuestion.meaning;
     } else if (mode === 'pinyin-to-char' || mode === 'meaning-to-char') {
         correct = answer === currentQuestion.char;
         correctAnswer = currentQuestion.char;
@@ -8640,11 +8871,16 @@ function checkMultipleChoice(answer) {
         markSchedulerOutcome(true);
         if (mode === 'char-to-meaning') {
             renderMeaningHint(currentQuestion, 'correct');
+        } else if (mode === 'sentence') {
+            hint.textContent = `「${currentQuestion.target || currentQuestion.char}」: ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         } else {
             hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-green-600';
         }
-        renderCharacterComponents(currentQuestion);
+        if (mode !== 'sentence') {
+            renderCharacterComponents(currentQuestion);
+        }
         if (mode === 'char-to-meaning') {
             renderCharBreakdownSoon();
         }
@@ -8669,11 +8905,16 @@ function checkMultipleChoice(answer) {
         markSchedulerOutcome(false);
         if (mode === 'char-to-meaning') {
             renderMeaningHint(currentQuestion, 'incorrect');
+        } else if (mode === 'sentence') {
+            hint.textContent = `「${currentQuestion.target || currentQuestion.char}」: ${currentQuestion.meaning}`;
+            hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         } else {
             hint.textContent = `${currentQuestion.char} (${currentQuestion.pinyin}) - ${currentQuestion.meaning}`;
             hint.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         }
-        renderCharacterComponents(currentQuestion);
+        if (mode !== 'sentence') {
+            renderCharacterComponents(currentQuestion);
+        }
         if (mode === 'char-to-meaning') {
             renderCharBreakdownSoon();
         }
@@ -9856,6 +10097,35 @@ function renderMeaningQuestionLayout() {
     applyComponentPanelVisibility();
     applyComponentColoring();
     renderEtymologyNote(null);
+}
+
+function highlightSentenceModeTarget(sentence, target) {
+    const fullSentence = String(sentence || '');
+    const matchText = String(target || '').trim();
+    if (!matchText) return escapeHtml(fullSentence);
+    const index = fullSentence.indexOf(matchText);
+    if (index === -1) return escapeHtml(fullSentence);
+
+    const before = fullSentence.slice(0, index);
+    const match = fullSentence.slice(index, index + matchText.length);
+    const after = fullSentence.slice(index + matchText.length);
+    return `${escapeHtml(before)}<span class="bg-yellow-200 text-gray-900 px-1 rounded">${escapeHtml(match)}</span>${escapeHtml(after)}`;
+}
+
+function renderSentenceModeLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    const sentenceHtml = highlightSentenceModeTarget(currentQuestion.sentence, currentQuestion.target || currentQuestion.char);
+    const targetText = escapeHtml(currentQuestion.target || currentQuestion.char || '');
+
+    questionDisplay.innerHTML = `
+        <div class="max-w-2xl mx-auto text-center space-y-5">
+            <div class="text-xs uppercase tracking-[0.25em] text-gray-400">Sentence Mode</div>
+            <div class="text-base text-gray-500">Listen to the full sentence, read the context, then choose the meaning of the highlighted chunk.</div>
+            <div class="text-3xl leading-relaxed text-gray-900">${sentenceHtml}</div>
+            <div class="text-lg text-gray-700">👉 In this sentence, what does <span class="font-semibold text-gray-900">「${targetText}」</span> mean?</div>
+        </div>
+    `;
 }
 
 // Calculate dynamic font size based on character count
@@ -14415,10 +14685,11 @@ function getCurrentPromptText() {
             return asString(question.char);
         case 'audio-to-pinyin':
         case 'audio-to-meaning':
+        case 'sentence':
         case 'dictation-chat':
         case 'blend':
         case 'blend-mc':
-            return asString(question.char) || firstFromList(question.pinyin);
+            return asString(question.sentence) || asString(question.char) || firstFromList(question.pinyin);
         default:
             break;
     }
@@ -14723,6 +14994,7 @@ function initQuizCommandPalette() {
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+        { name: 'Sentence', mode: 'sentence', type: 'mode' },
         { name: 'Dictation Chat', mode: 'dictation-chat', type: 'mode' },
         { name: 'Pinyin → Char', mode: 'pinyin-to-char', type: 'mode' },
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
@@ -15336,6 +15608,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     loadWordMarkings(); // Load user word markings
     ensureModeButton('composer', 'Composer');
     ensureModeButton('meaning-to-char-pinyin', 'Meaning → Char + Pinyin');
+    ensureModeButton('sentence', 'Sentence');
     buildComposerPipeline();
 
     reconcileBatchStateWithQueue();

@@ -138,6 +138,7 @@ function createContext() {
     function __setQuizCharacters(chars) { quizCharacters = chars; }
     function __setCurrentQuestion(q) { currentQuestion = q; window.currentQuestion = q; }
     function __setMode(m) { mode = m; }
+    function __setSentenceModeDataset(items) { sentenceModeDataset = items; }
     function __getOptionData() {
       const options = document.getElementById('options');
       return (options?.children || []).map(btn => ({
@@ -235,4 +236,45 @@ const vocab = [
   );
 
   console.log('✓ blend directions exclude audio-to-pinyin and preserve no-audio blend mode');
+})();
+
+(function testSentenceModeDatasetHasExpectedShape() {
+  const dataset = JSON.parse(fs.readFileSync('./data/sentence-mode.json', 'utf8'));
+  assert.ok(dataset.length >= 100, 'sentence mode dataset should include the generated prompt set');
+  dataset.forEach((item) => {
+    assert.ok(item.sentence && item.target && item.meaning, 'sentence mode entries need sentence, target, and meaning');
+    assert.ok(Array.isArray(item.acceptedAnswers) && item.acceptedAnswers.length >= 1, 'sentence mode entries should include accepted answers');
+  });
+  console.log('✓ sentence mode dataset includes generated context prompts');
+})();
+
+(function testSentenceModeOptionsComeFromSentencePool() {
+  const { ctx } = createContext();
+  const sentencePool = [
+    { sentence: '请把这个文件发给王经理。', target: '发给', char: '发给', meaning: 'send it to' },
+    { sentence: '她把窗帘拉开，让阳光照进来。', target: '拉开', char: '拉开', meaning: 'pull open' },
+    { sentence: '老板夸她做事很踏实。', target: '踏实', char: '踏实', meaning: 'steady and reliable' },
+    { sentence: '请把垃圾分类扔到对应的桶里。', target: '分类', char: '分类', meaning: 'sort' },
+    { sentence: '他把旅行计划安排得井井有条。', target: '井井有条', char: '井井有条', meaning: 'well organized' },
+  ];
+
+  ctx.__setMode('sentence');
+  ctx.__setSentenceModeDataset(sentencePool);
+  ctx.__setCurrentQuestion(sentencePool[0]);
+
+  withRandomSequence(ctx, [0.24, 0.49, 0.74, 0.99], () => {
+    ctx.generateSentenceModeOptions();
+  });
+
+  const options = ctx.__getOptionData();
+  assert.strictEqual(options.length, 4, 'sentence mode should render four choices');
+  assert.ok(options.some(option => option.textContent === 'send it to'), 'sentence mode should include the correct meaning');
+  assert.ok(options.every(option => option.textContent), 'sentence mode options should render readable text');
+  console.log('✓ sentence mode builds choices from the sentence dataset');
+})();
+
+(function testSentenceModeUsesMeaningSkillKey() {
+  const { ctx } = createContext();
+  assert.strictEqual(ctx.getCurrentSkillKey('sentence'), 'meaning', 'sentence mode should track contextual meaning skill');
+  console.log('✓ sentence mode maps to meaning skill tracking');
 })();
