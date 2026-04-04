@@ -174,6 +174,9 @@ let feedStatusTicker = null;
 let feedDetailsExpanded = false;
 let choiceModeHome = null;
 let choiceModeHomeNext = null;
+let quizAudioSectionHome = null;
+let quizAudioSectionHomeNext = null;
+const AUDIO_PROMPT_LATENCY_TARGET_MS = 150;
 
 // Chunk mode state (audio-to-meaning-chunks)
 let sentenceChunks = [];           // array of chunk objects { char, meaning (optional) }
@@ -6582,6 +6585,8 @@ function updateSchedulerToolbarVisibility() {
 }
 
 function prepareUiForNewQuestion(prefillAnswer) {
+    resetPromptAudioState();
+    restoreQuizAudioSectionHome();
     clearPreviousQuestionBreakdown();
     prefillQuestionInputs(prefillAnswer);
     hideAllModeContainersForNewQuestion();
@@ -7267,8 +7272,73 @@ function addKeyboardHints() {
     }
 }
 
+function rememberQuizAudioSectionHome() {
+    if (!audioSection || quizAudioSectionHome) return;
+    quizAudioSectionHome = audioSection.parentElement;
+    quizAudioSectionHomeNext = audioSection.nextSibling;
+}
+
+function restoreQuizAudioSectionHome() {
+    if (!audioSection) return;
+    rememberQuizAudioSectionHome();
+    if (!quizAudioSectionHome || audioSection.parentElement === quizAudioSectionHome) {
+        audioSection.classList.remove('audio-section-inline');
+        return;
+    }
+
+    if (quizAudioSectionHomeNext && quizAudioSectionHomeNext.parentElement === quizAudioSectionHome) {
+        quizAudioSectionHome.insertBefore(audioSection, quizAudioSectionHomeNext);
+    } else {
+        quizAudioSectionHome.appendChild(audioSection);
+    }
+    audioSection.classList.remove('audio-section-inline');
+}
+
+function attachAudioSectionToInlineSlot(slotId = 'inlinePromptAudioSlot') {
+    if (!audioSection) return false;
+    const slot = document.getElementById(slotId);
+    if (!slot) return false;
+
+    rememberQuizAudioSectionHome();
+    if (audioSection.parentElement !== slot) {
+        slot.appendChild(audioSection);
+    }
+    audioSection.classList.add('audio-section-inline');
+    audioSection.classList.remove('hidden');
+    return true;
+}
+
+function resetPromptAudioState(options = {}) {
+    const { stopPlayback = true } = options;
+    if (stopPlayback) {
+        if (typeof stopActiveAudio === 'function') {
+            stopActiveAudio();
+        }
+        if (typeof speechSynthesis !== 'undefined' && typeof speechSynthesis.cancel === 'function') {
+            try {
+                speechSynthesis.cancel();
+            } catch (_) {}
+        }
+    }
+    window.currentAudioPlayFunc = null;
+}
+
+function warmPromptAudio(question) {
+    if (!question || typeof preloadPromptAudio !== 'function') return;
+    preloadPromptAudio(question);
+}
+
+function getInlinePromptAudioHtml(subtitle) {
+    return `
+        <div class="prompt-audio-callout">
+            <div id="inlinePromptAudioSlot"></div>
+            <div class="prompt-audio-caption">${escapeHtml(subtitle)}</div>
+        </div>
+    `;
+}
+
 function registerCurrentPromptAudio(options = {}) {
-    const { autoplay = false, autoplayDelay = 200 } = options;
+    const { autoplay = false, autoplayDelay = 75 } = options;
     if (!currentQuestion) {
         window.currentAudioPlayFunc = null;
         return null;
@@ -7278,7 +7348,14 @@ function registerCurrentPromptAudio(options = {}) {
     const pinyinOptions = (questionForPlayback.pinyin || '').split('/');
     const firstPinyin = (pinyinOptions[0] || '').trim();
 
+    warmPromptAudio(questionForPlayback);
+    warmPromptAudio(upcomingQuestion);
+
     const playCurrentPrompt = () => {
+        if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+            window.__lastPromptAudioRequestedAt = performance.now();
+            window.__audioPromptLatencyTargetMs = AUDIO_PROMPT_LATENCY_TARGET_MS;
+        }
         if (firstPinyin) {
             playPinyinAudio(firstPinyin, questionForPlayback.char);
         } else if (questionForPlayback.char) {
@@ -7306,9 +7383,9 @@ function setupAudioMode(options = {}) {
 
     ensureTtsSpeedControl();
     addKeyboardHints();
-    const playCurrentPrompt = registerCurrentPromptAudio({ autoplay: true });
+    const playCurrentPrompt = registerCurrentPromptAudio({ autoplay: true, autoplayDelay: 75 });
     playBtn.onclick = playCurrentPrompt;
-    playBtn.innerHTML = '🔊 Play Sentence <span class="text-xs opacity-75 ml-1">(Ctrl+J)</span>';
+    playBtn.innerHTML = '🔊 Replay audio <span class="text-xs opacity-75 ml-1">(Space)</span>';
 
     if (focusAnswer && answerInput && isElementReallyVisible(answerInput)) {
         setTimeout(() => answerInput.focus(), 100);
@@ -7337,7 +7414,7 @@ function setupChunkAudioMode(chunkText) {
     // Auto-play once
     setTimeout(() => {
         playChunk();
-    }, 200);
+    }, 75);
 }
 
 function checkAnswer() {
@@ -8621,6 +8698,9 @@ function checkFuzzyAnswer(answer) {
 
             updateStats();
 
+            resetPromptAudioState();
+            restoreQuizAudioSectionHome();
+
             if (upcomingQuestion) {
                 currentQuestion = upcomingQuestion;
                 window.currentQuestion = currentQuestion;
@@ -8765,10 +8845,7 @@ function getBlendPromptHtml(question, direction) {
             return `<div class="column-char-large" style="font-size: ${fontSize};">${char}</div>`;
         case 'audio-to-meaning':
         case 'audio-to-pinyin':
-            return `
-                <div style="font-size: 64px; margin-bottom: 8px; cursor: pointer;" onclick="if(window.currentAudioPlayFunc) window.currentAudioPlayFunc();">🔊</div>
-                <div style="font-size: 14px; color: #64748b;">Listen and choose</div>
-            `;
+            return getInlinePromptAudioHtml(direction === 'audio-to-meaning' ? 'Listen and choose meaning' : 'Listen and choose pinyin');
         case 'meaning-to-char':
             return `<div style="font-size: 24px; color: #334155; max-width: 220px; word-wrap: break-word; line-height: 1.4;">${meaning}</div>`;
         case 'pinyin-to-char':
@@ -8880,6 +8957,12 @@ function renderBlendLayout() {
             </div>
         </div>
     `;
+
+    if (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') {
+        attachAudioSectionToInlineSlot();
+    } else {
+        restoreQuizAudioSectionHome();
+    }
 }
 
 function generateBlendOptions() {
@@ -9048,6 +9131,9 @@ function checkBlendAnswer(answer) {
         }
 
         updateStats();
+
+        resetPromptAudioState();
+        restoreQuizAudioSectionHome();
 
         if (upcomingQuestion) {
             currentQuestion = upcomingQuestion;
@@ -10419,8 +10505,7 @@ function renderThreeColumnMeaningLayout() {
                 ${currentMarkingBadge}
                 <div class="column-focus-ring">
                     ${mode === 'audio-to-meaning' ? `
-                        <div style="font-size: 64px; margin-bottom: 8px; cursor: pointer;" onclick="if(window.currentAudioPlayFunc) window.currentAudioPlayFunc();">🔊</div>
-                        <div style="font-size: 14px; color: #64748b;">Listen and choose meaning</div>
+                        ${getInlinePromptAudioHtml('Listen and choose meaning')}
                     ` : `
                         <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                     `}
@@ -10448,6 +10533,12 @@ function renderThreeColumnMeaningLayout() {
             </div>
         </div>
     `;
+
+    if (mode === 'audio-to-meaning') {
+        attachAudioSectionToInlineSlot();
+    } else {
+        restoreQuizAudioSectionHome();
+    }
 }
 
 function renderThreeColumnPinyinLayout() {
@@ -15793,6 +15884,10 @@ function initQuizCommandPalette() {
 function initQuizRuntime() {
     // Reserve Ctrl/Cmd+K for focusing the quiz input instead of the command palette
     window.__preferCtrlKForQuiz = true;
+
+    if (typeof ensureAudioOriginsPreconnected === 'function') {
+        ensureAudioOriginsPreconnected();
+    }
 
     // Upgrade pre-Lesson 7 pages to the experimental layout automatically
     upgradeLegacyLessonLayoutIfNeeded();

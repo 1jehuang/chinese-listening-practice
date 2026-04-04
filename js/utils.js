@@ -1,6 +1,11 @@
 // Common utility functions shared across all quiz pages
 
 const globalScope = typeof window !== 'undefined' ? window : globalThis;
+const AUDIO_PRECONNECT_ORIGINS = [
+    'https://www.purpleculture.net',
+    'https://fanyi.baidu.com',
+    'https://translate.googleapis.com'
+];
 
 // TTS speed configuration ----------------------------------------------------
 
@@ -147,6 +152,133 @@ function setActiveAudio(audio) {
 
     globalScope.__activeAudio = audio;
 }
+
+function primeAudioElement(audio) {
+    if (!audio) return audio;
+    try {
+        audio.preload = 'auto';
+    } catch (_) {}
+    try {
+        if (typeof audio.load === 'function') {
+            audio.load();
+        }
+    } catch (_) {}
+    return audio;
+}
+
+function ensureAudioOriginsPreconnected() {
+    if (typeof document === 'undefined' || !document.head) return;
+    if (globalScope.__audioOriginsPreconnected) return;
+
+    AUDIO_PRECONNECT_ORIGINS.forEach((origin) => {
+        ['preconnect', 'dns-prefetch'].forEach((rel) => {
+            const selector = `link[rel="${rel}"][href="${origin}"]`;
+            if (typeof document.querySelector === 'function' && document.querySelector(selector)) {
+                return;
+            }
+            const link = document.createElement('link');
+            link.rel = rel;
+            link.href = origin;
+            if (rel === 'preconnect') {
+                link.crossOrigin = 'anonymous';
+            }
+            document.head.appendChild(link);
+        });
+    });
+
+    globalScope.__audioOriginsPreconnected = true;
+}
+
+globalScope.ensureAudioOriginsPreconnected = ensureAudioOriginsPreconnected;
+
+function getSentenceAudioCache() {
+    if (!globalScope.__sentenceAudioCache) {
+        globalScope.__sentenceAudioCache = new Map();
+    }
+    return globalScope.__sentenceAudioCache;
+}
+
+function getPinyinAudioCache() {
+    if (!globalScope.__pinyinAudioCache) {
+        globalScope.__pinyinAudioCache = new Map();
+    }
+    return globalScope.__pinyinAudioCache;
+}
+
+function getSentenceAudioInstance(sentence, rate) {
+    const trimmedSentence = (sentence || '').trim();
+    if (!trimmedSentence || typeof Audio === 'undefined') return null;
+
+    const effectiveRate = typeof rate === 'number'
+        ? rate
+        : (typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE);
+    const cacheKey = `${trimmedSentence}|${effectiveRate.toFixed(2)}`;
+    const cache = getSentenceAudioCache();
+
+    let audio = cache.get(cacheKey);
+    if (!audio) {
+        audio = primeAudioElement(new Audio(sentenceTtsUrl(trimmedSentence, effectiveRate)));
+        cache.set(cacheKey, audio);
+    }
+
+    return { audio, cacheKey, cache };
+}
+
+function getPinyinAudioInstance(pinyin) {
+    const trimmedPinyin = (pinyin || '').trim();
+    if (!trimmedPinyin || typeof Audio === 'undefined') return null;
+
+    const audioKey = pinyinToAudioKey(trimmedPinyin);
+    const cache = getPinyinAudioCache();
+    let audio = cache.get(audioKey);
+
+    if (!audio) {
+        audio = primeAudioElement(new Audio(`https://www.purpleculture.net/mp3/${audioKey}.mp3`));
+        cache.set(audioKey, audio);
+    }
+
+    return { audio, audioKey, cache };
+}
+
+function preloadSentenceAudio(sentence, rate) {
+    const result = getSentenceAudioInstance(sentence, rate);
+    if (!result) return null;
+    primeAudioElement(result.audio);
+    return result.audio;
+}
+
+function preloadPinyinAudio(pinyin, chineseChar) {
+    const text = (chineseChar || '').trim();
+    const isMultiChar = text.length > 1;
+    const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
+
+    if ((isFirefox || isMultiChar) && text) {
+        return preloadSentenceAudio(text);
+    }
+
+    const result = getPinyinAudioInstance(pinyin);
+    if (!result) return null;
+    primeAudioElement(result.audio);
+    return result.audio;
+}
+
+function preloadPromptAudio(question) {
+    if (!question) return null;
+
+    const pinyinOptions = (question.pinyin || '').split('/');
+    const firstPinyin = (pinyinOptions[0] || '').trim();
+    if (firstPinyin) {
+        return preloadPinyinAudio(firstPinyin, question.char);
+    }
+
+    if (question.char) {
+        return preloadSentenceAudio(question.char);
+    }
+
+    return null;
+}
+
+globalScope.preloadPromptAudio = preloadPromptAudio;
 
 // Sound effect functions -----------------------------------------------------
 
@@ -365,6 +497,20 @@ function setTtsDebug(engine, voiceLabel, status) {
     }
 }
 
+function recordPromptAudioStart() {
+    if (typeof window === 'undefined' || typeof performance === 'undefined' || typeof performance.now !== 'function') {
+        return;
+    }
+    const requestedAt = window.__lastPromptAudioRequestedAt;
+    if (typeof requestedAt !== 'number') return;
+
+    const latency = Math.max(0, performance.now() - requestedAt);
+    window.__lastPromptAudioStartLatencyMs = latency;
+    if (document?.body) {
+        document.body.dataset.promptAudioLatencyMs = latency.toFixed(1);
+    }
+}
+
 function loadVoices() {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
@@ -528,7 +674,6 @@ function playSentenceAudio(sentence) {
     const trimmedSentence = sentence.trim();
     const avoidSpeechFallback = shouldAvoidSpeechFallback(trimmedSentence);
     const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
-    const cacheKey = `${trimmedSentence}|${rate.toFixed(2)}`;
     if (typeof Audio === 'undefined') {
         console.warn('Audio element not available, using SpeechSynthesis fallback for sentence.');
         stopActiveAudio();
@@ -536,25 +681,19 @@ function playSentenceAudio(sentence) {
         return;
     }
 
-    if (!globalScope.__sentenceAudioCache) {
-        globalScope.__sentenceAudioCache = new Map();
-    }
+    const cached = getSentenceAudioInstance(trimmedSentence, rate);
+    if (!cached) return;
 
-    let audio = globalScope.__sentenceAudioCache.get(cacheKey);
-    if (!audio) {
-        audio = new Audio(sentenceTtsUrl(trimmedSentence, rate));
-        audio.preload = 'auto';
-        globalScope.__sentenceAudioCache.set(cacheKey, audio);
-    } else {
+    let { audio, cacheKey, cache } = cached;
+    if (cache.has(cacheKey)) {
         try {
             audio.pause();
             audio.currentTime = 0;
         } catch (err) {
             console.warn('Resetting cached audio failed, rebuilding instance', err);
-            globalScope.__sentenceAudioCache.delete(cacheKey);
-            audio = new Audio(sentenceTtsUrl(trimmedSentence, rate));
-            audio.preload = 'auto';
-            globalScope.__sentenceAudioCache.set(cacheKey, audio);
+            cache.delete(cacheKey);
+            audio = primeAudioElement(new Audio(sentenceTtsUrl(trimmedSentence, rate)));
+            cache.set(cacheKey, audio);
         }
     }
 
@@ -563,6 +702,7 @@ function playSentenceAudio(sentence) {
 
     const onPlay = () => {
         setTtsDebug('remote', 'baidu', 'playing');
+        recordPromptAudioStart();
     };
     audio.addEventListener('playing', onPlay, { once: true });
 
@@ -571,7 +711,7 @@ function playSentenceAudio(sentence) {
         audio.removeEventListener('error', onError);
         audio.removeEventListener('playing', onPlay);
         detachActiveAudio(audio);
-        globalScope.__sentenceAudioCache.delete(cacheKey);
+        cache.delete(cacheKey);
 
         // Try Google TTS as a secondary fallback before SpeechSynthesis
         if (typeof Audio !== 'undefined') {
@@ -619,7 +759,7 @@ function playSentenceAudio(sentence) {
             } else {
                 detachActiveAudio(audio);
             }
-            globalScope.__sentenceAudioCache.delete(cacheKey);
+            cache.delete(cacheKey);
             setTtsDebug('remote', 'baidu', avoidSpeechFallback ? 'blocked' : 'error');
             if (!avoidSpeechFallback) {
                 playTTS(trimmedSentence);
@@ -645,24 +785,29 @@ function playPinyinAudio(pinyin, chineseChar) {
         return;
     }
 
-    const audioKey = pinyinToAudioKey(pinyin);
-    const audioUrl = `https://www.purpleculture.net/mp3/${audioKey}.mp3`;
+    const cached = getPinyinAudioInstance(pinyin);
+    if (!cached) return;
+
+    const { audioKey, cache } = cached;
+    let { audio } = cached;
     console.log(`Trying audio file: ${audioKey}.mp3`);
 
-    if (typeof Audio === 'undefined') {
-        console.warn('Audio element not available, using SpeechSynthesis fallback.');
-        stopActiveAudio();
-        playTTS(chineseChar || pinyin);
-        return;
+    try {
+        audio.pause();
+        audio.currentTime = 0;
+    } catch (err) {
+        console.warn('Resetting cached pinyin audio failed, rebuilding instance', err);
+        cache.delete(audioKey);
+        audio = primeAudioElement(new Audio(`https://www.purpleculture.net/mp3/${audioKey}.mp3`));
+        cache.set(audioKey, audio);
     }
 
-    const audio = new Audio(audioUrl);
-    audio.preload = 'auto';
     setActiveAudio(audio);
     setTtsDebug('remote', 'purpleculture', 'pending');
 
     const onPlay = () => {
         setTtsDebug('remote', 'purpleculture', 'playing');
+        recordPromptAudioStart();
     };
 
     const handleError = () => {
@@ -670,6 +815,7 @@ function playPinyinAudio(pinyin, chineseChar) {
         audio.removeEventListener('error', handleError);
         audio.removeEventListener('playing', onPlay);
         detachActiveAudio(audio);
+        cache.delete(audioKey);
         setTtsDebug('remote', 'purpleculture', 'error');
         playTTS(chineseChar || pinyin);
     };
@@ -686,6 +832,7 @@ function playPinyinAudio(pinyin, chineseChar) {
         } else {
             detachActiveAudio(audio);
         }
+        cache.delete(audioKey);
         setTtsDebug('remote', 'purpleculture', 'error');
         playTTS(chineseChar || pinyin);
     });

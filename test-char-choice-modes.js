@@ -46,6 +46,11 @@ function makeElement(tagName = 'div') {
 
 function createContext() {
   const storage = {};
+  const questionDisplayEl = makeElement('div');
+  const audioSectionEl = makeElement('div');
+  const playAudioBtnEl = makeElement('button');
+  const answerInputEl = makeElement('input');
+  const typeModeEl = makeElement('div');
   const optionsEl = makeElement('div');
   const fuzzyOptionsEl = makeElement('div');
   const fuzzyInputEl = makeElement('input');
@@ -54,6 +59,11 @@ function createContext() {
   const hintEl = makeElement('div');
   const feedbackEl = makeElement('div');
   const elements = new Map([
+    ['questionDisplay', questionDisplayEl],
+    ['audioSection', audioSectionEl],
+    ['playAudioBtn', playAudioBtnEl],
+    ['answerInput', answerInputEl],
+    ['typeMode', typeModeEl],
     ['options', optionsEl],
     ['fuzzyOptions', fuzzyOptionsEl],
     ['fuzzyInput', fuzzyInputEl],
@@ -141,7 +151,14 @@ function createContext() {
 
   ctx.window.document = document;
   ctx.window.window = ctx.window;
-  vm.runInContext('var chatPanelVisible = false; var chatPanel = null;', ctx);
+  vm.runInContext(`
+    var chatPanelVisible = false;
+    var chatPanel = null;
+    var dictationChatMode = null;
+    var dictationChatAudioSlot = null;
+    var dictationChatAudioHome = null;
+    var dictationChatAudioHomeNext = null;
+  `, ctx);
 
   for (const file of ['./js/utils.js', './js/pinyin-utils.js', './js/quiz-engine.js']) {
     const source = fs.readFileSync(file, 'utf8');
@@ -151,12 +168,18 @@ function createContext() {
   vm.runInContext(`
     function __setQuizCharacters(chars) { quizCharacters = chars; }
     function __setCurrentQuestion(q) { currentQuestion = q; window.currentQuestion = q; }
+    function __setUpcomingQuestion(q) { upcomingQuestion = q; }
     function __setMode(m) { mode = m; }
+    function __setBlendDirection(dir) { blendDirection = dir; }
     function __setSentenceModeDataset(items) { sentenceModeDataset = items; }
     function __initTestDomRefs() {
+      questionDisplay = document.getElementById('questionDisplay');
+      answerInput = document.getElementById('answerInput');
+      typeMode = document.getElementById('typeMode');
       choiceMode = document.getElementById('choiceMode');
       fuzzyMode = document.getElementById('fuzzyMode');
       fuzzyInput = document.getElementById('fuzzyInput');
+      audioSection = document.getElementById('audioSection');
       hint = document.getElementById('hint');
       feedback = document.getElementById('feedback');
     }
@@ -272,6 +295,97 @@ const vocab = [
   );
 
   console.log('✓ blend directions exclude audio-to-pinyin and preserve no-audio blend mode');
+})();
+
+(function testPrepareUiStopsExistingPromptAudio() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+
+  let cancelCount = 0;
+  ctx.speechSynthesis.cancel = () => { cancelCount += 1; };
+  ctx.window.currentAudioPlayFunc = () => {};
+
+  const activeAudio = {
+    paused: false,
+    currentTime: 12,
+    pauseCalled: false,
+    pause() {
+      this.pauseCalled = true;
+      this.paused = true;
+    },
+    addEventListener() {},
+    removeEventListener() {},
+  };
+
+  ctx.setActiveAudio(activeAudio);
+  ctx.prepareUiForNewQuestion('');
+
+  assert.strictEqual(activeAudio.pauseCalled, true, 'question transitions should stop active audio immediately');
+  assert.strictEqual(activeAudio.currentTime, 0, 'active audio should rewind when changing questions');
+  assert.strictEqual(ctx.window.currentAudioPlayFunc, null, 'question transitions should clear the stale prompt replay handler');
+  assert.ok(cancelCount >= 1, 'question transitions should cancel any active speech synthesis');
+  console.log('✓ question transitions stop existing audio and clear stale replay handlers');
+})();
+
+(function testRegisterCurrentPromptAudioWarmsCurrentAndUpcomingPrompt() {
+  const { ctx } = createContext();
+  const warmed = [];
+  ctx.preloadPromptAudio = (question) => warmed.push(question.char);
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setUpcomingQuestion(vocab[2]);
+
+  ctx.registerCurrentPromptAudio();
+
+  assert.deepStrictEqual(warmed, ['中', '国'], 'prompt registration should preload both current and upcoming audio');
+  console.log('✓ prompt registration preloads current and upcoming audio');
+})();
+
+(function testEnsureAudioOriginsPreconnectedAddsRemoteHintsOnce() {
+  const { ctx } = createContext();
+  const appended = [];
+  ctx.document.head.appendChild = (node) => {
+    appended.push({ rel: node.rel, href: node.href, crossOrigin: node.crossOrigin || '' });
+    return node;
+  };
+  ctx.document.querySelector = () => null;
+
+  ctx.ensureAudioOriginsPreconnected();
+  ctx.ensureAudioOriginsPreconnected();
+
+  assert.strictEqual(appended.length, 6, 'audio preconnect should add one preconnect and dns-prefetch per remote origin only once');
+  assert.ok(appended.some(item => item.rel === 'preconnect' && item.href === 'https://www.purpleculture.net'), 'should preconnect to Purple Culture audio host');
+  assert.ok(appended.some(item => item.rel === 'preconnect' && item.href === 'https://fanyi.baidu.com'), 'should preconnect to Baidu TTS host');
+  console.log('✓ audio hosts are preconnected once during startup');
+})();
+
+(function testAudioMeaningLayoutUsesInlinePromptControlSlot() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setUpcomingQuestion(vocab[2]);
+  ctx.__setMode('audio-to-meaning');
+
+  ctx.renderThreeColumnMeaningLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('inlinePromptAudioSlot'), 'audio-to-meaning should reserve an inline slot for the shared audio controls');
+  assert.ok(!html.includes('onclick="if(window.currentAudioPlayFunc) window.currentAudioPlayFunc();"'), 'audio-to-meaning should not use the old oversized inline speaker icon');
+  console.log('✓ audio-to-meaning layout uses inline shared audio controls');
+})();
+
+(function testBlendAudioPromptUsesInlinePromptControlSlot() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setUpcomingQuestion(vocab[2]);
+  ctx.__setMode('blend');
+  ctx.__setBlendDirection('audio-to-meaning');
+
+  ctx.renderBlendLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('inlinePromptAudioSlot'), 'blend audio prompts should reuse the inline audio slot');
+  console.log('✓ blend audio prompts use inline shared audio controls');
 })();
 
 (function testSentenceModeDatasetHasExpectedShape() {

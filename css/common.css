@@ -1122,6 +1122,45 @@ body.feedback-left-layout #questionDisplay .my-8 {
     box-shadow: none;
 }
 
+.prompt-audio-callout {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.prompt-audio-caption {
+    font-size: 14px;
+    line-height: 1.4;
+    color: #64748b;
+    font-weight: 600;
+    text-align: center;
+}
+
+#audioSection.audio-section-inline {
+    margin: 0 !important;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+#audioSection.audio-section-inline .tts-speed-control {
+    margin-top: 0 !important;
+}
+
+#audioSection.audio-section-inline button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-width: min(100%, 220px);
+}
+
 .three-column-meaning-layout .column-inline-feedback {
     width: 100%;
     display: flex;
@@ -1905,6 +1944,10 @@ body.study-mode-active .main-content {
 
     body.theme-dark .three-column-meaning-layout .column-inline-feedback {
         color: var(--dm-text-muted);
+    }
+
+    body.theme-dark .prompt-audio-caption {
+        color: var(--dm-text-soft);
     }
 
 body.feed-mode-active .quiz-display {
