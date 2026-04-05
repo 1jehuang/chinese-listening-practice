@@ -92,6 +92,7 @@ const BLEND_MC_DIRECTIONS = [
 // Sentence mode state
 let sentenceModeDataset = [];
 let sentenceModeLoadPromise = null;
+let sentenceModeUiLoadPromise = null;
 let sentenceModeDifficulty = '';
 let sentenceModeDifficultyOptions = [];
 const SENTENCE_MODE_DIFFICULTY_KEY_PREFIX = 'sentenceModeDifficulty::';
@@ -529,6 +530,32 @@ function loadScriptFile(src) {
     });
 }
 
+function ensureSentenceModeUiLibrary() {
+    if (window.JcodeSentenceModeUI?.render) {
+        return Promise.resolve(window.JcodeSentenceModeUI);
+    }
+    if (sentenceModeUiLoadPromise) {
+        return sentenceModeUiLoadPromise;
+    }
+    sentenceModeUiLoadPromise = loadScriptFile('js/sentence-mode-ui.js')
+        .then(() => {
+            if (!window.JcodeSentenceModeUI?.render) {
+                throw new Error('Sentence mode UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeSentenceModeUI;
+        })
+        .finally(() => {
+            sentenceModeUiLoadPromise = null;
+        });
+    return sentenceModeUiLoadPromise;
+}
+
+function unmountSentenceModeUi() {
+    if (window.JcodeSentenceModeUI?.unmount && questionDisplay) {
+        window.JcodeSentenceModeUI.unmount(questionDisplay);
+    }
+}
+
 function ensureSentenceModeDataset() {
     if (Array.isArray(sentenceModeDataset) && sentenceModeDataset.length) {
         return Promise.resolve(sentenceModeDataset);
@@ -673,6 +700,7 @@ function syncModeLayoutState() {
     const layout = getModeConfig().layout;
     root.classList.toggle('study-mode-active', layout === 'study');
     root.classList.toggle('dictation-chat-active', layout === 'chat');
+    root.classList.toggle('sentence-mode-active', mode === 'sentence');
 }
 
 function setChoiceModeListLayout(active) {
@@ -6556,6 +6584,7 @@ function notifyChatQuestionChanged() {
 function resetForNextQuestion(prefillAnswer) {
     clearPendingNextQuestion();
     stopTimer();
+    unmountSentenceModeUi();
     enteredSyllables = [];
     enteredTones = '';
     toneFlowStage = null;
@@ -10681,41 +10710,44 @@ function highlightSentenceModeTarget(sentence, target) {
 function renderSentenceModeLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
-    const sentenceHtml = escapeHtml(currentQuestion.sentence || '');
-    const promptText = escapeHtml(currentQuestion.prompt || 'What does the whole sentence mean?');
     const difficultyOptions = getSentenceModeDifficultyOptions();
     const activeDifficulty = getActiveSentenceModeDifficulty();
     const difficultyMeta = difficultyOptions.find(option => option.id === activeDifficulty) || null;
-    const difficultyControls = difficultyOptions.length > 1
-        ? `
-            <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:center; margin-bottom:0.75rem;">
-                <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.18em; color:#94a3b8; font-weight:700;">Difficulty</div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center;">
-                    ${difficultyOptions.map(option => {
-                        const selected = option.id === activeDifficulty;
-                        return `<button type="button" data-sentence-difficulty="${escapeHtml(option.id)}" aria-pressed="${selected ? 'true' : 'false'}" style="padding:0.45rem 0.8rem; border-radius:999px; border:1px solid ${selected ? '#2563eb' : '#cbd5e1'}; background:${selected ? '#dbeafe' : '#fff'}; color:${selected ? '#1d4ed8' : '#475569'}; font-size:0.92rem; font-weight:${selected ? '700' : '600'}; cursor:pointer;">${escapeHtml(option.label)}</button>`;
-                    }).join('')}
-                </div>
-                ${difficultyMeta?.description ? `<div style="font-size:0.92rem; color:#64748b;">${escapeHtml(difficultyMeta.description)}</div>` : ''}
-            </div>
-        `
-        : '';
+    const viewModel = {
+        title: 'Sentence Mode',
+        subtitle: 'Listen to the sentence, read it, then choose the best full-sentence meaning.',
+        sentence: currentQuestion.sentence || '',
+        prompt: currentQuestion.prompt || 'What does the whole sentence mean?',
+        helperText: 'Type below to filter the answer choices. Long sentence choices now stay in a single column.',
+        difficultyLabel: 'Difficulty',
+        difficultyDescription: difficultyMeta?.description || '',
+        difficultyOptions,
+        activeDifficulty,
+        onSelectDifficulty: (nextDifficulty) => setSentenceModeDifficulty(nextDifficulty)
+    };
+
+    if (window.JcodeSentenceModeUI?.render) {
+        window.JcodeSentenceModeUI.render(questionDisplay, viewModel);
+        return;
+    }
+
+    ensureSentenceModeUiLibrary()
+        .then(() => {
+            if (mode === 'sentence' && questionDisplay && currentQuestion) {
+                renderSentenceModeLayout();
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load sentence mode UI:', error);
+        });
 
     questionDisplay.innerHTML = `
-        <div class="max-w-2xl mx-auto text-center space-y-5">
-            <div class="text-xs uppercase tracking-[0.25em] text-gray-400">Sentence Mode</div>
-            ${difficultyControls}
-            <div class="text-base text-gray-500">Listen to the sentence, read it, then choose the best full-sentence meaning.</div>
-            <div class="text-3xl leading-relaxed text-gray-900">${sentenceHtml}</div>
-            <div class="text-lg text-gray-700">👉 ${promptText}</div>
+        <div class="sentence-mode-fallback">
+            <div class="sentence-mode-fallback-label">Sentence Mode</div>
+            <div class="sentence-mode-fallback-sentence">${escapeHtml(currentQuestion.sentence || '')}</div>
+            <div class="sentence-mode-fallback-prompt">👉 ${escapeHtml(currentQuestion.prompt || 'What does the whole sentence mean?')}</div>
         </div>
     `;
-
-    questionDisplay.querySelectorAll('[data-sentence-difficulty]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setSentenceModeDifficulty(btn.dataset.sentenceDifficulty);
-        });
-    });
 }
 
 // Calculate dynamic font size based on character count
@@ -16197,6 +16229,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};
+    ensureSentenceModeUiLibrary().catch(() => {});
     sentenceModeDataset = normalizeSentenceModeDataset(config.sentenceModeDataset || []);
     sentenceModeLoadPromise = null;
     sentenceModeDifficultyOptions = [];

@@ -10,6 +10,13 @@ This repository follows the UW Chinese 111 course curriculum.
 
 Some pages load data/assets via JavaScript, so they work best when served over HTTP.
 
+If you edit the Preact sentence-mode island under `src/`, rebuild the browser bundle first:
+
+```bash
+npm install
+npm run build:ui
+```
+
 ```bash
 python3 -m http.server 8000
 ```
