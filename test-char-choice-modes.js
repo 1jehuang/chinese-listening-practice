@@ -176,6 +176,13 @@ function createContext() {
     function __setMode(m) { mode = m; }
     function __setBlendDirection(dir) { blendDirection = dir; }
     function __setSentenceModeDataset(items) { sentenceModeDataset = items; }
+    function __configureSentenceMode(nextConfig, items) {
+      config = nextConfig || {};
+      sentenceModeDataset = Array.isArray(items) ? items : [];
+      sentenceModeDifficultyOptions = [];
+      refreshSentenceModeDifficultyOptions();
+      loadSentenceModeDifficultyPreference();
+    }
     function __initTestDomRefs() {
       questionDisplay = document.getElementById('questionDisplay');
       answerInput = document.getElementById('answerInput');
@@ -459,25 +466,71 @@ const vocab = [
     { sentence: '别忘了把灯关掉再走。', prompt: 'What does the whole sentence mean?', char: '别忘了把灯关掉再走。', meaning: "Don't forget to turn off the light before you leave." },
   ];
 
+  ctx.__initTestDomRefs();
   ctx.__setMode('sentence');
   ctx.__setSentenceModeDataset(sentencePool);
   ctx.__setCurrentQuestion(sentencePool[0]);
 
   withRandomSequence(ctx, [0.24, 0.49, 0.74, 0.99], () => {
-    ctx.generateSentenceModeOptions();
+    ctx.generateFuzzySentenceModeOptions();
   });
 
-  const options = ctx.__getOptionData();
-  assert.strictEqual(options.length, 4, 'sentence mode should render four choices');
+  const options = ctx.__getFuzzyOptionData();
+  assert.strictEqual(options.length, 4, 'sentence mode should render four fuzzy choices');
   assert.ok(options.some(option => option.textContent === 'The teacher told us to hand in the homework before Friday.'), 'sentence mode should include the whole-sentence meaning');
   assert.ok(options.every(option => option.textContent), 'sentence mode options should render readable text');
-  console.log('✓ sentence mode builds choices from whole-sentence meanings');
+  console.log('✓ sentence mode builds fuzzy choices from whole-sentence meanings');
 })();
 
 (function testSentenceModeUsesMeaningSkillKey() {
   const { ctx } = createContext();
   assert.strictEqual(ctx.getCurrentSkillKey('sentence'), 'meaning', 'sentence mode should track contextual meaning skill');
   console.log('✓ sentence mode maps to meaning skill tracking');
+})();
+
+(function testSentenceModeDifficultyFilteringRespectsCurrentLessonPool() {
+  const { ctx } = createContext();
+  const sentencePool = [
+    { difficulty: 'starter', target: '特别', sentence: '这个学科特别难。', meaning: 'This subject is especially hard.' },
+    { difficulty: 'starter', target: '找到', sentence: '我找到钥匙了。', meaning: 'I found the keys.' },
+    { difficulty: 'starter', target: '数学', sentence: '我弟弟不喜欢数学。', meaning: 'My younger brother does not like math.' },
+    { difficulty: 'starter', target: '怕', sentence: '你别怕，我们一起去。', meaning: 'Do not be afraid, we will go together.' },
+    { difficulty: 'dialogue', target: '学科', sentence: '进大学以后，我发现自己最喜欢的学科不是数学，而是音乐。', meaning: 'After entering college, I realized the subject I like most is not math but music.' },
+    { difficulty: 'dialogue', target: '送', sentence: '爸妈送她进大学，是希望她将来找到好工作。', meaning: 'Her parents sent her to college hoping she will find a good job in the future.' },
+    { difficulty: 'dialogue', target: '钢琴', sentence: '从六岁起学钢琴以后，钢琴已经成了她生活的一部分。', meaning: 'Since starting piano at age six, the piano has become part of her life.' },
+    { difficulty: 'dialogue', target: '重要', sentence: '她觉得学自己真正感兴趣的东西比找工作更重要。', meaning: 'She thinks studying something she is truly interested in is more important than finding a job.' },
+    { difficulty: 'starter', target: '文学院', sentence: '她在文学院上课。', meaning: 'She is taking classes in the school of liberal arts.' }
+  ];
+
+  ctx.__setQuizCharacters([
+    { char: '特别' },
+    { char: '找到' },
+    { char: '数学' },
+    { char: '怕' },
+    { char: '学科' },
+    { char: '送' },
+    { char: '钢琴' },
+    { char: '重要' }
+  ]);
+  ctx.__configureSentenceMode({
+    sentenceModeFilterToQuizCharacters: true,
+    sentenceModeDifficulties: [
+      { id: 'starter', label: 'Starter' },
+      { id: 'dialogue', label: 'Dialogue' }
+    ],
+    defaultSentenceDifficulty: 'starter'
+  }, sentencePool);
+
+  let pool = Array.from(ctx.getSentenceModeQuestionPool());
+  assert.strictEqual(pool.length, 4, 'starter pool should keep only the current lesson targets');
+  assert.ok(pool.every(item => item.difficulty === 'starter'), 'starter pool should only contain starter prompts');
+  assert.ok(!pool.some(item => item.target === '文学院'), 'starter pool should exclude targets outside the current lesson subset');
+
+  ctx.setSentenceModeDifficulty('dialogue', { refresh: false });
+  pool = Array.from(ctx.getSentenceModeQuestionPool());
+  assert.strictEqual(pool.length, 4, 'dialogue pool should switch to the selected difficulty');
+  assert.ok(pool.every(item => item.difficulty === 'dialogue'), 'dialogue pool should only contain dialogue prompts');
+  console.log('✓ sentence mode difficulty filtering respects selected lesson targets');
 })();
 
 (function testToneMcUsesWholeWordPinyinWithoutToneMarks() {

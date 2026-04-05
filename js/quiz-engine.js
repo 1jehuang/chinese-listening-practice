@@ -92,6 +92,9 @@ const BLEND_MC_DIRECTIONS = [
 // Sentence mode state
 let sentenceModeDataset = [];
 let sentenceModeLoadPromise = null;
+let sentenceModeDifficulty = '';
+let sentenceModeDifficultyOptions = [];
+const SENTENCE_MODE_DIFFICULTY_KEY_PREFIX = 'sentenceModeDifficulty::';
 
 // 3-column layout state for translation modes (text-to-meaning)
 let translationPreviousQuestion = null;
@@ -324,9 +327,13 @@ function normalizeSentenceModeDataset(data) {
             const target = String(item?.target || item?.char || '').trim();
             const meaning = String(item?.meaning || '').trim();
             const prompt = String(item?.prompt || '').trim();
-            const acceptedAnswers = Array.isArray(item?.acceptedAnswers)
+            const acceptedAnswers = Array.isArray(item?.acceptedAnswers) && item.acceptedAnswers.length
                 ? item.acceptedAnswers.map(ans => String(ans || '').trim()).filter(Boolean)
-                : [];
+                : Array.from(new Set([
+                    meaning,
+                    meaning.replace(/[.!?]+$/, '').trim()
+                ].filter(Boolean)));
+            const difficulty = String(item?.difficulty || item?.level || 'standard').trim() || 'standard';
             return {
                 ...item,
                 sentence,
@@ -335,10 +342,108 @@ function normalizeSentenceModeDataset(data) {
                 char: target || sentence,
                 pinyin: String(item?.pinyin || '').trim(),
                 meaning,
-                acceptedAnswers
+                acceptedAnswers,
+                difficulty
             };
         })
         .filter(item => item.sentence && item.meaning);
+}
+
+function normalizeSentenceModeDifficultyOptions(options, dataset = sentenceModeDataset) {
+    const explicit = Array.isArray(options) ? options : [];
+    const normalizedExplicit = explicit
+        .map(option => {
+            if (typeof option === 'string') {
+                const id = option.trim();
+                return id ? { id, label: id } : null;
+            }
+            const id = String(option?.id || '').trim();
+            if (!id) return null;
+            return {
+                id,
+                label: String(option?.label || id).trim() || id,
+                description: String(option?.description || '').trim()
+            };
+        })
+        .filter(Boolean);
+
+    if (normalizedExplicit.length) return normalizedExplicit;
+
+    const seen = new Set();
+    return (Array.isArray(dataset) ? dataset : [])
+        .map(item => String(item?.difficulty || 'standard').trim() || 'standard')
+        .filter(id => {
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        })
+        .map(id => ({ id, label: id }));
+}
+
+function getSentenceModeDifficultyStorageKey() {
+    return `${SENTENCE_MODE_DIFFICULTY_KEY_PREFIX}${getAdaptivePageKey()}`;
+}
+
+function refreshSentenceModeDifficultyOptions() {
+    sentenceModeDifficultyOptions = normalizeSentenceModeDifficultyOptions(config?.sentenceModeDifficulties, sentenceModeDataset);
+    if (!sentenceModeDifficultyOptions.some(option => option.id === sentenceModeDifficulty)) {
+        sentenceModeDifficulty = sentenceModeDifficultyOptions[0]?.id || '';
+    }
+    return sentenceModeDifficultyOptions;
+}
+
+function getSentenceModeDifficultyOptions() {
+    if (!sentenceModeDifficultyOptions.length) {
+        refreshSentenceModeDifficultyOptions();
+    }
+    return sentenceModeDifficultyOptions;
+}
+
+function getActiveSentenceModeDifficulty() {
+    const options = getSentenceModeDifficultyOptions();
+    if (!options.length) return '';
+    if (!options.some(option => option.id === sentenceModeDifficulty)) {
+        sentenceModeDifficulty = options[0].id;
+    }
+    return sentenceModeDifficulty;
+}
+
+function loadSentenceModeDifficultyPreference() {
+    const options = refreshSentenceModeDifficultyOptions();
+    const defaultDifficulty = String(config?.defaultSentenceDifficulty || '').trim();
+    let stored = null;
+    try {
+        stored = localStorage.getItem(getSentenceModeDifficultyStorageKey());
+    } catch (err) {
+        stored = null;
+    }
+
+    sentenceModeDifficulty = options.some(option => option.id === stored)
+        ? stored
+        : (options.some(option => option.id === defaultDifficulty)
+            ? defaultDifficulty
+            : (options[0]?.id || ''));
+}
+
+function saveSentenceModeDifficultyPreference() {
+    try {
+        if (sentenceModeDifficulty) {
+            localStorage.setItem(getSentenceModeDifficultyStorageKey(), sentenceModeDifficulty);
+        }
+    } catch (err) {}
+}
+
+function setSentenceModeDifficulty(nextDifficulty, options = {}) {
+    const { refresh = true } = options;
+    const available = getSentenceModeDifficultyOptions();
+    if (!available.some(option => option.id === nextDifficulty)) return false;
+    if (sentenceModeDifficulty === nextDifficulty) return false;
+    sentenceModeDifficulty = nextDifficulty;
+    saveSentenceModeDifficultyPreference();
+    if (refresh && mode === 'sentence') {
+        generateQuestion();
+    }
+    return true;
 }
 
 function getEmbeddedContextDataset(key) {
@@ -432,6 +537,7 @@ function ensureSentenceModeDataset() {
     const embedded = getEmbeddedContextDataset('sentence-mode');
     if (embedded && embedded.length) {
         sentenceModeDataset = normalizeSentenceModeDataset(embedded);
+        refreshSentenceModeDifficultyOptions();
         return Promise.resolve(sentenceModeDataset);
     }
 
@@ -450,6 +556,7 @@ function ensureSentenceModeDataset() {
         .catch(() => fetchJsonWithXhrFallback('data/sentence-mode.json'))
         .then(data => {
             sentenceModeDataset = normalizeSentenceModeDataset(data);
+            refreshSentenceModeDifficultyOptions();
             return sentenceModeDataset;
         })
         .finally(() => {
@@ -485,7 +592,24 @@ function ensureSentenceModeDatasetOrDefer() {
 }
 
 function getSentenceModeQuestionPool() {
-    return Array.isArray(sentenceModeDataset) ? sentenceModeDataset : [];
+    let pool = Array.isArray(sentenceModeDataset) ? sentenceModeDataset : [];
+    const activeDifficulty = getActiveSentenceModeDifficulty();
+    if (activeDifficulty) {
+        pool = pool.filter(item => (String(item?.difficulty || 'standard').trim() || 'standard') === activeDifficulty);
+    }
+
+    if (config?.sentenceModeFilterToQuizCharacters) {
+        const allowedTargets = new Set(
+            (Array.isArray(quizCharacters) ? quizCharacters : [])
+                .map(item => String(item?.char || '').trim())
+                .filter(Boolean)
+        );
+        if (allowedTargets.size) {
+            pool = pool.filter(item => allowedTargets.has(String(item?.target || item?.char || '').trim()));
+        }
+    }
+
+    return pool;
 }
 
 // Composer helpers -----------------------------------------------------------
@@ -6767,14 +6891,16 @@ function renderQuestionUiForChoiceModes() {
         return true;
     }
 
-    if (mode === 'sentence' && choiceMode) {
+    if (mode === 'sentence' && fuzzyMode) {
         renderSentenceModeLayout();
-        generateSentenceModeOptions();
-        choiceMode.style.display = 'block';
-        setChoiceModeListLayout(true);
-        attachChoiceModeToSidebar();
+        generateFuzzySentenceModeOptions();
+        fuzzyMode.style.display = 'block';
         if (audioSection) audioSection.classList.remove('hidden');
         setupChunkAudioMode(currentQuestion.sentence);
+        if (fuzzyInput) {
+            fuzzyInput.placeholder = 'Type to filter sentence meanings...';
+            setTimeout(() => fuzzyInput.focus(), 100);
+        }
         return true;
     }
 
@@ -8170,6 +8296,104 @@ function generateSentenceModeOptions() {
     });
 }
 
+function generateFuzzySentenceModeOptions() {
+    const options = document.getElementById('fuzzyOptions');
+    if (!options || !fuzzyInput) return;
+
+    options.innerHTML = '';
+
+    const pool = getSentenceModeQuestionPool();
+    const correctMeaning = currentQuestion.meaning;
+    const usedMeanings = new Set([correctMeaning]);
+    const wrongOptions = [];
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 1000) {
+        safety++;
+        const random = pool[Math.floor(Math.random() * pool.length)];
+        if (!random || random.sentence === currentQuestion.sentence) continue;
+        if (!random.meaning || usedMeanings.has(random.meaning)) continue;
+        wrongOptions.push(random.meaning);
+        usedMeanings.add(random.meaning);
+    }
+
+    const allOptions = [...wrongOptions, correctMeaning].sort(() => Math.random() - 0.5);
+
+    allOptions.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-left leading-relaxed';
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.meaning = option;
+        btn.onclick = () => checkFuzzyAnswer(option);
+        options.appendChild(btn);
+    });
+
+    fuzzyInput.oninput = () => {
+        if (answered && lastAnswerCorrect) {
+            nextAnswerBuffer = fuzzyInput.value;
+        } else {
+            nextAnswerBuffer = '';
+        }
+
+        const input = fuzzyInput.value.trim().toLowerCase();
+        if (!input) {
+            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            });
+            return;
+        }
+
+        let bestMatch = null;
+        let bestScore = -1;
+
+        allOptions.forEach((option, index) => {
+            const score = fuzzyMatch(input, option.toLowerCase());
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = index;
+            }
+        });
+
+        document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
+            if (index === bestMatch) {
+                btn.classList.remove('bg-gray-100', 'border-gray-300');
+                btn.classList.add('bg-blue-200', 'border-blue-500');
+            } else {
+                btn.classList.remove('bg-blue-200', 'border-blue-500');
+                btn.classList.add('bg-gray-100', 'border-gray-300');
+            }
+        });
+    };
+
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+            e.preventDefault();
+            goToNextQuestionAfterCorrect();
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+            if (selected) {
+                selected.click();
+            }
+        }
+    };
+
+    fuzzyInput.focus();
+
+    if (fuzzyInput.value) {
+        fuzzyInput.dispatchEvent(new Event('input'));
+        const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
+        if (selected) {
+            selected.click();
+        }
+    }
+}
+
 function generateFuzzyMeaningOptions() {
     const options = document.getElementById('fuzzyOptions');
     if (!options || !fuzzyInput) return;
@@ -8713,7 +8937,7 @@ function checkFuzzyAnswer(answer) {
     const correct = answer === currentQuestion.meaning;
 
     // Play audio for the character (skip for audio-to-meaning since they already heard it)
-    if (mode !== 'audio-to-meaning') {
+    if (mode !== 'audio-to-meaning' && mode !== 'sentence' && currentQuestion.pinyin) {
         const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
         if (window.playPinyinAudio) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
@@ -10459,15 +10683,39 @@ function renderSentenceModeLayout() {
 
     const sentenceHtml = escapeHtml(currentQuestion.sentence || '');
     const promptText = escapeHtml(currentQuestion.prompt || 'What does the whole sentence mean?');
+    const difficultyOptions = getSentenceModeDifficultyOptions();
+    const activeDifficulty = getActiveSentenceModeDifficulty();
+    const difficultyMeta = difficultyOptions.find(option => option.id === activeDifficulty) || null;
+    const difficultyControls = difficultyOptions.length > 1
+        ? `
+            <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:center; margin-bottom:0.75rem;">
+                <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.18em; color:#94a3b8; font-weight:700;">Difficulty</div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center;">
+                    ${difficultyOptions.map(option => {
+                        const selected = option.id === activeDifficulty;
+                        return `<button type="button" data-sentence-difficulty="${escapeHtml(option.id)}" aria-pressed="${selected ? 'true' : 'false'}" style="padding:0.45rem 0.8rem; border-radius:999px; border:1px solid ${selected ? '#2563eb' : '#cbd5e1'}; background:${selected ? '#dbeafe' : '#fff'}; color:${selected ? '#1d4ed8' : '#475569'}; font-size:0.92rem; font-weight:${selected ? '700' : '600'}; cursor:pointer;">${escapeHtml(option.label)}</button>`;
+                    }).join('')}
+                </div>
+                ${difficultyMeta?.description ? `<div style="font-size:0.92rem; color:#64748b;">${escapeHtml(difficultyMeta.description)}</div>` : ''}
+            </div>
+        `
+        : '';
 
     questionDisplay.innerHTML = `
         <div class="max-w-2xl mx-auto text-center space-y-5">
             <div class="text-xs uppercase tracking-[0.25em] text-gray-400">Sentence Mode</div>
+            ${difficultyControls}
             <div class="text-base text-gray-500">Listen to the sentence, read it, then choose the best full-sentence meaning.</div>
             <div class="text-3xl leading-relaxed text-gray-900">${sentenceHtml}</div>
             <div class="text-lg text-gray-700">👉 ${promptText}</div>
         </div>
     `;
+
+    questionDisplay.querySelectorAll('[data-sentence-difficulty]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setSentenceModeDifficulty(btn.dataset.sentenceDifficulty);
+        });
+    });
 }
 
 // Calculate dynamic font size based on character count
@@ -10697,6 +10945,17 @@ function displayQuestion() {
         setupAudioMode({ focusAnswer: false });
         if (fuzzyInput) {
             fuzzyInput.value = '';
+            setTimeout(() => fuzzyInput.focus(), 50);
+        }
+    } else if (mode === 'sentence') {
+        renderSentenceModeLayout();
+        generateFuzzySentenceModeOptions();
+        if (fuzzyMode) fuzzyMode.style.display = 'block';
+        if (audioSection) audioSection.classList.remove('hidden');
+        setupChunkAudioMode(currentQuestion.sentence);
+        if (fuzzyInput) {
+            fuzzyInput.value = '';
+            fuzzyInput.placeholder = 'Type to filter sentence meanings...';
             setTimeout(() => fuzzyInput.focus(), 50);
         }
     } else if (mode === 'dictation-chat') {
@@ -15938,6 +16197,11 @@ function initQuizPersistentState(charactersData, userConfig) {
     originalQuizCharacters = charactersData; // Store original array
     quizCharacters = charactersData;
     config = userConfig || {};
+    sentenceModeDataset = normalizeSentenceModeDataset(config.sentenceModeDataset || []);
+    sentenceModeLoadPromise = null;
+    sentenceModeDifficultyOptions = [];
+    refreshSentenceModeDifficultyOptions();
+    loadSentenceModeDifficultyPreference();
     initQuizDebugInterface();
 
     buildLessonCharMap();

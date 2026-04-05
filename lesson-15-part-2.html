@@ -485,7 +485,11 @@
             enablePreviewQueue: true,
             previewQueueSize: 1,
             previewElementId: 'upcomingCharacters',
-            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning', 'blend']
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning', 'blend'],
+            sentenceModeDataset: window.__LESSON_DATASETS__['lesson-15'].sentenceMode.items,
+            sentenceModeDifficulties: window.__LESSON_DATASETS__['lesson-15'].sentenceMode.difficulties,
+            defaultSentenceDifficulty: 'starter',
+            sentenceModeFilterToQuizCharacters: true
         });
     </script>
 </body>

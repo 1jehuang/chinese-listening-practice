@@ -154,5 +154,50 @@ window.__LESSON_DATASETS__['lesson-15'] = {
                 { char: '女：找个工作并不是进大学唯一的目的，我觉得学一个自己真正有兴趣的东西比找到工作更重要。', pinyin: 'nǚ: zhǎo gè gōng zuò bìng bú shì jìn dà xué wéi yī de mù de, wǒ jué de xué yí gè zì jǐ zhēn zhèng yǒu xìng qù de dōng xī bǐ zhǎo dào gōng zuò gèng zhòng yào.', meaning: 'Daughter: Finding a job isn’t the only purpose of going to college. I think studying something I’m truly interested in is more important than finding a job.' },
                 { char: '女：再说学钢琴也不一定就找不到工作。', pinyin: 'nǚ: zài shuō xué gāng qín yě bù yí dìng jiù zhǎo bú dào gōng zuò.', meaning: 'Daughter: Besides, studying piano doesn’t necessarily mean you can’t find a job.' },
                 { char: '父：都怪你妈妈，要你从小学钢琴！', pinyin: 'fù: dōu guài nǐ mā ma, yào nǐ cóng xiǎo xué gāng qín!', meaning: 'Dad: It’s all your mom’s fault—she made you learn piano since you were little!' }
-  ]
+  ],
+  sentenceMode: {
+    difficulties: [
+      { id: 'starter', label: 'Starter', description: 'Very short sentences, just above single-word recognition.' },
+      { id: 'easy', label: 'Easy', description: 'Simple everyday sentences with one clear clue.' },
+      { id: 'medium', label: 'Medium', description: 'Longer lesson-style sentences with a bit more context.' },
+      { id: 'dialogue', label: 'Dialogue', description: 'Fuller chapter-style lines closer to the textbook conversation.' }
+    ],
+    items: [
+      { difficulty: 'starter', target: '特别', sentence: '这个学科特别难。', meaning: 'This subject is especially hard.' },
+      { difficulty: 'starter', target: '找到', sentence: '我找到钥匙了。', meaning: 'I found the keys.' },
+      { difficulty: 'starter', target: '烦恼', sentence: '这件事让我很烦恼。', meaning: 'This matter is worrying me.' },
+      { difficulty: 'starter', target: '剩下', sentence: '今天只剩下两块钱。', meaning: 'There are only two dollars left today.' },
+      { difficulty: 'starter', target: '数学', sentence: '我弟弟不喜欢数学。', meaning: 'My younger brother does not like math.' },
+      { difficulty: 'starter', target: '试试看', sentence: '这个菜不错，你试试看。', meaning: 'This dish is good, give it a try.' },
+      { difficulty: 'starter', target: '怕', sentence: '你别怕，我们一起去。', meaning: 'Do not be afraid, we will go together.' },
+      { difficulty: 'starter', target: '重要', sentence: '睡觉很重要。', meaning: 'Sleep is important.' },
+
+      { difficulty: 'easy', target: '感兴趣', sentence: '我对中国音乐很感兴趣。', meaning: 'I am very interested in Chinese music.' },
+      { difficulty: 'easy', target: '同事', sentence: '我同事的儿子今年六岁。', meaning: 'My colleague\'s son is six this year.' },
+      { difficulty: 'easy', target: '专业', sentence: '她的专业是经济学。', meaning: 'Her major is economics.' },
+      { difficulty: 'easy', target: '电子工程', sentence: '他在大学学电子工程。', meaning: 'He studies electronic engineering in college.' },
+      { difficulty: 'easy', target: '经济(学)', sentence: '她觉得经济学不太容易。', meaning: 'She thinks economics is not very easy.' },
+      { difficulty: 'easy', target: '顺利', sentence: '考试很顺利，我们都很高兴。', meaning: 'The exam went smoothly, and we were all happy.' },
+      { difficulty: 'easy', target: '弹钢琴', sentence: '她每天晚上都弹钢琴。', meaning: 'She plays the piano every evening.' },
+      { difficulty: 'easy', target: '将来', sentence: '我将来想当老师。', meaning: 'I want to be a teacher in the future.' },
+
+      { difficulty: 'medium', target: '发现', sentence: '我后来发现自己更喜欢音乐。', meaning: 'Later I discovered that I like music more.' },
+      { difficulty: 'medium', target: '作为', sentence: '你可以把音乐作为一个爱好。', meaning: 'You can treat music as a hobby.' },
+      { difficulty: 'medium', target: '文学院', sentence: '她在文学院上了很多课。', meaning: 'She took many classes in the school of liberal arts.' },
+      { difficulty: 'medium', target: '年薪', sentence: '那份工作的年薪有十万多块。', meaning: 'That job pays more than one hundred thousand a year.' },
+      { difficulty: 'medium', target: '培养', sentence: '兴趣可以慢慢培养出来。', meaning: 'Interests can be developed gradually.' },
+      { difficulty: 'medium', target: '音乐学院', sentence: '她一直想进音乐学院。', meaning: 'She has always wanted to enter a conservatory.' },
+      { difficulty: 'medium', target: '从来没', sentence: '我从来没想过换专业。', meaning: 'I never thought about changing majors.' },
+      { difficulty: 'medium', target: '再说', sentence: '今天太晚了，这件事明天再说吧。', meaning: 'It is too late today, let us talk about this tomorrow.' },
+
+      { difficulty: 'dialogue', target: '学科', sentence: '进大学以后，我发现自己最喜欢的学科不是数学，而是音乐。', meaning: 'After entering college, I realized the subject I like most is not math but music.' },
+      { difficulty: 'dialogue', target: '真正', sentence: '她还没找到自己真正感兴趣的专业。', meaning: 'She still has not found the major she is truly interested in.' },
+      { difficulty: 'dialogue', target: '万', sentence: '听说那份工作一年能赚十万多块钱。', meaning: 'I heard that job can earn more than one hundred thousand dollars a year.' },
+      { difficulty: 'dialogue', target: '怪', sentence: '爸爸最后都怪妈妈让她从小学习钢琴。', meaning: 'In the end, Dad blamed Mom for making her learn piano from childhood.' },
+      { difficulty: 'dialogue', target: '恨', sentence: '她说自己从小就恨数学，所以不太可能学经济学。', meaning: 'She said she has hated math since childhood, so it is unlikely she will study economics.' },
+      { difficulty: 'dialogue', target: '钢琴', sentence: '从六岁起学钢琴以后，钢琴已经成了她生活的一部分。', meaning: 'Since starting piano at age six, the piano has become part of her life.' },
+      { difficulty: 'dialogue', target: '送', sentence: '爸妈送她进大学，是希望她将来找到好工作。', meaning: 'Her parents sent her to college hoping she will find a good job in the future.' },
+      { difficulty: 'dialogue', target: '重要', sentence: '她觉得学自己真正感兴趣的东西比找工作更重要。', meaning: 'She thinks studying something she is truly interested in is more important than finding a job.' }
+    ]
+  }
 };
