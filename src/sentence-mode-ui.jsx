@@ -1,4 +1,5 @@
 import { h, Fragment, render as preactRender } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 
 function DifficultyButton({ option, selected, onSelect }) {
   return (
@@ -13,6 +14,41 @@ function DifficultyButton({ option, selected, onSelect }) {
   );
 }
 
+function AnswerOption({ option, onSelect }) {
+  const classes = ['sentence-mode-option'];
+  if (option.highlighted) classes.push('is-highlighted');
+  if (option.correct) classes.push('is-correct');
+  if (option.incorrect) classes.push('is-incorrect');
+
+  return (
+    <button
+      type="button"
+      className={classes.join(' ')}
+      disabled={option.disabled}
+      aria-pressed={option.selected ? 'true' : 'false'}
+      onClick={() => onSelect(option.value)}
+    >
+      {option.value}
+    </button>
+  );
+}
+
+function FeedbackBanner({ feedback, locked, onContinue }) {
+  if (!feedback) return null;
+  return (
+    <div className={`sentence-mode-feedback is-${feedback.type}`}>
+      <div className="sentence-mode-feedback-title">{feedback.title}</div>
+      <div className="sentence-mode-feedback-message">{feedback.message}</div>
+      {feedback.detail ? <div className="sentence-mode-feedback-detail">{feedback.detail}</div> : null}
+      {locked && feedback.type === 'correct' ? (
+        <button type="button" className="sentence-mode-continue" onClick={onContinue}>
+          Continue
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function SentenceModeView({
   title,
   subtitle,
@@ -23,8 +59,28 @@ function SentenceModeView({
   difficultyDescription,
   difficultyOptions,
   activeDifficulty,
-  onSelectDifficulty
+  inputValue,
+  options,
+  feedback,
+  locked,
+  onSelectDifficulty,
+  onInputChange,
+  onSubmit,
+  onSelectOption,
+  onContinue
 }) {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!locked && inputRef.current) {
+      inputRef.current.focus();
+      const value = inputRef.current.value || '';
+      if (typeof inputRef.current.setSelectionRange === 'function') {
+        inputRef.current.setSelectionRange(value.length, value.length);
+      }
+    }
+  }, [sentence, locked, inputValue]);
+
   return (
     <div className="sentence-mode-shell">
       <div className="sentence-mode-header">
@@ -48,13 +104,42 @@ function SentenceModeView({
           </Fragment>
         ) : null}
       </div>
+
       <div className="sentence-mode-card sentence-mode-card--sentence">
         <div className="sentence-mode-subtitle">{subtitle}</div>
         <div className="sentence-mode-sentence">{sentence}</div>
       </div>
+
       <div className="sentence-mode-card sentence-mode-card--prompt">
         <div className="sentence-mode-prompt">👉 {prompt}</div>
         <div className="sentence-mode-helper">{helperText}</div>
+      </div>
+
+      <div className="sentence-mode-card sentence-mode-answer-panel">
+        <div className="sentence-mode-answer-label">Answer choices</div>
+        <div className="sentence-mode-filter-row">
+          <input
+            ref={inputRef}
+            type="text"
+            className="sentence-mode-filter-input"
+            value={inputValue}
+            disabled={locked}
+            placeholder="Type to filter sentence meanings..."
+            onInput={(event) => onInputChange(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onSubmit();
+              }
+            }}
+          />
+        </div>
+        <div className="sentence-mode-option-list">
+          {options.map((option) => (
+            <AnswerOption key={option.value} option={option} onSelect={onSelectOption} />
+          ))}
+        </div>
+        <FeedbackBanner feedback={feedback} locked={locked} onContinue={onContinue} />
       </div>
     </div>
   );

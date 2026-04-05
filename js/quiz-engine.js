@@ -95,6 +95,7 @@ let sentenceModeLoadPromise = null;
 let sentenceModeUiLoadPromise = null;
 let sentenceModeDifficulty = '';
 let sentenceModeDifficultyOptions = [];
+let sentenceModeUiState = null;
 const SENTENCE_MODE_DIFFICULTY_KEY_PREFIX = 'sentenceModeDifficulty::';
 
 // 3-column layout state for translation modes (text-to-meaning)
@@ -551,6 +552,9 @@ function ensureSentenceModeUiLibrary() {
 }
 
 function unmountSentenceModeUi() {
+    if (document.body?.dataset) {
+        delete document.body.dataset.sentenceUi;
+    }
     if (window.JcodeSentenceModeUI?.unmount && questionDisplay) {
         window.JcodeSentenceModeUI.unmount(questionDisplay);
     }
@@ -637,6 +641,246 @@ function getSentenceModeQuestionPool() {
     }
 
     return pool;
+}
+
+function createSentenceModeUiState(prefill = '') {
+    return {
+        inputValue: typeof prefill === 'string' ? prefill : '',
+        options: [],
+        highlightedIndex: -1,
+        selectedAnswer: '',
+        feedback: null,
+        locked: false
+    };
+}
+
+function resetSentenceModeUiState(prefill = '') {
+    sentenceModeUiState = createSentenceModeUiState(prefill);
+    return sentenceModeUiState;
+}
+
+function getSentenceModeUiState() {
+    if (!sentenceModeUiState) {
+        sentenceModeUiState = createSentenceModeUiState('');
+    }
+    return sentenceModeUiState;
+}
+
+function buildSentenceModeOptions() {
+    const pool = getSentenceModeQuestionPool();
+    const correctMeaning = currentQuestion?.meaning;
+    const usedMeanings = new Set([correctMeaning]);
+    const wrongOptions = [];
+    let safety = 0;
+
+    while (wrongOptions.length < 3 && safety < 1000) {
+        safety++;
+        const random = pool[Math.floor(Math.random() * pool.length)];
+        if (!random || random.sentence === currentQuestion?.sentence) continue;
+        if (!random.meaning || usedMeanings.has(random.meaning)) continue;
+        wrongOptions.push(random.meaning);
+        usedMeanings.add(random.meaning);
+    }
+
+    return [...wrongOptions, correctMeaning].filter(Boolean).sort(() => Math.random() - 0.5);
+}
+
+function getSentenceModeHighlightIndex(inputValue, options) {
+    const input = String(inputValue || '').trim().toLowerCase();
+    if (!input) return -1;
+
+    let bestMatch = -1;
+    let bestScore = -1;
+    (Array.isArray(options) ? options : []).forEach((option, index) => {
+        const score = fuzzyMatch(input, String(option || '').toLowerCase());
+        if (score > bestScore) {
+            bestScore = score;
+            bestMatch = index;
+        }
+    });
+    return bestMatch;
+}
+
+function buildSentenceModeViewModel() {
+    const state = getSentenceModeUiState();
+    const difficultyOptions = getSentenceModeDifficultyOptions();
+    const activeDifficulty = getActiveSentenceModeDifficulty();
+    const difficultyMeta = difficultyOptions.find(option => option.id === activeDifficulty) || null;
+
+    return {
+        title: 'Sentence Mode',
+        subtitle: 'Listen to the sentence, read it, then choose the best full-sentence meaning.',
+        sentence: currentQuestion?.sentence || '',
+        prompt: currentQuestion?.prompt || 'What does the whole sentence mean?',
+        helperText: state.locked
+            ? 'Review the feedback, then continue.'
+            : 'Type to filter the choices, then press Enter or click the best match.',
+        difficultyLabel: 'Difficulty',
+        difficultyDescription: difficultyMeta?.description || '',
+        difficultyOptions,
+        activeDifficulty,
+        inputValue: state.inputValue,
+        options: state.options.map((option, index) => ({
+            value: option,
+            highlighted: index === state.highlightedIndex,
+            selected: option === state.selectedAnswer,
+            correct: state.locked && option === currentQuestion?.meaning,
+            incorrect: state.locked && option === state.selectedAnswer && option !== currentQuestion?.meaning,
+            disabled: state.locked
+        })),
+        feedback: state.feedback,
+        locked: state.locked,
+        onSelectDifficulty: (nextDifficulty) => setSentenceModeDifficulty(nextDifficulty),
+        onInputChange: (value) => handleSentenceModeInput(value),
+        onSubmit: () => handleSentenceModeSubmit(),
+        onSelectOption: (value) => submitSentenceModeAnswer(value),
+        onContinue: () => goToNextQuestionAfterCorrect()
+    };
+}
+
+function renderSentenceModeFallback(state) {
+    if (!fuzzyMode || !fuzzyInput) return;
+    const options = document.getElementById('fuzzyOptions');
+    if (!options) return;
+
+    fuzzyMode.style.display = 'block';
+    fuzzyInput.value = state.inputValue || '';
+    fuzzyInput.placeholder = 'Type to filter sentence meanings...';
+    fuzzyInput.disabled = Boolean(state.locked);
+    options.innerHTML = '';
+
+    state.options.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-left leading-relaxed';
+        if (index === state.highlightedIndex) {
+            btn.classList.remove('bg-gray-100', 'border-gray-300');
+            btn.classList.add('bg-blue-200', 'border-blue-500');
+        }
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.meaning = option;
+        btn.disabled = Boolean(state.locked);
+        btn.onclick = () => submitSentenceModeAnswer(option);
+        options.appendChild(btn);
+    });
+
+    fuzzyInput.oninput = () => handleSentenceModeInput(fuzzyInput.value);
+    fuzzyInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSentenceModeSubmit();
+        }
+    };
+}
+
+function syncSentenceModeUi(options = {}) {
+    const { rerender = true, autoSubmitPrefill = false } = options;
+    const state = getSentenceModeUiState();
+    if (!Array.isArray(state.options) || !state.options.length) {
+        state.options = buildSentenceModeOptions();
+    }
+    state.highlightedIndex = state.locked ? -1 : getSentenceModeHighlightIndex(state.inputValue, state.options);
+
+    if (window.JcodeSentenceModeUI?.render) {
+        if (rerender) renderSentenceModeLayout();
+    } else {
+        renderSentenceModeFallback(state);
+    }
+
+    if (!state.locked && autoSubmitPrefill && state.inputValue && state.highlightedIndex >= 0) {
+        submitSentenceModeAnswer(state.options[state.highlightedIndex]);
+    }
+}
+
+function focusSentenceModeInputSoon(delay = 0) {
+    setTimeout(() => {
+        const input = questionDisplay?.querySelector('.sentence-mode-filter-input') || fuzzyInput;
+        if (input && typeof input.focus === 'function') {
+            input.focus();
+            if (typeof input.setSelectionRange === 'function') {
+                const value = input.value || '';
+                input.setSelectionRange(value.length, value.length);
+            }
+        }
+    }, delay);
+}
+
+function handleSentenceModeInput(value) {
+    const state = getSentenceModeUiState();
+    state.inputValue = String(value || '');
+    if (answered && lastAnswerCorrect) {
+        nextAnswerBuffer = state.inputValue;
+    } else {
+        nextAnswerBuffer = '';
+    }
+    if (!state.locked) {
+        state.highlightedIndex = getSentenceModeHighlightIndex(state.inputValue, state.options);
+    }
+    syncSentenceModeUi();
+}
+
+function handleSentenceModeSubmit() {
+    const state = getSentenceModeUiState();
+    if (state.locked && answered && lastAnswerCorrect) {
+        goToNextQuestionAfterCorrect();
+        return;
+    }
+    if (state.highlightedIndex >= 0) {
+        submitSentenceModeAnswer(state.options[state.highlightedIndex]);
+    }
+}
+
+function submitSentenceModeAnswer(answer) {
+    if (answered) return;
+    if (!answer) return;
+
+    const state = getSentenceModeUiState();
+    const isFirstAttempt = !questionAttemptRecorded;
+    if (isFirstAttempt) {
+        total++;
+        questionAttemptRecorded = true;
+    }
+
+    const correct = answer === currentQuestion.meaning;
+    answered = true;
+    state.locked = true;
+    state.selectedAnswer = answer;
+    state.highlightedIndex = state.options.indexOf(answer);
+    lastAnswerCorrect = correct;
+
+    if (correct) {
+        playCorrectSound();
+        if (isFirstAttempt) {
+            score++;
+            markSchedulerOutcome(true);
+        }
+        state.feedback = {
+            type: 'correct',
+            title: 'Correct',
+            message: currentQuestion.meaning,
+            detail: currentQuestion.target ? `Target: ${currentQuestion.target}` : 'Nice work.'
+        };
+        nextAnswerBuffer = '';
+        updateStats();
+        renderSentenceModeLayout();
+        scheduleNextQuestion(900);
+        return;
+    }
+
+    playWrongSound();
+    if (isFirstAttempt) {
+        markSchedulerOutcome(false);
+    }
+    state.feedback = {
+        type: 'incorrect',
+        title: 'Not quite',
+        message: currentQuestion.meaning,
+        detail: currentQuestion.target ? `Target: ${currentQuestion.target}` : 'Review the sentence and answer.'
+    };
+    nextAnswerBuffer = '';
+    updateStats();
+    renderSentenceModeLayout();
+    scheduleNextQuestion(1700);
 }
 
 // Composer helpers -----------------------------------------------------------
@@ -6585,6 +6829,7 @@ function resetForNextQuestion(prefillAnswer) {
     clearPendingNextQuestion();
     stopTimer();
     unmountSentenceModeUi();
+    resetSentenceModeUiState(prefillAnswer);
     enteredSyllables = [];
     enteredTones = '';
     toneFlowStage = null;
@@ -6921,15 +7166,11 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'sentence' && fuzzyMode) {
+        generateFuzzySentenceModeOptions({ autoSubmitPrefill: Boolean(getSentenceModeUiState().inputValue) });
         renderSentenceModeLayout();
-        generateFuzzySentenceModeOptions();
-        fuzzyMode.style.display = 'block';
         if (audioSection) audioSection.classList.remove('hidden');
         setupChunkAudioMode(currentQuestion.sentence);
-        if (fuzzyInput) {
-            fuzzyInput.placeholder = 'Type to filter sentence meanings...';
-            setTimeout(() => fuzzyInput.focus(), 100);
-        }
+        focusSentenceModeInputSoon(100);
         return true;
     }
 
@@ -8325,102 +8566,13 @@ function generateSentenceModeOptions() {
     });
 }
 
-function generateFuzzySentenceModeOptions() {
-    const options = document.getElementById('fuzzyOptions');
-    if (!options || !fuzzyInput) return;
-
-    options.innerHTML = '';
-
-    const pool = getSentenceModeQuestionPool();
-    const correctMeaning = currentQuestion.meaning;
-    const usedMeanings = new Set([correctMeaning]);
-    const wrongOptions = [];
-    let safety = 0;
-
-    while (wrongOptions.length < 3 && safety < 1000) {
-        safety++;
-        const random = pool[Math.floor(Math.random() * pool.length)];
-        if (!random || random.sentence === currentQuestion.sentence) continue;
-        if (!random.meaning || usedMeanings.has(random.meaning)) continue;
-        wrongOptions.push(random.meaning);
-        usedMeanings.add(random.meaning);
-    }
-
-    const allOptions = [...wrongOptions, correctMeaning].sort(() => Math.random() - 0.5);
-
-    allOptions.forEach((option, index) => {
-        const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-left leading-relaxed';
-        btn.textContent = option;
-        btn.dataset.index = index;
-        btn.dataset.meaning = option;
-        btn.onclick = () => checkFuzzyAnswer(option);
-        options.appendChild(btn);
-    });
-
-    fuzzyInput.oninput = () => {
-        if (answered && lastAnswerCorrect) {
-            nextAnswerBuffer = fuzzyInput.value;
-        } else {
-            nextAnswerBuffer = '';
-        }
-
-        const input = fuzzyInput.value.trim().toLowerCase();
-        if (!input) {
-            document.querySelectorAll('#fuzzyOptions button').forEach(btn => {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
-            });
-            return;
-        }
-
-        let bestMatch = null;
-        let bestScore = -1;
-
-        allOptions.forEach((option, index) => {
-            const score = fuzzyMatch(input, option.toLowerCase());
-            if (score > bestScore) {
-                bestScore = score;
-                bestMatch = index;
-            }
-        });
-
-        document.querySelectorAll('#fuzzyOptions button').forEach((btn, index) => {
-            if (index === bestMatch) {
-                btn.classList.remove('bg-gray-100', 'border-gray-300');
-                btn.classList.add('bg-blue-200', 'border-blue-500');
-            } else {
-                btn.classList.remove('bg-blue-200', 'border-blue-500');
-                btn.classList.add('bg-gray-100', 'border-gray-300');
-            }
-        });
-    };
-
-    fuzzyInput.onkeydown = (e) => {
-        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
-            e.preventDefault();
-            goToNextQuestionAfterCorrect();
-            return;
-        }
-
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
-            if (selected) {
-                selected.click();
-            }
-        }
-    };
-
-    fuzzyInput.focus();
-
-    if (fuzzyInput.value) {
-        fuzzyInput.dispatchEvent(new Event('input'));
-        const selected = document.querySelector('#fuzzyOptions button.bg-blue-200');
-        if (selected) {
-            selected.click();
-        }
-    }
+function generateFuzzySentenceModeOptions(options = {}) {
+    const state = getSentenceModeUiState();
+    state.options = buildSentenceModeOptions();
+    state.selectedAnswer = '';
+    state.feedback = null;
+    state.locked = false;
+    syncSentenceModeUi(options);
 }
 
 function generateFuzzyMeaningOptions() {
@@ -10710,25 +10862,19 @@ function highlightSentenceModeTarget(sentence, target) {
 function renderSentenceModeLayout() {
     if (!questionDisplay || !currentQuestion) return;
 
-    const difficultyOptions = getSentenceModeDifficultyOptions();
-    const activeDifficulty = getActiveSentenceModeDifficulty();
-    const difficultyMeta = difficultyOptions.find(option => option.id === activeDifficulty) || null;
-    const viewModel = {
-        title: 'Sentence Mode',
-        subtitle: 'Listen to the sentence, read it, then choose the best full-sentence meaning.',
-        sentence: currentQuestion.sentence || '',
-        prompt: currentQuestion.prompt || 'What does the whole sentence mean?',
-        helperText: 'Type below to filter the answer choices. Long sentence choices now stay in a single column.',
-        difficultyLabel: 'Difficulty',
-        difficultyDescription: difficultyMeta?.description || '',
-        difficultyOptions,
-        activeDifficulty,
-        onSelectDifficulty: (nextDifficulty) => setSentenceModeDifficulty(nextDifficulty)
-    };
+    const viewModel = buildSentenceModeViewModel();
 
     if (window.JcodeSentenceModeUI?.render) {
+        if (document.body?.dataset) {
+            document.body.dataset.sentenceUi = 'preact';
+        }
         window.JcodeSentenceModeUI.render(questionDisplay, viewModel);
+        focusSentenceModeInputSoon();
         return;
+    }
+
+    if (document.body?.dataset) {
+        delete document.body.dataset.sentenceUi;
     }
 
     ensureSentenceModeUiLibrary()
@@ -10748,6 +10894,7 @@ function renderSentenceModeLayout() {
             <div class="sentence-mode-fallback-prompt">👉 ${escapeHtml(currentQuestion.prompt || 'What does the whole sentence mean?')}</div>
         </div>
     `;
+    renderSentenceModeFallback(getSentenceModeUiState());
 }
 
 // Calculate dynamic font size based on character count
@@ -10980,16 +11127,11 @@ function displayQuestion() {
             setTimeout(() => fuzzyInput.focus(), 50);
         }
     } else if (mode === 'sentence') {
+        generateFuzzySentenceModeOptions({ autoSubmitPrefill: Boolean(getSentenceModeUiState().inputValue) });
         renderSentenceModeLayout();
-        generateFuzzySentenceModeOptions();
-        if (fuzzyMode) fuzzyMode.style.display = 'block';
         if (audioSection) audioSection.classList.remove('hidden');
         setupChunkAudioMode(currentQuestion.sentence);
-        if (fuzzyInput) {
-            fuzzyInput.value = '';
-            fuzzyInput.placeholder = 'Type to filter sentence meanings...';
-            setTimeout(() => fuzzyInput.focus(), 50);
-        }
+        focusSentenceModeInputSoon(50);
     } else if (mode === 'dictation-chat') {
         renderDictationChatQuestion({ reset: false });
     } else if (mode === 'text-to-meaning') {
@@ -11710,6 +11852,8 @@ function goToNextQuestionAfterCorrect() {
     // Capture from whichever input field is active
     if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput) {
         nextAnswerBuffer = fuzzyInput.value;
+    } else if (mode === 'sentence') {
+        nextAnswerBuffer = getSentenceModeUiState().inputValue || '';
     } else if (answerInput) {
         nextAnswerBuffer = answerInput.value;
     }
@@ -11733,6 +11877,8 @@ function scheduleNextQuestion(delay) {
             buffered = nextAnswerBuffer;
         } else if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput) {
             buffered = fuzzyInput.value;
+        } else if (mode === 'sentence') {
+            buffered = getSentenceModeUiState().inputValue || '';
         } else if (answerInput) {
             buffered = answerInput.value;
         }

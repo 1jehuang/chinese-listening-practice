@@ -11,7 +11,7 @@ function makeElement(tagName = 'div') {
     childNodes: [],
     textContent: '',
     _innerHTML: '',
-    classList: { add() {}, remove() {}, contains() { return false; } },
+    classList: { add() {}, remove() {}, contains() { return false; }, toggle() { return false; } },
     appendChild(child) {
       if (!child) return child;
       child.parentNode = this;
@@ -96,7 +96,17 @@ function createContext() {
       innerWidth: 1200,
       __QUIZ_DEBUG__: {},
       addEventListener() {},
-      matchMedia: () => ({ matches: false, addEventListener() {} })
+      matchMedia: () => ({ matches: false, addEventListener() {} }),
+      AudioContext: class {
+        constructor() { this.destination = {}; this.currentTime = 0; }
+        createOscillator() { return { frequency: { setValueAtTime() {} }, connect() {}, start() {}, stop() {} }; }
+        createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
+      },
+      webkitAudioContext: class {
+        constructor() { this.destination = {}; this.currentTime = 0; }
+        createOscillator() { return { frequency: { setValueAtTime() {} }, connect() {}, start() {}, stop() {} }; }
+        createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
+      }
     },
     document,
     localStorage: {
@@ -183,6 +193,10 @@ function createContext() {
       refreshSentenceModeDifficultyOptions();
       loadSentenceModeDifficultyPreference();
     }
+    function __getSentenceModeUiState() {
+      return JSON.parse(JSON.stringify(sentenceModeUiState));
+    }
+    function __handleSentenceModeInput(value) { handleSentenceModeInput(value); }
     function __initTestDomRefs() {
       questionDisplay = document.getElementById('questionDisplay');
       answerInput = document.getElementById('answerInput');
@@ -531,6 +545,37 @@ const vocab = [
   assert.strictEqual(pool.length, 4, 'dialogue pool should switch to the selected difficulty');
   assert.ok(pool.every(item => item.difficulty === 'dialogue'), 'dialogue pool should only contain dialogue prompts');
   console.log('✓ sentence mode difficulty filtering respects selected lesson targets');
+})();
+
+(function testSentenceModeUiStateTracksHighlightAndFeedback() {
+  const { ctx } = createContext();
+  const sentencePool = [
+    { sentence: '老师让我们把作业在星期五前交上去。', prompt: 'What does the whole sentence mean?', char: '老师让我们把作业在星期五前交上去。', meaning: 'The teacher told us to hand in the homework before Friday.' },
+    { sentence: '她从地上捡起那枚硬币，小心地放进口袋。', prompt: 'What does the whole sentence mean?', char: '她从地上捡起那枚硬币，小心地放进口袋。', meaning: 'She picked the coin up from the ground and carefully put it into her pocket.' },
+    { sentence: '会议推迟到下周二举行了。', prompt: 'What does the whole sentence mean?', char: '会议推迟到下周二举行了。', meaning: 'The meeting has been postponed until next Tuesday.' },
+    { sentence: '我们昨天沿着河边散步到了很晚。', prompt: 'What does the whole sentence mean?', char: '我们昨天沿着河边散步到了很晚。', meaning: 'We strolled along the riverbank until late last night.' }
+  ];
+
+  ctx.__initTestDomRefs();
+  ctx.__setMode('sentence');
+  ctx.__setSentenceModeDataset(sentencePool);
+  ctx.__setCurrentQuestion(sentencePool[0]);
+
+  withRandomSequence(ctx, [0.24, 0.49, 0.74, 0.99], () => {
+    ctx.generateFuzzySentenceModeOptions();
+  });
+
+  ctx.__handleSentenceModeInput('teacher hand in homework friday');
+  let state = ctx.__getSentenceModeUiState();
+  assert.ok(state.highlightedIndex >= 0, 'sentence mode should highlight a best fuzzy match');
+  assert.strictEqual(state.options[state.highlightedIndex], 'The teacher told us to hand in the homework before Friday.', 'sentence mode should highlight the intended answer');
+
+  ctx.submitSentenceModeAnswer('The teacher told us to hand in the homework before Friday.');
+  state = ctx.__getSentenceModeUiState();
+  assert.strictEqual(state.locked, true, 'sentence mode should lock after submitting');
+  assert.strictEqual(state.feedback.type, 'correct', 'sentence mode should store correct feedback in UI state');
+  ctx.clearPendingNextQuestion();
+  console.log('✓ sentence mode Preact state tracks highlight and submission feedback');
 })();
 
 (function testToneMcUsesWholeWordPinyinWithoutToneMarks() {
