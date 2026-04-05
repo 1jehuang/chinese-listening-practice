@@ -97,6 +97,9 @@ let sentenceModeDifficulty = '';
 let sentenceModeDifficultyOptions = [];
 let sentenceModeUiState = null;
 const SENTENCE_MODE_DIFFICULTY_KEY_PREFIX = 'sentenceModeDifficulty::';
+let modeSidebarUiLoadPromise = null;
+let modeButtonDefinitions = [];
+let modeSidebarNav = null;
 
 // 3-column layout state for translation modes (text-to-meaning)
 let translationPreviousQuestion = null;
@@ -311,6 +314,8 @@ function ensureModeButton(mode, label) {
     btn.dataset.mode = mode;
     btn.textContent = label || mode;
     container.appendChild(btn);
+    syncModeButtonDefinitionsFromDom();
+    renderModeSidebar();
 }
 
 function cloneQuizDataArray(data) {
@@ -529,6 +534,88 @@ function loadScriptFile(src) {
         script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
         (document.head || document.body || document.documentElement).appendChild(script);
     });
+}
+
+function ensureModeSidebarUiLibrary() {
+    if (window.JcodeModeSidebarUI?.render) {
+        return Promise.resolve(window.JcodeModeSidebarUI);
+    }
+    if (modeSidebarUiLoadPromise) {
+        return modeSidebarUiLoadPromise;
+    }
+    modeSidebarUiLoadPromise = loadScriptFile('js/mode-sidebar-ui.js')
+        .then(() => {
+            if (!window.JcodeModeSidebarUI?.render) {
+                throw new Error('Mode sidebar UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeModeSidebarUI;
+        })
+        .finally(() => {
+            modeSidebarUiLoadPromise = null;
+        });
+    return modeSidebarUiLoadPromise;
+}
+
+function getModeSidebarNav() {
+    if (modeSidebarNav && document.body?.contains?.(modeSidebarNav)) {
+        return modeSidebarNav;
+    }
+    modeSidebarNav = document.querySelector('.sidebar nav') || document.querySelector('nav');
+    return modeSidebarNav;
+}
+
+function stripModeButtonActiveClasses(className = '') {
+    return String(className)
+        .replace(/\bactive\b/g, '')
+        .replace(/\bbg-blue-500\b/g, '')
+        .replace(/\btext-white\b/g, '')
+        .replace(/\bborder-blue-500\b/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function syncModeButtonDefinitionsFromDom() {
+    const nav = getModeSidebarNav();
+    if (!nav) return [];
+    modeButtonDefinitions = Array.from(nav.querySelectorAll('.mode-btn')).map((btn) => ({
+        mode: btn.dataset.mode,
+        label: btn.textContent || btn.dataset.mode || '',
+        className: stripModeButtonActiveClasses(btn.className || 'mode-btn')
+    })).filter(item => item.mode);
+    return modeButtonDefinitions;
+}
+
+function getActiveSidebarMode() {
+    return composerEnabled ? 'composer' : mode;
+}
+
+function markActiveModeButtonFallback() {
+    const activeMode = getActiveSidebarMode();
+    document.querySelectorAll('.mode-btn').forEach((btn) => {
+        const isActive = btn.dataset.mode === activeMode;
+        btn.classList.toggle('active', isActive);
+        btn.classList.toggle('bg-blue-500', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('border-blue-500', isActive);
+        btn.classList.toggle('border-gray-300', !isActive);
+    });
+}
+
+function renderModeSidebar() {
+    const nav = getModeSidebarNav();
+    if (!nav) return;
+    if (!modeButtonDefinitions.length) {
+        syncModeButtonDefinitionsFromDom();
+    }
+    if (window.JcodeModeSidebarUI?.render) {
+        window.JcodeModeSidebarUI.render(nav, {
+            items: modeButtonDefinitions,
+            activeMode: getActiveSidebarMode(),
+            onSelectMode: (selectedMode) => selectQuizMode(selectedMode)
+        });
+        return;
+    }
+    markActiveModeButtonFallback();
 }
 
 function ensureSentenceModeUiLibrary() {
@@ -16557,6 +16644,19 @@ function clearModeButtonActiveStates() {
     });
 }
 
+function selectQuizMode(selectedMode) {
+    clearModeButtonActiveStates();
+    applyModeChange(selectedMode, null);
+    resetModeTransientState();
+
+    score = 0;
+    total = 0;
+    updateStats();
+    generateQuestion();
+    updateComposerStatusDisplay();
+    renderModeSidebar();
+}
+
 function initQuizEventListeners() {
     // Setup event listeners
     checkBtn.addEventListener('click', checkAnswer);
@@ -16650,28 +16750,15 @@ function initQuizEventListeners() {
 
 function initModeButtons() {
     prioritizeMeaningModeButton();
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            clearModeButtonActiveStates();
-            applyModeChange(btn.dataset.mode, btn);
-            resetModeTransientState();
-
-            score = 0;
-            total = 0;
-            updateStats();
-            generateQuestion();
-            updateComposerStatusDisplay();
+    syncModeButtonDefinitionsFromDom();
+    ensureModeSidebarUiLibrary()
+        .then(() => renderModeSidebar())
+        .catch(() => {
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectQuizMode(btn.dataset.mode));
+            });
+            markActiveModeButtonFallback();
         });
-    });
-
-    // Set initial active button
-    const initialBtn = composerEnabled
-        ? document.querySelector(`[data-mode="composer"]`)
-        : document.querySelector(`[data-mode="${mode}"]`);
-    if (initialBtn) {
-        initialBtn.classList.add('active', 'bg-blue-500', 'text-white', 'border-blue-500');
-        initialBtn.classList.remove('border-gray-300');
-    }
 }
 
 function initQuiz(charactersData, userConfig = {}) {

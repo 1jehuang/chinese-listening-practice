@@ -2,12 +2,13 @@ const esbuild = require('esbuild');
 
 async function main() {
   await esbuild.build({
-    entryPoints: ['src/sentence-mode-ui.jsx'],
+    entryPoints: ['src/sentence-mode-ui.jsx', 'src/mode-sidebar-ui.jsx'],
     bundle: true,
     format: 'iife',
-    outfile: 'js/sentence-mode-ui.js',
+    outdir: 'js',
     jsxFactory: 'h',
     jsxFragment: 'Fragment',
+    entryNames: '[name]',
     target: ['es2018'],
     sourcemap: false,
     logLevel: 'info'

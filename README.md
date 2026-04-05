@@ -10,7 +10,7 @@ This repository follows the UW Chinese 111 course curriculum.
 
 Some pages load data/assets via JavaScript, so they work best when served over HTTP.
 
-If you edit the Preact sentence-mode island under `src/`, rebuild the browser bundle first:
+If you edit the Preact UI islands under `src/`, rebuild the browser bundles first:
 
 ```bash
 npm install
