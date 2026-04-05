@@ -331,6 +331,7 @@ const vocab = [
   const { ctx } = createContext();
   const warmed = [];
   ctx.preloadPromptAudio = (question) => warmed.push(question.char);
+  ctx.__setMode('audio-to-meaning');
   ctx.__setCurrentQuestion(vocab[0]);
   ctx.__setUpcomingQuestion(vocab[2]);
 
@@ -338,6 +339,39 @@ const vocab = [
 
   assert.deepStrictEqual(warmed, ['中', '国'], 'prompt registration should preload both current and upcoming audio');
   console.log('✓ prompt registration preloads current and upcoming audio');
+})();
+
+(function testPromptAudioModeDetection() {
+  const { ctx } = createContext();
+  ctx.__setMode('audio-to-meaning');
+  assert.strictEqual(ctx.modeUsesPromptAudio(), true, 'audio-to-meaning should be recognized as a prompt-audio mode');
+
+  ctx.__setMode('char-to-meaning');
+  assert.strictEqual(ctx.modeUsesPromptAudio(), false, 'char-to-meaning should not be treated as a prompt-audio mode');
+
+  ctx.__setMode('blend');
+  ctx.__setBlendDirection('audio-to-meaning');
+  assert.strictEqual(ctx.modeUsesPromptAudio(), true, 'blend audio directions should be treated as prompt-audio modes');
+  console.log('✓ prompt-audio mode detection matches audio quiz modes');
+})();
+
+(function testWarmPromptHelpersRespectCurrentMode() {
+  const { ctx } = createContext();
+  const warmed = [];
+  ctx.preloadPromptAudio = (question) => warmed.push(question.char);
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setUpcomingQuestion(vocab[2]);
+
+  ctx.__setMode('char-to-meaning');
+  ctx.warmPromptAudioForCurrentMode();
+  ctx.warmUpcomingPromptAudioForCurrentMode();
+  assert.deepStrictEqual(warmed, [], 'non-audio modes should not prewarm prompt audio');
+
+  ctx.__setMode('audio-to-meaning');
+  ctx.warmPromptAudioForCurrentMode();
+  ctx.warmUpcomingPromptAudioForCurrentMode();
+  assert.deepStrictEqual(warmed, ['中', '国'], 'audio prompt helpers should warm both current and upcoming prompts');
+  console.log('✓ prompt warmup helpers only preload audio-capable modes');
 })();
 
 (function testEnsureAudioOriginsPreconnectedAddsRemoteHintsOnce() {

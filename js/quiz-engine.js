@@ -7045,6 +7045,7 @@ function generateQuestion(options = {}) {
     currentQuestion = nextQuestion;
     updatePreviewDisplay();
     window.currentQuestion = currentQuestion;
+    warmPromptAudioForCurrentMode(currentQuestion);
     logDebugEvent('question-selected', {
         char: currentQuestion?.char,
         mode,
@@ -7328,6 +7329,26 @@ function warmPromptAudio(question) {
     preloadPromptAudio(question);
 }
 
+function modeUsesPromptAudio(activeMode = mode) {
+    if (activeMode === 'audio-to-pinyin' || activeMode === 'audio-to-meaning' || activeMode === 'dictation-chat') {
+        return true;
+    }
+    if (activeMode === 'blend' || activeMode === 'blend-mc') {
+        return blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin';
+    }
+    return false;
+}
+
+function warmPromptAudioForCurrentMode(question = currentQuestion) {
+    if (!modeUsesPromptAudio()) return;
+    warmPromptAudio(question);
+}
+
+function warmUpcomingPromptAudioForCurrentMode(question = upcomingQuestion) {
+    if (!modeUsesPromptAudio()) return;
+    warmPromptAudio(question);
+}
+
 function getInlinePromptAudioHtml(subtitle) {
     return `
         <div class="prompt-audio-callout">
@@ -7348,8 +7369,8 @@ function registerCurrentPromptAudio(options = {}) {
     const pinyinOptions = (questionForPlayback.pinyin || '').split('/');
     const firstPinyin = (pinyinOptions[0] || '').trim();
 
-    warmPromptAudio(questionForPlayback);
-    warmPromptAudio(upcomingQuestion);
+    warmPromptAudioForCurrentMode(questionForPlayback);
+    warmUpcomingPromptAudioForCurrentMode(upcomingQuestion);
 
     const playCurrentPrompt = () => {
         if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -8897,6 +8918,7 @@ function renderBlendLayout() {
         const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
         upcomingQuestion = selectNextQuestion(exclusions);
     }
+    warmUpcomingPromptAudioForCurrentMode(upcomingQuestion);
 
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
     const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
@@ -10460,6 +10482,7 @@ function renderThreeColumnMeaningLayout() {
         const exclusions = currentQuestion?.char ? [currentQuestion.char] : [];
         upcomingQuestion = selectNextQuestion(exclusions);
     }
+    warmUpcomingPromptAudioForCurrentMode(upcomingQuestion);
 
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
     const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
