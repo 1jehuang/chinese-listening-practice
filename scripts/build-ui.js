@@ -2,7 +2,7 @@ const esbuild = require('esbuild');
 
 async function main() {
   await esbuild.build({
-    entryPoints: ['src/sentence-mode-ui.jsx', 'src/mode-sidebar-ui.jsx'],
+    entryPoints: ['src/sentence-mode-ui.jsx', 'src/mode-sidebar-ui.jsx', 'src/confidence-panel-ui.jsx'],
     bundle: true,
     format: 'iife',
     outdir: 'js',

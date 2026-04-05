@@ -638,6 +638,26 @@ function ensureSentenceModeUiLibrary() {
     return sentenceModeUiLoadPromise;
 }
 
+function ensureConfidencePanelUiLibrary() {
+    if (window.JcodeConfidencePanelUI?.render) {
+        return Promise.resolve(window.JcodeConfidencePanelUI);
+    }
+    if (confidencePanelUiLoadPromise) {
+        return confidencePanelUiLoadPromise;
+    }
+    confidencePanelUiLoadPromise = loadScriptFile('js/confidence-panel-ui.js')
+        .then(() => {
+            if (!window.JcodeConfidencePanelUI?.render) {
+                throw new Error('Confidence panel UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeConfidencePanelUI;
+        })
+        .finally(() => {
+            confidencePanelUiLoadPromise = null;
+        });
+    return confidencePanelUiLoadPromise;
+}
+
 function unmountSentenceModeUi() {
     if (document.body?.dataset) {
         delete document.body.dataset.sentenceUi;
@@ -1499,8 +1519,7 @@ const CONFIDENCE_FORMULA_KEY = 'quiz_confidence_formula';
 const CONFIDENCE_RENDER_LIMIT = 150;          // cap list rendering to avoid huge DOM on big decks
 const CONFIDENCE_AUTO_HIDE_THRESHOLD = 400;   // default-hide tracker when deck exceeds this size
 let confidencePanel = null;
-let confidenceListElement = null;
-let confidenceSummaryElement = null;
+let confidencePanelContentElement = null;
 let confidencePanelVisible = true;
 let hideMeaningChoices = false;
 let confidenceTrackingEnabled = true;
@@ -1511,6 +1530,7 @@ const CONFIDENCE_FORMULAS = {
     BKT: 'bkt'               // Bayesian Knowledge Tracing
 };
 let confidenceFormula = CONFIDENCE_FORMULAS.BKT;
+let confidencePanelUiLoadPromise = null;
 
 
 const MODE_CONFIG = {
@@ -5356,7 +5376,7 @@ function setupInputShortcutHints() {
 
 function ensureConfidencePanel() {
     if (typeof document === 'undefined') return;
-    if (confidencePanel && confidenceListElement && confidenceSummaryElement) return;
+    if (confidencePanel && confidencePanelContentElement) return;
 
     let panel = document.getElementById('confidencePanel');
     if (!panel) {
@@ -5365,19 +5385,9 @@ function ensureConfidencePanel() {
         // Fixed right-side panel styling
         panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 flex flex-col z-40';
         panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem; transition: transform 0.2s ease;';
-        panel.innerHTML = `
-            <div id="confidencePanelContent">
-                <div class="flex items-center justify-between gap-2 mb-2">
-                    <div>
-                        <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
-                        <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
-                        <div id="confidenceGoalBadge" class="hidden inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">All ≥ ${CONFIDENCE_GOAL}</div>
-                    </div>
-                </div>
-                <div id="confidenceSummary" class="text-xs text-gray-500 mb-2"></div>
-                <div id="confidenceList" class="space-y-1 flex-1 overflow-y-auto pr-1"></div>
-            </div>
-        `;
+        const content = document.createElement('div');
+        content.id = 'confidencePanelContent';
+        panel.appendChild(content);
         document.body.appendChild(panel);
 
         // Create pull tab as separate fixed element
@@ -5391,9 +5401,15 @@ function ensureConfidencePanel() {
         document.body.appendChild(pullTab);
     }
 
+    let contentRoot = document.getElementById('confidencePanelContent');
+    if (!contentRoot) {
+        contentRoot = document.createElement('div');
+        contentRoot.id = 'confidencePanelContent';
+        panel.appendChild(contentRoot);
+    }
+
     confidencePanel = panel;
-    confidenceListElement = panel.querySelector('#confidenceList');
-    confidenceSummaryElement = panel.querySelector('#confidenceSummary');
+    confidencePanelContentElement = contentRoot;
 
     const pullTab = document.getElementById('confidencePullTab');
     if (pullTab && !pullTab.dataset.bound) {
@@ -5414,21 +5430,23 @@ function ensureConfidencePanel() {
         });
     }
 
-    const trackingToggle = document.getElementById('confidenceTrackingToggle');
-    if (trackingToggle && !trackingToggle.dataset.bound) {
-        trackingToggle.dataset.bound = 'true';
-        trackingToggle.addEventListener('click', toggleConfidenceTracking);
-    }
-
     // Apply persisted visibility and tracking state
     setConfidencePanelVisible(confidencePanelVisible, { skipRender: true });
     updateConfidenceTrackingUI();
+
+    ensureConfidencePanelUiLibrary()
+        .then(() => {
+            if (confidencePanelVisible) {
+                renderConfidenceList();
+            }
+        })
+        .catch(() => {});
 }
 
 const CONFIDENCE_SECTIONED_THRESHOLD = 50; // use 3-section layout when deck exceeds this size
 const CONFIDENCE_SECTION_SIZE = 10;        // number of items per section in sectioned view
 
-function renderConfidenceRow(entry, isBKT, minScore, maxScore) {
+function buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore) {
     const { item, stats, score } = entry;
     const served = stats.served || 0;
     const correct = stats.correct || 0;
@@ -5436,73 +5454,76 @@ function renderConfidenceRow(entry, isBKT, minScore, maxScore) {
     const pinyin = item.pinyin ? item.pinyin.split('/')[0].trim() : '';
     const span = Math.max(0.0001, maxScore - minScore);
 
-    let pct, barColor, scoreDisplay;
+    let pct, barClass, scoreDisplay;
     if (isBKT) {
         pct = Math.max(0, Math.min(100, Math.round(score * 100)));
-        barColor = score >= BKT_MASTERY_THRESHOLD ? 'bg-emerald-500' : (score >= 0.5 ? 'bg-yellow-500' : 'bg-amber-500');
+        barClass = score >= BKT_MASTERY_THRESHOLD ? 'bg-emerald-500' : (score >= 0.5 ? 'bg-yellow-500' : 'bg-amber-500');
         scoreDisplay = `${pct}%`;
     } else {
         const normalized = (score - minScore) / span;
         pct = Math.max(0, Math.min(100, Math.round(normalized * 100)));
-        barColor = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
+        barClass = pct < 35 ? 'bg-amber-500' : (pct < 70 ? 'bg-yellow-500' : 'bg-emerald-500');
         scoreDisplay = score.toFixed(2);
     }
 
-    const masteredBadge = isBKT && score >= BKT_MASTERY_THRESHOLD
-        ? '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">✓</span>'
-        : '';
-
-    // For long text (sentences), use smaller font and truncate
     const charText = item.char || '?';
     const isLongText = charText.length > 6;
     const displayChar = isLongText ? charText.slice(0, 12) + (charText.length > 12 ? '…' : '') : charText;
-    const charClass = isLongText ? 'text-sm' : 'text-2xl';
+
+    return {
+        key: `${item.char || '?'}::${pinyin || 'none'}::${scoreDisplay}`,
+        charTitle: charText,
+        charDisplay: displayChar,
+        charClass: isLongText ? 'text-sm' : 'text-2xl',
+        pinyinDisplay: pinyin ? `${pinyin.slice(0, 8)}${pinyin.length > 8 ? '…' : ''}` : '',
+        metaLabel: served ? `${accPct}% · ${served}` : 'new',
+        barClass,
+        barPercent: pct,
+        scoreDisplay,
+        showMasteredBadge: isBKT && score >= BKT_MASTERY_THRESHOLD
+    };
+}
+
+function renderConfidenceRowHtml(row) {
+    const masteredBadge = row.showMasteredBadge
+        ? '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">✓</span>'
+        : '';
+    const pinyinHtml = row.pinyinDisplay
+        ? `<div class="text-xs text-gray-600 truncate max-w-[60px]">${escapeHtml(row.pinyinDisplay)}</div>`
+        : '';
 
     return `
         <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
             <div class="flex items-center gap-2 min-w-0 overflow-hidden">
-                <span class="${charClass} font-semibold text-gray-900 truncate" title="${escapeHtml(charText)}">${escapeHtml(displayChar)}</span>
+                <span class="${row.charClass} font-semibold text-gray-900 truncate" title="${escapeHtml(row.charTitle)}">${escapeHtml(row.charDisplay)}</span>
                 <div class="min-w-0 shrink-0">
-                    ${pinyin ? `<div class="text-xs text-gray-600 truncate max-w-[60px]">${escapeHtml(pinyin.slice(0, 8))}${pinyin.length > 8 ? '…' : ''}</div>` : ''}
-                    <div class="text-[11px] text-gray-500 whitespace-nowrap">${served ? `${accPct}% · ${served}` : 'new'}</div>
+                    ${pinyinHtml}
+                    <div class="text-[11px] text-gray-500 whitespace-nowrap">${escapeHtml(row.metaLabel)}</div>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 <div class="w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div class="h-full ${barColor}" style="width: ${pct}%;"></div>
+                    <div class="h-full ${row.barClass}" style="width: ${row.barPercent}%;"></div>
                 </div>
-                <span class="text-[10px] font-semibold text-gray-700">${scoreDisplay}${masteredBadge}</span>
+                <span class="text-[10px] font-semibold text-gray-700">${escapeHtml(row.scoreDisplay)}${masteredBadge}</span>
             </div>
         </div>
     `;
 }
 
-function renderConfidenceSection(title, entries, isBKT, minScore, maxScore, colorClass) {
-    if (!entries.length) return '';
-    const rows = entries.map(e => renderConfidenceRow(e, isBKT, minScore, maxScore)).join('');
-    return `
-        <div class="mb-4">
-            <div class="text-xs font-semibold uppercase tracking-wide ${colorClass} mb-2 px-2">${title}</div>
-            ${rows}
-        </div>
-    `;
-}
-
-function renderConfidenceList() {
-    if (typeof document === 'undefined') return;
-    ensureConfidencePanel();
-    if (!confidenceListElement) return;
-
-    if (!confidencePanelVisible) return;
-
+function buildConfidencePanelViewModel() {
     const pool = (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
         ? originalQuizCharacters
         : (Array.isArray(quizCharacters) ? quizCharacters : []);
 
     if (!pool.length) {
-        confidenceListElement.innerHTML = '<div class="text-xs text-gray-500">No words loaded yet.</div>';
-        if (confidenceSummaryElement) confidenceSummaryElement.textContent = '';
-        return;
+        return {
+            summary: '',
+            goalReached: false,
+            goalLabel: 'All mastered',
+            sections: [],
+            emptyMessage: 'No words loaded yet.'
+        };
     }
 
     const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
@@ -5524,49 +5545,110 @@ function renderConfidenceList() {
     const maxScore = Math.max(...allScores);
     const skillLabel = getCurrentSkillKey();
     const allAboveGoal = scored.length > 0 && scored.every(s => s.score >= goalThreshold);
+    const formulaLabel = isBKT ? 'BKT' : 'heuristic';
+    const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
 
-    // Use sectioned view for large decks
+    let sections;
+    let summary;
+
     if (totalCount > CONFIDENCE_SECTIONED_THRESHOLD) {
         const sectionSize = CONFIDENCE_SECTION_SIZE;
         const lowest = scored.slice(0, sectionSize);
         const middleStart = Math.floor((totalCount - sectionSize) / 2);
         const middle = scored.slice(middleStart, middleStart + sectionSize);
-        const highest = scored.slice(-sectionSize).reverse(); // reverse so highest first
+        const highest = scored.slice(-sectionSize).reverse();
 
-        const html =
-            renderConfidenceSection(`Lowest Confidence (${sectionSize})`, lowest, isBKT, minScore, maxScore, 'text-amber-600') +
-            renderConfidenceSection(`Middle (${sectionSize})`, middle, isBKT, minScore, maxScore, 'text-yellow-600') +
-            renderConfidenceSection(`Highest Confidence (${sectionSize})`, highest, isBKT, minScore, maxScore, 'text-emerald-600');
-
-        confidenceListElement.innerHTML = html;
-
-        if (confidenceSummaryElement) {
-            const formulaLabel = isBKT ? 'BKT' : 'heuristic';
-            const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
-            confidenceSummaryElement.textContent = `${totalCount} words (sectioned view) · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
-        }
+        sections = [
+            {
+                key: 'lowest',
+                title: `Lowest Confidence (${sectionSize})`,
+                colorClass: 'text-amber-600',
+                rows: lowest.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
+            },
+            {
+                key: 'middle',
+                title: `Middle (${sectionSize})`,
+                colorClass: 'text-yellow-600',
+                rows: middle.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
+            },
+            {
+                key: 'highest',
+                title: `Highest Confidence (${sectionSize})`,
+                colorClass: 'text-emerald-600',
+                rows: highest.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
+            }
+        ];
+        summary = `${totalCount} words (sectioned view) · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
     } else {
-        // Original flat view for smaller decks
         const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, totalCount);
         const visible = scored.slice(0, renderCount);
+        const scopeText = renderCount < totalCount
+            ? `Showing lowest ${renderCount}/${totalCount}`
+            : `${totalCount} words`;
 
-        const rows = visible.map(entry => renderConfidenceRow(entry, isBKT, minScore, maxScore)).join('');
-
-        confidenceListElement.innerHTML = rows;
-        if (confidenceSummaryElement) {
-            const formulaLabel = isBKT ? 'BKT' : 'heuristic';
-            const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
-            const scopeText = renderCount < totalCount
-                ? `Showing lowest ${renderCount}/${totalCount}`
-                : `${totalCount} words`;
-            confidenceSummaryElement.textContent = `${scopeText} · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
-        }
+        sections = [{
+            key: 'all',
+            title: '',
+            colorClass: '',
+            rows: visible.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
+        }];
+        summary = `${scopeText} · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
     }
 
-    const goalBadge = document.getElementById('confidenceGoalBadge');
-    if (goalBadge) {
-        goalBadge.classList.toggle('hidden', !allAboveGoal);
+    return {
+        summary,
+        goalReached: allAboveGoal,
+        goalLabel: isBKT ? 'All mastered' : `All ≥ ${CONFIDENCE_GOAL}`,
+        sections,
+        emptyMessage: ''
+    };
+}
+
+function renderConfidencePanelFallback(container, viewModel) {
+    if (!container) return;
+    const goalBadge = viewModel.goalReached
+        ? `<div class="inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">${escapeHtml(viewModel.goalLabel)}</div>`
+        : '';
+    const sectionsHtml = viewModel.sections.length
+        ? viewModel.sections.map(section => {
+            const titleHtml = section.title
+                ? `<div class="text-xs font-semibold uppercase tracking-wide ${section.colorClass} mb-2 px-2">${escapeHtml(section.title)}</div>`
+                : '';
+            const rowsHtml = section.rows.map(renderConfidenceRowHtml).join('');
+            return `<div class="mb-4">${titleHtml}${rowsHtml}</div>`;
+        }).join('')
+        : `<div class="text-xs text-gray-500">${escapeHtml(viewModel.emptyMessage)}</div>`;
+
+    container.innerHTML = `
+        <div class="flex h-full flex-col">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div>
+                    <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
+                    <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
+                    ${goalBadge}
+                </div>
+            </div>
+            <div id="confidenceSummary" class="text-xs text-gray-500 mb-2">${escapeHtml(viewModel.summary || '')}</div>
+            <div id="confidenceList" class="space-y-1 flex-1 overflow-y-auto pr-1">${sectionsHtml}</div>
+        </div>
+    `;
+}
+
+function renderConfidenceList() {
+    if (typeof document === 'undefined') return;
+    ensureConfidencePanel();
+    if (!confidencePanelContentElement) return;
+
+    if (!confidencePanelVisible) return;
+
+    const viewModel = buildConfidencePanelViewModel();
+
+    if (window.JcodeConfidencePanelUI?.render) {
+        window.JcodeConfidencePanelUI.render(confidencePanelContentElement, viewModel);
+        return;
     }
+
+    renderConfidencePanelFallback(confidencePanelContentElement, viewModel);
 }
 
 function ensureConfettiStyles() {
@@ -16463,6 +16545,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     quizCharacters = charactersData;
     config = userConfig || {};
     ensureSentenceModeUiLibrary().catch(() => {});
+    ensureConfidencePanelUiLibrary().catch(() => {});
     sentenceModeDataset = normalizeSentenceModeDataset(config.sentenceModeDataset || []);
     sentenceModeLoadPromise = null;
     sentenceModeDifficultyOptions = [];

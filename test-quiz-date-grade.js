@@ -359,5 +359,26 @@ test('confidence panel defaults visible and rerenders when opened', () => {
     assert(ctx.__getConfidencePanelVisible() === true, 'confidence panel should reopen without going blank');
 });
 
+test('confidence panel uses island renderer when available', () => {
+    resetState();
+    ctx.window.JcodeConfidencePanelUI = {
+        render(container, props) {
+            container.dataset.renderedByIsland = 'true';
+            container.textContent = props.summary || '';
+        }
+    };
+    ctx.__setQuizCharacters([{ char: '学', pinyin: 'xué', meaning: 'study' }]);
+    ctx.__setSchedulerStats({
+        '学::meaning': { served: 4, correct: 3, wrong: 1, streak: 1, bktPLearned: 0.81 }
+    });
+
+    ctx.__renderConfidenceList();
+
+    const content = documentStub.getElementById('confidencePanelContent');
+    assert(content, 'confidence panel content root should be created');
+    assert(content.dataset.renderedByIsland === 'true', 'confidence island renderer should take over when present');
+    delete ctx.window.JcodeConfidencePanelUI;
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
