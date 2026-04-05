@@ -556,8 +556,25 @@ function setChoiceModeListLayout(active) {
     choiceMode.classList.toggle('choice-list', Boolean(active));
 }
 
+function shouldAttachChoiceModeToSidebar() {
+    const bodyChoiceSidebar = document.body?.dataset?.choiceSidebar;
+    const rootChoiceSidebar = document.documentElement?.dataset?.choiceSidebar;
+    return bodyChoiceSidebar === 'true' || rootChoiceSidebar === 'true';
+}
+
+function removeChoiceSidebarSlot() {
+    const slot = document.getElementById('choiceSidebarSlot');
+    if (slot) slot.remove();
+}
+
 function attachChoiceModeToSidebar() {
     if (!choiceMode) return;
+    if (!shouldAttachChoiceModeToSidebar()) {
+        restoreChoiceModeHome();
+        removeChoiceSidebarSlot();
+        return;
+    }
+
     const sidebar = document.querySelector('.sidebar');
     if (!sidebar) return;
 
@@ -590,6 +607,7 @@ function restoreChoiceModeHome() {
     } else {
         choiceModeHome.appendChild(choiceMode);
     }
+    removeChoiceSidebarSlot();
 }
 
 // Timer state

@@ -46,6 +46,7 @@ function makeElement(tagName = 'div') {
 
 function createContext() {
   const storage = {};
+  const inputSectionEl = makeElement('div');
   const questionDisplayEl = makeElement('div');
   const audioSectionEl = makeElement('div');
   const playAudioBtnEl = makeElement('button');
@@ -58,6 +59,9 @@ function createContext() {
   const choiceModeEl = makeElement('div');
   const hintEl = makeElement('div');
   const feedbackEl = makeElement('div');
+  inputSectionEl.appendChild(typeModeEl);
+  inputSectionEl.appendChild(choiceModeEl);
+  inputSectionEl.appendChild(fuzzyModeEl);
   const elements = new Map([
     ['questionDisplay', questionDisplayEl],
     ['audioSection', audioSectionEl],
@@ -274,6 +278,19 @@ const vocab = [
   const correctOption = options.find(option => option.char === '大');
   assert.ok(correctOption.innerHTML.includes('dà'), 'meaning-to-char options should show pinyin metadata');
   console.log('✓ meaning-to-char excludes same-meaning distractors and shows pinyin');
+})();
+
+(function testChoiceModeStaysInMainPanelByDefault() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+
+  const choiceModeEl = ctx.document.getElementById('choiceMode');
+  const originalParent = choiceModeEl.parentElement;
+
+  ctx.attachChoiceModeToSidebar();
+
+  assert.strictEqual(choiceModeEl.parentElement, originalParent, 'choice mode should stay in its original container unless sidebar attachment is explicitly enabled');
+  console.log('✓ choice mode stays in the main panel by default');
 })();
 
 
