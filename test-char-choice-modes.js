@@ -301,6 +301,24 @@ const vocab = [
   console.log('✓ meaning-to-char excludes same-meaning distractors and shows pinyin');
 })();
 
+(function testQuestionPromptEscapesDynamicMeaningHtml() {
+  const { ctx } = createContext();
+  const unsafe = { char: '恶', pinyin: 'è', meaning: '<img src=x onerror=alert(1)>' };
+  ctx.__initTestDomRefs();
+  ctx.__setQuizCharacters([unsafe, ...vocab]);
+  ctx.__setMode('meaning-to-char');
+  ctx.__setCurrentQuestion(unsafe);
+
+  withRandomSequence(ctx, [0.75, 0.00, 0.15, 0.30, 0.95], () => {
+    ctx.renderQuestionUiForChoiceModes();
+  });
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'), 'dynamic meaning should be escaped in question prompt HTML');
+  assert.ok(!html.includes('<img src=x onerror=alert(1)>'), 'raw HTML should not be injected into the question prompt');
+  console.log('✓ question prompt escapes dynamic meaning HTML');
+})();
+
 (function testChoiceModeStaysInMainPanelByDefault() {
   const { ctx } = createContext();
   ctx.__initTestDomRefs();

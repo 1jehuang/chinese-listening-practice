@@ -1,1 +1,8 @@
 node_modules/
+.venv/
+__pycache__/
+*.log
+.DS_Store
+.playwright-mcp/
+test-results/
+coverage/

@@ -7293,7 +7293,7 @@ function restoreDictationChatAudio() {
 function renderQuestionUiForChoiceModes() {
     setChoiceModeListLayout(false);
     if (mode === 'char-to-pinyin-mc' && choiceMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div>`;
         generatePinyinOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
@@ -7316,7 +7316,7 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'pinyin-to-char' && choiceMode) {
-        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${currentQuestion.pinyin}</div>`;
+        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${escapeHtml(currentQuestion.pinyin)}</div>`;
         generateCharOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
@@ -7364,7 +7364,7 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'meaning-to-char' && choiceMode) {
-        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
+        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${escapeHtml(currentQuestion.meaning)}</div>`;
         generateCharOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
@@ -7373,7 +7373,7 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'meaning-to-char-pinyin' && fuzzyMode) {
-        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${currentQuestion.meaning}</div>`;
+        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${escapeHtml(currentQuestion.meaning)}</div>`;
         if (fuzzyInput) {
             fuzzyInput.placeholder = 'Type pinyin to filter choices...';
         }
@@ -7387,7 +7387,7 @@ function renderQuestionUiForChoiceModes() {
 
 function renderQuestionUiForHandwritingModes() {
     if (mode === 'stroke-order' && strokeOrderMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-lg text-gray-500 mt-2">Trace each stroke in order</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div><div class="text-center text-lg text-gray-500 mt-2">Trace each stroke in order</div>`;
         strokeOrderMode.style.display = 'block';
         initStrokeOrder();
         return true;
@@ -7424,7 +7424,7 @@ function renderQuestionUiForHandwritingModes() {
 
     if (mode === 'draw-char' && drawCharMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
-        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div></div>`;
+        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${escapeHtml(displayPinyin)}</div></div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
@@ -7509,7 +7509,7 @@ function renderQuestionUiForComponentModes() {
         markSchedulerServed(currentQuestion);
         updateCurrentWordConfidence();
 
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${currentQuestion.char}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
+        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div><div class="text-center text-xl text-gray-600 mt-4">Select ALL radicals in this character</div>`;
         radicalPracticeMode.style.display = 'block';
         generateRadicalOptions();
         return false;
@@ -13932,7 +13932,7 @@ function submitFullscreenDrawing() {
             generateQuestion();
             const prompt = document.getElementById('fullscreenPrompt');
             if (prompt && currentQuestion) {
-                prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
+                prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
             }
             renderDrawMeaningChoices('fullscreenMeaningChoices');
 
@@ -13985,7 +13985,7 @@ function nextFullscreenQuestion() {
 
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
-        prompt.innerHTML = `Draw: ${currentQuestion.pinyin}`;
+        prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
     }
 
     updateFullscreenConfidence();
