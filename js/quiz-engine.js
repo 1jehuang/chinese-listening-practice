@@ -5239,38 +5239,63 @@ function getMeasuredWidth(element) {
     return fallback > 0 ? Math.round(fallback) : 0;
 }
 
+function updateQuizHeaderSafeArea() {
+    const quizHeader = document.querySelector('.quiz-header');
+    if (!quizHeader) return;
+
+    const narrowViewport = isNarrowViewport();
+    const baseTop = narrowViewport ? 96 : 8;
+    const baseLeft = 76;
+    const rightPanelWidth = (!narrowViewport && confidencePanelVisible)
+        ? (getMeasuredWidth(confidencePanel) + 24)
+        : 24;
+
+    quizHeader.style.marginTop = `${baseTop}px`;
+    quizHeader.style.paddingTop = '0px';
+    quizHeader.style.paddingLeft = `${baseLeft}px`;
+    quizHeader.style.paddingRight = `${Math.max(72, rightPanelWidth)}px`;
+    quizHeader.style.boxSizing = 'border-box';
+}
+
 function updateRightSideSpacing() {
     const appContainer = document.querySelector('.app-container');
+    const legacyContainer = document.querySelector('.flex.min-h-screen');
     const mainContent = document.querySelector('.main-content');
-    const target = appContainer || document.body;
+    const legacyCard = legacyContainer
+        ? legacyContainer.querySelector('.max-w-3xl.mx-auto.bg-white.rounded-xl.shadow-lg.p-6.md\\:p-8')
+        : null;
+    const target = appContainer || legacyContainer || document.body;
     if (!target) return;
     const gutter = 16;
+    const narrowViewport = isNarrowViewport();
 
-    if (document.body?.classList?.contains('study-mode-active') || isNarrowViewport()) {
-        target.style.paddingRight = '0px';
-        return;
+    let reservedRight = 0;
+    if (!document.body?.classList?.contains('study-mode-active') && !narrowViewport) {
+        if (chatPanelVisible) {
+            reservedRight = 320 + gutter;
+        } else if (confidencePanelVisible) {
+            const panelWidth = getMeasuredWidth(confidencePanel);
+            reservedRight = panelWidth ? (panelWidth + gutter) : 0;
+        }
     }
 
-    // Clear any leftover margin from old approach
+    if (target === document.body) {
+        target.style.paddingRight = reservedRight ? `${reservedRight}px` : '0px';
+    } else {
+        target.style.width = reservedRight ? `calc(100vw - ${reservedRight}px)` : '100vw';
+        target.style.maxWidth = reservedRight ? `calc(100vw - ${reservedRight}px)` : '100vw';
+        target.style.paddingRight = '0px';
+        target.style.boxSizing = 'border-box';
+    }
+
     if (mainContent) {
         mainContent.style.marginRight = '';
     }
-
-    // Chat panel takes priority when visible
-    if (chatPanelVisible) {
-        const chatPanelWidth = 320; // w-80 = 20rem
-        target.style.paddingRight = `${chatPanelWidth + gutter}px`;
-    } else if (confidencePanelVisible) {
-        const panelWidth = getMeasuredWidth(confidencePanel);
-        target.style.paddingRight = panelWidth ? `${panelWidth + gutter}px` : '0px';
-    } else {
-        target.style.paddingRight = '0px';
+    if (legacyCard) {
+        legacyCard.style.marginRight = reservedRight ? `${reservedRight}px` : '';
     }
 
-    // Add extra safety margin so fixed panels never overlap inputs on smaller widths
-    if (mainContent) {
-        mainContent.style.marginRight = confidencePanelVisible ? '24px' : '';
-    }
+    updateQuizHeaderSafeArea();
 }
 
 // Keep this for backward compatibility
@@ -5281,17 +5306,23 @@ function updateConfidenceLayoutSpacing(panelWidth) {
 function positionConfidencePullTab() {
     const pullTab = document.getElementById('confidencePullTab');
     if (!pullTab) return;
+    if (isNarrowViewport()) {
+        pullTab.style.display = 'none';
+        pullTab.style.right = '0';
+        return;
+    }
+    pullTab.style.display = '';
     const panelWidth = getMeasuredWidth(confidencePanel);
     pullTab.style.right = (confidencePanelVisible && panelWidth) ? `${panelWidth}px` : '0';
 }
 
 function setConfidencePanelVisible(visible, options = {}) {
-    confidencePanelVisible = Boolean(visible);
+    const narrowViewport = isNarrowViewport();
+    confidencePanelVisible = narrowViewport ? false : Boolean(visible);
     const pullTab = document.getElementById('confidencePullTab');
     const content = document.getElementById('confidencePanelContent');
 
     if (confidencePanelVisible) {
-        // Show panel
         if (confidencePanel) {
             confidencePanel.style.display = 'flex';
             confidencePanel.style.transform = 'translateX(0)';
@@ -5303,9 +5334,8 @@ function setConfidencePanelVisible(visible, options = {}) {
         }
         if (content) content.classList.remove('hidden');
     } else {
-        // Hide panel
         if (confidencePanel) {
-            confidencePanel.style.display = 'flex';
+            confidencePanel.style.display = narrowViewport ? 'none' : 'flex';
             confidencePanel.style.transform = 'translateX(100%)';
             confidencePanel.style.visibility = 'hidden';
         }
@@ -5316,6 +5346,7 @@ function setConfidencePanelVisible(visible, options = {}) {
         if (content) content.classList.add('hidden');
     }
 
+    positionConfidencePullTab();
     updateRightSideSpacing();
     saveConfidencePanelVisibility();
 

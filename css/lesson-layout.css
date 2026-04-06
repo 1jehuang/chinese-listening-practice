@@ -306,6 +306,10 @@ body.experimental-layout .app-container {
     .sidebar-mobile-toggle {
         display: flex !important;
     }
+
+    .home-btn {
+        top: 3.5rem;
+    }
 }
 
 .sidebar-mobile-toggle {
