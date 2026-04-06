@@ -5293,6 +5293,11 @@ function updateRightSideSpacing() {
     }
     if (legacyCard) {
         legacyCard.style.marginRight = reservedRight ? `${reservedRight}px` : '';
+        legacyCard.style.maxWidth = reservedRight
+            ? `calc(100vw - 16rem - ${reservedRight + 64}px)`
+            : '';
+        legacyCard.style.width = reservedRight ? '100%' : '';
+        legacyCard.style.boxSizing = 'border-box';
     }
 
     updateQuizHeaderSafeArea();

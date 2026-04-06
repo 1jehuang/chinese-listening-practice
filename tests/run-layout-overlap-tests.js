@@ -10,8 +10,15 @@ const PAGES = [
   'lesson-14-part-1.html',
   'lesson-13-16-cumulative.html',
   'lesson-1-quiz.html',
+  'lesson-1-temp-sentence.html',
   'common-words.html',
-  'lesson-1-temp-sentence.html'
+  'common-characters.html',
+  'lesson-10-cumulative.html',
+  'lesson-14-dictation.html',
+  'lesson-18-part-2.html',
+  'lesson-19-part-2.html',
+  'lesson-21-cumulative.html',
+  'lesson-1-4-common-words.html'
 ];
 const WIDTHS = [1440, 1180, 980, 820, 700, 600];
 const MODES_TO_TRY = ['sentence', 'draw-char'];
@@ -104,7 +111,6 @@ async function auditPage(browser, pagePath, width) {
 
   const mode = await maybeSwitchMode(page);
   const confidenceOpened = await ensureConfidencePanelOpen(page, width);
-  await page.waitForTimeout(250);
   await page.waitForTimeout(250);
 
   const audit = await page.evaluate(() => {
