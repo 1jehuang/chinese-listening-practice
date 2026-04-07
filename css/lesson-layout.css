@@ -303,6 +303,25 @@ body.experimental-layout .app-container {
         padding-left: 0 !important;
     }
 
+    .main-content {
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        align-items: stretch;
+        padding-bottom: 1rem;
+    }
+
+    .input-section {
+        max-width: none;
+        width: 100%;
+    }
+
+    .quiz-display {
+        flex: 0 0 auto;
+        justify-content: flex-start;
+        align-items: stretch;
+    }
+
     .sidebar-mobile-toggle {
         display: flex !important;
     }
