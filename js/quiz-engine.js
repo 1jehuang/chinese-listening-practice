@@ -5601,6 +5601,8 @@ function buildConfidencePanelViewModel() {
             summary: '',
             goalReached: false,
             goalLabel: 'All mastered',
+            pinnedLowest: null,
+            pinnedHighest: null,
             sections: [],
             emptyMessage: 'No words loaded yet.'
         };
@@ -5628,60 +5630,79 @@ function buildConfidencePanelViewModel() {
     const formulaLabel = isBKT ? 'BKT' : 'heuristic';
     const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
 
+    const pinnedLowest = buildConfidenceRowViewModel(scored[0], isBKT, minScore, maxScore);
+    const pinnedHighest = totalCount > 1
+        ? buildConfidenceRowViewModel(scored[totalCount - 1], isBKT, minScore, maxScore)
+        : null;
+    const scrollableEntries = totalCount > 2 ? scored.slice(1, -1) : [];
+    const scrollableCount = scrollableEntries.length;
+
     let sections;
     let summary;
 
-    if (totalCount > CONFIDENCE_SECTIONED_THRESHOLD) {
+    if (scrollableCount > CONFIDENCE_SECTIONED_THRESHOLD) {
         const sectionSize = CONFIDENCE_SECTION_SIZE;
-        const lowest = scored.slice(0, sectionSize);
-        const middleStart = Math.floor((totalCount - sectionSize) / 2);
-        const middle = scored.slice(middleStart, middleStart + sectionSize);
-        const highest = scored.slice(-sectionSize).reverse();
+        const lowest = scrollableEntries.slice(0, sectionSize);
+        const middleStart = Math.floor((scrollableCount - sectionSize) / 2);
+        const middle = scrollableEntries.slice(middleStart, middleStart + sectionSize);
+        const highest = scrollableEntries.slice(-sectionSize).reverse();
 
         sections = [
             {
                 key: 'lowest',
-                title: `Lowest Confidence (${sectionSize})`,
+                title: `Lowest Confidence (${Math.min(sectionSize, lowest.length)})`,
                 colorClass: 'text-amber-600',
                 rows: lowest.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
             },
             {
                 key: 'middle',
-                title: `Middle (${sectionSize})`,
+                title: `Middle (${Math.min(sectionSize, middle.length)})`,
                 colorClass: 'text-yellow-600',
                 rows: middle.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
             },
             {
                 key: 'highest',
-                title: `Highest Confidence (${sectionSize})`,
+                title: `Highest Confidence (${Math.min(sectionSize, highest.length)})`,
                 colorClass: 'text-emerald-600',
                 rows: highest.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
             }
-        ];
-        summary = `${totalCount} words (sectioned view) · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
+        ].filter(section => section.rows.length > 0);
+        summary = `${totalCount} words · extremes pinned · sectioned view · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
     } else {
-        const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, totalCount);
-        const visible = scored.slice(0, renderCount);
-        const scopeText = renderCount < totalCount
-            ? `Showing lowest ${renderCount}/${totalCount}`
+        const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, scrollableCount);
+        const visible = scrollableEntries.slice(0, renderCount);
+        const scopeText = renderCount < scrollableCount
+            ? `Showing middle ${renderCount}/${scrollableCount}`
             : `${totalCount} words`;
 
-        sections = [{
+        sections = visible.length ? [{
             key: 'all',
-            title: '',
+            title: visible.length && totalCount > 2 ? 'Middle' : '',
             colorClass: '',
             rows: visible.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
-        }];
-        summary = `${scopeText} · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
+        }] : [];
+        summary = `${scopeText} · extremes pinned · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
     }
 
     return {
         summary,
         goalReached: allAboveGoal,
         goalLabel: isBKT ? 'All mastered' : `All ≥ ${CONFIDENCE_GOAL}`,
+        pinnedLowest,
+        pinnedHighest,
         sections,
-        emptyMessage: ''
+        emptyMessage: totalCount > 0 ? 'No additional words between the pinned extremes.' : ''
     };
+}
+
+function renderPinnedConfidenceRowHtml(label, row, toneClass) {
+    if (!row) return '';
+    return `
+        <div class="rounded-xl border border-gray-200 bg-white/90 px-2 py-2 shadow-sm">
+            <div class="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${toneClass}">${escapeHtml(label)}</div>
+            ${renderConfidenceRowHtml(row)}
+        </div>
+    `;
 }
 
 function renderConfidencePanelFallback(container, viewModel) {
@@ -5699,17 +5720,24 @@ function renderConfidencePanelFallback(container, viewModel) {
         }).join('')
         : `<div class="text-xs text-gray-500">${escapeHtml(viewModel.emptyMessage)}</div>`;
 
+    const pinnedLowestHtml = renderPinnedConfidenceRowHtml('Lowest confidence', viewModel.pinnedLowest, 'text-amber-600');
+    const pinnedHighestHtml = viewModel.pinnedHighest
+        ? renderPinnedConfidenceRowHtml('Highest confidence', viewModel.pinnedHighest, 'text-emerald-600')
+        : '';
+
     container.innerHTML = `
-        <div class="flex h-full flex-col">
-            <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="flex h-full min-h-0 flex-col gap-2">
+            <div class="flex items-center justify-between gap-2 mb-1">
                 <div>
                     <div class="text-[11px] uppercase tracking-[0.28em] text-gray-400">Confidence</div>
                     <div class="text-sm font-semibold text-gray-900">Least → Most sure</div>
                     ${goalBadge}
                 </div>
             </div>
-            <div id="confidenceSummary" class="text-xs text-gray-500 mb-2">${escapeHtml(viewModel.summary || '')}</div>
-            <div id="confidenceList" class="space-y-1 flex-1 overflow-y-auto pr-1">${sectionsHtml}</div>
+            <div id="confidenceSummary" class="text-xs text-gray-500 mb-1">${escapeHtml(viewModel.summary || '')}</div>
+            ${pinnedLowestHtml}
+            <div id="confidenceList" class="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">${sectionsHtml}</div>
+            ${pinnedHighestHtml}
         </div>
     `;
 }
