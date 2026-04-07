@@ -26,8 +26,8 @@ from trackpad_write_practice import Calibration, TouchFrame, TouchpadReader, Tou
 class BridgeConfig:
     host: str = "127.0.0.1"
     port: int = 8766
-    smoothing_strength: float = 0.45
-    lift_debounce_ms: int = 55
+    smoothing_strength: float = 0.22
+    lift_debounce_ms: int = 35
     calibration: Calibration = field(default_factory=Calibration)
 
 
@@ -52,7 +52,9 @@ class NativeBridge:
         self.last_sample_time: Optional[float] = None
         self.pending_finish_deadline: Optional[float] = None
         self.pending_resume_origin: Optional[tuple[float, float]] = None
-        self.last_status_message = f"Using {spec.name} on {spec.path}"
+        self.last_status_message = (
+            f"Using {spec.name} on {spec.path} · smoothing {config.smoothing_strength:.2f} · debounce {config.lift_debounce_ms}ms"
+        )
 
     async def add_client(self, websocket: WebSocketServerProtocol) -> None:
         self.clients.add(websocket)
@@ -260,6 +262,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind the WebSocket server")
     parser.add_argument("--port", type=int, default=8876, help="Port to bind the WebSocket server")
     parser.add_argument("--device", help="Specific evdev device path, e.g. /dev/input/event10")
+    parser.add_argument("--smoothing", type=float, default=0.22, help="Smoothing strength from 0.0 to 1.0. Lower tracks fast strokes more directly.")
+    parser.add_argument("--debounce-ms", type=int, default=35, help="Lift debounce in milliseconds. Lower ends strokes faster.")
     parser.add_argument("--list-devices", action="store_true", help="List compatible touchpad devices and exit")
     return parser.parse_args()
 
@@ -284,7 +288,14 @@ def main() -> None:
         return
 
     spec = select_touchpad(args.device)
-    config = BridgeConfig(host=args.host, port=args.port)
+    smoothing = max(0.0, min(1.0, float(args.smoothing)))
+    debounce_ms = max(0, min(150, int(args.debounce_ms)))
+    config = BridgeConfig(
+        host=args.host,
+        port=args.port,
+        smoothing_strength=smoothing,
+        lift_debounce_ms=debounce_ms,
+    )
     asyncio.run(run_bridge(spec, config))
 
 

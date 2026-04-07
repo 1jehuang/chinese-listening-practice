@@ -4,6 +4,8 @@ set -euo pipefail
 REPO_DIR="/home/jeremy/chinese-listening-practice"
 HTTP_PORT="8010"
 BRIDGE_PORT="8876"
+BRIDGE_SMOOTHING="${TRACKPAD_BRIDGE_SMOOTHING:-0.22}"
+BRIDGE_DEBOUNCE_MS="${TRACKPAD_BRIDGE_DEBOUNCE_MS:-35}"
 DEFAULT_PAGE='lesson-15-part-1.html?mode=trackpad-draw'
 TARGET_PAGE="${1:-$DEFAULT_PAGE}"
 TARGET_URL="http://127.0.0.1:${HTTP_PORT}/${TARGET_PAGE}"
@@ -23,12 +25,10 @@ start_http_server() {
 }
 
 start_bridge() {
-  if pgrep -f "python3 .*scripts/trackpad_bridge.py" >/dev/null 2>&1; then
-    return
-  fi
+  pkill -f "python3 .*scripts/trackpad_bridge.py" >/dev/null 2>&1 || true
   (
     cd "$REPO_DIR"
-    nohup python3 scripts/trackpad_bridge.py --port "$BRIDGE_PORT" >"$BRIDGE_LOG" 2>&1 &
+    nohup python3 scripts/trackpad_bridge.py --port "$BRIDGE_PORT" --smoothing "$BRIDGE_SMOOTHING" --debounce-ms "$BRIDGE_DEBOUNCE_MS" >"$BRIDGE_LOG" 2>&1 &
   )
 }
 
