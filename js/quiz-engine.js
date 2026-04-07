@@ -12696,6 +12696,7 @@ function getRelativeTimestamp() {
 }
 
 function startDrawing(e) {
+    if (isTrackpadDrawMode()) return;
     isDrawing = true;
     const coords = getCanvasCoords(e);
     lastX = coords.x;
@@ -12710,6 +12711,7 @@ function startDrawing(e) {
 }
 
 function draw(e) {
+    if (isTrackpadDrawMode()) return;
     if (isPanning) return;
     if (!isDrawing) return;
     e.preventDefault();
@@ -12727,6 +12729,10 @@ function draw(e) {
 }
 
 function stopDrawing() {
+    if (isTrackpadDrawMode()) {
+        isDrawing = false;
+        return;
+    }
     if (isDrawing && currentStroke && currentStroke.x.length > 0) {
         strokes.push(currentStroke);
         undoneStrokes = []; // Clear redo history when new stroke is added
@@ -12761,6 +12767,7 @@ function handleCanvasMouseDown(e) {
 }
 
 function handleCanvasMouseMove(e) {
+    if (isTrackpadDrawMode()) return;
     if (isPanning) {
         e.preventDefault();
         const { rect, scaleX, scaleY } = getCanvasScaleFactors();
@@ -12775,6 +12782,7 @@ function handleCanvasMouseMove(e) {
 }
 
 function handleCanvasMouseUp(e) {
+    if (isTrackpadDrawMode()) return;
     if (isPanning) {
         isPanning = false;
         canvas.style.cursor = 'crosshair';
@@ -13980,6 +13988,7 @@ function getFullscreenCanvasCoords(e) {
 }
 
 function startFullscreenDrawing(e) {
+    if (isTrackpadDrawMode()) return;
     isDrawing = true;
     const coords = getFullscreenCanvasCoords(e);
     lastX = coords.x;
@@ -13993,6 +14002,7 @@ function startFullscreenDrawing(e) {
 }
 
 function drawFullscreen(e) {
+    if (isTrackpadDrawMode()) return;
     if (!isDrawing) return;
     e.preventDefault();
 
@@ -14012,6 +14022,10 @@ function drawFullscreen(e) {
 }
 
 function stopFullscreenDrawing() {
+    if (isTrackpadDrawMode()) {
+        isDrawing = false;
+        return;
+    }
     if (isDrawing && currentStroke && currentStroke.x.length > 0) {
         strokes.push(currentStroke);
         undoneStrokes = []; // Clear redo history when new stroke is added
@@ -14031,6 +14045,10 @@ function handleFullscreenTouchStart(e) {
 }
 
 function handleFullscreenTouchMove(e) {
+    if (isTrackpadDrawMode()) {
+        e.preventDefault();
+        return;
+    }
     if (!isDrawing) return;
     e.preventDefault();
     drawFullscreen(e);
