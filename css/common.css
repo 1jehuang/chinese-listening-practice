@@ -89,12 +89,38 @@ body.sentence-mode-active #fuzzyOptions button {
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
 
+body.sentence-mode-active[data-sentence-ui='preact'] .quiz-display {
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.5rem 0 1rem;
+}
+
 body.sentence-mode-active[data-sentence-ui='preact'] #feedback,
 body.sentence-mode-active[data-sentence-ui='preact'] #hint {
     display: none;
 }
 
+body.sentence-mode-active[data-sentence-ui='preact'] .question-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0;
+}
+
+body.sentence-mode-active[data-sentence-ui='preact'] .question-row #questionDisplay {
+    width: 100%;
+    max-width: 960px;
+    min-width: 0;
+    margin: 0 auto;
+}
+
+body.sentence-mode-active[data-sentence-ui='preact'] .input-section {
+    display: none;
+}
+
 .sentence-mode-shell {
+    width: min(100%, 960px);
     max-width: 960px;
     margin: 0 auto 1.25rem;
     display: grid;

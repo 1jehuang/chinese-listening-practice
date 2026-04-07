@@ -415,10 +415,19 @@
     const inputRef = A2(null);
     y2(() => {
       if (!locked && inputRef.current) {
-        inputRef.current.focus();
-        const value = inputRef.current.value || "";
-        if (typeof inputRef.current.setSelectionRange === "function") {
-          inputRef.current.setSelectionRange(value.length, value.length);
+        const input = inputRef.current;
+        const scrollContainer = input.closest(".quiz-display");
+        try {
+          input.focus({ preventScroll: true });
+        } catch (error) {
+          input.focus();
+        }
+        const value = input.value || "";
+        if (typeof input.setSelectionRange === "function") {
+          input.setSelectionRange(value.length, value.length);
+        }
+        if (scrollContainer) {
+          scrollContainer.scrollTop = 0;
         }
       }
     }, [sentence, locked, inputValue]);
