@@ -5454,10 +5454,12 @@ function ensureConfidencePanel() {
         panel = document.createElement('div');
         panel.id = 'confidencePanel';
         // Fixed right-side panel styling
-        panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 flex flex-col z-40';
-        panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem; transition: transform 0.2s ease;';
+        panel.className = 'fixed top-0 right-0 bottom-0 w-52 bg-white border-l border-gray-200 shadow-lg p-3 flex flex-col z-40 overflow-hidden';
+        panel.style.cssText = 'background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); font-size: 0.8rem; transition: transform 0.2s ease; min-height: 0;';
         const content = document.createElement('div');
         content.id = 'confidencePanelContent';
+        content.className = 'flex-1 min-h-0 overflow-hidden flex flex-col';
+        content.style.cssText = 'min-height: 0; overflow: hidden; display: flex; flex-direction: column;';
         panel.appendChild(content);
         document.body.appendChild(panel);
 
@@ -5481,6 +5483,13 @@ function ensureConfidencePanel() {
 
     confidencePanel = panel;
     confidencePanelContentElement = contentRoot;
+    confidencePanel.classList.add('overflow-hidden');
+    confidencePanel.style.minHeight = '0';
+    confidencePanelContentElement.className = 'flex-1 min-h-0 overflow-hidden flex flex-col';
+    confidencePanelContentElement.style.minHeight = '0';
+    confidencePanelContentElement.style.overflow = 'hidden';
+    confidencePanelContentElement.style.display = 'flex';
+    confidencePanelContentElement.style.flexDirection = 'column';
 
     const pullTab = document.getElementById('confidencePullTab');
     if (pullTab && !pullTab.dataset.bound) {
