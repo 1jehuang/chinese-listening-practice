@@ -341,6 +341,10 @@ function syncDrawModeUiForCurrentMode() {
     }
 }
 
+function hasAnyDrawInk() {
+    return Boolean((Array.isArray(strokes) && strokes.length > 0) || (currentStroke && currentStroke.x && currentStroke.x.length > 0));
+}
+
 function cloneQuizDataArray(data) {
     try {
         return JSON.parse(JSON.stringify(data));
@@ -16180,6 +16184,8 @@ function handleQuizHotkeys(e) {
             e.preventDefault();
             if (answered && lastAnswerCorrect) {
                 if (inFullscreen) nextFullscreenQuestion(); else goToNextQuestionAfterCorrect();
+            } else if (!hasAnyDrawInk()) {
+                if (inFullscreen) showFullscreenAnswer(); else revealDrawingAnswer();
             } else {
                 if (inFullscreen) submitFullscreenDrawing(); else submitDrawing();
             }
