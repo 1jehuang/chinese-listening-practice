@@ -13374,6 +13374,7 @@ function submitDrawing() {
     const expectedChar = (mode === 'draw-missing-component' && currentMissingComponent)
         ? currentMissingComponent.char
         : currentQuestion.char;
+    const displayExpectedChar = getDrawDisplayTarget(expectedChar);
 
     const normalizedRecognized = normalizeDrawAnswer(recognized);
     const normalizedTarget = normalizeDrawAnswer(expectedChar);
@@ -13400,8 +13401,8 @@ function submitDrawing() {
         const tryAgainText = isFirstAttempt ? '' : ' (practice attempt)';
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
         const label = mode === 'draw-missing-component'
-            ? `Missing: ${expectedChar}`
-            : `${currentQuestion.char}`;
+            ? `Missing: ${displayExpectedChar}`
+            : `${displayExpectedChar}`;
         feedback.textContent = `✓ Correct! ${label} (${currentQuestion.pinyin})${meaningSuffix}${tryAgainText}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
 
@@ -13445,8 +13446,8 @@ function submitDrawing() {
         playWrongSound();
         const tryAgainText = isFirstAttempt ? ' - Keep practicing!' : ' - Try again!';
         const label = mode === 'draw-missing-component'
-            ? `Missing: ${expectedChar}`
-            : `${currentQuestion.char}`;
+            ? `Missing: ${displayExpectedChar}`
+            : `${displayExpectedChar}`;
         const recognizedWithPinyin = formatRecognizedText(recognized);
         let wrongMsg = `✗ Wrong!`;
         if (!drawCorrect) {
@@ -13472,8 +13473,8 @@ function submitDrawing() {
     updateStats();
 
     const perCharTarget = (mode === 'draw-missing-component' && currentQuestion?.char)
-        ? currentQuestion.char
-        : expectedChar;
+        ? getDrawDisplayTarget(currentQuestion.char)
+        : displayExpectedChar;
     if (hint) {
         renderPerCharMeaning(perCharTarget, hint);
     }
@@ -13546,8 +13547,15 @@ function showDrawMeaningResult(containerId, correct) {
 }
 
 function normalizeDrawAnswer(text = '') {
-    // Remove spaces and placeholder symbols used to indicate gaps
-    return stripPlaceholderChars(text).replace(/\s+/g, '').trim();
+    // Remove spaces, placeholder symbols, and non-Hanzi wrappers like (), /, punctuation.
+    const stripped = stripPlaceholderChars(text).replace(/\s+/g, '').trim();
+    const hanziOnly = Array.from(stripped).filter(char => isHanziCharacter(char)).join('');
+    return hanziOnly || stripped;
+}
+
+function getDrawDisplayTarget(text = '') {
+    const normalized = normalizeDrawAnswer(text);
+    return normalized || String(text || '').trim();
 }
 
 function stripPlaceholderChars(text = '') {
@@ -13744,11 +13752,13 @@ function revealDrawingAnswer() {
         : currentQuestion.char;
 
     const ocrResult = document.getElementById('ocrResult');
+    const displayExpectedChar = getDrawDisplayTarget(expectedChar);
+
     if (ocrResult) {
-        ocrResult.textContent = expectedChar;
+        ocrResult.textContent = displayExpectedChar;
         ocrResult.style.fontFamily = "'Noto Sans SC', sans-serif";
         ocrResult.style.fontWeight = '700';
-        if (expectedChar.length > 1) {
+        if (displayExpectedChar.length > 1) {
             ocrResult.className = 'text-5xl min-h-[80px] text-blue-600 font-bold';
         } else {
             ocrResult.className = 'text-6xl min-h-[80px] text-blue-600 font-bold';
@@ -13756,11 +13766,11 @@ function revealDrawingAnswer() {
     }
 
     // Show individual characters as candidates for multi-character words
-    if (expectedChar.length > 1) {
-        const individualChars = expectedChar.split('');
-        updateOcrCandidates([expectedChar, ...individualChars]);
+    if (displayExpectedChar.length > 1) {
+        const individualChars = Array.from(displayExpectedChar);
+        updateOcrCandidates([displayExpectedChar, ...individualChars]);
     } else {
-        updateOcrCandidates([expectedChar]);
+        updateOcrCandidates([displayExpectedChar]);
     }
 
     const isFirstReveal = !answered;
@@ -13774,7 +13784,7 @@ function revealDrawingAnswer() {
 
     const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
     const revealText = isFirstReveal ? 'ⓘ Answer: ' : 'ⓘ Answer (shown again): ';
-    feedback.textContent = `${revealText}${expectedChar} (${currentQuestion.pinyin})${meaningSuffix}`;
+    feedback.textContent = `${revealText}${displayExpectedChar} (${currentQuestion.pinyin})${meaningSuffix}`;
     feedback.className = 'text-center text-2xl font-semibold my-4 text-blue-600';
 
     const perCharTarget = (mode === 'draw-missing-component' && currentQuestion?.char)
@@ -14382,16 +14392,17 @@ function submitFullscreenDrawing() {
 function showFullscreenAnswer() {
     if (!currentQuestion) return;
 
+    const displayTarget = getDrawDisplayTarget(currentQuestion.char);
     const ocrResult = document.getElementById('fullscreenOcrResult');
     if (ocrResult) {
-        ocrResult.textContent = currentQuestion.char;
+        ocrResult.textContent = displayTarget;
     }
 
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt) {
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
-        const baseHtml = `<span class="text-red-600">✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}</span>`;
-        renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
+        const baseHtml = `<span class="text-red-600">✗ Answer: ${displayTarget} (${currentQuestion.pinyin})${meaningSuffix}</span>`;
+        renderPerCharMeaningInline(displayTarget, prompt, baseHtml);
     }
 
     if (requiresDrawMeaningSelection() && drawMeaningChoices.length > 0) {
@@ -14409,7 +14420,7 @@ function showFullscreenAnswer() {
         updateStats();
 
         const meaningSuffix = currentQuestion.meaning ? ` – ${currentQuestion.meaning}` : '';
-        feedback.textContent = `✗ Answer: ${currentQuestion.char} (${currentQuestion.pinyin})${meaningSuffix}`;
+        feedback.textContent = `✗ Answer: ${displayTarget} (${currentQuestion.pinyin})${meaningSuffix}`;
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
     }
 }
