@@ -12425,6 +12425,12 @@ function initCanvas() {
     canvas = document.getElementById('drawCanvas');
     if (!canvas) return;
 
+    canvas.style.touchAction = 'none';
+    canvas.style.userSelect = 'none';
+    canvas.style.webkitUserSelect = 'none';
+    canvas.style.webkitTapHighlightColor = 'transparent';
+    canvas.style.overscrollBehavior = 'contain';
+
     ctx = canvas.getContext('2d');
     ctx.lineWidth = 8;
     ctx.lineCap = 'round';
@@ -12437,9 +12443,9 @@ function initCanvas() {
     canvas.addEventListener('mouseout', handleCanvasMouseUp);
     canvas.addEventListener('wheel', handleCanvasWheel);
 
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing, { passive: false });
 
     strokes = [];
     currentStroke = null;
@@ -13773,6 +13779,12 @@ function enterFullscreenDrawing() {
     fullscreenCtx = fullscreenCanvas.getContext('2d');
 
     // Full-page canvas - fills entire viewport
+    fullscreenCanvas.style.touchAction = 'none';
+    fullscreenCanvas.style.userSelect = 'none';
+    fullscreenCanvas.style.webkitUserSelect = 'none';
+    fullscreenCanvas.style.webkitTapHighlightColor = 'transparent';
+    fullscreenCanvas.style.overscrollBehavior = 'contain';
+
     const resizeFullscreenCanvas = () => {
         const dpr = window.devicePixelRatio || 1;
         fullscreenCanvas.width = window.innerWidth * dpr;
@@ -13797,9 +13809,9 @@ function enterFullscreenDrawing() {
     fullscreenCanvas.addEventListener('mouseup', stopFullscreenDrawing);
     fullscreenCanvas.addEventListener('mouseout', stopFullscreenDrawing);
 
-    fullscreenCanvas.addEventListener('touchstart', handleFullscreenTouchStart);
-    fullscreenCanvas.addEventListener('touchmove', handleFullscreenTouchMove);
-    fullscreenCanvas.addEventListener('touchend', stopFullscreenDrawing);
+    fullscreenCanvas.addEventListener('touchstart', handleFullscreenTouchStart, { passive: false });
+    fullscreenCanvas.addEventListener('touchmove', handleFullscreenTouchMove, { passive: false });
+    fullscreenCanvas.addEventListener('touchend', stopFullscreenDrawing, { passive: false });
 
     // Setup buttons
     const undoBtn = document.getElementById('fullscreenUndoBtn');
