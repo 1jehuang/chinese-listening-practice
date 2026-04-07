@@ -12490,6 +12490,7 @@ function startDrawing(e) {
         y: [Math.round(coords.y)],
         t: [initialTimestamp]
     };
+    redrawCanvas();
 }
 
 function draw(e) {
@@ -12499,18 +12500,6 @@ function draw(e) {
 
     const coords = getCanvasCoords(e);
 
-    // Apply transformation for drawing
-    ctx.save();
-    ctx.translate(canvasOffsetX, canvasOffsetY);
-    ctx.scale(canvasScale, canvasScale);
-
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
-
-    ctx.restore();
-
     if (currentStroke) {
         currentStroke.x.push(Math.round(coords.x));
         currentStroke.y.push(Math.round(coords.y));
@@ -12518,6 +12507,7 @@ function draw(e) {
     }
     lastX = coords.x;
     lastY = coords.y;
+    redrawCanvas();
 }
 
 function stopDrawing() {
@@ -12525,6 +12515,7 @@ function stopDrawing() {
         strokes.push(currentStroke);
         undoneStrokes = []; // Clear redo history when new stroke is added
         currentStroke = null;
+        redrawCanvas();
         updateUndoRedoButtons();
 
         if (ocrTimeout) clearTimeout(ocrTimeout);
@@ -12662,8 +12653,6 @@ async function runOCR() {
 
 function clearCanvas() {
     if (!ctx || !canvas) return;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     strokes = [];
     undoneStrokes = [];
     currentStroke = null;
@@ -12672,6 +12661,7 @@ function clearCanvas() {
         clearTimeout(ocrTimeout);
         ocrTimeout = null;
     }
+    redrawCanvas();
     updateOcrCandidates();
     updateUndoRedoButtons();
     const ocrResult = document.getElementById('ocrResult');
@@ -12728,25 +12718,97 @@ function redrawCanvas() {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawPracticeGrid(ctx, canvas.width, canvas.height);
 
     // Apply zoom and pan transformations
     ctx.translate(canvasOffsetX, canvasOffsetY);
     ctx.scale(canvasScale, canvasScale);
 
     strokes.forEach(stroke => {
-        if (stroke.x.length === 0) return;
-
-        ctx.beginPath();
-        ctx.moveTo(stroke.x[0], stroke.y[0]);
-
-        for (let i = 1; i < stroke.x.length; i++) {
-            ctx.lineTo(stroke.x[i], stroke.y[i]);
-        }
-        ctx.stroke();
+        drawSmoothStroke(ctx, stroke);
     });
+
+    if (currentStroke) {
+        drawSmoothStroke(ctx, currentStroke, '#2563eb');
+    }
 
     // Reset transform for next operations
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+function drawPracticeGrid(targetCtx, width, height) {
+    const pad = Math.round(Math.min(width, height) * 0.08);
+    const left = pad;
+    const top = pad;
+    const innerWidth = Math.max(40, width - pad * 2);
+    const innerHeight = Math.max(40, height - pad * 2);
+    const right = left + innerWidth;
+    const bottom = top + innerHeight;
+    const midX = left + innerWidth / 2;
+    const midY = top + innerHeight / 2;
+
+    targetCtx.save();
+    targetCtx.strokeStyle = '#d5dde8';
+    targetCtx.lineWidth = 1;
+    targetCtx.setLineDash([7, 6]);
+    targetCtx.beginPath();
+    targetCtx.moveTo(left, midY);
+    targetCtx.lineTo(right, midY);
+    targetCtx.moveTo(midX, top);
+    targetCtx.lineTo(midX, bottom);
+    targetCtx.moveTo(left, top);
+    targetCtx.lineTo(right, bottom);
+    targetCtx.moveTo(right, top);
+    targetCtx.lineTo(left, bottom);
+    targetCtx.stroke();
+
+    targetCtx.setLineDash([]);
+    targetCtx.strokeStyle = '#94a3b8';
+    targetCtx.lineWidth = 2;
+    targetCtx.strokeRect(left, top, innerWidth, innerHeight);
+    targetCtx.restore();
+}
+
+function drawSmoothStroke(targetCtx, stroke, color = '#111111') {
+    if (!stroke || !Array.isArray(stroke.x) || stroke.x.length === 0) return;
+
+    targetCtx.save();
+    targetCtx.strokeStyle = color;
+    targetCtx.fillStyle = color;
+    targetCtx.lineWidth = 8;
+    targetCtx.lineCap = 'round';
+    targetCtx.lineJoin = 'round';
+
+    if (stroke.x.length === 1) {
+        targetCtx.beginPath();
+        targetCtx.arc(stroke.x[0], stroke.y[0], 4, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.restore();
+        return;
+    }
+
+    targetCtx.beginPath();
+    targetCtx.moveTo(stroke.x[0], stroke.y[0]);
+
+    if (stroke.x.length === 2) {
+        targetCtx.lineTo(stroke.x[1], stroke.y[1]);
+        targetCtx.stroke();
+        targetCtx.restore();
+        return;
+    }
+
+    for (let i = 1; i < stroke.x.length - 1; i++) {
+        const midX = (stroke.x[i] + stroke.x[i + 1]) / 2;
+        const midY = (stroke.y[i] + stroke.y[i + 1]) / 2;
+        targetCtx.quadraticCurveTo(stroke.x[i], stroke.y[i], midX, midY);
+    }
+
+    const last = stroke.x.length - 1;
+    targetCtx.quadraticCurveTo(stroke.x[last - 1], stroke.y[last - 1], stroke.x[last], stroke.y[last]);
+    targetCtx.stroke();
+    targetCtx.restore();
 }
 
 function updateUndoRedoButtons() {

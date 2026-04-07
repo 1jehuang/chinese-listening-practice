@@ -12,6 +12,7 @@ import argparse
 import math
 import queue
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -35,6 +36,7 @@ class TouchSlot:
 class TouchFrame:
     points: List[Tuple[int, int, int, int]]
     # slot, tracking_id, x, y
+    timestamp: float
 
 
 @dataclass
@@ -45,6 +47,14 @@ class TouchpadSpec:
     x_max: int
     y_min: int
     y_max: int
+
+
+@dataclass
+class Calibration:
+    left: float = 0.03
+    right: float = 0.03
+    top: float = 0.04
+    bottom: float = 0.03
 
 
 class TouchpadReader(threading.Thread):
@@ -101,7 +111,7 @@ class TouchpadReader(threading.Thread):
             if slot.tracking_id is None or slot.x is None or slot.y is None:
                 continue
             points.append((slot_index, slot.tracking_id, slot.x, slot.y))
-        return TouchFrame(points=points)
+        return TouchFrame(points=points, timestamp=time.monotonic())
 
 
 def find_touchpads() -> List[TouchpadSpec]:
@@ -159,6 +169,16 @@ class PracticeApp:
         self.input_active = False
         self.mouse_drawing = False
         self.running = True
+        self.smoothing_enabled = True
+        self.smoothing_strength = 0.45
+        self.calibration = Calibration()
+        self.selected_edge = "left"
+        self.lift_debounce_ms = 55
+        self.pending_finish_deadline: Optional[float] = None
+        self.pending_resume_origin: Optional[Point] = None
+        self.last_filtered_point: Optional[Point] = None
+        self.last_raw_mapped_point: Optional[Point] = None
+        self.last_sample_time: Optional[float] = None
 
         self.font_body = self._make_font(["Noto Sans", "DejaVu Sans", "Arial"], 22)
         self.font_small = self._make_font(["Noto Sans", "DejaVu Sans", "Arial"], 18)
@@ -197,6 +217,7 @@ class PracticeApp:
             for event in self.pg.event.get():
                 self._handle_event(event)
             self._process_queue()
+            self._flush_pending_finish()
             self._draw()
             self.clock.tick(120)
         self._shutdown()
@@ -218,7 +239,17 @@ class PracticeApp:
         if event.type == self.pg.KEYDOWN:
             if event.key == self.pg.K_ESCAPE:
                 self.running = False
-            elif event.key == self.pg.K_c:
+                return
+            if self.input_active:
+                if event.key == self.pg.K_TAB:
+                    self.input_active = False
+                elif event.key == self.pg.K_BACKSPACE:
+                    self.character = self.character[:-1]
+                elif event.key in (self.pg.K_RETURN, self.pg.K_KP_ENTER):
+                    self.input_active = False
+                return
+
+            if event.key == self.pg.K_c:
                 self.clear()
             elif event.key == self.pg.K_u:
                 self.undo()
@@ -226,10 +257,35 @@ class PracticeApp:
                 self.show_grid = not self.show_grid
             elif event.key == self.pg.K_o:
                 self.show_overlay = not self.show_overlay
+            elif event.key == self.pg.K_s:
+                self.smoothing_enabled = not self.smoothing_enabled
+                state = "on" if self.smoothing_enabled else "off"
+                self.status_text = f"Adaptive smoothing {state}"
             elif event.key == self.pg.K_TAB:
                 self.input_active = not self.input_active
-            elif self.input_active and event.key == self.pg.K_BACKSPACE:
-                self.character = self.character[:-1]
+            elif event.key == self.pg.K_LEFTBRACKET:
+                self._adjust_selected_edge(-0.005)
+            elif event.key == self.pg.K_RIGHTBRACKET:
+                self._adjust_selected_edge(0.005)
+            elif event.key == self.pg.K_MINUS:
+                self._adjust_smoothing(-0.05)
+            elif event.key in (self.pg.K_EQUALS, self.pg.K_PLUS):
+                self._adjust_smoothing(0.05)
+            elif event.key == self.pg.K_COMMA:
+                self._adjust_debounce(-5)
+            elif event.key == self.pg.K_PERIOD:
+                self._adjust_debounce(5)
+            elif event.key == self.pg.K_r:
+                self.calibration = Calibration()
+                self.status_text = "Calibration reset"
+            elif event.key == self.pg.K_1:
+                self.selected_edge = "left"
+            elif event.key == self.pg.K_2:
+                self.selected_edge = "right"
+            elif event.key == self.pg.K_3:
+                self.selected_edge = "top"
+            elif event.key == self.pg.K_4:
+                self.selected_edge = "bottom"
             return
 
         if event.type == self.pg.TEXTINPUT and self.input_active:
@@ -253,6 +309,8 @@ class PracticeApp:
             if self.use_mouse and self._square_rect().inflate(-8, -8).collidepoint(pos):
                 self.mouse_drawing = True
                 self.current_tracking_id = 1
+                self._cancel_pending_finish()
+                self._reset_filter()
                 self.current_stroke = [pos]
                 self.indicator = pos
                 self.status_text = "Drawing with mouse"
@@ -293,24 +351,38 @@ class PracticeApp:
             self.raw_pos_text = "-" if not active else f"{len(active)} touches"
             if len(active) > 1:
                 self.status_text = "Ignoring multi-touch, use one finger only"
-            self._finish_stroke()
+            self._schedule_finish_if_needed()
             self.indicator = None
             return
 
         slot, tracking_id, raw_x, raw_y = active[0]
         self.raw_pos_text = f"slot {slot}: {raw_x}, {raw_y}"
         point = self._map_raw_point(raw_x, raw_y)
-        self.indicator = point
         if point is None:
             return
 
-        if self.current_tracking_id != tracking_id:
+        resume_pending = False
+        if self.pending_finish_deadline is not None and self.current_stroke and self.pending_resume_origin is not None:
+            if self._distance(point, self.pending_resume_origin) <= 72:
+                resume_pending = True
+                self._cancel_pending_finish()
+
+        if resume_pending:
+            self.current_tracking_id = tracking_id
+        elif self.current_tracking_id != tracking_id:
             self._finish_stroke()
             self.current_tracking_id = tracking_id
-            self.current_stroke = [point]
+            self.current_stroke = []
+            self._reset_filter()
+
+        filtered_point = self._filter_point(point, frame.timestamp)
+        self.indicator = filtered_point
+
+        if not self.current_stroke:
+            self.current_stroke = [filtered_point]
         else:
-            if not self.current_stroke or self._distance(self.current_stroke[-1], point) >= 1.2:
-                self.current_stroke.append(point)
+            if self._distance(self.current_stroke[-1], filtered_point) >= 1.0:
+                self.current_stroke.append(filtered_point)
 
         self.status_text = "Drawing"
 
@@ -322,7 +394,62 @@ class PracticeApp:
         y_span = max(1, self.spec.y_max - self.spec.y_min)
         nx = min(max((raw_x - self.spec.x_min) / x_span, 0.0), 1.0)
         ny = min(max((raw_y - self.spec.y_min) / y_span, 0.0), 1.0)
+
+        x_denom = max(0.05, 1.0 - self.calibration.left - self.calibration.right)
+        y_denom = max(0.05, 1.0 - self.calibration.top - self.calibration.bottom)
+        nx = (nx - self.calibration.left) / x_denom
+        ny = (ny - self.calibration.top) / y_denom
+        nx = min(max(nx, 0.0), 1.0)
+        ny = min(max(ny, 0.0), 1.0)
         return (square.left + nx * square.width, square.top + ny * square.height)
+
+    def _filter_point(self, point: Point, sample_time: float) -> Point:
+        if not self.smoothing_enabled:
+            self.last_filtered_point = point
+            self.last_raw_mapped_point = point
+            self.last_sample_time = sample_time
+            return point
+
+        if self.last_filtered_point is None or self.last_raw_mapped_point is None or self.last_sample_time is None:
+            self.last_filtered_point = point
+            self.last_raw_mapped_point = point
+            self.last_sample_time = sample_time
+            return point
+
+        dt = max(1e-3, sample_time - self.last_sample_time)
+        speed = self._distance(point, self.last_raw_mapped_point) / dt
+        base_alpha = 0.62 - self.smoothing_strength * 0.42
+        adaptive_gain = min(0.34, speed / 2400.0)
+        alpha = min(0.94, max(0.08, base_alpha + adaptive_gain))
+        filtered = (
+            self.last_filtered_point[0] + alpha * (point[0] - self.last_filtered_point[0]),
+            self.last_filtered_point[1] + alpha * (point[1] - self.last_filtered_point[1]),
+        )
+        self.last_raw_mapped_point = point
+        self.last_filtered_point = filtered
+        self.last_sample_time = sample_time
+        return filtered
+
+    def _reset_filter(self) -> None:
+        self.last_filtered_point = None
+        self.last_raw_mapped_point = None
+        self.last_sample_time = None
+
+    def _schedule_finish_if_needed(self) -> None:
+        if not self.current_stroke or self.pending_finish_deadline is not None:
+            return
+        self.pending_finish_deadline = time.monotonic() + (self.lift_debounce_ms / 1000.0)
+        self.pending_resume_origin = self.current_stroke[-1]
+
+    def _flush_pending_finish(self) -> None:
+        if self.pending_finish_deadline is None:
+            return
+        if time.monotonic() >= self.pending_finish_deadline:
+            self._finish_stroke()
+
+    def _cancel_pending_finish(self) -> None:
+        self.pending_finish_deadline = None
+        self.pending_resume_origin = None
 
     def _square_rect(self):
         width, height = self.screen.get_size()
@@ -355,6 +482,37 @@ class PracticeApp:
             self.strokes.append([(p[0] - 0.1, p[1]), (p[0] + 0.1, p[1])])
         self.current_stroke = []
         self.current_tracking_id = None
+        self._cancel_pending_finish()
+        self._reset_filter()
+
+    def _adjust_selected_edge(self, delta: float) -> None:
+        opposing = {
+            "left": self.calibration.right,
+            "right": self.calibration.left,
+            "top": self.calibration.bottom,
+            "bottom": self.calibration.top,
+        }[self.selected_edge]
+        current = getattr(self.calibration, self.selected_edge)
+        new_value = max(0.0, min(0.22, current + delta))
+        new_value = min(new_value, 0.7 - opposing)
+        setattr(self.calibration, self.selected_edge, round(new_value, 3))
+        self.status_text = f"Calibration {self.selected_edge}: {round(new_value * 100, 1)}%"
+
+    def _adjust_smoothing(self, delta: float) -> None:
+        self.smoothing_strength = max(0.0, min(1.0, self.smoothing_strength + delta))
+        self.status_text = f"Smoothing strength: {round(self.smoothing_strength, 2)}"
+
+    def _adjust_debounce(self, delta_ms: int) -> None:
+        self.lift_debounce_ms = max(0, min(150, self.lift_debounce_ms + delta_ms))
+        self.status_text = f"Lift debounce: {self.lift_debounce_ms} ms"
+
+    def _calibration_summary(self) -> str:
+        return (
+            f"L {round(self.calibration.left * 100):>2}% · "
+            f"R {round(self.calibration.right * 100):>2}% · "
+            f"T {round(self.calibration.top * 100):>2}% · "
+            f"B {round(self.calibration.bottom * 100):>2}%"
+        )
 
     def _distance(self, a: Point, b: Point) -> float:
         return math.hypot(a[0] - b[0], a[1] - b[1])
@@ -363,12 +521,16 @@ class PracticeApp:
         self.strokes.clear()
         self.current_stroke.clear()
         self.current_tracking_id = None
+        self._cancel_pending_finish()
+        self._reset_filter()
         self.status_text = "Cleared"
 
     def undo(self) -> None:
         if self.current_stroke:
             self.current_stroke.clear()
             self.current_tracking_id = None
+            self._cancel_pending_finish()
+            self._reset_filter()
         elif self.strokes:
             self.strokes.pop()
         self.status_text = "Undid last stroke"
@@ -379,7 +541,7 @@ class PracticeApp:
 
         title = self.font_title.render("Trackpad Chinese Writing Practice", True, (17, 24, 39))
         subtitle = self.font_small.render(
-            "One finger = one stroke. Lift between strokes. C clear, U undo, G grid, O overlay, Tab edit char.",
+            "One finger = one stroke. C clear, U undo, G grid, O overlay, S smoothing, [ ] calibrate edge.",
             True,
             (71, 85, 105),
         )
@@ -464,14 +626,24 @@ class PracticeApp:
         text("Status", panel.left, info_y + 144, self.font_small, (71, 85, 105))
         self._blit_wrapped(self.status_text, panel.left, info_y + 170, panel.width, self.font_small, (17, 24, 39))
 
-        tips_y = info_y + 250
+        tuning_y = info_y + 248
+        text("Tuning", panel.left, tuning_y, self.font_small, (71, 85, 105))
+        smooth_label = f"Smoothing: {'on' if self.smoothing_enabled else 'off'} ({self.smoothing_strength:.2f})"
+        text(smooth_label, panel.left, tuning_y + 26)
+        text(f"Debounce: {self.lift_debounce_ms} ms", panel.left, tuning_y + 54)
+        text(f"Selected edge: {self.selected_edge}", panel.left, tuning_y + 82)
+        self._blit_wrapped(self._calibration_summary(), panel.left, tuning_y + 110, panel.width, self.font_small, (17, 24, 39))
+
+        tips_y = tuning_y + 160
         text("Tips", panel.left, tips_y, self.font_small, (71, 85, 105))
         tips = [
             "Use one finger only",
-            "Lift between strokes",
+            "1/2/3/4 choose left/right/top/bottom edge",
+            "[ ] adjust calibration, R resets",
+            "- / + tune smoothing, , / . tune debounce",
             "Tab focuses the character field",
             "Chinese IME text input may work here",
-            "You can also start with --character 永",
+            "Tiny lifts are merged automatically",
         ]
         y = tips_y + 28
         for line in tips:
