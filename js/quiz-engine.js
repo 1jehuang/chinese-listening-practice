@@ -318,6 +318,14 @@ function ensureModeButton(mode, label) {
     renderModeSidebar();
 }
 
+function isTrackpadDrawMode(modeName = mode) {
+    return modeName === 'trackpad-draw';
+}
+
+function isDrawCharLikeMode(modeName = mode) {
+    return modeName === 'draw-char' || modeName === 'trackpad-draw';
+}
+
 function cloneQuizDataArray(data) {
     try {
         return JSON.parse(JSON.stringify(data));
@@ -2925,7 +2933,7 @@ function getCurrentSkillKey(customMode = mode) {
     if (m === 'char-to-pinyin' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
         return 'pinyin';
     }
-    if (m === 'stroke-order' || m === 'handwriting' || m === 'draw-char' || m === 'draw-missing-component') {
+    if (m === 'stroke-order' || m === 'handwriting' || isDrawCharLikeMode(m) || m === 'draw-missing-component') {
         return 'writing';
     }
     return 'general';
@@ -3774,6 +3782,7 @@ function getQuizPredictionScenarioForMode(activeMode) {
         case 'stroke-order':
         case 'handwriting':
         case 'draw-char':
+        case 'trackpad-draw':
         case 'draw-missing-component':
             return { label: activeMode, meaning: 0.35, pinyin: 0.65, chanceFloor: 0 };
         default:
@@ -7462,9 +7471,12 @@ function renderQuestionUiForHandwritingModes() {
         return true;
     }
 
-    if (mode === 'draw-char' && drawCharMode) {
+    if (isDrawCharLikeMode() && drawCharMode) {
         const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
-        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${escapeHtml(displayPinyin)}</div></div>`;
+        const subtitle = isTrackpadDrawMode()
+            ? '<div class="text-sm text-gray-500 mt-1">Native absolute trackpad mode</div>'
+            : '';
+        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${escapeHtml(displayPinyin)}</div>${subtitle}</div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();
@@ -12669,6 +12681,9 @@ function stopDrawing() {
 }
 
 function handleCanvasMouseDown(e) {
+    if (isTrackpadDrawMode()) {
+        return;
+    }
     if (e.button === 1 || e.shiftKey) {
         // Middle mouse or Shift + left mouse = pan
         e.preventDefault();
@@ -12726,6 +12741,10 @@ function handleCanvasWheel(e) {
 }
 
 function handleTouchStart(e) {
+    if (isTrackpadDrawMode()) {
+        e.preventDefault();
+        return;
+    }
     e.preventDefault();
     startDrawing(e);
 }
@@ -13197,7 +13216,7 @@ function submitDrawing() {
         return;
     }
 
-    const isDrawCharMode = mode === 'draw-char';
+    const isDrawCharMode = isDrawCharLikeMode();
     if (isDrawCharMode && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
         feedback.textContent = '✗ Please select a meaning!';
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
@@ -13621,7 +13640,7 @@ function revealDrawingAnswer() {
 
     updateStats();
 
-    if (mode === 'draw-char' && drawMeaningChoices.length > 0) {
+    if (isDrawCharLikeMode() && drawMeaningChoices.length > 0) {
         drawSelectedMeaning = null;
         showDrawMeaningResult('drawMeaningChoicesInline', false);
     }
@@ -14099,7 +14118,7 @@ function submitFullscreenDrawing() {
         return;
     }
 
-    const isDrawCharMode = mode === 'draw-char';
+    const isDrawCharMode = isDrawCharLikeMode();
     if (isDrawCharMode && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
         const prompt = document.getElementById('fullscreenPrompt');
         if (prompt) prompt.innerHTML = `<span class="text-red-600">Please select a meaning!</span>`;
@@ -14201,7 +14220,7 @@ function showFullscreenAnswer() {
         renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
     }
 
-    if (mode === 'draw-char' && drawMeaningChoices.length > 0) {
+    if (isDrawCharLikeMode() && drawMeaningChoices.length > 0) {
         drawSelectedMeaning = null;
         showDrawMeaningResult('fullscreenMeaningChoices', false);
         showDrawMeaningResult('drawMeaningChoicesInline', false);
@@ -15881,6 +15900,7 @@ function getCurrentPromptText() {
         case 'stroke-order':
         case 'handwriting':
         case 'draw-char':
+        case 'trackpad-draw':
             return asString(question.char);
         case 'audio-to-pinyin':
         case 'audio-to-meaning':
@@ -16205,6 +16225,7 @@ function initQuizCommandPalette() {
         { name: 'Stroke Order', mode: 'stroke-order', type: 'mode' },
         { name: 'Handwriting', mode: 'handwriting', type: 'mode' },
         { name: 'Draw Character', mode: 'draw-char', type: 'mode' },
+        { name: 'Trackpad Draw', mode: 'trackpad-draw', type: 'mode' },
         { name: 'Composer (auto progression)', mode: 'composer', type: 'mode' },
         { name: 'Study Mode', mode: 'study', type: 'mode' }
     ];
@@ -16819,6 +16840,9 @@ function initQuizPersistentState(charactersData, userConfig) {
     ensureModeButton('composer', 'Composer');
     ensureModeButton('meaning-to-char-pinyin', 'Meaning → Char + Pinyin');
     ensureModeButton('sentence', 'Sentence');
+    if (document.querySelector('.mode-btn[data-mode="draw-char"]')) {
+        ensureModeButton('trackpad-draw', 'Trackpad Draw');
+    }
     buildComposerPipeline();
 
     reconcileBatchStateWithQueue();
