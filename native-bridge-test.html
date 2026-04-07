@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Native Bridge Trackpad Test</title>
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #f4f7fb; color: #0f172a; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .layout { display: grid; grid-template-columns: minmax(320px, 1fr) 300px; gap: 20px; }
+    .card { background: #fff; border: 1px solid #dbe2ea; border-radius: 18px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05); }
+    .canvas-card { padding: 20px; }
+    #canvas { width: min(78vw, 700px); height: min(78vw, 700px); max-width: 700px; max-height: 700px; aspect-ratio: 1; display: block; background: white; border: 1px solid #dbe2ea; border-radius: 16px; }
+    .controls { padding: 18px; }
+    .label { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin: 0 0 8px; }
+    .row { margin-bottom: 18px; }
+    .value { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; line-height: 1.5; font-family: ui-monospace, monospace; font-size: 14px; white-space: pre-wrap; }
+    .stack { display: flex; gap: 10px; flex-wrap: wrap; }
+    button, input { font: inherit; }
+    button { border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer; }
+    .status.ok { color: #047857; }
+    .status.off { color: #64748b; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 12px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } #canvas { width: 100%; max-width: 100%; height: auto; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Native Bridge Trackpad Test</h1>
+    <p>This page uses the local native bridge, not browser pointer input. If it feels like the good version, that confirms the browser can work once fed real absolute touchpad coordinates.</p>
+    <div class="layout">
+      <div class="card canvas-card">
+        <canvas id="canvas" width="900" height="900"></canvas>
+      </div>
+      <div class="card controls">
+        <div class="row">
+          <div class="label">Character overlay</div>
+          <input id="charInput" value="永" maxlength="4" />
+        </div>
+        <div class="row stack">
+          <button id="clearBtn">Clear</button>
+          <button id="undoBtn">Undo</button>
+          <button id="reconnectBtn">Reconnect</button>
+        </div>
+        <div class="row">
+          <div class="label">Bridge status</div>
+          <div id="status" class="value status off">connecting…</div>
+        </div>
+        <div class="row">
+          <div class="label">Last sample</div>
+          <div id="sample" class="value">waiting…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const charInput = document.getElementById('charInput');
+    const statusEl = document.getElementById('status');
+    const sampleEl = document.getElementById('sample');
+    const clearBtn = document.getElementById('clearBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const reconnectBtn = document.getElementById('reconnectBtn');
+
+    let strokes = [];
+    let currentStroke = null;
+    let socket = null;
+    let reconnectTimer = null;
+
+    function updateStatus(message, ok = false) {
+      statusEl.textContent = message;
+      statusEl.className = `value status ${ok ? 'ok' : 'off'}`;
+    }
+
+    function drawGrid() {
+      const pad = 72;
+      const left = pad;
+      const top = pad;
+      const size = canvas.width - pad * 2;
+      const right = left + size;
+      const bottom = top + size;
+      const midX = left + size / 2;
+      const midY = top + size / 2;
+      ctx.save();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(left, midY); ctx.lineTo(right, midY);
+      ctx.moveTo(midX, top); ctx.lineTo(midX, bottom);
+      ctx.moveTo(left, top); ctx.lineTo(right, bottom);
+      ctx.moveTo(right, top); ctx.lineTo(left, bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(left, top, size, size);
+      ctx.restore();
+      return { left, top, size };
+    }
+
+    function drawStroke(stroke, color = '#111827') {
+      if (!stroke || stroke.length === 0) return;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (stroke.length === 1) {
+        ctx.beginPath();
+        ctx.arc(stroke[0].x, stroke[0].y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      for (let i = 1; i < stroke.length - 1; i++) {
+        const midX = (stroke[i].x + stroke[i + 1].x) / 2;
+        const midY = (stroke[i].y + stroke[i + 1].y) / 2;
+        ctx.quadraticCurveTo(stroke[i].x, stroke[i].y, midX, midY);
+      }
+      const last = stroke.length - 1;
+      ctx.quadraticCurveTo(stroke[last - 1].x, stroke[last - 1].y, stroke[last].x, stroke[last].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const area = drawGrid();
+      const overlay = (charInput.value || '').trim();
+      if (overlay) {
+        ctx.save();
+        ctx.fillStyle = '#dbe4ef';
+        ctx.font = '400 420px "Noto Sans CJK SC", "Noto Sans SC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(overlay, canvas.width / 2, canvas.height / 2 + 20);
+        ctx.restore();
+      }
+      for (const stroke of strokes) drawStroke(stroke, '#111827');
+      if (currentStroke) drawStroke(currentStroke, '#2563eb');
+      return area;
+    }
+
+    function mapPoint(nx, ny) {
+      const pad = 72;
+      const size = canvas.width - pad * 2;
+      return { x: pad + Math.max(0, Math.min(1, nx)) * size, y: pad + Math.max(0, Math.min(1, ny)) * size };
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, 1500);
+    }
+
+    function connect() {
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+      updateStatus('connecting to ws://127.0.0.1:8876 …', false);
+      socket = new WebSocket('ws://127.0.0.1:8876');
+      socket.addEventListener('open', () => updateStatus('connected to native bridge', true));
+      socket.addEventListener('message', event => {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'bridge_status') {
+          updateStatus(payload.message || 'connected', true);
+          return;
+        }
+        if (payload.type === 'bridge_error') {
+          updateStatus(payload.message || 'bridge error', false);
+          return;
+        }
+        if (payload.type === 'stroke_start') {
+          currentStroke = [mapPoint(payload.x, payload.y)];
+        } else if (payload.type === 'stroke_move') {
+          if (!currentStroke) currentStroke = [];
+          const point = mapPoint(payload.x, payload.y);
+          const prev = currentStroke[currentStroke.length - 1];
+          if (!prev || Math.hypot(prev.x - point.x, prev.y - point.y) >= 1) currentStroke.push(point);
+          sampleEl.textContent = `x=${Number(payload.x).toFixed(4)}\ny=${Number(payload.y).toFixed(4)}\nt=${payload.t}`;
+        } else if (payload.type === 'stroke_end') {
+          if (currentStroke && currentStroke.length) strokes.push(currentStroke);
+          currentStroke = null;
+        }
+        redraw();
+      });
+      socket.addEventListener('close', () => {
+        updateStatus('bridge disconnected, retrying…', false);
+        scheduleReconnect();
+      });
+      socket.addEventListener('error', () => {
+        updateStatus('bridge unavailable', false);
+      });
+    }
+
+    clearBtn.addEventListener('click', () => { strokes = []; currentStroke = null; redraw(); });
+    undoBtn.addEventListener('click', () => { if (currentStroke) currentStroke = null; else strokes.pop(); redraw(); });
+    reconnectBtn.addEventListener('click', () => { if (socket) socket.close(); connect(); });
+    charInput.addEventListener('input', redraw);
+
+    redraw();
+    connect();
+  </script>
+</body>
+</html>

@@ -1598,6 +1598,10 @@ let canvasOffsetY = 0;
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
+let nativeDrawBridgeSocket = null;
+let nativeDrawBridgeConnected = false;
+let nativeDrawBridgeReconnectTimer = null;
+const NATIVE_DRAW_BRIDGE_URL = 'ws://127.0.0.1:8876';
 
 // Missing Component mode state
 let missingComponentMode = null;
@@ -12436,6 +12440,146 @@ function initCanvas() {
 
     updateOcrCandidates();
     updateUndoRedoButtons();
+    initNativeDrawBridge();
+}
+
+function updateNativeDrawBridgeStatus(message, connected = nativeDrawBridgeConnected) {
+    const statusEl = document.getElementById('nativeDrawBridgeStatus');
+    if (!statusEl) return;
+    statusEl.textContent = `Bridge: ${message}`;
+    statusEl.className = connected
+        ? 'text-xs text-emerald-600 font-semibold'
+        : 'text-xs text-gray-500';
+}
+
+function scheduleNativeDrawBridgeReconnect() {
+    if (nativeDrawBridgeReconnectTimer) return;
+    nativeDrawBridgeReconnectTimer = setTimeout(() => {
+        nativeDrawBridgeReconnectTimer = null;
+        initNativeDrawBridge();
+    }, 2000);
+}
+
+function initNativeDrawBridge() {
+    if (typeof WebSocket === 'undefined') {
+        updateNativeDrawBridgeStatus('WebSocket unavailable', false);
+        return;
+    }
+    if (nativeDrawBridgeSocket && (
+        nativeDrawBridgeSocket.readyState === WebSocket.OPEN ||
+        nativeDrawBridgeSocket.readyState === WebSocket.CONNECTING
+    )) {
+        return;
+    }
+
+    updateNativeDrawBridgeStatus('connecting to native absolute bridge…', false);
+    const socket = new WebSocket(NATIVE_DRAW_BRIDGE_URL);
+    nativeDrawBridgeSocket = socket;
+
+    socket.addEventListener('open', () => {
+        nativeDrawBridgeConnected = true;
+        updateNativeDrawBridgeStatus('connected', true);
+    });
+
+    socket.addEventListener('message', event => {
+        let payload;
+        try {
+            payload = JSON.parse(event.data);
+        } catch (err) {
+            console.warn('Native bridge payload parse failed', err);
+            return;
+        }
+
+        if (payload.type === 'bridge_status') {
+            nativeDrawBridgeConnected = true;
+            updateNativeDrawBridgeStatus(payload.message || 'connected', true);
+            return;
+        }
+
+        if (payload.type === 'bridge_error') {
+            nativeDrawBridgeConnected = false;
+            updateNativeDrawBridgeStatus(payload.message || 'bridge error', false);
+            return;
+        }
+
+        if (!canvas) return;
+
+        if (payload.type === 'stroke_start') {
+            nativeDrawBridgeConnected = true;
+            updateNativeDrawBridgeStatus('native absolute input active', true);
+            beginNativeBridgeStroke(payload.x, payload.y);
+        } else if (payload.type === 'stroke_move') {
+            continueNativeBridgeStroke(payload.x, payload.y);
+        } else if (payload.type === 'stroke_end') {
+            finishNativeBridgeStroke();
+        }
+    });
+
+    socket.addEventListener('close', () => {
+        if (nativeDrawBridgeSocket === socket) {
+            nativeDrawBridgeSocket = null;
+        }
+        nativeDrawBridgeConnected = false;
+        updateNativeDrawBridgeStatus('browser input only', false);
+        scheduleNativeDrawBridgeReconnect();
+    });
+
+    socket.addEventListener('error', () => {
+        updateNativeDrawBridgeStatus('browser input only', false);
+    });
+}
+
+function getNativeBridgeCanvasPoint(nx, ny) {
+    if (!canvas) return { x: 0, y: 0 };
+    const pad = Math.round(Math.min(canvas.width, canvas.height) * 0.08);
+    const width = Math.max(40, canvas.width - pad * 2);
+    const height = Math.max(40, canvas.height - pad * 2);
+    return {
+        x: pad + Math.max(0, Math.min(1, Number(nx))) * width,
+        y: pad + Math.max(0, Math.min(1, Number(ny))) * height,
+    };
+}
+
+function beginNativeBridgeStroke(nx, ny) {
+    const point = getNativeBridgeCanvasPoint(nx, ny);
+    drawStartTime = drawStartTime ?? null;
+    currentStroke = {
+        x: [Math.round(point.x)],
+        y: [Math.round(point.y)],
+        t: [getRelativeTimestamp()]
+    };
+    lastX = point.x;
+    lastY = point.y;
+    redrawCanvas();
+}
+
+function continueNativeBridgeStroke(nx, ny) {
+    if (!canvas) return;
+    if (!currentStroke) {
+        beginNativeBridgeStroke(nx, ny);
+        return;
+    }
+    const point = getNativeBridgeCanvasPoint(nx, ny);
+    const prevX = currentStroke.x[currentStroke.x.length - 1];
+    const prevY = currentStroke.y[currentStroke.y.length - 1];
+    if (Math.hypot(prevX - point.x, prevY - point.y) < 1) return;
+    currentStroke.x.push(Math.round(point.x));
+    currentStroke.y.push(Math.round(point.y));
+    currentStroke.t.push(getRelativeTimestamp());
+    lastX = point.x;
+    lastY = point.y;
+    redrawCanvas();
+}
+
+function finishNativeBridgeStroke() {
+    if (!currentStroke || currentStroke.x.length === 0) return;
+    strokes.push(currentStroke);
+    undoneStrokes = [];
+    currentStroke = null;
+    redrawCanvas();
+    updateUndoRedoButtons();
+    if (ocrTimeout) clearTimeout(ocrTimeout);
+    ocrTimeout = setTimeout(runOCR, 400);
 }
 
 function getCanvasScaleFactors() {
@@ -14456,7 +14600,10 @@ function ensureDrawModeLayout() {
                 <div class="flex-1 flex flex-col gap-3">
                     <canvas id="drawCanvas" width="400" height="400" class="w-full aspect-square bg-white border border-gray-200 rounded-2xl shadow-inner touch-none select-none"></canvas>
                     <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-                        <span>Hold Space to pan · Scroll to zoom</span>
+                        <div class="flex flex-col gap-1">
+                            <span>Hold Space to pan · Scroll to zoom</span>
+                            <span id="nativeDrawBridgeStatus" class="text-xs text-gray-500">Bridge: browser input only</span>
+                        </div>
                         <button id="fullscreenDrawBtn" type="button" class="px-3 py-1.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">⛶ Fullscreen</button>
                     </div>
                 </div>
