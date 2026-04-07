@@ -12,6 +12,26 @@
     var STORAGE_KEY = 'decision_panel_visible';
     var panelEl = null;
     var lastData = null;
+    var uiLoadPromise = null;
+
+    function ensureUiLibrary() {
+        if (window.JcodeEegDecisionUI && window.JcodeEegDecisionUI.render) {
+            return Promise.resolve(window.JcodeEegDecisionUI);
+        }
+        if (uiLoadPromise) return uiLoadPromise;
+        uiLoadPromise = new Promise(function (resolve, reject) {
+            var script = document.createElement('script');
+            script.src = 'js/eeg-decision-ui.js';
+            script.async = true;
+            script.onload = function () {
+                if (window.JcodeEegDecisionUI && window.JcodeEegDecisionUI.render) resolve(window.JcodeEegDecisionUI);
+                else reject(new Error('EEG decision UI loaded but renderer is unavailable.'));
+            };
+            script.onerror = function () { reject(new Error('Failed to load EEG decision UI bundle.')); };
+            (document.head || document.body || document.documentElement).appendChild(script);
+        }).finally(function () { uiLoadPromise = null; });
+        return uiLoadPromise;
+    }
 
     function isEnabled() {
         try { return localStorage.getItem(STORAGE_KEY) === 'true'; }
@@ -247,90 +267,75 @@
         show();
 
         var d = lastData.chosenData;
-        var html = [];
-
         // Figure out what we can safely show without spoiling the answer
         var m = (typeof mode !== 'undefined') ? mode : '';
         var showChar = true, showMeaning = true, showPinyin = true;
-        // Modes where the character IS the answer
         if (/pinyin-to-char|meaning-to-char|draw-char|handwriting|stroke-order|char-building/.test(m)) showChar = false;
-        // Modes where meaning is the answer
         if (/char-to-meaning|audio-to-meaning/.test(m)) showMeaning = false;
-        // Modes where pinyin/tones are the answer
         if (/char-to-pinyin|audio-to-pinyin|char-to-tones/.test(m)) showPinyin = false;
-
-        // ── Header
-        html.push('<div style="font-weight:700;font-size:12px;color:#9575cd;margin-bottom:6px">');
-        html.push(lastData.isEEG ? '🧠 Why this card?' : '📊 Why this card?');
-        html.push('</div>');
-
-        // ── Chosen character (redact if it's the answer)
         var charLabel = showChar ? d.char : '?';
         if (showChar && showMeaning && typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
             var found = quizCharacters.find(function (q) { return q.char === d.char; });
             if (found && found.meaning) charLabel += ' <span style="color:#777;font-size:11px">' + found.meaning + '</span>';
         }
-        html.push('<div style="font-size:18px;font-weight:600;margin:4px 0">' + charLabel + '</div>');
-
-        // ── Stats
+        var statsLabel = '';
         if (!d.isUnseen) {
             var bits = [];
             if (d.sessionAcc !== null) bits.push(Math.round(d.sessionAcc * 100) + '% acc');
             if (d.attempts) bits.push(d.attempts + '×');
             if (d.recallProb !== null) bits.push('P=' + d.recallProb.toFixed(2));
-            if (bits.length) html.push('<div style="font-size:10px;color:#777;margin-bottom:4px">' + bits.join(' · ') + '</div>');
+            if (bits.length) statsLabel = bits.join(' · ');
         } else {
-            html.push('<div style="font-size:10px;color:#777;margin-bottom:4px">New card</div>');
+            statsLabel = 'New card';
         }
-
-        // ── Score total
-        html.push('<div style="font-size:14px;font-weight:700;color:#e0e0e0;margin:4px 0 8px">' + d.total.toFixed(2) + ' <span style="font-size:10px;color:#666;font-weight:400">score</span></div>');
-
-        // ── Factors
         var mx = Math.max(d.total, 1);
-        html.push(factorLine('Urgency', d.urgency * 1.6, mx, '#ff7043'));
-        html.push(factorLine('Difficulty', d.difficulty * 0.75, mx, '#ffb74d'));
-        html.push(factorLine('Explore', d.exploration * 0.5, mx, '#4fc3f7'));
-        html.push(factorLine('Due boost', d.dueBoost, mx, '#ff7043'));
-        html.push(factorLine('New card', d.freshBoost, mx, '#78909c'));
-        html.push(factorLine('SR boost', d.srBoost, mx, '#26c6da'));
-        html.push(factorLine('Marking', d.markingBoost, mx, d.markingBoost > 0 ? '#ef5350' : '#546e7a'));
-        html.push(factorLine('🧠 Focus', d.eegFocusMod, mx, '#9575cd'));
-        html.push(factorLine('🧠 Bias', d.eegDifficultyBias, mx, '#9575cd'));
-        html.push(factorLine('🧠 Brain', d.eegBrainProfile, mx, '#66bb6a'));
-        html.push(factorLine('🤯 Fidget', d.eegHeadPenalty, mx, '#ef5350'));
-        if (d.brainFragile) html.push('<div style="font-size:9px;color:#ffb74d;margin-top:2px">⚠ Fragile</div>');
-
-        // ── EEG state (if active)
-        if (lastData.isEEG && d.eegEngagement !== null) {
-            html.push('<div style="margin-top:8px;padding:6px;background:rgba(149,117,205,0.08);border-radius:5px;font-size:10px">');
-            html.push('Focus <b style="color:#4fc3f7">' + Math.round((d.eegEngagement || 0) * 100) + '%</b> · ');
-            html.push('Calm <b style="color:#9575cd">' + Math.round((d.eegRelaxation || 0) * 100) + '%</b>');
-            if (d.eegMlLabel) html.push(' · ML: <b>' + d.eegMlLabel + '</b>');
-            if (!d.eegSignalOk) html.push('<div style="color:#ef5350;margin-top:2px">⚠ Poor signal</div>');
-            html.push('</div>');
-        }
-
-        // ── Runners up (compact, redacted)
-        if (lastData.runners.length) {
-            html.push('<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px">');
-            html.push('<div style="font-size:9px;color:#666;margin-bottom:4px">Also considered (' + lastData.handSize + ' in hand)</div>');
-            for (var i = 0; i < lastData.runners.length; i++) {
-                var ru = lastData.runners[i];
-                var ruLabel = showChar ? ru.char : '?';
-                if (showChar && showMeaning && typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
-                    var f2 = quizCharacters.find(function (q) { return q.char === ru.char; });
-                    if (f2 && f2.meaning) ruLabel += ' ' + f2.meaning;
-                }
-                html.push('<div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0;color:#888">');
-                html.push('<span>' + ruLabel + '</span>');
-                html.push('<span>' + ru.total.toFixed(1) + '</span>');
-                html.push('</div>');
+        var factors = [
+            { label: 'Urgency', value: d.urgency * 1.6, max: mx, color: '#ff7043' },
+            { label: 'Difficulty', value: d.difficulty * 0.75, max: mx, color: '#ffb74d' },
+            { label: 'Explore', value: d.exploration * 0.5, max: mx, color: '#4fc3f7' },
+            { label: 'Due boost', value: d.dueBoost, max: mx, color: '#ff7043' },
+            { label: 'New card', value: d.freshBoost, max: mx, color: '#78909c' },
+            { label: 'SR boost', value: d.srBoost, max: mx, color: '#26c6da' },
+            { label: 'Marking', value: d.markingBoost, max: mx, color: d.markingBoost > 0 ? '#ef5350' : '#546e7a' },
+            { label: '🧠 Focus', value: d.eegFocusMod, max: mx, color: '#9575cd' },
+            { label: '🧠 Bias', value: d.eegDifficultyBias, max: mx, color: '#9575cd' },
+            { label: '🧠 Brain', value: d.eegBrainProfile, max: mx, color: '#66bb6a' },
+            { label: '🤯 Fidget', value: d.eegHeadPenalty, max: mx, color: '#ef5350' }
+        ].filter(function (factor) { return Math.abs(factor.value) >= 0.005; });
+        var eegSummary = lastData.isEEG && d.eegEngagement !== null
+            ? {
+                focus: Math.round((d.eegEngagement || 0) * 100),
+                calm: Math.round((d.eegRelaxation || 0) * 100),
+                mlLabel: d.eegMlLabel || '',
+                signalOk: d.eegSignalOk !== false
             }
-            html.push('</div>');
-        }
+            : null;
+        var runners = (lastData.runners || []).map(function (ru) {
+            var ruLabel = showChar ? ru.char : '?';
+            if (showChar && showMeaning && typeof quizCharacters !== 'undefined' && Array.isArray(quizCharacters)) {
+                var foundRunner = quizCharacters.find(function (q) { return q.char === ru.char; });
+                if (foundRunner && foundRunner.meaning) ruLabel += ' ' + foundRunner.meaning;
+            }
+            return { label: ruLabel, score: ru.total };
+        });
 
-        panelEl.innerHTML = html.join('');
+        ensureUiLibrary()
+            .then(function (ui) {
+                ui.render(panelEl, {
+                    title: lastData.isEEG ? '🧠 Why this card?' : '📊 Why this card?',
+                    charLabel: charLabel,
+                    statsLabel: statsLabel,
+                    totalScore: d.total,
+                    factors: factors,
+                    fragile: !!d.brainFragile,
+                    eegSummary: eegSummary,
+                    runners: runners,
+                    handSize: lastData.handSize || 0
+                });
+            })
+            .catch(function (error) {
+                console.error('Failed to render EEG decision UI:', error);
+            });
     }
 
     // ── Hooks ──────────────────────────────────────────────────────────

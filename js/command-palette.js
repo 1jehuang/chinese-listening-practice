@@ -122,6 +122,33 @@ const DEFAULT_PAGES = [
 const PALETTE_INPUT_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 const COMMAND_PALETTE_TOAST_KEY = 'commandPaletteIntroShown';
 const COMMAND_HINT_ATTR = 'data-command-hint-applied';
+let commandPaletteUiLoadPromise = null;
+
+function ensureCommandPaletteUiLibrary() {
+    if (window.JcodeCommandPaletteUI?.render) {
+        return Promise.resolve(window.JcodeCommandPaletteUI);
+    }
+    if (commandPaletteUiLoadPromise) {
+        return commandPaletteUiLoadPromise;
+    }
+    commandPaletteUiLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'js/command-palette-ui.js';
+        script.async = true;
+        script.onload = () => {
+            if (window.JcodeCommandPaletteUI?.render) {
+                resolve(window.JcodeCommandPaletteUI);
+            } else {
+                reject(new Error('Command palette UI loaded but renderer is unavailable.'));
+            }
+        };
+        script.onerror = () => reject(new Error('Failed to load command palette UI bundle.'));
+        (document.head || document.body || document.documentElement).appendChild(script);
+    }).finally(() => {
+        commandPaletteUiLoadPromise = null;
+    });
+    return commandPaletteUiLoadPromise;
+}
 
 function isMacLike() {
     if (typeof navigator === 'undefined') return false;
@@ -247,6 +274,74 @@ function attachCommandableBadges(items) {
     });
 }
 
+function isElementVisible(el) {
+    if (!el) return false;
+    if (el.offsetParent !== null) return true;
+    if (typeof el.getClientRects === 'function' && el.getClientRects().length > 0) return true;
+    return false;
+}
+
+function getInputLabel(el) {
+    if (!el) return null;
+    const datasetLabel = el.dataset.commandLabel || el.dataset.commandName;
+    const ariaLabel = el.getAttribute && el.getAttribute('aria-label');
+    const placeholder = el.placeholder;
+    const title = el.title;
+    const nameAttr = el.name;
+    const idAttr = el.id;
+
+    const label = datasetLabel || ariaLabel || placeholder || title || nameAttr || idAttr;
+    if (!label) return null;
+    return label.trim();
+}
+
+function getFocusableInputs() {
+    const selector = 'input, textarea, [contenteditable="true"]';
+    const allowedTypes = new Set(['', 'text', 'search', 'email', 'tel', 'url', 'number', 'password']);
+
+    return Array.from(document.querySelectorAll(selector))
+        .filter(el => {
+            if (!el || el.dataset.commandFocusable === 'false') return false;
+            if (el.id === 'paletteSearch') return false;
+            if (el.disabled) return false;
+            if (el.readOnly) return false;
+            if (el.tagName === 'INPUT') {
+                const type = (el.type || '').toLowerCase();
+                if (type === 'hidden' || (!allowedTypes.has(type) && type !== '')) return false;
+            }
+            return true;
+        })
+        .map(el => ({ element: el, label: getInputLabel(el) }))
+        .filter(item => Boolean(item.label));
+}
+
+function focusElement(el) {
+    if (!el) return;
+    try {
+        if (typeof el.focus === 'function') {
+            el.focus({ preventScroll: false });
+        }
+    } catch (err) {
+        console.warn('Failed to focus element', err);
+    }
+
+    if (typeof el.select === 'function') {
+        try {
+            el.select();
+        } catch (err) {
+            // ignore unsupported select implementations
+        }
+    } else if (el.isContentEditable) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const selection = window.getSelection && window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+}
+
 function initCommandPalette(config = []) {
     const normalizedConfig = normalizeConfig(config);
 
@@ -255,29 +350,19 @@ function initCommandPalette(config = []) {
         return;
     }
 
-    const paletteHTML = `
-        <div id="commandPalette" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-opacity duration-200" style="display: none;">
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                    <input type="text" id="paletteSearch"
-                           class="w-full px-4 py-3 text-lg bg-transparent border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-400"
-                           placeholder="${normalizedConfig.searchPlaceholder}">
-                </div>
-                <div id="paletteResults" class="max-h-96 overflow-y-auto"></div>
-            </div>
-        </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', paletteHTML);
-
-    const palette = document.getElementById('commandPalette');
-    const search = document.getElementById('paletteSearch');
-    const results = document.getElementById('paletteResults');
-
     let baseItems = normalizedConfig.items;
     let filteredItems = baseItems;
     let availableItems = [];
     let selectedIndex = 0;
+    let query = '';
+    let isVisible = false;
+    let paletteRoot = document.getElementById('commandPaletteRoot');
+
+    if (!paletteRoot) {
+        paletteRoot = document.createElement('div');
+        paletteRoot.id = 'commandPaletteRoot';
+        document.body.appendChild(paletteRoot);
+    }
 
     function isElementVisible(el) {
         if (!el) return false;
@@ -334,7 +419,7 @@ function initCommandPalette(config = []) {
             try {
                 el.select();
             } catch (err) {
-                // Some inputs (e.g., type=number) might not support select; ignore.
+                // ignore unsupported select implementations
             }
         } else if (el.isContentEditable) {
             const range = document.createRange();
@@ -361,28 +446,28 @@ function initCommandPalette(config = []) {
         });
     }
 
-    function filterItems(query, items) {
-        const trimmed = query.trim().toLowerCase();
+    function filterItems(nextQuery, items) {
+        const trimmed = nextQuery.trim().toLowerCase();
         if (!trimmed) return items.slice();
 
         const condensedQuery = trimmed.replace(/\s+/g, '');
-        const results = [];
+        const matches = [];
 
         items.forEach(item => {
             const score = computeItemScore(trimmed, condensedQuery, item);
             if (score > Number.NEGATIVE_INFINITY) {
-                results.push({ item, score });
+                matches.push({ item, score });
             }
         });
 
-        results.sort((a, b) => {
+        matches.sort((a, b) => {
             if (b.score === a.score) {
                 return a.item.name.localeCompare(b.item.name);
             }
             return b.score - a.score;
         });
 
-        return results.map(entry => entry.item);
+        return matches.map(entry => entry.item);
     }
 
     function getActionLabel(item) {
@@ -397,85 +482,98 @@ function initCommandPalette(config = []) {
         }
     }
 
-    function getTypeBadge(item) {
+    function getTypeMeta(item) {
         const badges = {
-            'mode': { text: 'Mode', class: 'bg-blue-100 text-blue-700 border-blue-200' },
-            'page': { text: 'Page', class: 'bg-green-100 text-green-700 border-green-200' },
-            'action': { text: 'Action', class: 'bg-purple-100 text-purple-700 border-purple-200' }
+            mode: { text: 'Mode', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+            page: { text: 'Page', className: 'bg-green-100 text-green-700 border-green-200' },
+            action: { text: 'Action', className: 'bg-purple-100 text-purple-700 border-purple-200' }
         };
-        const badge = badges[item.type] || { text: 'Command', class: 'bg-gray-100 text-gray-700 border-gray-200' };
-        return `<span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded border ${badge.class}">${badge.text}</span>`;
+        return badges[item.type] || { text: 'Command', className: 'bg-gray-100 text-gray-700 border-gray-200' };
     }
 
-    function getScopeBadge(item) {
-        if (!item || !item.scope) return '';
-        return `<span class="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">${item.scope}</span>`;
-    }
-
-    function renderResults(items) {
-        filteredItems = items;
+    function syncFilteredItems() {
+        availableItems = computeAvailableItems();
+        filteredItems = filterItems(query, availableItems);
         if (!filteredItems.length) {
-            results.innerHTML = `
-                <div class="px-6 py-8 text-center text-gray-500">
-                    No commands match “${search.value.trim()}”.
-                </div>
-            `;
             selectedIndex = -1;
-            return;
+        } else if (selectedIndex < 0 || selectedIndex >= filteredItems.length) {
+            selectedIndex = 0;
         }
+    }
 
-        selectedIndex = 0;
-        results.innerHTML = filteredItems.map((item, index) => {
-            const description = item.description || getDefaultDescription(item);
-            const hasShortcut = Boolean(item.shortcut);
-            const shortcutBadge = hasShortcut
-                ? `<span class="inline-flex items-center gap-1 text-xs font-mono font-semibold text-gray-600 bg-gray-100 border border-gray-300 rounded px-2 py-1 ml-2">${item.shortcut}</span>`
-                : '';
-            const typeBadge = getTypeBadge(item);
-            const scopeBadge = getScopeBadge(item);
-            const isSelected = index === 0;
-            return `
-                <div class="palette-item px-5 py-3.5 cursor-pointer transition-all duration-150 flex items-start gap-3 border-l-4 ${isSelected ? 'bg-blue-50 border-blue-500' : 'border-transparent hover:bg-gray-50 hover:border-gray-300'}"
-                     data-index="${index}">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <div class="font-semibold text-gray-900 text-base">${item.name}</div>
-                            ${typeBadge}
-                            ${scopeBadge}
-                        </div>
-                        <div class="text-sm text-gray-600 leading-relaxed">${description}</div>
-                    </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        ${shortcutBadge}
-                        <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">${getActionLabel(item)}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
+    function syncPaletteUi() {
+        ensureCommandPaletteUiLibrary()
+            .then((ui) => {
+                syncFilteredItems();
+                ui.render(paletteRoot, {
+                    visible: isVisible,
+                    query,
+                    searchPlaceholder: normalizedConfig.searchPlaceholder,
+                    items: filteredItems,
+                    selectedIndex,
+                    onQueryChange(nextValue) {
+                        query = nextValue;
+                        selectedIndex = 0;
+                        syncPaletteUi();
+                    },
+                    onKeyDown(event) {
+                        if (event.key === 'ArrowDown') {
+                            event.preventDefault();
+                            updateSelection(selectedIndex + 1);
+                        } else if (event.key === 'ArrowUp') {
+                            event.preventDefault();
+                            updateSelection(selectedIndex - 1);
+                        } else if (event.key === 'Tab') {
+                            event.preventDefault();
+                            if (!filteredItems.length) return;
+                            if (event.shiftKey) {
+                                updateSelection(selectedIndex <= 0 ? filteredItems.length - 1 : selectedIndex - 1);
+                            } else {
+                                updateSelection(selectedIndex >= filteredItems.length - 1 ? 0 : selectedIndex + 1);
+                            }
+                        } else if (event.key === 'Enter') {
+                            event.preventDefault();
+                            if (selectedIndex >= 0 && filteredItems[selectedIndex]) {
+                                selectItem(filteredItems[selectedIndex]);
+                            }
+                        } else if (event.key === 'Escape') {
+                            event.preventDefault();
+                            closePalette();
+                        }
+                    },
+                    onSelect: selectItem,
+                    onBackdrop: closePalette,
+                    getTypeMeta,
+                    getActionLabel,
+                    getDefaultDescription
+                });
 
-        results.querySelectorAll('.palette-item').forEach((el) => {
-            el.addEventListener('click', () => {
-                const index = Number(el.dataset.index);
-                if (filteredItems[index]) {
-                    selectItem(filteredItems[index]);
+                if (isVisible) {
+                    requestAnimationFrame(() => {
+                        const searchEl = document.getElementById('paletteSearch');
+                        if (searchEl && document.activeElement !== searchEl) {
+                            searchEl.focus();
+                            const len = searchEl.value.length;
+                            if (typeof searchEl.setSelectionRange === 'function') {
+                                searchEl.setSelectionRange(len, len);
+                            }
+                        }
+                        const selectedEl = paletteRoot.querySelector(`.palette-item[data-index="${selectedIndex}"]`);
+                        if (selectedEl) {
+                            selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }
+                    });
                 }
+            })
+            .catch((error) => {
+                console.error('Failed to render command palette UI:', error);
             });
-        });
     }
 
     function updateSelection(newIndex) {
         if (!filteredItems.length) return;
-        const itemEls = results.querySelectorAll('.palette-item');
-        if (itemEls[selectedIndex]) {
-            itemEls[selectedIndex].classList.remove('bg-blue-50', 'border-blue-500');
-            itemEls[selectedIndex].classList.add('border-transparent');
-        }
         selectedIndex = Math.max(0, Math.min(newIndex, filteredItems.length - 1));
-        if (itemEls[selectedIndex]) {
-            itemEls[selectedIndex].classList.remove('border-transparent', 'hover:bg-gray-50', 'hover:border-gray-300');
-            itemEls[selectedIndex].classList.add('bg-blue-50', 'border-blue-500');
-            itemEls[selectedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
+        syncPaletteUi();
     }
 
     function selectItem(item) {
@@ -513,29 +611,26 @@ function initCommandPalette(config = []) {
     }
 
     function openPalette({ keepQuery = false } = {}) {
-        palette.style.display = 'flex';
+        isVisible = true;
         if (!keepQuery) {
-            search.value = '';
+            query = '';
+            selectedIndex = 0;
         }
-        availableItems = computeAvailableItems();
-        const itemsToRender = filterItems(search.value, availableItems);
-        renderResults(itemsToRender);
-        setTimeout(() => search.focus(), 10);
+        syncPaletteUi();
     }
 
     function closePalette() {
-        palette.style.display = 'none';
-        search.value = '';
-        filteredItems = baseItems;
+        isVisible = false;
+        query = '';
         selectedIndex = 0;
+        syncPaletteUi();
     }
 
     function togglePalette(triggeredByShortcut) {
-        const isOpen = palette.style.display !== 'none';
-        if (isOpen) {
+        if (isVisible) {
             closePalette();
         } else {
-            openPalette({ keepQuery: triggeredByShortcut && search.value.length > 0 });
+            openPalette({ keepQuery: triggeredByShortcut && query.length > 0 });
         }
     }
 
@@ -547,7 +642,6 @@ function initCommandPalette(config = []) {
 
     document.addEventListener('keydown', (e) => {
         const target = e.target;
-        const paletteVisible = palette.style.display !== 'none';
         const inTypingContext = isTypingContext(target);
 
         const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
@@ -558,74 +652,18 @@ function initCommandPalette(config = []) {
             return;
         }
 
-        if (!paletteVisible && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === ':') {
+        if (!isVisible && !inTypingContext && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === ':') {
             e.preventDefault();
             openPalette();
-        }
-    });
-
-    search.addEventListener('input', () => {
-        availableItems = computeAvailableItems();
-        const items = filterItems(search.value, availableItems);
-        renderResults(items);
-    });
-
-    search.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            updateSelection(selectedIndex + 1);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            updateSelection(selectedIndex - 1);
-        } else if (e.key === 'Tab') {
-            e.preventDefault();
-            if (!filteredItems.length) return;
-            if (e.shiftKey) {
-                // Shift+Tab: go to previous option (or wrap to last)
-                if (selectedIndex <= 0) {
-                    updateSelection(filteredItems.length - 1);
-                } else {
-                    updateSelection(selectedIndex - 1);
-                }
-            } else {
-                // Tab: go to next option (or wrap to first)
-                if (selectedIndex >= filteredItems.length - 1) {
-                    updateSelection(0);
-                } else {
-                    updateSelection(selectedIndex + 1);
-                }
-            }
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (selectedIndex >= 0 && filteredItems[selectedIndex]) {
-                selectItem(filteredItems[selectedIndex]);
-            }
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            closePalette();
-        }
-    });
-
-    palette.addEventListener('click', (e) => {
-        if (e.target === palette) {
-            closePalette();
         }
     });
 
     window.__commandPaletteState = {
         updateConfig(newConfig) {
             baseItems = newConfig.items;
-            if (typeof newConfig.searchPlaceholder === 'string') {
-                search.placeholder = newConfig.searchPlaceholder;
-            }
-
-            availableItems = computeAvailableItems();
+            normalizedConfig.searchPlaceholder = newConfig.searchPlaceholder;
             attachCommandableBadges(baseItems);
-
-            if (palette.style.display !== 'none') {
-                const items = filterItems(search.value, availableItems);
-                renderResults(items);
-            }
+            syncPaletteUi();
         },
         open: openPalette,
         close: closePalette
@@ -633,8 +671,10 @@ function initCommandPalette(config = []) {
 
     attachCommandableBadges(baseItems);
     maybeShowCommandPaletteToast();
+    syncPaletteUi();
+}
 
-    function normalizeItem(rawItem) {
+function normalizeItem(rawItem) {
         if (!rawItem || typeof rawItem !== 'object') return null;
         if (!rawItem.name) return null;
 
@@ -1162,8 +1202,6 @@ function initCommandPalette(config = []) {
         score -= Math.min(spreadPenalty, 20);
         return score;
     }
-}
-
 // Auto-initialize command palette when DOM is ready (only if not already initialized)
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
