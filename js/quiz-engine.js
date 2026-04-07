@@ -1628,7 +1628,10 @@ let panStartY = 0;
 let nativeDrawBridgeSocket = null;
 let nativeDrawBridgeConnected = false;
 let nativeDrawBridgeReconnectTimer = null;
+let nativeDrawBridgeReconnectDelayMs = 120;
 const NATIVE_DRAW_BRIDGE_URL = 'ws://127.0.0.1:8876';
+const NATIVE_DRAW_BRIDGE_MIN_RECONNECT_MS = 120;
+const NATIVE_DRAW_BRIDGE_MAX_RECONNECT_MS = 1000;
 
 // Missing Component mode state
 let missingComponentMode = null;
@@ -12496,12 +12499,17 @@ function updateNativeDrawBridgeStatus(message, connected = nativeDrawBridgeConne
     });
 }
 
-function scheduleNativeDrawBridgeReconnect() {
+function scheduleNativeDrawBridgeReconnect(delayMs = nativeDrawBridgeReconnectDelayMs) {
     if (nativeDrawBridgeReconnectTimer) return;
+    const nextDelay = Math.max(0, Number(delayMs) || 0);
     nativeDrawBridgeReconnectTimer = setTimeout(() => {
         nativeDrawBridgeReconnectTimer = null;
         initNativeDrawBridge();
-    }, 2000);
+    }, nextDelay);
+    nativeDrawBridgeReconnectDelayMs = Math.min(
+        NATIVE_DRAW_BRIDGE_MAX_RECONNECT_MS,
+        Math.max(NATIVE_DRAW_BRIDGE_MIN_RECONNECT_MS, nextDelay) * 2
+    );
 }
 
 function initNativeDrawBridge() {
@@ -12522,6 +12530,7 @@ function initNativeDrawBridge() {
 
     socket.addEventListener('open', () => {
         nativeDrawBridgeConnected = true;
+        nativeDrawBridgeReconnectDelayMs = NATIVE_DRAW_BRIDGE_MIN_RECONNECT_MS;
         updateNativeDrawBridgeStatus('connected', true);
     });
 
@@ -12564,12 +12573,17 @@ function initNativeDrawBridge() {
             nativeDrawBridgeSocket = null;
         }
         nativeDrawBridgeConnected = false;
-        updateNativeDrawBridgeStatus('browser input only', false);
+        updateNativeDrawBridgeStatus('reconnecting to native bridge…', false);
         scheduleNativeDrawBridgeReconnect();
     });
 
     socket.addEventListener('error', () => {
-        updateNativeDrawBridgeStatus('browser input only', false);
+        updateNativeDrawBridgeStatus('reconnecting to native bridge…', false);
+        try {
+            socket.close();
+        } catch (err) {
+            console.warn('Native bridge socket close after error failed', err);
+        }
     });
 }
 
