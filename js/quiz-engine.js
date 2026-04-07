@@ -1629,6 +1629,7 @@ let nativeDrawBridgeSocket = null;
 let nativeDrawBridgeConnected = false;
 let nativeDrawBridgeReconnectTimer = null;
 let nativeDrawBridgeReconnectDelayMs = 120;
+let nativeDrawBridgeLastMessage = 'connecting to native absolute bridge…';
 const NATIVE_DRAW_BRIDGE_URL = 'ws://127.0.0.1:8876';
 const NATIVE_DRAW_BRIDGE_MIN_RECONNECT_MS = 120;
 const NATIVE_DRAW_BRIDGE_MAX_RECONNECT_MS = 1000;
@@ -12524,6 +12525,7 @@ function initCanvas() {
 }
 
 function updateNativeDrawBridgeStatus(message, connected = nativeDrawBridgeConnected) {
+    nativeDrawBridgeLastMessage = message;
     const statusEls = [
         document.getElementById('nativeDrawBridgeStatus'),
         document.getElementById('fullscreenNativeDrawBridgeStatus')
@@ -12534,6 +12536,17 @@ function updateNativeDrawBridgeStatus(message, connected = nativeDrawBridgeConne
             ? 'text-xs text-emerald-600 font-semibold'
             : 'text-xs text-gray-500';
     });
+}
+
+function shouldPreconnectNativeDrawBridge() {
+    if (mode === 'trackpad-draw') return true;
+    const urlMode = getModeFromUrl();
+    if (urlMode === 'trackpad-draw') return true;
+    try {
+        return localStorage.getItem(getQuizModeKey()) === 'trackpad-draw';
+    } catch (error) {
+        return false;
+    }
 }
 
 function scheduleNativeDrawBridgeReconnect(delayMs = nativeDrawBridgeReconnectDelayMs) {
@@ -12558,6 +12571,11 @@ function initNativeDrawBridge() {
         nativeDrawBridgeSocket.readyState === WebSocket.OPEN ||
         nativeDrawBridgeSocket.readyState === WebSocket.CONNECTING
     )) {
+        const isOpen = nativeDrawBridgeSocket.readyState === WebSocket.OPEN;
+        updateNativeDrawBridgeStatus(
+            nativeDrawBridgeLastMessage || (isOpen ? 'connected' : 'connecting to native absolute bridge…'),
+            isOpen && nativeDrawBridgeConnected
+        );
         return;
     }
 
@@ -17097,6 +17115,9 @@ function initQuizDomElements() {
     fullscreenDrawInitialized = false;
     ensureFullscreenDrawLayout();
     ensureFeedbackPanelLayout();
+    if (shouldPreconnectNativeDrawBridge()) {
+        initNativeDrawBridge();
+    }
 }
 
 function configureQuizInputs() {

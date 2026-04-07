@@ -25,15 +25,33 @@ start_http_server() {
 }
 
 start_bridge() {
-  pkill -f "python3 .*scripts/trackpad_bridge.py" >/dev/null 2>&1 || true
+  if ss -ltn | grep -q ":${BRIDGE_PORT}\\b"; then
+    return
+  fi
   (
     cd "$REPO_DIR"
     nohup python3 scripts/trackpad_bridge.py --port "$BRIDGE_PORT" --smoothing "$BRIDGE_SMOOTHING" --debounce-ms "$BRIDGE_DEBOUNCE_MS" >"$BRIDGE_LOG" 2>&1 &
   )
 }
 
+wait_for_port() {
+  local port="$1"
+  local retries="${2:-40}"
+  local delay_secs="${3:-0.05}"
+  local i
+  for ((i=0; i<retries; i++)); do
+    if ss -ltn | grep -q ":${port}\\b"; then
+      return 0
+    fi
+    sleep "$delay_secs"
+  done
+  return 1
+}
+
 start_http_server
 start_bridge
 
-sleep 0.5
+wait_for_port "$HTTP_PORT" 40 0.05 || true
+wait_for_port "$BRIDGE_PORT" 40 0.05 || true
+
 xdg-open "$TARGET_URL" >/dev/null 2>&1 || true
