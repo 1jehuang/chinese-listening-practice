@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Chinese Trackpad Draw Lesson 15
+Comment=Open Lesson 15 in native trackpad draw mode
+Exec=/home/jeremy/chinese-listening-practice/scripts/launch_trackpad_draw.sh
+Path=/home/jeremy/chinese-listening-practice
+Terminal=false
+Categories=Education;Languages;
+StartupNotify=true

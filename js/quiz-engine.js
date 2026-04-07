@@ -326,6 +326,21 @@ function isDrawCharLikeMode(modeName = mode) {
     return modeName === 'draw-char' || modeName === 'trackpad-draw';
 }
 
+function requiresDrawMeaningSelection(modeName = mode) {
+    return modeName === 'draw-char';
+}
+
+function syncDrawModeUiForCurrentMode() {
+    const inlineCard = document.getElementById('drawMeaningChoicesInline')?.closest('.rounded-2xl');
+    if (inlineCard) {
+        inlineCard.style.display = isTrackpadDrawMode() ? 'none' : '';
+    }
+    const fullscreenCard = document.getElementById('fullscreenMeaningChoices')?.closest('.absolute');
+    if (fullscreenCard) {
+        fullscreenCard.style.display = isTrackpadDrawMode() ? 'none' : '';
+    }
+}
+
 function cloneQuizDataArray(data) {
     try {
         return JSON.parse(JSON.stringify(data));
@@ -7483,6 +7498,7 @@ function renderQuestionUiForHandwritingModes() {
         generateDrawMeaningChoices();
         renderDrawMeaningChoices('drawMeaningChoicesInline');
         renderDrawMeaningChoices('fullscreenMeaningChoices');
+        syncDrawModeUiForCurrentMode();
         return true;
     }
 
@@ -12456,12 +12472,16 @@ function initCanvas() {
 }
 
 function updateNativeDrawBridgeStatus(message, connected = nativeDrawBridgeConnected) {
-    const statusEl = document.getElementById('nativeDrawBridgeStatus');
-    if (!statusEl) return;
-    statusEl.textContent = `Bridge: ${message}`;
-    statusEl.className = connected
-        ? 'text-xs text-emerald-600 font-semibold'
-        : 'text-xs text-gray-500';
+    const statusEls = [
+        document.getElementById('nativeDrawBridgeStatus'),
+        document.getElementById('fullscreenNativeDrawBridgeStatus')
+    ].filter(Boolean);
+    statusEls.forEach(statusEl => {
+        statusEl.textContent = `Bridge: ${message}`;
+        statusEl.className = connected
+            ? 'text-xs text-emerald-600 font-semibold'
+            : 'text-xs text-gray-500';
+    });
 }
 
 function scheduleNativeDrawBridgeReconnect() {
@@ -12541,18 +12561,51 @@ function initNativeDrawBridge() {
     });
 }
 
-function getNativeBridgeCanvasPoint(nx, ny) {
-    if (!canvas) return { x: 0, y: 0 };
-    const pad = Math.round(Math.min(canvas.width, canvas.height) * 0.08);
-    const width = Math.max(40, canvas.width - pad * 2);
-    const height = Math.max(40, canvas.height - pad * 2);
+function getNativeBridgeTargetInfo() {
+    if (isFullscreenMode && fullscreenCanvas) {
+        return {
+            kind: 'fullscreen',
+            width: window.innerWidth,
+            height: window.innerHeight,
+            redraw: redrawFullscreenCanvas,
+            updateUndo: updateFullscreenUndoRedoButtons,
+            runOcr: runFullscreenOCR
+        };
+    }
+    if (!canvas) return null;
     return {
-        x: pad + Math.max(0, Math.min(1, Number(nx))) * width,
-        y: pad + Math.max(0, Math.min(1, Number(ny))) * height,
+        kind: 'inline',
+        width: canvas.width,
+        height: canvas.height,
+        redraw: redrawCanvas,
+        updateUndo: updateUndoRedoButtons,
+        runOcr: runOCR
+    };
+}
+
+function getNativeBridgeCanvasPoint(nx, ny) {
+    const target = getNativeBridgeTargetInfo();
+    if (!target) return { x: 0, y: 0 };
+    const normalizedX = Math.max(0, Math.min(1, Number(nx)));
+    const normalizedY = Math.max(0, Math.min(1, Number(ny)));
+    if (target.kind === 'fullscreen') {
+        return {
+            x: normalizedX * target.width,
+            y: normalizedY * target.height,
+        };
+    }
+    const pad = Math.round(Math.min(target.width, target.height) * 0.08);
+    const width = Math.max(40, target.width - pad * 2);
+    const height = Math.max(40, target.height - pad * 2);
+    return {
+        x: pad + normalizedX * width,
+        y: pad + normalizedY * height,
     };
 }
 
 function beginNativeBridgeStroke(nx, ny) {
+    const target = getNativeBridgeTargetInfo();
+    if (!target) return;
     const point = getNativeBridgeCanvasPoint(nx, ny);
     drawStartTime = drawStartTime ?? null;
     currentStroke = {
@@ -12562,11 +12615,12 @@ function beginNativeBridgeStroke(nx, ny) {
     };
     lastX = point.x;
     lastY = point.y;
-    redrawCanvas();
+    target.redraw();
 }
 
 function continueNativeBridgeStroke(nx, ny) {
-    if (!canvas) return;
+    const target = getNativeBridgeTargetInfo();
+    if (!target) return;
     if (!currentStroke) {
         beginNativeBridgeStroke(nx, ny);
         return;
@@ -12580,18 +12634,20 @@ function continueNativeBridgeStroke(nx, ny) {
     currentStroke.t.push(getRelativeTimestamp());
     lastX = point.x;
     lastY = point.y;
-    redrawCanvas();
+    target.redraw();
 }
 
 function finishNativeBridgeStroke() {
+    const target = getNativeBridgeTargetInfo();
+    if (!target) return;
     if (!currentStroke || currentStroke.x.length === 0) return;
     strokes.push(currentStroke);
     undoneStrokes = [];
     currentStroke = null;
-    redrawCanvas();
-    updateUndoRedoButtons();
+    target.redraw();
+    target.updateUndo();
     if (ocrTimeout) clearTimeout(ocrTimeout);
-    ocrTimeout = setTimeout(runOCR, 400);
+    ocrTimeout = setTimeout(target.runOcr, 400);
 }
 
 function getCanvasScaleFactors() {
@@ -13217,7 +13273,8 @@ function submitDrawing() {
     }
 
     const isDrawCharMode = isDrawCharLikeMode();
-    if (isDrawCharMode && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
+    const requireMeaning = requiresDrawMeaningSelection();
+    if (requireMeaning && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
         feedback.textContent = '✗ Please select a meaning!';
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         return;
@@ -13232,7 +13289,7 @@ function submitDrawing() {
     const normalizedRecognized = normalizeDrawAnswer(recognized);
     const normalizedTarget = normalizeDrawAnswer(expectedChar);
     const drawCorrect = normalizedRecognized === normalizedTarget;
-    const meaningCorrect = !isDrawCharMode || !drawMeaningChoices.length || drawSelectedMeaning === currentQuestion.meaning;
+    const meaningCorrect = !requireMeaning || !drawMeaningChoices.length || drawSelectedMeaning === currentQuestion.meaning;
     const correct = drawCorrect && meaningCorrect;
     const isFirstAttempt = !answered;
 
@@ -13245,7 +13302,7 @@ function submitDrawing() {
         markSchedulerOutcome(correct);
     }
 
-    if (isDrawCharMode && drawMeaningChoices.length > 0) {
+    if (requireMeaning && drawMeaningChoices.length > 0) {
         showDrawMeaningResult('drawMeaningChoicesInline', correct);
     }
 
@@ -13640,7 +13697,7 @@ function revealDrawingAnswer() {
 
     updateStats();
 
-    if (isDrawCharLikeMode() && drawMeaningChoices.length > 0) {
+    if (requiresDrawMeaningSelection() && drawMeaningChoices.length > 0) {
         drawSelectedMeaning = null;
         showDrawMeaningResult('drawMeaningChoicesInline', false);
     }
@@ -14085,6 +14142,17 @@ function redrawFullscreenCanvas() {
         }
         fullscreenCtx.stroke();
     });
+
+    if (currentStroke && currentStroke.x.length > 0) {
+        fullscreenCtx.beginPath();
+        fullscreenCtx.moveTo(currentStroke.x[0], currentStroke.y[0]);
+        for (let i = 1; i < currentStroke.x.length; i++) {
+            fullscreenCtx.lineTo(currentStroke.x[i], currentStroke.y[i]);
+        }
+        fullscreenCtx.strokeStyle = '#2563eb';
+        fullscreenCtx.stroke();
+        fullscreenCtx.strokeStyle = '#000';
+    }
 }
 
 function updateFullscreenUndoRedoButtons() {
@@ -14119,7 +14187,8 @@ function submitFullscreenDrawing() {
     }
 
     const isDrawCharMode = isDrawCharLikeMode();
-    if (isDrawCharMode && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
+    const requireMeaning = requiresDrawMeaningSelection();
+    if (requireMeaning && drawMeaningChoices.length > 0 && !drawSelectedMeaning) {
         const prompt = document.getElementById('fullscreenPrompt');
         if (prompt) prompt.innerHTML = `<span class="text-red-600">Please select a meaning!</span>`;
         return;
@@ -14135,7 +14204,7 @@ function submitFullscreenDrawing() {
     const normalizedRecognized = normalizeDrawAnswer(recognized);
     const normalizedTarget = normalizeDrawAnswer(currentQuestion.char);
     const drawCorrect = normalizedRecognized === normalizedTarget;
-    const meaningCorrect = !isDrawCharMode || !drawMeaningChoices.length || drawSelectedMeaning === currentQuestion.meaning;
+    const meaningCorrect = !requireMeaning || !drawMeaningChoices.length || drawSelectedMeaning === currentQuestion.meaning;
     const correct = drawCorrect && meaningCorrect;
 
     if (correct) {
@@ -14220,7 +14289,7 @@ function showFullscreenAnswer() {
         renderPerCharMeaningInline(currentQuestion.char, prompt, baseHtml);
     }
 
-    if (isDrawCharLikeMode() && drawMeaningChoices.length > 0) {
+    if (requiresDrawMeaningSelection() && drawMeaningChoices.length > 0) {
         drawSelectedMeaning = null;
         showDrawMeaningResult('fullscreenMeaningChoices', false);
         showDrawMeaningResult('drawMeaningChoicesInline', false);
@@ -14676,6 +14745,7 @@ function ensureFullscreenDrawLayout() {
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Draw</div>
                     <div id="fullscreenPrompt" class="text-3xl font-bold text-gray-900">字</div>
                     <div id="fullscreenConfidence" class="text-sm text-gray-500 mt-1"></div>
+                    <div id="fullscreenNativeDrawBridgeStatus" class="text-xs text-gray-500 mt-1">Bridge: browser input only</div>
                 </div>
                 <button id="exitFullscreenBtn" type="button" class="pointer-events-auto px-4 py-2 rounded-xl bg-white/90 backdrop-blur-sm border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 shadow-lg transition">Exit</button>
             </div>
@@ -16092,6 +16162,51 @@ function handleQuizHotkeys(e) {
             // Any other key after answer shown = wrong
             e.preventDefault();
             handleHandwritingResult(false);
+            return;
+        }
+    }
+
+    if (isTrackpadDrawMode() && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (isTypingTarget(target)) return;
+        const inFullscreen = Boolean(isFullscreenMode && fullscreenCanvas);
+
+        if (e.key === 'c' || e.key === 'C') {
+            e.preventDefault();
+            if (inFullscreen) clearFullscreenCanvas(); else clearCanvas();
+            return;
+        }
+
+        if (e.key === ' ') {
+            e.preventDefault();
+            if (answered && lastAnswerCorrect) {
+                if (inFullscreen) nextFullscreenQuestion(); else goToNextQuestionAfterCorrect();
+            } else {
+                if (inFullscreen) submitFullscreenDrawing(); else submitDrawing();
+            }
+            return;
+        }
+
+        if (e.key === 'u' || e.key === 'U') {
+            e.preventDefault();
+            if (inFullscreen) undoFullscreenStroke(); else undoStroke();
+            return;
+        }
+
+        if (e.key === 'r' || e.key === 'R') {
+            e.preventDefault();
+            if (inFullscreen) redoFullscreenStroke(); else redoStroke();
+            return;
+        }
+
+        if (e.key === 'h' || e.key === 'H') {
+            e.preventDefault();
+            showDrawHint(inFullscreen);
+            return;
+        }
+
+        if (e.key === 'a' || e.key === 'A') {
+            e.preventDefault();
+            if (inFullscreen) showFullscreenAnswer(); else revealDrawingAnswer();
             return;
         }
     }
