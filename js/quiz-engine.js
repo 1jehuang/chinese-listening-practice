@@ -12464,6 +12464,7 @@ function initCanvas() {
     const zoomOutBtn = document.getElementById('zoomOutBtn');
     const resetBtn = document.getElementById('resetViewBtn');
     const fullscreenBtn = document.getElementById('fullscreenDrawBtn');
+    const mobileFullscreenBtn = document.getElementById('mobileFullscreenDrawBtn');
 
     if (clearBtn) clearBtn.onclick = clearCanvas;
     if (submitBtn) submitBtn.onclick = submitDrawing;
@@ -12475,6 +12476,7 @@ function initCanvas() {
     if (zoomOutBtn) zoomOutBtn.onclick = zoomOut;
     if (resetBtn) resetBtn.onclick = resetView;
     if (fullscreenBtn) fullscreenBtn.onclick = enterFullscreenDrawing;
+    if (mobileFullscreenBtn) mobileFullscreenBtn.onclick = enterFullscreenDrawing;
 
     updateOcrCandidates();
     updateUndoRedoButtons();
@@ -14712,6 +14714,7 @@ function ensureDrawModeLayout() {
                 <div class="flex flex-col gap-3 text-center lg:text-left w-full lg:w-[220px]">
                     <div class="text-xs uppercase tracking-[0.35em] text-gray-400">Recognition</div>
                     <div id="ocrResult" class="text-5xl font-semibold text-blue-600 min-h-[72px]">&nbsp;</div>
+                    <button id="mobileFullscreenDrawBtn" type="button" class="lg:hidden inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">⛶ Fullscreen</button>
                     <div id="ocrCandidates" class="flex flex-wrap gap-2 justify-center lg:justify-start"></div>
                     <div id="drawHintBox" class="hidden mt-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
                         <div class="text-xs uppercase tracking-[0.3em] text-blue-400">Hint</div>
