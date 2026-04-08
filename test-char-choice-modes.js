@@ -211,6 +211,11 @@ function createContext() {
     function __getNoTonePinyinWord() { return getNoTonePinyinWord(currentQuestion); }
     function __getToneFlowExpectedNoTone() { return toneFlowExpectedNoTone; }
     function __getToneFlowExpected() { return Array.from(toneFlowExpected); }
+    function __getToneFlowIndex() { return toneFlowIndex; }
+    function __getToneFlowBaseSyllable(index) { return getToneFlowBaseSyllable(index); }
+    function __getToneFlowCompletedSyllables() { return Array.from(toneFlowCompletedSyllables); }
+    function __handleToneFlowPinyinChoiceSingle(choice) { handleToneFlowPinyinChoiceSingle(choice, null); }
+    function __handleToneFlowToneChoice(choice) { handleToneFlowToneChoice(choice, null); }
     function __formatTonePatternLabel(pattern) { return formatTonePatternLabel(pattern); }
     function __generateTonePatternChoices(pattern) { return generateTonePatternChoices(pattern).map(item => item.join('-')); }
     function __getWordToneFlowOptions() { return getToneFlowWordPinyinOptions(); }
@@ -230,7 +235,9 @@ function createContext() {
         textContent: btn.textContent || '',
         innerHTML: btn.innerHTML || '',
         pattern: btn.dataset.pattern || '',
-        normalized: btn.dataset.normalized || ''
+        normalized: btn.dataset.normalized || '',
+        tone: btn.dataset.tone || '',
+        syllable: btn.dataset.syllable || ''
       }));
     }
   `, ctx);
@@ -596,6 +603,35 @@ const vocab = [
   console.log('✓ sentence mode Preact state tracks highlight and submission feedback');
 })();
 
+(function testWordUsageHintMapsGrammarCategories() {
+  const { ctx } = createContext();
+  const verbHint = ctx.getWordUsageHint({ category: 'Common Verbs' });
+  const nounHint = ctx.getWordUsageHint({ category: 'Nouns' });
+  const pronounHint = ctx.getWordUsageHint({ category: 'Pronouns' });
+
+  assert.strictEqual(verbHint.label, 'VERB');
+  assert.strictEqual(verbHint.before, 'wǒ');
+  assert.strictEqual(nounHint.label, 'NOUN');
+  assert.strictEqual(nounHint.before, 'wǒ xǐhuan');
+  assert.strictEqual(pronounHint.label, 'PRONOUN');
+  assert.strictEqual(pronounHint.after, 'xǐhuan chá');
+  console.log('✓ word usage hints map categories to compact grammar cues');
+})();
+
+(function testMeaningLayoutFallbackShowsUsageHint() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion({ char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' });
+
+  ctx.renderMeaningQuestionLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('Usage pattern'), 'meaning layout should render a usage hint');
+  assert.ok(html.includes('[VERB]'), 'meaning layout should show the compact part-of-speech label');
+  assert.ok(html.includes('Common Verbs'), 'meaning layout should show the source grammar category');
+  console.log('✓ meaning layout fallback shows usage hints for tagged words');
+})();
+
 (function testToneMcUsesWholeWordPinyinWithoutToneMarks() {
   const { ctx } = createContext();
   const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
@@ -623,18 +659,61 @@ const vocab = [
   console.log('✓ char-to-pinyin-tones-mc phase 1 uses whole-word pinyin without tones');
 })();
 
-(function testToneMcFormatsWholeWordTonePatternOptions() {
+(function testToneMcUsesOneToneMarkedSyllableAtATime() {
   const { ctx } = createContext();
-  assert.strictEqual(
-    ctx.__formatTonePatternLabel([3, 1]),
-    '3-1 · third first',
-    'tone pattern labels should include numeric and word forms'
-  );
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  ctx.__setQuizCharacters([
+    word,
+    { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' },
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+    { char: '朋友', pinyin: 'péng yǒu', meaning: 'friend' },
+  ]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin-tones-mc');
+  ctx.__initTestDomRefs();
 
-  const options = Array.from(ctx.__generateTonePatternChoices([3, 1]));
-  assert.ok(options.includes('3-1'), 'tone pattern choices should include the correct full-word tone combination');
-  assert.ok(options.every(option => option.includes('-')), 'multi-syllable tone options should be word-level combinations');
-  console.log('✓ char-to-pinyin-tones-mc phase 2 uses whole-word tone combinations');
+  ctx.startPinyinToneMcFlow(true);
+  ctx.__handleToneFlowPinyinChoiceSingle('hao tian');
+
+  assert.strictEqual(ctx.__getToneFlowIndex(), 0, 'tone flow should start on the first syllable');
+  assert.strictEqual(ctx.__getToneFlowBaseSyllable(0), 'hao', 'tone flow should prompt the current syllable without tones');
+
+  const options = Array.from(ctx.__getFuzzyOptionData());
+  const syllables = options.map(option => option.syllable).sort();
+  assert.deepStrictEqual(
+    syllables,
+    ['hāo', 'háo', 'hǎo', 'hào', 'hao'].sort(),
+    'tone options should be the five tone-mark variants for the current syllable'
+  );
+  console.log('✓ char-to-pinyin-tones-mc phase 2 uses one tone-marked syllable at a time');
+})();
+
+(function testToneMcOnlyAdvancesOnCorrectToneChoice() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  ctx.__setQuizCharacters([
+    word,
+    { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' },
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+    { char: '朋友', pinyin: 'péng yǒu', meaning: 'friend' },
+  ]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin-tones-mc');
+  ctx.__initTestDomRefs();
+
+  ctx.startPinyinToneMcFlow(true);
+  ctx.__handleToneFlowPinyinChoiceSingle('hao tian');
+
+  ctx.__handleToneFlowToneChoice(2);
+  assert.strictEqual(ctx.__getToneFlowIndex(), 0, 'wrong tone should not advance to the next syllable');
+  assert.deepStrictEqual(Array.from(ctx.__getToneFlowCompletedSyllables()), [], 'wrong tone should not mark a syllable complete');
+
+  ctx.__handleToneFlowToneChoice(3);
+  assert.strictEqual(ctx.__getToneFlowIndex(), 1, 'correct tone should advance to the next syllable');
+  assert.deepStrictEqual(Array.from(ctx.__getToneFlowCompletedSyllables()), ['hǎo'], 'correct tone should store the completed toned syllable');
+  console.log('✓ char-to-pinyin-tones-mc only advances after a correct tone choice');
 })();
 
 (function testToneMcIgnoresOptionalParentheticalPinyin() {

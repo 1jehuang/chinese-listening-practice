@@ -92,9 +92,9 @@ body.sentence-mode-active #fuzzyOptions button {
 body.sentence-mode-active[data-sentence-ui='preact'] .quiz-display {
     justify-content: flex-start;
     align-items: stretch;
-    overflow-y: auto;
+    overflow: hidden;
     overflow-x: hidden;
-    padding: 0.5rem 0 1rem;
+    padding: 0.35rem 0 0.75rem;
 }
 
 body.sentence-mode-active[data-sentence-ui='preact'] #feedback,
@@ -248,20 +248,20 @@ body.sentence-mode-active[data-sentence-ui='preact'] .input-section {
 
 .sentence-mode-option-list {
     display: grid;
-    gap: 0.8rem;
+    gap: 0.55rem;
 }
 
 .sentence-mode-option {
     width: 100%;
     text-align: left;
-    line-height: 1.6;
-    min-height: 4.25rem;
+    line-height: 1.45;
+    min-height: 3.35rem;
     border: 2px solid #cbd5e1;
     border-radius: 0.95rem;
-    padding: 1rem 1.05rem;
+    padding: 0.72rem 0.85rem;
     background: #fff;
     color: #1e293b;
-    font-size: 1rem;
+    font-size: 0.94rem;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
     transition: all 0.15s ease;
     cursor: pointer;
@@ -406,6 +406,113 @@ body.theme-dark .sentence-mode-feedback-title,
 body.theme-dark .sentence-mode-feedback-message,
 body.theme-dark .sentence-mode-feedback-detail {
     color: var(--dm-text);
+}
+
+@media (min-width: 860px) {
+    .sentence-mode-shell {
+        width: min(100%, 1040px);
+        max-width: 1040px;
+        grid-template-columns: minmax(0, 1.08fr) minmax(20rem, 0.92fr);
+        align-items: start;
+        column-gap: 0.85rem;
+        row-gap: 0.7rem;
+    }
+
+    .sentence-mode-header {
+        grid-column: 1 / -1;
+    }
+
+    .sentence-mode-card--sentence {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .sentence-mode-card--prompt {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .sentence-mode-answer-panel {
+        grid-column: 2;
+        grid-row: 2 / span 2;
+        align-self: stretch;
+        align-content: start;
+    }
+}
+
+@media (max-height: 920px) {
+    body.sentence-mode-active[data-sentence-ui='preact'] .quiz-display {
+        padding: 0.2rem 0 0.45rem;
+    }
+
+    .sentence-mode-shell {
+        gap: 0.65rem;
+    }
+
+    .sentence-mode-card,
+    .sentence-mode-fallback {
+        padding: 0.82rem 0.9rem;
+    }
+
+    .sentence-mode-sentence,
+    .sentence-mode-fallback-sentence {
+        font-size: clamp(1.25rem, 2vw, 1.8rem);
+        line-height: 1.34;
+    }
+
+    .sentence-mode-option {
+        min-height: 3rem;
+        padding: 0.62rem 0.78rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-height: 820px) {
+    .sentence-mode-header {
+        gap: 0.3rem;
+    }
+
+    .sentence-mode-toolbar {
+        gap: 0.4rem;
+    }
+
+    .sentence-mode-chip {
+        padding: 0.34rem 0.62rem;
+        font-size: 0.8rem;
+    }
+
+    .sentence-mode-description,
+    .sentence-mode-helper,
+    .sentence-mode-feedback-detail {
+        font-size: 0.8rem;
+    }
+
+    .sentence-mode-subtitle,
+    .sentence-mode-prompt,
+    .sentence-mode-feedback-message,
+    .sentence-mode-filter-input,
+    .sentence-mode-option {
+        font-size: 0.86rem;
+    }
+
+    .sentence-mode-sentence,
+    .sentence-mode-fallback-sentence {
+        font-size: clamp(1.08rem, 1.75vw, 1.55rem);
+    }
+
+    .sentence-mode-option-list {
+        gap: 0.45rem;
+    }
+
+    .sentence-mode-option {
+        min-height: 2.72rem;
+        line-height: 1.34;
+        padding: 0.5rem 0.68rem;
+    }
+
+    .sentence-mode-feedback {
+        padding: 0.65rem 0.75rem;
+    }
 }
 
 @media (max-width: 720px) {

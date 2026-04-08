@@ -151,6 +151,7 @@ let toneFlowChars = [];             // array of characters (e.g., ['同', '住']
 let toneFlowIndex = 0;              // current syllable index
 let toneFlowUseFuzzy = false;
 let toneFlowCompleted = [];         // tracks completed tones for progress display
+let toneFlowCompletedSyllables = [];// tracks completed tone-marked syllables for progress display
 let toneFlowCompletedPinyin = [];   // tracks completed pinyin for progress display
 let toneFlowExpectedNoTone = '';
 let lessonCharMap = null;
@@ -295,6 +296,22 @@ function refreshMarkingIndicator() {
 }
 
 function showMarkingToast(message, type = 'info') {
+    if (window.JcodeQuizFeedbackUI?.render) {
+        const existing = document.getElementById('markingToastContainer');
+        const container = existing || (() => {
+            const el = document.createElement('div');
+            el.id = 'markingToastContainer';
+            document.body.appendChild(el);
+            return el;
+        })();
+        window.JcodeQuizFeedbackUI.render(container, {
+            toast: { message, visible: true, type }
+        });
+        setTimeout(() => {
+            window.JcodeQuizFeedbackUI?.render(container, { toast: null });
+        }, 1500);
+        return;
+    }
     // Show a brief toast notification for marking actions
     let toast = document.querySelector('.marking-toast');
     if (!toast) {
@@ -704,6 +721,109 @@ function ensureConfidencePanelUiLibrary() {
             confidencePanelUiLoadPromise = null;
         });
     return confidencePanelUiLoadPromise;
+}
+
+var quizChoiceUiLoadPromise = null;
+var quizFuzzyUiLoadPromise = null;
+var quizQuestionUiLoadPromise = null;
+var quizFeedbackUiLoadPromise = null;
+var quizSchedulerUiLoadPromise = null;
+var quizStudyUiLoadPromise = null;
+
+function ensureQuizChoiceUiLibrary() {
+    if (window.JcodeQuizChoiceUI?.render) {
+        return Promise.resolve(window.JcodeQuizChoiceUI);
+    }
+    if (quizChoiceUiLoadPromise) return quizChoiceUiLoadPromise;
+    quizChoiceUiLoadPromise = loadScriptFile('js/quiz-choice-ui.js')
+        .then(() => {
+            if (!window.JcodeQuizChoiceUI?.render) {
+                throw new Error('Quiz choice UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeQuizChoiceUI;
+        })
+        .finally(() => { quizChoiceUiLoadPromise = null; });
+    return quizChoiceUiLoadPromise;
+}
+
+function ensureQuizFuzzyUiLibrary() {
+    if (window.JcodeQuizFuzzyUI?.render) {
+        return Promise.resolve(window.JcodeQuizFuzzyUI);
+    }
+    if (quizFuzzyUiLoadPromise) return quizFuzzyUiLoadPromise;
+    quizFuzzyUiLoadPromise = loadScriptFile('js/quiz-fuzzy-ui.js')
+        .then(() => {
+            if (!window.JcodeQuizFuzzyUI?.render) {
+                throw new Error('Quiz fuzzy UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeQuizFuzzyUI;
+        })
+        .finally(() => { quizFuzzyUiLoadPromise = null; });
+    return quizFuzzyUiLoadPromise;
+}
+
+function ensureQuizQuestionUiLibrary() {
+    if (window.JcodeQuizQuestionUI?.render) {
+        return Promise.resolve(window.JcodeQuizQuestionUI);
+    }
+    if (quizQuestionUiLoadPromise) return quizQuestionUiLoadPromise;
+    quizQuestionUiLoadPromise = loadScriptFile('js/quiz-question-ui.js')
+        .then(() => {
+            if (!window.JcodeQuizQuestionUI?.render) {
+                throw new Error('Quiz question UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeQuizQuestionUI;
+        })
+        .finally(() => { quizQuestionUiLoadPromise = null; });
+    return quizQuestionUiLoadPromise;
+}
+
+function ensureQuizFeedbackUiLibrary() {
+    if (window.JcodeQuizFeedbackUI?.render) {
+        return Promise.resolve(window.JcodeQuizFeedbackUI);
+    }
+    if (quizFeedbackUiLoadPromise) return quizFeedbackUiLoadPromise;
+    quizFeedbackUiLoadPromise = loadScriptFile('js/quiz-feedback-ui.js')
+        .then(() => {
+            if (!window.JcodeQuizFeedbackUI?.render) {
+                throw new Error('Quiz feedback UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeQuizFeedbackUI;
+        })
+        .finally(() => { quizFeedbackUiLoadPromise = null; });
+    return quizFeedbackUiLoadPromise;
+}
+
+function ensureQuizSchedulerUiLibrary() {
+    if (window.JcodeQuizSchedulerUI?.render) {
+        return Promise.resolve(window.JcodeQuizSchedulerUI);
+    }
+    if (quizSchedulerUiLoadPromise) return quizSchedulerUiLoadPromise;
+    quizSchedulerUiLoadPromise = loadScriptFile('js/quiz-scheduler-ui.js')
+        .then(() => {
+            if (!window.JcodeQuizSchedulerUI?.render) {
+                throw new Error('Quiz scheduler UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeQuizSchedulerUI;
+        })
+        .finally(() => { quizSchedulerUiLoadPromise = null; });
+    return quizSchedulerUiLoadPromise;
+}
+
+function ensureQuizStudyUiLibrary() {
+    if (window.JcodeQuizStudyUI?.render) {
+        return Promise.resolve(window.JcodeQuizStudyUI);
+    }
+    if (quizStudyUiLoadPromise) return quizStudyUiLoadPromise;
+    quizStudyUiLoadPromise = loadScriptFile('js/quiz-study-ui.js')
+        .then(() => {
+            if (!window.JcodeQuizStudyUI?.render) {
+                throw new Error('Quiz study UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeQuizStudyUI;
+        })
+        .finally(() => { quizStudyUiLoadPromise = null; });
+    return quizStudyUiLoadPromise;
 }
 
 function unmountSentenceModeUi() {
@@ -4222,6 +4342,29 @@ function renderQuizGradeBanner() {
         ? `<span style="color:#dc2626">⚠ ${dangerWords.map(w => escapeHtml(w.char)).join(' ')}</span>`
         : '';
 
+    if (window.JcodeQuizFeedbackUI?.render) {
+        window.JcodeQuizFeedbackUI.render(banner, {
+            gradeBanner: {
+                letterGrade,
+                gradeColor,
+                bgColor,
+                borderColor,
+                pct,
+                summaryHtml: `
+                    <span style="font-weight:600;color:#6b7280">Quiz Est.</span>
+                    <span>📅 ${timeUntil}</span>
+                    <span title="Tracked cards / total cards">📚 ${summary.trackedCount}/${summary.total}</span>
+                    <span title="Estimated memory retention at quiz time">🧠 ${summary.memoryPct}%</span>
+                    <span title="Estimated meaning readiness">M ${summary.meaningPct}%</span>
+                    <span title="Estimated pinyin readiness">P ${summary.pinyinPct}%</span>
+                    <span>${summary.likely}✓ ${summary.risky}⚠ ${summary.danger}✗</span>
+                    ${dangerHtml}
+                `
+            }
+        });
+        return;
+    }
+
     banner.title = 'Estimated quiz score at the target time using forgetting curve, skill confidence, exposure history, and response speed.';
 
     banner.innerHTML = `
@@ -5833,13 +5976,32 @@ function fireConfettiBurst(pieces = 60) {
 
 function showBatchCompletionToast(setLabel, cycleNumber, setSize) {
     if (typeof document === 'undefined') return;
+    const cycleText = cycleNumber > 1 ? ` · cycle ${cycleNumber}` : '';
+    const message = `Set ${setLabel} mastered — ${setSize}-card set${cycleText} complete. Loading the next set…`;
+
+    if (window.JcodeQuizFeedbackUI?.render) {
+        const existing = document.getElementById('batchToastContainer');
+        const container = existing || (() => {
+            const el = document.createElement('div');
+            el.id = 'batchToastContainer';
+            document.body.appendChild(el);
+            return el;
+        })();
+        window.JcodeQuizFeedbackUI.render(container, {
+            toast: { message, visible: true, type: 'correct' }
+        });
+        setTimeout(() => {
+            window.JcodeQuizFeedbackUI?.render(container, { toast: null });
+        }, 2600);
+        return;
+    }
+
     const existing = document.getElementById(BATCH_TOAST_ID);
     if (existing) existing.remove();
 
     const toast = document.createElement('div');
     toast.id = BATCH_TOAST_ID;
     toast.className = 'command-palette-toast';
-    const cycleText = cycleNumber > 1 ? ` · cycle ${cycleNumber}` : '';
     toast.innerHTML = `
         <span class="font-semibold text-blue-900">Set ${setLabel} mastered</span>
         <span class="text-gray-700 text-sm">${setSize}-card set${cycleText} complete. Loading the next set…</span>
@@ -5856,13 +6018,32 @@ function showBatchCompletionToast(setLabel, cycleNumber, setSize) {
 
 function showBatchSwapToast(setLabel, cycleNumber, setSize) {
     if (typeof document === 'undefined') return;
+    const cycleText = cycleNumber > 1 ? ` · cycle ${cycleNumber}` : '';
+    const message = `New set loaded — Set ${setLabel}${cycleText} · ${setSize}-card set ready.`;
+
+    if (window.JcodeQuizFeedbackUI?.render) {
+        const existing = document.getElementById('batchToastContainer');
+        const container = existing || (() => {
+            const el = document.createElement('div');
+            el.id = 'batchToastContainer';
+            document.body.appendChild(el);
+            return el;
+        })();
+        window.JcodeQuizFeedbackUI.render(container, {
+            toast: { message, visible: true, type: 'info' }
+        });
+        setTimeout(() => {
+            window.JcodeQuizFeedbackUI?.render(container, { toast: null });
+        }, 2000);
+        return;
+    }
+
     const existing = document.getElementById(BATCH_TOAST_ID);
     if (existing) existing.remove();
 
     const toast = document.createElement('div');
     toast.id = BATCH_TOAST_ID;
     toast.className = 'command-palette-toast';
-    const cycleText = cycleNumber > 1 ? ` · cycle ${cycleNumber}` : '';
     toast.innerHTML = `
         <span class="font-semibold text-blue-900">New set loaded</span>
         <span class="text-gray-700 text-sm">Set ${setLabel}${cycleText} · ${setSize}-card set ready.</span>
@@ -6301,26 +6482,6 @@ function ensureSchedulerToolbar() {
         bar = document.createElement('div');
         bar.id = 'schedulerToolbar';
         bar.className = 'mb-2 flex flex-col items-center gap-1';
-        bar.innerHTML = `
-            <div id="schedulerModeLabel" class="hidden"></div>
-            <div id="schedulerModeDescription" class="hidden"></div>
-            <div id="batchModeStatus" class="hidden"></div>
-            <div id="adaptiveModeStatus" class="hidden"></div>
-            <div id="composerModeStatus" class="hidden"></div>
-            <div id="feedModeStatus" class="hidden"></div>
-            <div class="flex flex-wrap gap-1 justify-center items-center max-w-full px-1">
-                <button id="schedulerRandomBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
-                <button id="schedulerWeightedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
-                <button id="schedulerAdaptiveBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
-                <button id="schedulerFeedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
-                <button id="schedulerFeedSRBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
-                <button id="schedulerFeedEEGBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">🧠 Feed+EEG</button>
-                <button id="schedulerBatchBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
-                <button id="schedulerBatch3Btn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">3-Card Sets</button>
-                <button id="schedulerBatch2Btn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">2-Card Sets</button>
-                <button id="schedulerOrderedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
-            </div>
-        `;
         // Insert after header on experimental layout, or before question on legacy
         if (insertAfter && insertAfter.nextSibling) {
             container.insertBefore(bar, insertAfter.nextSibling);
@@ -6332,6 +6493,53 @@ function ensureSchedulerToolbar() {
             container.appendChild(bar);
         }
     }
+
+    // Render with Preact if available
+    if (window.JcodeQuizSchedulerUI?.render) {
+        window.JcodeQuizSchedulerUI.render(bar, {
+            modeLabel: `Next item: ${getSchedulerModeLabel()}`,
+            modeDescription: getSchedulerModeDescription(),
+            batchStatus: null,
+            adaptiveStatus: null,
+            composerStatus: null,
+            feedStatus: null,
+            buttons: [
+                { id: 'schedulerRandomBtn', label: 'Random', onClick: () => setSchedulerMode(SCHEDULER_MODES.RANDOM) },
+                { id: 'schedulerWeightedBtn', label: 'Confidence', onClick: () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED) },
+                { id: 'schedulerAdaptiveBtn', label: 'Adaptive 5', onClick: () => setSchedulerMode(SCHEDULER_MODES.ADAPTIVE_5) },
+                { id: 'schedulerFeedBtn', label: 'Feed', onClick: () => setSchedulerMode(SCHEDULER_MODES.FEED) },
+                { id: 'schedulerFeedSRBtn', label: 'Feed Grad', onClick: () => setSchedulerMode(SCHEDULER_MODES.FEED_SR) },
+                { id: 'schedulerFeedEEGBtn', label: '🧠 Feed+EEG', onClick: () => setSchedulerMode(SCHEDULER_MODES.FEED_EEG) },
+                { id: 'schedulerBatchBtn', label: '5-Card Sets', onClick: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5) },
+                { id: 'schedulerBatch3Btn', label: '3-Card Sets', onClick: () => setSchedulerMode(SCHEDULER_MODES.BATCH_3) },
+                { id: 'schedulerBatch2Btn', label: '2-Card Sets', onClick: () => setSchedulerMode(SCHEDULER_MODES.BATCH_2) },
+                { id: 'schedulerOrderedBtn', label: 'In Order', onClick: () => setSchedulerMode(SCHEDULER_MODES.ORDERED) }
+            ],
+            activeMode: schedulerMode
+        });
+        return;
+    }
+
+    bar.innerHTML = `
+        <div id="schedulerModeLabel" class="hidden"></div>
+        <div id="schedulerModeDescription" class="hidden"></div>
+        <div id="batchModeStatus" class="hidden"></div>
+        <div id="adaptiveModeStatus" class="hidden"></div>
+        <div id="composerModeStatus" class="hidden"></div>
+        <div id="feedModeStatus" class="hidden"></div>
+        <div class="flex flex-wrap gap-1 justify-center items-center max-w-full px-1">
+            <button id="schedulerRandomBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Random</button>
+            <button id="schedulerWeightedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Confidence</button>
+            <button id="schedulerAdaptiveBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Adaptive 5</button>
+            <button id="schedulerFeedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed</button>
+            <button id="schedulerFeedSRBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">Feed Grad</button>
+            <button id="schedulerFeedEEGBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">🧠 Feed+EEG</button>
+            <button id="schedulerBatchBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">5-Card Sets</button>
+            <button id="schedulerBatch3Btn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">3-Card Sets</button>
+            <button id="schedulerBatch2Btn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">2-Card Sets</button>
+            <button id="schedulerOrderedBtn" type="button" class="px-1.5 py-0.5 rounded border border-gray-200 text-gray-600 text-[10px] font-medium hover:border-blue-400 hover:text-blue-600 transition">In Order</button>
+        </div>
+    `;
 
     const randomBtn = document.getElementById('schedulerRandomBtn');
     const weightedBtn = document.getElementById('schedulerWeightedBtn');
@@ -6389,6 +6597,34 @@ function ensureSchedulerToolbar() {
 }
 
 function updateSchedulerToolbar() {
+    const bar = document.getElementById('schedulerToolbar');
+    if (!bar) return;
+
+    if (window.JcodeQuizSchedulerUI?.render) {
+        window.JcodeQuizSchedulerUI.render(bar, {
+            modeLabel: `Next item: ${getSchedulerModeLabel()}`,
+            modeDescription: getSchedulerModeDescription(),
+            batchStatus: null,
+            adaptiveStatus: null,
+            composerStatus: null,
+            feedStatus: null,
+            buttons: [
+                { id: 'schedulerRandomBtn', label: 'Random', onClick: () => setSchedulerMode(SCHEDULER_MODES.RANDOM) },
+                { id: 'schedulerWeightedBtn', label: 'Confidence', onClick: () => setSchedulerMode(SCHEDULER_MODES.WEIGHTED) },
+                { id: 'schedulerAdaptiveBtn', label: 'Adaptive 5', onClick: () => setSchedulerMode(SCHEDULER_MODES.ADAPTIVE_5) },
+                { id: 'schedulerFeedBtn', label: 'Feed', onClick: () => setSchedulerMode(SCHEDULER_MODES.FEED) },
+                { id: 'schedulerFeedSRBtn', label: 'Feed Grad', onClick: () => setSchedulerMode(SCHEDULER_MODES.FEED_SR) },
+                { id: 'schedulerFeedEEGBtn', label: '🧠 Feed+EEG', onClick: () => setSchedulerMode(SCHEDULER_MODES.FEED_EEG) },
+                { id: 'schedulerBatchBtn', label: '5-Card Sets', onClick: () => setSchedulerMode(SCHEDULER_MODES.BATCH_5) },
+                { id: 'schedulerBatch3Btn', label: '3-Card Sets', onClick: () => setSchedulerMode(SCHEDULER_MODES.BATCH_3) },
+                { id: 'schedulerBatch2Btn', label: '2-Card Sets', onClick: () => setSchedulerMode(SCHEDULER_MODES.BATCH_2) },
+                { id: 'schedulerOrderedBtn', label: 'In Order', onClick: () => setSchedulerMode(SCHEDULER_MODES.ORDERED) }
+            ],
+            activeMode: schedulerMode
+        });
+        return;
+    }
+
     const labelEl = document.getElementById('schedulerModeLabel');
     const descEl = document.getElementById('schedulerModeDescription');
 
@@ -6570,6 +6806,23 @@ function triggerCorrectFlash() {
 }
 
 function showCorrectToast(message = '✓ Correct!') {
+    if (window.JcodeQuizFeedbackUI?.render) {
+        const existing = document.getElementById('quizFeedbackContainer');
+        const container = existing || (() => {
+            const el = document.createElement('div');
+            el.id = 'quizFeedbackContainer';
+            document.body.appendChild(el);
+            return el;
+        })();
+        window.JcodeQuizFeedbackUI.render(container, {
+            toast: { message, visible: true, type: 'correct' }
+        });
+        if (correctToastTimeout) clearTimeout(correctToastTimeout);
+        correctToastTimeout = setTimeout(() => {
+            window.JcodeQuizFeedbackUI?.render(container, { toast: null });
+        }, 1200);
+        return;
+    }
     let toast = document.getElementById('correctToast');
     if (!toast) {
         toast = document.createElement('div');
@@ -7423,7 +7676,16 @@ function restoreDictationChatAudio() {
 function renderQuestionUiForChoiceModes() {
     setChoiceModeListLayout(false);
     if (mode === 'char-to-pinyin-mc' && choiceMode) {
-        questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div>`;
+        if (window.JcodeQuizQuestionUI?.render) {
+            window.JcodeQuizQuestionUI.render(questionDisplay, {
+                mode,
+                char: escapeHtml(currentQuestion.char),
+                fontSize: getCharLargeFontSize(currentQuestion.char),
+                usageHint: getWordUsageHint(currentQuestion)
+            });
+        } else {
+            questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div>`;
+        }
         generatePinyinOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
@@ -7446,7 +7708,14 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'pinyin-to-char' && choiceMode) {
-        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${escapeHtml(currentQuestion.pinyin)}</div>`;
+        if (window.JcodeQuizQuestionUI?.render) {
+            window.JcodeQuizQuestionUI.render(questionDisplay, {
+                mode,
+                pinyin: escapeHtml(currentQuestion.pinyin)
+            });
+        } else {
+            questionDisplay.innerHTML = `<div style="text-align: center; font-size: 48px; margin: 40px 0;">${escapeHtml(currentQuestion.pinyin)}</div>`;
+        }
         generateCharOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
@@ -7494,7 +7763,14 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'meaning-to-char' && choiceMode) {
-        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${escapeHtml(currentQuestion.meaning)}</div>`;
+        if (window.JcodeQuizQuestionUI?.render) {
+            window.JcodeQuizQuestionUI.render(questionDisplay, {
+                mode,
+                meaning: escapeHtml(currentQuestion.meaning)
+            });
+        } else {
+            questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${escapeHtml(currentQuestion.meaning)}</div>`;
+        }
         generateCharOptions();
         choiceMode.style.display = 'block';
         setChoiceModeListLayout(true);
@@ -7503,7 +7779,14 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'meaning-to-char-pinyin' && fuzzyMode) {
-        questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${escapeHtml(currentQuestion.meaning)}</div>`;
+        if (window.JcodeQuizQuestionUI?.render) {
+            window.JcodeQuizQuestionUI.render(questionDisplay, {
+                mode,
+                meaning: escapeHtml(currentQuestion.meaning)
+            });
+        } else {
+            questionDisplay.innerHTML = `<div style="text-align: center; font-size: 36px; margin: 40px 0;">${escapeHtml(currentQuestion.meaning)}</div>`;
+        }
         if (fuzzyInput) {
             fuzzyInput.placeholder = 'Type pinyin to filter choices...';
         }
@@ -8719,6 +9002,19 @@ function generatePinyinOptions() {
     const allOptions = [...wrongOptions, currentPinyin];
     allOptions.sort(() => Math.random() - 0.5);
 
+    if (window.JcodeQuizChoiceUI?.render) {
+        window.JcodeQuizChoiceUI.render(options, {
+            options: allOptions.map(option => ({
+                key: option,
+                value: option,
+                label: option
+            })),
+            onSelect: (value) => checkMultipleChoice(value),
+            listLayout: false
+        });
+        return;
+    }
+
     allOptions.forEach(option => {
         const btn = document.createElement('button');
         btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
@@ -8787,6 +9083,27 @@ function generateCharOptions() {
     const allOptions = [...wrongOptions, correctOption];
     allOptions.sort(() => Math.random() - 0.5);
 
+    if (window.JcodeQuizChoiceUI?.render) {
+        window.JcodeQuizChoiceUI.render(options, {
+            options: allOptions.map(option => {
+                const metaText = mode === 'pinyin-to-char'
+                    ? option.meaning
+                    : (mode === 'meaning-to-char' ? cleanPinyinForDisplay(option.pinyin) : '');
+                return {
+                    key: option.char,
+                    value: option.char,
+                    label: metaText
+                        ? `${escapeHtml(option.char)} ${escapeHtml(metaText)}`
+                        : option.char,
+                    className: metaText ? 'quiz-char-pinyin-choice bg-gray-100 border-gray-300' : 'quiz-char-choice'
+                };
+            }),
+            onSelect: (value) => checkMultipleChoice(value),
+            listLayout: true
+        });
+        return;
+    }
+
     allOptions.forEach(option => {
         const btn = document.createElement('button');
         const metaText = mode === 'pinyin-to-char'
@@ -8830,6 +9147,19 @@ function generateMeaningOptions() {
     const allOptions = [...wrongOptions, currentQuestion.meaning];
     allOptions.sort(() => Math.random() - 0.5);
 
+    if (window.JcodeQuizChoiceUI?.render) {
+        window.JcodeQuizChoiceUI.render(options, {
+            options: allOptions.map(option => ({
+                key: option,
+                value: option,
+                label: option
+            })),
+            onSelect: (value) => checkMultipleChoice(value),
+            listLayout: true
+        });
+        return;
+    }
+
     allOptions.forEach(option => {
         const btn = document.createElement('button');
         btn.className = 'px-6 py-4 text-xl bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition';
@@ -8860,6 +9190,21 @@ function generateSentenceModeOptions() {
     }
 
     const allOptions = [...wrongOptions, correctMeaning].sort(() => Math.random() - 0.5);
+
+    if (window.JcodeQuizChoiceUI?.render) {
+        window.JcodeQuizChoiceUI.render(options, {
+            options: allOptions.map(option => ({
+                key: option,
+                value: option,
+                label: option,
+                className: 'text-left text-lg leading-relaxed'
+            })),
+            onSelect: (value) => checkMultipleChoice(value),
+            listLayout: true
+        });
+        return;
+    }
+
     allOptions.forEach(option => {
         const btn = document.createElement('button');
         btn.className = 'px-6 py-4 text-left text-lg bg-white border-2 border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition leading-relaxed';
@@ -8883,7 +9228,6 @@ function generateFuzzyMeaningOptions() {
     if (!options || !fuzzyInput) return;
 
     options.innerHTML = '';
-    // Don't clear fuzzyInput.value here - it may contain prefilled answer from prefiring
 
     const wrongOptions = [];
     while (wrongOptions.length < 3) {
@@ -8895,6 +9239,86 @@ function generateFuzzyMeaningOptions() {
 
     const allOptions = [...wrongOptions, currentQuestion.meaning];
     allOptions.sort(() => Math.random() - 0.5);
+
+    // Preact rendering path
+    if (window.JcodeQuizFuzzyUI?.render) {
+        const fuzzyContainer = fuzzyMode || options.parentElement;
+        if (fuzzyContainer) {
+            let currentHighlight = -1;
+
+            function buildFuzzyProps(highlightIndex, inputValue) {
+                return {
+                    options: allOptions.map((option, index) => ({
+                        key: option,
+                        value: option,
+                        label: option
+                    })),
+                    inputValue: inputValue || '',
+                    inputPlaceholder: fuzzyInput.placeholder || 'Type to filter...',
+                    disabled: false,
+                    highlightedIndex: highlightIndex,
+                    onInputChange: (value) => {
+                        if (answered && lastAnswerCorrect) {
+                            nextAnswerBuffer = value;
+                        } else {
+                            nextAnswerBuffer = '';
+                        }
+                        const input = value.trim().toLowerCase();
+                        let newHighlight = -1;
+                        if (input) {
+                            let bestScore = -1;
+                            allOptions.forEach((option, index) => {
+                                const score = fuzzyMatch(input, option.toLowerCase());
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    newHighlight = index;
+                                }
+                            });
+                        }
+                        currentHighlight = newHighlight;
+                        if (window.JcodeQuizFuzzyUI?.render) {
+                            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildFuzzyProps(newHighlight, value));
+                        }
+                    },
+                    onSubmit: () => {
+                        const selected = allOptions[currentHighlight];
+                        if (selected) checkFuzzyAnswer(selected);
+                    },
+                    onSelect: (value) => checkFuzzyAnswer(value),
+                    onKeyDown: (e) => {
+                        if (e.key === ' ' && mode === 'audio-to-meaning' && window.currentAudioPlayFunc) {
+                            e.preventDefault();
+                            window.currentAudioPlayFunc();
+                        }
+                        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+                            e.preventDefault();
+                            goToNextQuestionAfterCorrect();
+                        }
+                    }
+                };
+            }
+
+            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildFuzzyProps(-1, fuzzyInput.value || ''));
+
+            // Auto-submit prefilled value
+            if (fuzzyInput.value) {
+                const input = fuzzyInput.value.trim().toLowerCase();
+                let bestMatch = -1;
+                let bestScore = -1;
+                allOptions.forEach((option, index) => {
+                    const score = fuzzyMatch(input, option.toLowerCase());
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = index;
+                    }
+                });
+                if (bestMatch >= 0) {
+                    checkFuzzyAnswer(allOptions[bestMatch]);
+                }
+            }
+        }
+        return;
+    }
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
@@ -9013,6 +9437,126 @@ function generateFuzzyPinyinOptions() {
 
     const allOptions = [...wrongOptions, currentPinyin];
     allOptions.sort(() => Math.random() - 0.5);
+
+    if (window.JcodeQuizFuzzyUI?.render) {
+        const fuzzyContainer = fuzzyMode || options.parentElement;
+        if (fuzzyContainer) {
+            let currentHighlight = -1;
+
+            function computePinyinHighlight(inputValue) {
+                const input = inputValue.trim().toLowerCase();
+                if (!input) return -1;
+
+                let bestMatch = null;
+                let bestScore = -1;
+
+                // First pass: exact match after stripping tone marks
+                allOptions.forEach((option, index) => {
+                    const optionNoTones = stripToneMarks(option).toLowerCase();
+                    if (input === optionNoTones) {
+                        bestMatch = index;
+                        bestScore = 2000;
+                    }
+                });
+
+                // Second pass: prefix match after stripping tone marks
+                if (bestMatch === null) {
+                    allOptions.forEach((option, index) => {
+                        const optionNoTones = stripToneMarks(option).toLowerCase();
+                        if (optionNoTones.startsWith(input)) {
+                            const score = 1000 + input.length;
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMatch = index;
+                            }
+                        }
+                    });
+                }
+
+                // Third pass: fuzzy matching
+                if (bestMatch === null) {
+                    allOptions.forEach((option, index) => {
+                        const score = fuzzyMatch(input, option.toLowerCase());
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMatch = index;
+                        }
+                    });
+                }
+
+                return bestMatch !== null ? bestMatch : -1;
+            }
+
+            function buildFuzzyProps(highlightIndex, inputValue) {
+                return {
+                    options: allOptions.map((option, index) => ({
+                        key: option,
+                        value: option,
+                        label: option
+                    })),
+                    inputValue: inputValue || '',
+                    inputPlaceholder: fuzzyInput.placeholder || 'Type to filter...',
+                    disabled: false,
+                    highlightedIndex: highlightIndex,
+                    onInputChange: (value) => {
+                        if (answered && lastAnswerCorrect) {
+                            nextAnswerBuffer = value;
+                        } else {
+                            nextAnswerBuffer = '';
+                        }
+                        const newHighlight = computePinyinHighlight(value);
+                        currentHighlight = newHighlight;
+                        if (window.JcodeQuizFuzzyUI?.render) {
+                            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildFuzzyProps(newHighlight, value));
+                        }
+                    },
+                    onSubmit: () => {
+                        const selected = allOptions[currentHighlight];
+                        if (selected) {
+                            checkFuzzyPinyinAnswer(selected);
+                            return;
+                        }
+                        // Check for direct pinyin match
+                        const typedInput = fuzzyInput.value.trim();
+                        if (typedInput) {
+                            const pinyinVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+                            const isDirectMatch = pinyinVariants.some(variant => checkPinyinMatch(typedInput, variant));
+                            if (isDirectMatch) {
+                                checkFuzzyPinyinAnswer(pinyinVariants[0]);
+                            }
+                        }
+                    },
+                    onSelect: (value) => checkFuzzyPinyinAnswer(value),
+                    onKeyDown: (e) => {
+                        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+                            e.preventDefault();
+                            goToNextQuestionAfterCorrect();
+                        }
+                    }
+                };
+            }
+
+            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildFuzzyProps(-1, fuzzyInput.value || ''));
+
+            // Auto-submit prefilled value
+            if (fuzzyInput.value) {
+                const typedInput = fuzzyInput.value.trim();
+                if (typedInput) {
+                    const pinyinVariants = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+                    const isDirectMatch = pinyinVariants.some(variant => checkPinyinMatch(typedInput, variant));
+                    if (isDirectMatch) {
+                        checkFuzzyPinyinAnswer(pinyinVariants[0]);
+                        return;
+                    }
+                }
+                const highlight = computePinyinHighlight(fuzzyInput.value);
+                if (highlight >= 0) {
+                    checkFuzzyPinyinAnswer(allOptions[highlight]);
+                }
+            }
+        }
+        return;
+    }
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
@@ -9179,6 +9723,96 @@ function generateMeaningToCharPinyinOptions() {
 
     const allOptions = [...wrongOptions, correctOption];
     allOptions.sort(() => Math.random() - 0.5);
+
+    if (window.JcodeQuizFuzzyUI?.render) {
+        const fuzzyContainer = fuzzyMode || options.parentElement;
+        if (fuzzyContainer) {
+            let currentHighlight = -1;
+
+            function computeCharPinyinHighlight(inputValue) {
+                const rawInput = (inputValue || '').trim();
+                const normalizedLooseInput = normalizePinyin(rawInput);
+                const normalizedStrictInput = normalizePinyinForChoice(rawInput);
+
+                if (!normalizedLooseInput && !normalizedStrictInput) return -1;
+
+                let bestMatch = null;
+                let bestScore = -1;
+
+                allOptions.forEach((option, index) => {
+                    const normalizedLoose = normalizePinyin(option.pinyin);
+                    const normalizedStrict = normalizePinyinForChoice(option.pinyin);
+                    let score = -1;
+
+                    if (normalizedStrictInput && normalizedStrictInput === normalizedStrict) {
+                        score = 3000;
+                    } else if (normalizedLooseInput && normalizedLooseInput === normalizedLoose) {
+                        score = 2500;
+                    } else if (normalizedLooseInput && normalizedLoose.startsWith(normalizedLooseInput)) {
+                        score = 2000 + normalizedLooseInput.length;
+                    } else if (normalizedLooseInput) {
+                        score = fuzzyMatch(normalizedLooseInput, normalizedLoose);
+                    }
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = index;
+                    }
+                });
+
+                return bestMatch !== null ? bestMatch : -1;
+            }
+
+            function buildCharPinyinProps(highlightIndex, inputValue) {
+                return {
+                    optionType: 'char-pinyin',
+                    options: allOptions.map((option, index) => ({
+                        key: option.char,
+                        char: option.char,
+                        pinyin: option.pinyin,
+                        pinyinDisplay: cleanPinyinForDisplay(option.pinyin),
+                        value: option.char,
+                        label: `${option.char} (${cleanPinyinForDisplay(option.pinyin)})`
+                    })),
+                    inputValue: inputValue || '',
+                    inputPlaceholder: 'Type pinyin to filter...',
+                    disabled: false,
+                    highlightedIndex: highlightIndex,
+                    onInputChange: (value) => {
+                        const newHighlight = computeCharPinyinHighlight(value);
+                        currentHighlight = newHighlight;
+                        if (window.JcodeQuizFuzzyUI?.render) {
+                            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildCharPinyinProps(newHighlight, value));
+                        }
+                    },
+                    onSubmit: () => {
+                        const typedInput = fuzzyInput.value.trim();
+                        if (typedInput) {
+                            const exactMatches = allOptions.filter(option => checkPinyinMatch(typedInput, option.pinyin));
+                            if (exactMatches.length === 1) {
+                                checkMeaningToCharPinyinAnswer(exactMatches[0].char);
+                                return;
+                            }
+                        }
+                        const selected = allOptions[currentHighlight];
+                        if (selected) {
+                            checkMeaningToCharPinyinAnswer(selected.char);
+                        }
+                    },
+                    onSelect: (value) => checkMeaningToCharPinyinAnswer(value),
+                    onKeyDown: (e) => {
+                        if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && answered && lastAnswerCorrect) {
+                            e.preventDefault();
+                            goToNextQuestionAfterCorrect();
+                        }
+                    }
+                };
+            }
+
+            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildCharPinyinProps(-1, ''));
+        }
+        return;
+    }
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
@@ -9657,11 +10291,54 @@ function renderBlendLayout() {
                              previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
 
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
+    const currentUsageHint = getWordUsageHint(currentQuestion);
     const inlineFeedback = threeColumnInlineFeedback;
     const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
 
     const dirLabel = getBlendDirectionLabel(blendDirection);
     const prevDirLabel = blendPreviousDirection ? getBlendDirectionLabel(blendPreviousDirection) : '';
+
+    if (window.JcodeQuizQuestionUI?.render) {
+        const columns = {
+            previous: previousQuestion ? {
+                char: prevChar,
+                pinyin: prevPinyin,
+                meaning: prevMeaning,
+                resultClass: prevResultClass,
+                resultIcon: prevResultIcon,
+                feedbackText: prevFeedbackText,
+                dirLabel: prevDirLabel
+            } : null,
+            current: {
+                char: escapeHtml(currentQuestion.char || ''),
+                fontSize: getCharLargeFontSize(currentQuestion.char || ''),
+                markingBadge: currentMarkingBadge,
+                mode: blendDirection,
+                promptHtml: getBlendPromptHtml(currentQuestion, blendDirection),
+                dirLabel: dirLabel,
+                usageHint: currentUsageHint
+            },
+            upcoming: {
+                char: '?',
+                mode: 'blend'
+            }
+        };
+        const feedback = inlineFeedback ? {
+            type: inlineFeedback.type,
+            message: inlineFeedbackMessage
+        } : null;
+        window.JcodeQuizQuestionUI.render(questionDisplay, {
+            layout: 'three-column',
+            columns: columns,
+            inlineFeedback: feedback
+        });
+        if (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') {
+            attachAudioSectionToInlineSlot();
+        } else {
+            restoreQuizAudioSectionHome();
+        }
+        return;
+    }
 
     questionDisplay.innerHTML = `
         <div class="three-column-meaning-layout">
@@ -9683,6 +10360,7 @@ function renderBlendLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now · <span style="font-weight: 600; color: #6366f1;">${dirLabel}</span></div>
                 ${currentMarkingBadge}
+                ${buildWordUsageHintHtml(currentUsageHint)}
                 <div class="column-focus-ring">
                     ${getBlendPromptHtml(currentQuestion, blendDirection)}
                 </div>
@@ -9765,6 +10443,69 @@ function generateBlendOptions() {
     allOptions.sort(() => Math.random() - 0.5);
 
     const isCharOptions = (dir === 'meaning-to-char' || dir === 'pinyin-to-char');
+
+    if (window.JcodeQuizFuzzyUI?.render) {
+        const fuzzyContainer = fuzzyMode || options.parentElement;
+        if (fuzzyContainer) {
+            let currentHighlight = -1;
+
+            function buildBlendProps(highlightIndex, inputValue) {
+                return {
+                    options: allOptions.map((option, index) => ({
+                        key: option,
+                        value: option,
+                        label: option,
+                        className: isCharOptions ? 'text-3xl' : ''
+                    })),
+                    inputValue: inputValue || '',
+                    inputPlaceholder: 'Type to filter...',
+                    disabled: false,
+                    highlightedIndex: highlightIndex,
+                    onInputChange: (value) => {
+                        if (answered && lastAnswerCorrect) {
+                            nextAnswerBuffer = value;
+                        } else {
+                            nextAnswerBuffer = '';
+                        }
+                        const input = value.trim().toLowerCase();
+                        let newHighlight = -1;
+                        if (input) {
+                            let bestMatch = null;
+                            let bestScore = -1;
+                            allOptions.forEach((option, index) => {
+                                const score = fuzzyMatch(input, option.toLowerCase());
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestMatch = index;
+                                }
+                            });
+                            newHighlight = bestMatch !== null ? bestMatch : -1;
+                        }
+                        currentHighlight = newHighlight;
+                        if (window.JcodeQuizFuzzyUI?.render) {
+                            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildBlendProps(newHighlight, value));
+                        }
+                    },
+                    onSubmit: () => {
+                        const selected = allOptions[currentHighlight];
+                        if (selected) {
+                            checkBlendAnswer(selected);
+                        }
+                    },
+                    onSelect: (value) => checkBlendAnswer(value),
+                    onKeyDown: (e) => {
+                        if (e.key === ' ' && (blendDirection === 'audio-to-meaning' || blendDirection === 'audio-to-pinyin') && window.currentAudioPlayFunc) {
+                            e.preventDefault();
+                            window.currentAudioPlayFunc();
+                        }
+                    }
+                };
+            }
+
+            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildBlendProps(-1, ''));
+        }
+        return;
+    }
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
@@ -10055,6 +10796,7 @@ function startPinyinToneMcFlow(useFuzzyInput = false) {
     toneFlowExpectedNoTone = getNoTonePinyinWord(currentQuestion);
     toneFlowIndex = 0;
     toneFlowCompleted = [];
+    toneFlowCompletedSyllables = [];
     toneFlowCompletedPinyin = [];
     toneFlowUseFuzzy = useFuzzyInput;
     toneFlowStage = 'pinyin';
@@ -10062,6 +10804,7 @@ function startPinyinToneMcFlow(useFuzzyInput = false) {
     feedback.textContent = '';
     hint.textContent = '';
     hint.className = 'text-center text-lg text-gray-600 my-2';
+    threeColumnInlineFeedback = null;
 
     renderToneFlowPinyinWordStep();
 }
@@ -10079,6 +10822,7 @@ function renderToneFlowPinyinWordStep() {
     updateToneFlowProgress();
     setToneFlowPrompt('Pick pinyin for the whole word (no tone marks)');
     toneFlowStage = 'pinyin';
+    threeColumnInlineFeedback = null;
 
     if (toneFlowUseFuzzy && fuzzyMode && fuzzyInput) {
         generateFuzzyPinyinOptionsToneFlowSingle();
@@ -10134,6 +10878,100 @@ function generateFuzzyPinyinOptionsToneFlowSingle() {
     fuzzyInput.value = '';
 
     const allOptions = getToneFlowWordPinyinOptions();
+
+    if (window.JcodeQuizFuzzyUI?.render) {
+        const fuzzyContainer = fuzzyMode || options.parentElement;
+        if (fuzzyContainer) {
+            let currentHighlight = -1;
+
+            function computeToneHighlight(inputValue) {
+                const input = inputValue.trim().toLowerCase();
+                if (!input) return -1;
+                let bestMatch = null;
+                let bestScore = -1;
+
+                // Exact match after stripping tone marks
+                allOptions.forEach((option, index) => {
+                    const optionNoTones = stripToneMarks(option).toLowerCase();
+                    if (input === optionNoTones) {
+                        bestMatch = index;
+                        bestScore = 2000;
+                    }
+                });
+
+                // Prefix match after stripping tone marks
+                if (bestMatch === null) {
+                    allOptions.forEach((option, index) => {
+                        const optionNoTones = stripToneMarks(option).toLowerCase();
+                        if (optionNoTones.startsWith(input)) {
+                            const score = 1000 + input.length;
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMatch = index;
+                            }
+                        }
+                    });
+                }
+
+                // Fuzzy matching
+                if (bestMatch === null) {
+                    allOptions.forEach((option, index) => {
+                        const score = fuzzyMatch(input, option.toLowerCase());
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMatch = index;
+                        }
+                    });
+                }
+
+                return bestMatch !== null ? bestMatch : -1;
+            }
+
+            function buildToneProps(highlightIndex, inputValue) {
+                return {
+                    options: allOptions.map((option, index) => ({
+                        key: option,
+                        value: option,
+                        label: option,
+                        className: 'text-lg'
+                    })),
+                    inputValue: inputValue || '',
+                    inputPlaceholder: 'Type to filter...',
+                    disabled: false,
+                    highlightedIndex: highlightIndex,
+                    onInputChange: (value) => {
+                        const newHighlight = computeToneHighlight(value);
+                        currentHighlight = newHighlight;
+                        if (window.JcodeQuizFuzzyUI?.render) {
+                            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildToneProps(newHighlight, value));
+                        }
+                    },
+                    onSubmit: () => {
+                        const typedInput = fuzzyInput.value.trim();
+                        if (typedInput) {
+                            const inputNormalized = normalizePinyinForChoice(typedInput);
+                            const exactMatch = allOptions.find(opt => normalizePinyinForChoice(opt) === inputNormalized);
+                            if (exactMatch) {
+                                handleToneFlowPinyinChoiceSingle(exactMatch, null);
+                                return;
+                            }
+                        }
+                        const selected = allOptions[currentHighlight];
+                        if (selected) {
+                            handleToneFlowPinyinChoiceSingle(selected, null);
+                        }
+                    },
+                    onSelect: (value) => {
+                        const idx = allOptions.indexOf(value);
+                        handleToneFlowPinyinChoiceSingle(value, null);
+                    }
+                };
+            }
+
+            window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildToneProps(-1, ''));
+        }
+        return;
+    }
 
     allOptions.forEach((option, index) => {
         const btn = document.createElement('button');
@@ -10269,6 +11107,55 @@ function getNoTonePinyinWord(question = currentQuestion) {
     return syllables.map(stripToneMarks).join(' ').trim();
 }
 
+function getToneFlowBaseSyllable(index = toneFlowIndex) {
+    const syllable = toneFlowSyllables[index] || '';
+    return stripToneMarks(String(syllable || '')).replace(/[1-5]/g, '').trim();
+}
+
+function getToneFlowCurrentDisplaySyllables() {
+    return toneFlowSyllables.map((_, index) => {
+        if (index < toneFlowCompletedSyllables.length) {
+            return toneFlowCompletedSyllables[index];
+        }
+        return getToneFlowBaseSyllable(index);
+    });
+}
+
+function renderToneFlowSyllableProgressHtml() {
+    const syllables = getToneFlowCurrentDisplaySyllables();
+    if (!syllables.length) {
+        return '<span class="text-gray-500">pick tones</span>';
+    }
+
+    return syllables.map((syllable, index) => {
+        const safeSyllable = escapeHtml(syllable || '?');
+        if (index < toneFlowCompletedSyllables.length) {
+            return `<span class="inline-flex items-center rounded-full bg-green-100 text-green-700 px-3 py-1 font-semibold">${safeSyllable}</span>`;
+        }
+        if (index === toneFlowIndex) {
+            return `<span class="inline-flex items-center rounded-full bg-blue-100 text-blue-700 ring-2 ring-blue-300 px-3 py-1 font-semibold">${safeSyllable}</span>`;
+        }
+        return `<span class="inline-flex items-center rounded-full bg-gray-100 text-gray-500 px-3 py-1 font-medium">${safeSyllable}</span>`;
+    }).join(' <span class="text-gray-300">·</span> ');
+}
+
+function getToneFlowSyllableChoices(index = toneFlowIndex) {
+    const baseSyllable = getToneFlowBaseSyllable(index);
+    return [1, 2, 3, 4, 5]
+        .sort(() => Math.random() - 0.5)
+        .map((tone) => {
+            const syllable = formatSyllableWithToneMark(baseSyllable, tone);
+            return {
+                tone,
+                syllable,
+                key: `${baseSyllable || 'tone'}-${tone}`,
+                normalized: normalizePinyinForChoice(syllable),
+                matchText: normalizeTonePatternInput(`${syllable} ${baseSyllable}${tone} tone ${tone} ${toneNumberToWord(tone)}`),
+                htmlContent: `<div class="flex flex-col items-start gap-1"><span class="text-2xl font-semibold leading-none">${escapeHtml(syllable)}</span><span class="text-xs uppercase tracking-[0.14em] text-gray-500">Tone ${tone}</span></div>`
+            };
+        });
+}
+
 function toneNumberToWord(num) {
     switch (Number(num)) {
         case 1: return 'first';
@@ -10339,16 +11226,21 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
     disableChoices();
 
     if (correct) {
-        btn.classList.add('bg-green-100', 'border-green-500');
-        btn.innerHTML = `✓ ${choice}`;
+        if (btn?.classList) {
+            btn.classList.add('bg-green-100', 'border-green-500');
+            btn.innerHTML = `✓ ${choice}`;
+        }
         toneFlowCompletedPinyin = [choice];
         playCorrectSound();
-        setToneFlowPrompt('Now pick the tone pattern for the whole word');
+        feedback.textContent = '';
+        feedback.className = 'text-center text-lg font-semibold my-2 text-gray-700';
         toneFlowStage = 'tone';
         renderToneFlowToneStep();
     } else {
-        btn.classList.add('bg-red-100', 'border-red-500');
-        btn.innerHTML = `✗ ${choice}`;
+        if (btn?.classList) {
+            btn.classList.add('bg-red-100', 'border-red-500');
+            btn.innerHTML = `✗ ${choice}`;
+        }
         feedback.innerHTML = `Wrong — correct pinyin is <strong>${toneFlowExpectedNoTone}</strong>`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
         renderToneFlowPinyinWordStep();
@@ -10358,8 +11250,10 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
 function renderToneFlowToneStep() {
     if (toneFlowStage !== 'tone') return;
 
-    setToneFlowPrompt(`Pick tone pattern for: ${toneFlowExpectedNoTone}`);
+    const currentBaseSyllable = getToneFlowBaseSyllable(toneFlowIndex);
+    setToneFlowPrompt(`Tone ${toneFlowIndex + 1} of ${toneFlowExpected.length}: pick the right tone mark for ${currentBaseSyllable}`);
     updateToneFlowProgress();
+    renderThreeColumnPinyinLayout();
 
     if (toneFlowUseFuzzy && fuzzyMode && fuzzyInput) {
         if (choiceMode) choiceMode.style.display = 'none';
@@ -10382,12 +11276,13 @@ function updateToneFlowProgress() {
     const charText = escapeHtml(currentQuestion?.char || '?');
     const noTone = escapeHtml(toneFlowExpectedNoTone || '');
     if (toneFlowCompleted.length === toneFlowExpected.length && toneFlowExpected.length > 0) {
-        hint.innerHTML = `<span class="text-green-600 font-bold">${charText} (${noTone}) → ${escapeHtml(toneFlowCompleted.join('-'))}</span>`;
+        const completedWord = escapeHtml(toneFlowCompletedSyllables.join(' '));
+        hint.innerHTML = `<span class="text-green-600 font-bold">${charText}</span> <span class="text-gray-500">(${noTone})</span> → <span class="text-green-700 font-semibold">${completedWord}</span> <span class="text-gray-500">(${escapeHtml(toneFlowCompleted.join('-'))})</span>`;
         hint.className = 'text-center text-xl my-2';
         return;
     }
     if (toneFlowStage === 'tone' && toneFlowCompletedPinyin.length > 0) {
-        hint.innerHTML = `<span class="text-blue-600 font-bold">${charText} (${noTone})</span> → <span class="text-gray-500">pick tones</span>`;
+        hint.innerHTML = `<span class="text-blue-600 font-bold">${charText}</span> <span class="text-gray-500">(${noTone})</span> → ${renderToneFlowSyllableProgressHtml()}`;
         hint.className = 'text-center text-xl my-2';
         return;
     }
@@ -10416,20 +11311,16 @@ function renderFuzzyToneChoices() {
     options.innerHTML = '';
     fuzzyInput.value = '';
 
-    const tonePatterns = generateTonePatternChoices(toneFlowExpected).map((pattern) => ({
-        pattern,
-        key: pattern.join('-'),
-        label: formatTonePatternLabel(pattern),
-        match: normalizeTonePatternInput(formatTonePatternLabel(pattern)),
-        numeric: pattern.join('')
-    }));
+    const toneChoices = getToneFlowSyllableChoices();
 
-    tonePatterns.forEach(({ pattern, key, label }) => {
+    toneChoices.forEach(({ tone, key, htmlContent, syllable }) => {
         const btn = document.createElement('button');
-        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-lg';
-        btn.textContent = label;
+        btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition text-left';
+        btn.innerHTML = htmlContent;
         btn.dataset.pattern = key;
-        btn.onclick = () => handleToneFlowToneChoice(pattern, btn);
+        btn.dataset.tone = String(tone);
+        btn.dataset.syllable = syllable;
+        btn.onclick = () => handleToneFlowToneChoice(tone, btn);
         options.appendChild(btn);
     });
 
@@ -10445,15 +11336,14 @@ function renderFuzzyToneChoices() {
 
         const normalized = normalizeTonePatternInput(input);
         const numericOnly = input.replace(/[^1-5]/g, '');
-        const directPattern = tonePatterns.find(({ key, numeric, match, label }) => (
-            key === numericOnly.split('').join('-')
-            || numeric === numericOnly
-            || normalizeTonePatternInput(key) === normalized
-            || normalized === match
-            || normalizeTonePatternInput(label) === normalized
+        const normalizedPinyin = normalizePinyinForChoice(input);
+        const directChoice = toneChoices.find(({ tone, normalized: choiceNormalized, syllable }) => (
+            String(tone) === numericOnly
+            || choiceNormalized === normalizedPinyin
+            || normalizeTonePatternInput(`${syllable} ${tone}`) === normalized
         ));
-        if (directPattern) {
-            const btn = document.querySelector(`#fuzzyOptions button[data-pattern="${directPattern.key}"]`);
+        if (directChoice) {
+            const btn = document.querySelector(`#fuzzyOptions button[data-pattern="${directChoice.key}"]`);
             if (btn) {
                 btn.click();
             }
@@ -10463,11 +11353,12 @@ function renderFuzzyToneChoices() {
         let bestMatch = null;
         let bestScore = -1;
 
-        tonePatterns.forEach(({ key, label, match }) => {
+        toneChoices.forEach(({ key, matchText, syllable, tone }) => {
             const score = Math.max(
-                fuzzyMatch(normalized, match),
-                fuzzyMatch(normalized, normalizeTonePatternInput(label)),
-                fuzzyMatch(normalized, normalizeTonePatternInput(key))
+                fuzzyMatch(normalized, matchText),
+                fuzzyMatch(normalized, normalizeTonePatternInput(syllable)),
+                fuzzyMatch(normalized, normalizeTonePatternInput(`tone ${tone}`)),
+                normalizedPinyin ? fuzzyMatch(normalizedPinyin, normalizePinyinForChoice(syllable)) : -1
             );
             if (score > bestScore) {
                 bestScore = score;
@@ -10518,38 +11409,61 @@ function handleToneFlowToneChoice(choice, btn) {
         fuzzyInput.value = '';
     }
 
-    const expected = toneFlowExpected.join('-');
-    const answerKey = Array.isArray(choice) ? choice.join('-') : String(choice);
+    const expectedTone = Number(toneFlowExpected[toneFlowIndex]);
+    const selectedTone = Number(Array.isArray(choice) ? choice[0] : (choice && typeof choice === 'object' ? choice.tone : choice));
+    const currentBaseSyllable = getToneFlowBaseSyllable(toneFlowIndex);
+    const selectedSyllable = formatSyllableWithToneMark(currentBaseSyllable, selectedTone);
+    const correctSyllable = formatSyllableWithToneMark(currentBaseSyllable, expectedTone);
     disableChoices();
 
-    if (answerKey === expected) {
-        btn.classList.add('bg-green-100', 'border-green-500');
-        btn.innerHTML = `✓ ${btn.textContent}`;
-        toneFlowCompleted = toneFlowExpected.slice();
-        toneFlowIndex = toneFlowExpected.length;
+    if (selectedTone === expectedTone) {
+        if (btn?.classList) {
+            btn.classList.add('bg-green-100', 'border-green-500');
+        }
+        toneFlowCompleted.push(selectedTone);
+        toneFlowCompletedSyllables.push(correctSyllable);
+        toneFlowIndex += 1;
+        threeColumnInlineFeedback = {
+            message: `✓ ${correctSyllable}`,
+            type: 'correct'
+        };
         updateToneFlowProgress();
-        score++;
-        total++;
-        updateStats();
         playCorrectSound();
-        markSchedulerOutcome(true);
-        previousQuestion = currentQuestion;
-        previousQuestionResult = 'correct';
-        threeColumnInlineFeedback = null;
-        const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
-        playPinyinAudio(firstPinyin, currentQuestion.char);
-        feedback.textContent = '✓ Correct!';
-        feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
-        hint.innerHTML = `<span class="text-green-600 font-bold text-2xl">${escapeHtml(currentQuestion.char)} (${escapeHtml(toneFlowExpectedNoTone)}) → ${escapeHtml(expected)}</span> <span class="text-gray-600">(${escapeHtml(currentQuestion.pinyin)}) - ${escapeHtml(currentQuestion.meaning)}</span>`;
-        hint.className = 'text-center text-xl font-semibold my-4';
-        answered = true;
-        generateQuestion();
+        feedback.textContent = `✓ ${correctSyllable} is right`;
+        feedback.className = 'text-center text-lg font-semibold my-2 text-green-600';
+
+        if (toneFlowIndex >= toneFlowExpected.length) {
+            updateToneFlowProgress();
+            score++;
+            total++;
+            updateStats();
+            markSchedulerOutcome(true);
+            previousQuestion = currentQuestion;
+            previousQuestionResult = 'correct';
+            threeColumnInlineFeedback = null;
+            const firstPinyin = currentQuestion.pinyin.split('/')[0].trim();
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+            feedback.textContent = '✓ Correct!';
+            feedback.className = 'text-center text-2xl font-semibold my-4 text-green-600';
+            hint.innerHTML = `<span class="text-green-600 font-bold text-2xl">${escapeHtml(currentQuestion.char)} (${escapeHtml(toneFlowExpectedNoTone)}) → ${escapeHtml(toneFlowCompletedSyllables.join(' '))}</span> <span class="text-gray-600">(${escapeHtml(toneFlowCompleted.join('-'))})</span> <span class="text-gray-600">- ${escapeHtml(currentQuestion.meaning)}</span>`;
+            hint.className = 'text-center text-xl font-semibold my-4';
+            answered = true;
+            generateQuestion();
+        } else {
+            setTimeout(() => renderToneFlowToneStep(), 250);
+        }
     } else {
-        btn.classList.add('bg-red-100', 'border-red-500');
-        btn.innerHTML = `✗ ${btn.textContent}`;
-        feedback.innerHTML = `Wrong — correct tone pattern is <strong>${formatTonePatternLabel(toneFlowExpected)}</strong>`;
+        if (btn?.classList) {
+            btn.classList.add('bg-red-100', 'border-red-500');
+        }
+        threeColumnInlineFeedback = {
+            message: `✗ ${selectedSyllable} is not right yet`,
+            type: 'incorrect'
+        };
+        feedback.textContent = `✗ ${selectedSyllable} is not right. Try again.`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
-        renderToneFlowToneStep();
+        playWrongSound();
+        setTimeout(() => renderToneFlowToneStep(), 250);
     }
 }
 
@@ -10750,6 +11664,93 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function getWordUsageHint(question = currentQuestion) {
+    if (!question) return null;
+    const rawCategory = String(question.partOfSpeech || question.pos || question.category || '').trim();
+    if (!rawCategory) return null;
+
+    const lower = rawCategory.toLowerCase();
+    const hint = { category: rawCategory, label: 'WORD', before: 'wǒ', after: '' };
+
+    if (/\b(noun|nouns?)\b/.test(lower)) {
+        hint.label = 'NOUN';
+        hint.before = 'wǒ xǐhuan';
+        hint.after = '';
+    } else if (/\b(pronoun|pronouns?)\b/.test(lower)) {
+        hint.label = 'PRONOUN';
+        hint.before = '';
+        hint.after = 'xǐhuan chá';
+    } else if (/\b(verb|verbs?)\b/.test(lower)) {
+        hint.label = 'VERB';
+        hint.before = 'wǒ';
+        hint.after = '';
+    } else if (/\b(adverb|adverbs?)\b/.test(lower)) {
+        hint.label = 'ADVERB';
+        hint.before = 'wǒ';
+        hint.after = 'qù xuéxiào';
+    } else if (/\b(preposition|prepositions?)\b/.test(lower)) {
+        hint.label = 'PREP';
+        hint.before = 'wǒ';
+        hint.after = 'xuéxiào lái';
+    } else if (/\b(particle|particles?)\b/.test(lower)) {
+        hint.label = 'PARTICLE';
+        hint.before = 'hǎo';
+        hint.after = 'ma';
+    } else if (/\b(connective|connectives?|conjunction|conjunctions?)\b/.test(lower)) {
+        hint.label = 'CONNECTOR';
+        hint.before = '...';
+        hint.after = '...';
+    } else if (/\b(time word|time words?)\b/.test(lower)) {
+        hint.label = 'TIME';
+        hint.before = '';
+        hint.after = 'wǒ qù xuéxiào';
+    } else if (/\b(question word|question words?)\b/.test(lower)) {
+        hint.label = 'QUESTION';
+        hint.before = 'nǐ';
+        hint.after = '?';
+    } else if (/\b(measure word|measure words?)\b/.test(lower)) {
+        hint.label = 'MW';
+        hint.before = 'yì';
+        hint.after = 'běn shū';
+    } else if (/\b(negation)\b/.test(lower)) {
+        hint.label = 'NEGATION';
+        hint.before = 'wǒ';
+        hint.after = 'xǐhuan';
+    } else if (/\b(common phrase|common phrases?|phrase|phrases?)\b/.test(lower)) {
+        hint.label = 'PHRASE';
+        hint.before = 'wǒ juéde';
+        hint.after = '';
+    } else if (/\b(adjective|adjectives?)\b/.test(lower)) {
+        hint.label = 'ADJ';
+        hint.before = 'hěn';
+        hint.after = '';
+    } else {
+        hint.label = rawCategory
+            .replace(/^common\s+/i, '')
+            .replace(/\s+words?$/i, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toUpperCase();
+    }
+
+    return hint;
+}
+
+function buildWordUsageHintHtml(hint) {
+    if (!hint || !hint.label || (!hint.before && !hint.after)) return '';
+    const kicker = hint.category ? `Usage pattern · ${escapeHtml(hint.category)}` : 'Usage pattern';
+    return `
+        <div class="word-usage-hint">
+            <div class="word-usage-hint-kicker">${kicker}</div>
+            <div class="word-usage-hint-example">
+                ${hint.before ? `<span>${escapeHtml(hint.before)}</span>` : ''}
+                <span class="word-usage-hint-pill">[${escapeHtml(hint.label)}]</span>
+                ${hint.after ? `<span>${escapeHtml(hint.after)}</span>` : ''}
+            </div>
+        </div>
+    `;
 }
 
 function clearComponentBreakdown() {
@@ -11119,11 +12120,27 @@ function renderMeaningQuestionLayout() {
 
     componentPanelsHaveContent = false;
     const charHtml = escapeHtml(currentQuestion.char || '');
+    const usageHint = getWordUsageHint(currentQuestion);
+
+    if (window.JcodeQuizQuestionUI?.render) {
+        window.JcodeQuizQuestionUI.render(questionDisplay, {
+            layout: 'meaning-question',
+            char: charHtml,
+            showComponentBreakdown: showComponentBreakdown,
+            usageHint
+        });
+        resetMeaningAnswerSummary();
+        applyComponentPanelVisibility();
+        applyComponentColoring();
+        renderEtymologyNote(null);
+        return;
+    }
 
     questionDisplay.innerHTML = `
         <div class="meaning-question-layout${showComponentBreakdown ? '' : ' components-hidden'}">
             <div class="component-panel component-panel-left" id="componentPanelLeft"></div>
             <div class="meaning-char-column">
+                ${buildWordUsageHintHtml(usageHint)}
                 <div class="answer-summary-card" id="answerSummaryCard">
                     <div class="summary-card-header">
                         <span class="summary-card-char" id="answerSummaryChar"></span>
@@ -11248,11 +12265,52 @@ function renderThreeColumnMeaningLayout() {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
+    const currentUsageHint = getWordUsageHint(currentQuestion);
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
     const inlineFeedback = threeColumnInlineFeedback;
     const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
+
+    if (window.JcodeQuizQuestionUI?.render) {
+        const columns = {
+            previous: previousQuestion ? {
+                char: prevChar,
+                pinyin: prevPinyin,
+                meaning: prevMeaning,
+                resultClass: prevResultClass,
+                resultIcon: prevResultIcon,
+                feedbackText: prevFeedbackText,
+                charDetails: prevCharDetails
+            } : null,
+            current: {
+                char: currentChar,
+                fontSize: currentCharFontSize,
+                markingBadge: currentMarkingBadge,
+                mode: mode,
+                usageHint: currentUsageHint
+            },
+            upcoming: upcomingQuestion ? {
+                char: upcomingChar,
+                mode: mode
+            } : null
+        };
+        const feedback = inlineFeedback ? {
+            type: inlineFeedback.type,
+            message: inlineFeedbackMessage
+        } : null;
+        window.JcodeQuizQuestionUI.render(questionDisplay, {
+            layout: 'three-column',
+            columns: columns,
+            inlineFeedback: feedback
+        });
+        if (mode === 'audio-to-meaning') {
+            attachAudioSectionToInlineSlot();
+        } else {
+            restoreQuizAudioSectionHome();
+        }
+        return;
+    }
 
     questionDisplay.innerHTML = `
         <div class="three-column-meaning-layout">
@@ -11274,6 +12332,7 @@ function renderThreeColumnMeaningLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
+                ${buildWordUsageHintHtml(currentUsageHint)}
                 <div class="column-focus-ring">
                     ${mode === 'audio-to-meaning' ? `
                         ${getInlinePromptAudioHtml('Listen and choose meaning')}
@@ -11334,11 +12393,46 @@ function renderThreeColumnPinyinLayout() {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
+    const currentUsageHint = getWordUsageHint(currentQuestion);
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
     const inlineFeedback = threeColumnInlineFeedback;
     const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
+
+    if (window.JcodeQuizQuestionUI?.render) {
+        const columns = {
+            previous: previousQuestion ? {
+                char: prevChar,
+                pinyin: prevPinyin,
+                meaning: prevMeaning,
+                resultClass: prevResultClass,
+                resultIcon: prevResultIcon,
+                feedbackText: prevFeedbackText
+            } : null,
+            current: {
+                char: currentChar,
+                fontSize: currentCharFontSize,
+                markingBadge: currentMarkingBadge,
+                mode: mode,
+                usageHint: currentUsageHint
+            },
+            upcoming: upcomingQuestion ? {
+                char: upcomingChar,
+                mode: mode
+            } : null
+        };
+        const feedback = inlineFeedback ? {
+            type: inlineFeedback.type,
+            message: inlineFeedbackMessage
+        } : null;
+        window.JcodeQuizQuestionUI.render(questionDisplay, {
+            layout: 'three-column',
+            columns: columns,
+            inlineFeedback: feedback
+        });
+        return;
+    }
 
     questionDisplay.innerHTML = `
         <div class="three-column-meaning-layout">
@@ -11359,6 +12453,7 @@ function renderThreeColumnPinyinLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
+                ${buildWordUsageHintHtml(currentUsageHint)}
                 <div class="column-focus-ring">
                     <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                 </div>
@@ -11561,6 +12656,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
 
     // Build current column - show Chinese text or audio icon
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
+    const currentUsageHint = getWordUsageHint(currentQuestion);
     let currentContent = '';
     if (isAudioMode) {
         currentContent = `
@@ -11580,6 +12676,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
+                ${buildWordUsageHintHtml(currentUsageHint)}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -11643,6 +12740,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentFontSize = getTranslationFontSize(currentQuestion.char);
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
+    const currentUsageHint = getWordUsageHint(currentQuestion);
 
     const upcomingChar = pinyinDictationUpcomingQuestion ? escapeHtml(pinyinDictationUpcomingQuestion.char || '') : '';
     const upcomingFontSize = getTranslationFontSize(pinyinDictationUpcomingQuestion?.char);
@@ -11690,6 +12788,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
             <div class="column-current column-card" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
+                ${buildWordUsageHintHtml(currentUsageHint)}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -14648,6 +15747,51 @@ function renderStudyListContents() {
         });
     }
 
+    if (window.JcodeQuizStudyUI?.render) {
+        const items = filteredCharacters.map((item) => {
+            const marking = getWordMarking(item.char);
+            const displayPinyin = (item.pinyin || '')
+                .split('/')
+                .map(part => part.trim())
+                .filter(Boolean)
+                .join(' · ');
+            return {
+                char: item.char || '—',
+                pinyin: displayPinyin || '—',
+                meaning: item.meaning || '—',
+                marking: marking || null,
+                audioButtonHtml: `<button type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:border-blue-400 hover:text-blue-600 transition bg-white" data-study-audio="${escapeHtml(item.char)}"><span class="text-lg leading-none">🔊</span><span class="hidden lg:inline">Play</span></button>`
+            };
+        });
+        window.JcodeQuizStudyUI.render(studyList, {
+            items: items,
+            filteredCount: filteredCharacters.length,
+            totalCount: totalCount,
+            emptyMessage: filteredCharacters.length === 0 ? 'No matches found. Try a different search or reset filters.' : null,
+            onMark: (char) => {
+                cycleStudyMark(char);
+                renderStudyListContents();
+            }
+        });
+        // Wire audio buttons after Preact render
+        studyList.querySelectorAll('[data-study-audio]').forEach(btn => {
+            if (btn.dataset.audioBound) return;
+            btn.dataset.audioBound = 'true';
+            btn.addEventListener('click', () => {
+                const char = btn.dataset.studyAudio;
+                const item = quizCharacters.find(c => c.char === char);
+                if (item) {
+                    const firstPinyin = (item.pinyin || '').split('/')[0]?.trim() || '';
+                    playPinyinAudio(firstPinyin || item.pinyin || item.char, item.char);
+                }
+            });
+        });
+        if (statsFiltered) {
+            statsFiltered.textContent = `Showing ${filteredCharacters.length} / ${totalCount} terms`;
+        }
+        return;
+    }
+
     studyList.innerHTML = '';
     studyList.scrollTop = 0;
 
@@ -14672,6 +15816,30 @@ function renderStudyListContents() {
     if (statsFiltered) {
         statsFiltered.textContent = `Showing ${filteredCharacters.length} / ${totalCount} terms`;
     }
+}
+
+function cycleStudyMark(char) {
+    const currentMarking = getWordMarking(char);
+    let newMarking;
+    let toastMessage;
+    let toastType;
+
+    if (!currentMarking) {
+        newMarking = 'needs-work';
+        toastMessage = `"${char}" marked as needs work`;
+        toastType = 'warning';
+    } else if (currentMarking === 'needs-work') {
+        newMarking = 'learned';
+        toastMessage = `"${char}" marked as learned`;
+        toastType = 'success';
+    } else {
+        newMarking = null;
+        toastMessage = `"${char}" unmarked`;
+        toastType = 'info';
+    }
+
+    markWord(char, newMarking);
+    showMarkingToast(toastMessage, toastType);
 }
 
 function createStudyRow(item, displayIndex) {
