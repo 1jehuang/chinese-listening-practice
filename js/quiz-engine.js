@@ -234,6 +234,27 @@ function saveWordMarkings() {
     }
 }
 
+function removeLocalStorageItemSafe(key) {
+    if (!key) return;
+    try {
+        localStorage.removeItem(key);
+    } catch (e) {
+        console.warn(`Failed to remove localStorage key "${key}"`, e);
+    }
+}
+
+async function clearSyncedConfidenceForCurrentPage(skillKey = null) {
+    if (typeof window.clearConfidenceSyncForCurrentPage !== 'function') {
+        return { cleared: false, skipped: true, reason: 'sync-unavailable' };
+    }
+    try {
+        return await window.clearConfidenceSyncForCurrentPage(skillKey || null);
+    } catch (e) {
+        console.warn('Failed to clear synced confidence data for current page', e);
+        return { cleared: false, skipped: false, reason: 'sync-error', error: e };
+    }
+}
+
 function markWord(char, marking) {
     if (!char) return;
     if (marking === null || marking === undefined) {
@@ -16665,7 +16686,7 @@ function initQuizCommandPalette() {
             type: 'action',
             description: `Clear confidence data for "${getCurrentSkillKey()}" mode on this page`,
             keywords: 'reset clear confidence stats mode data progress',
-            action: () => {
+            action: async () => {
                 const skillKey = getCurrentSkillKey();
                 if (!confirm(`Reset all "${skillKey}" confidence data for this lesson? This cannot be undone.`)) return;
 
@@ -16677,6 +16698,7 @@ function initQuizCommandPalette() {
                     }
                 }
                 saveSchedulerStats();
+                await clearSyncedConfidenceForCurrentPage(skillKey);
                 score = 0;
                 total = 0;
                 updateStats();
@@ -16691,16 +16713,50 @@ function initQuizCommandPalette() {
             type: 'action',
             description: 'Clear ALL confidence data for this lesson (all modes)',
             keywords: 'reset clear confidence stats lesson data progress all',
-            action: () => {
+            action: async () => {
                 if (!confirm('Reset ALL confidence data for this lesson? This cannot be undone.')) return;
 
-                const count = Object.keys(schedulerStats).length;
+                const schedulerKey = schedulerStatsKey || getSchedulerStatsPageKey();
+                const adaptiveKey = getAdaptiveStorageKey();
+                const feedKey = getFeedStorageKey();
+                const quizModeKey = getQuizModeKey();
+                const quizDateKey = getQuizTargetDateKey();
+                const wordMarkingsKey = getWordMarkingsKey();
+                const batchKeys = [
+                    getBatchStorageKey(SCHEDULER_MODES.BATCH_5),
+                    getBatchStorageKey(SCHEDULER_MODES.BATCH_3),
+                    getBatchStorageKey(SCHEDULER_MODES.BATCH_2)
+                ];
+
                 schedulerStats = {};
-                saveSchedulerStats();
+                schedulerStatsKey = schedulerKey;
+                removeLocalStorageItemSafe(schedulerKey);
+
+                batchModeState = { ...BATCH_DEFAULT_STATE };
+                adaptiveDeckState = { deck: [], mastered: [], cycleCount: 0 };
+                feedModeState = { hand: [], seen: {}, totalPulls: 0 };
+                wordMarkings = {};
+                quizTargetDate = null;
+
+                batchKeys.forEach(removeLocalStorageItemSafe);
+                removeLocalStorageItemSafe(adaptiveKey);
+                removeLocalStorageItemSafe(feedKey);
+                removeLocalStorageItemSafe(quizModeKey);
+                removeLocalStorageItemSafe(quizDateKey);
+                removeLocalStorageItemSafe(wordMarkingsKey);
+
+                await clearSyncedConfidenceForCurrentPage();
+
                 score = 0;
                 total = 0;
+                answered = false;
+                resetModeTransientState();
                 updateStats();
+                updateFeedStatusDisplay();
                 if (typeof renderConfidenceList === 'function') renderConfidenceList();
+                if (studyModeInitialized) {
+                    renderStudyListContents();
+                }
                 generateQuestion();
             },
             available: () => Object.keys(schedulerStats).length > 0

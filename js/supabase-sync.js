@@ -336,6 +336,49 @@ async function mergeSupabaseStats() {
     }
 }
 
+async function clearConfidenceSyncForCurrentPage(skillKey = null) {
+    if (!supabaseClient || !currentUserId) {
+        return { cleared: false, skipped: true, reason: 'not-authenticated' };
+    }
+
+    const pageKey = getSyncPageKey();
+
+    try {
+        let query = supabaseClient
+            .from('confidence_scores')
+            .delete()
+            .eq('user_id', currentUserId)
+            .eq('page_key', pageKey);
+
+        if (skillKey) {
+            query = query.eq('skill_key', skillKey);
+        }
+
+        const { error } = await query;
+        if (error) {
+            console.warn('Failed to clear confidence scores from Supabase:', error);
+            return { cleared: false, skipped: false, reason: 'delete-failed', error };
+        }
+
+        if (skillKey) {
+            Object.keys(pendingUpdates).forEach((key) => {
+                if (key.endsWith(`::${skillKey}`)) {
+                    delete pendingUpdates[key];
+                }
+            });
+        } else {
+            pendingUpdates = {};
+        }
+
+        return { cleared: true, skipped: false, skillKey: skillKey || null };
+    } catch (e) {
+        console.warn('Failed to clear confidence scores from Supabase:', e);
+        return { cleared: false, skipped: false, reason: 'exception', error: e };
+    }
+}
+
+window.clearConfidenceSyncForCurrentPage = clearConfidenceSyncForCurrentPage;
+
 // Hook into the existing markSchedulerOutcome function
 function hookSchedulerSync() {
     if (typeof window.originalMarkSchedulerOutcome === 'undefined' &&
