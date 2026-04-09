@@ -297,6 +297,7 @@ function createContext() {
       const indicator = (document.body.children || []).find(child => child && child.id === 'currentWordConfidence');
       return indicator ? (indicator.innerHTML || '') : '';
     }
+    function __getPinyinMeaningStage() { return pinyinMeaningStage; }
   `, ctx);
   return { ctx, optionsEl };
 }
@@ -876,6 +877,78 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   assert.ok(options.includes('hao tian'), 'phase 1 options should include the whole-word pinyin');
   assert.ok(!options.includes('hao'), 'phase 1 should not offer per-syllable pinyin');
   console.log('✓ char-to-pinyin-tones-mc phase 1 uses whole-word pinyin without tones');
+})();
+
+(function testPinyinMeaningModeStartsOnPinyinStep() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  ctx.__setQuizCharacters([
+    word,
+    { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' },
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+  ]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin-meaning');
+  ctx.__initTestDomRefs();
+
+  ctx.renderQuestionUiForChoiceModes();
+
+  assert.strictEqual(ctx.__getPinyinMeaningStage(), 'pinyin', 'new mode should begin on the pinyin step');
+  assert.strictEqual(ctx.document.getElementById('fuzzyInput').placeholder, 'Type pinyin to filter choices...', 'new mode should prompt for pinyin first');
+  const options = Array.from(ctx.__getFuzzyOptionData());
+  assert.ok(options.some(option => option.textContent === 'hǎo tiān'), 'pinyin step should include pinyin options');
+  console.log('✓ char-to-pinyin-meaning starts on the pinyin step');
+})();
+
+(function testPinyinMeaningModeTransitionsToMeaningOnCorrectPinyin() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  ctx.__setQuizCharacters([
+    word,
+    { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' },
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+  ]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin-meaning');
+  ctx.__initTestDomRefs();
+
+  ctx.renderQuestionUiForChoiceModes();
+  ctx.checkFuzzyPinyinAnswer('hǎo tiān');
+
+  assert.strictEqual(ctx.__getPinyinMeaningStage(), 'meaning', 'correct pinyin should advance to the meaning step');
+  assert.strictEqual(ctx.window.currentQuestion.char, '好天', 'correct pinyin should keep the same word active');
+  assert.strictEqual(ctx.document.getElementById('fuzzyInput').placeholder, 'Type meaning to filter choices...', 'meaning step should prompt for meaning');
+  const options = Array.from(ctx.__getFuzzyOptionData());
+  assert.ok(options.some(option => option.textContent === 'good weather'), 'meaning step should include meaning options for the same word');
+  console.log('✓ char-to-pinyin-meaning moves to meaning after correct pinyin');
+})();
+
+(function testPinyinMeaningModeAdvancesOnlyAfterMeaningStep() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  const nextWord = { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' };
+  ctx.__setQuizCharacters([
+    word,
+    nextWord,
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+  ]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setUpcomingQuestion(nextWord);
+  ctx.__setMode('char-to-pinyin-meaning');
+  ctx.__initTestDomRefs();
+
+  ctx.renderQuestionUiForChoiceModes();
+  ctx.checkFuzzyPinyinAnswer('hǎo tiān');
+  assert.strictEqual(ctx.window.currentQuestion.char, '好天', 'mode should not advance after just the pinyin step');
+
+  ctx.checkFuzzyAnswer('good weather');
+
+  assert.strictEqual(ctx.window.currentQuestion.char, '老师', 'mode should advance only after the meaning step is completed');
+  assert.strictEqual(ctx.__getPinyinMeaningStage(), 'pinyin', 'next card should reset back to the pinyin step');
+  console.log('✓ char-to-pinyin-meaning advances only after meaning is correct');
 })();
 
 (function testToneMcUsesOneToneMarkedSyllableAtATime() {

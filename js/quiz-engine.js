@@ -334,6 +334,11 @@ let composerEnabled = false;
 let composerStageIndex = 0;
 let composerPipeline = [];
 
+// Char → Pinyin → Meaning mode state
+let pinyinMeaningStage = 'pinyin';
+let pinyinMeaningCardAttempted = false;
+let pinyinMeaningCardHadError = false;
+
 // Ensure a mode button exists; if missing, append one using an existing button as a style template
 function ensureModeButton(mode, label) {
     if (!mode) return;
@@ -3113,6 +3118,9 @@ function getSchedulerModeDescription(mode = schedulerMode) {
 
 function getCurrentSkillKey(customMode = mode) {
     const m = customMode;
+    if (m === 'char-to-pinyin-meaning') {
+        return pinyinMeaningStage === 'meaning' ? 'meaning' : 'pinyin-mc';
+    }
     if (m === 'blend' || m === 'blend-mc') {
         const dir = blendDirection;
         if (dir === 'char-to-meaning' || dir === 'audio-to-meaning' || dir === 'meaning-to-char') return 'meaning';
@@ -3966,6 +3974,8 @@ function getQuizPredictionScenarioForMode(activeMode) {
         case 'char-to-pinyin-mc':
         case 'char-to-pinyin-type':
             return { label: activeMode, meaning: 0, pinyin: 1, chanceFloor: 0.25 };
+        case 'char-to-pinyin-meaning':
+            return { label: activeMode, meaning: 0.5, pinyin: 0.5, chanceFloor: 0.25 };
         case 'char-to-pinyin-tones-mc':
             return { label: activeMode, meaning: 0, pinyin: 1, chanceFloor: 0.25 };
         case 'char-to-pinyin':
@@ -7561,6 +7571,9 @@ function resetForNextQuestion(prefillAnswer) {
     toneFlowStage = null;
     toneFlowExpected = [];
     toneFlowIndex = 0;
+    pinyinMeaningStage = 'pinyin';
+    pinyinMeaningCardAttempted = false;
+    pinyinMeaningCardHadError = false;
     answered = false;
     feedback.textContent = '';
     hint.textContent = '';
@@ -7870,6 +7883,12 @@ function renderQuestionUiForChoiceModes() {
     if (mode === 'char-to-pinyin-type' && fuzzyMode) {
         renderThreeColumnPinyinLayout();
         generateFuzzyPinyinOptions();
+        fuzzyMode.style.display = 'block';
+        return true;
+    }
+
+    if (mode === 'char-to-pinyin-meaning' && fuzzyMode) {
+        renderPinyinMeaningFlowStep();
         fuzzyMode.style.display = 'block';
         return true;
     }
@@ -10103,9 +10122,197 @@ function generateMeaningToCharPinyinOptions() {
     fuzzyInput.focus();
 }
 
+function renderPinyinMeaningFlowStep() {
+    if (!fuzzyMode || !fuzzyInput) return;
+
+    if (pinyinMeaningStage === 'meaning') {
+        fuzzyInput.placeholder = 'Type meaning to filter choices...';
+        renderThreeColumnMeaningLayout();
+        generateFuzzyMeaningOptions();
+    } else {
+        fuzzyInput.placeholder = 'Type pinyin to filter choices...';
+        renderThreeColumnPinyinLayout();
+        generateFuzzyPinyinOptions();
+    }
+
+    fuzzyMode.style.display = 'block';
+}
+
+function ensurePinyinMeaningCardAttempt() {
+    if (pinyinMeaningCardAttempted) return;
+    total++;
+    pinyinMeaningCardAttempted = true;
+}
+
+function advancePinyinMeaningToNextStage() {
+    pinyinMeaningStage = 'meaning';
+    questionAttemptRecorded = false;
+    answered = false;
+    lastAnswerCorrect = false;
+    threeColumnInlineFeedback = {
+        message: `✓ Pinyin: ${currentQuestion.pinyin}\nNow choose meaning`,
+        type: 'correct'
+    };
+
+    markSchedulerServed(currentQuestion);
+    updateCurrentWordConfidence();
+
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+        setTimeout(() => fuzzyInput.focus(), 0);
+    }
+
+    renderPinyinMeaningFlowStep();
+    feedback.textContent = '';
+    hint.textContent = '';
+}
+
+function advanceAfterPinyinMeaningComplete(cardWasPerfect) {
+    previousQuestion = currentQuestion;
+    previousQuestionResult = cardWasPerfect ? 'correct' : 'incorrect';
+    threeColumnInlineFeedback = null;
+
+    if (upcomingQuestion) {
+        currentQuestion = upcomingQuestion;
+        window.currentQuestion = currentQuestion;
+        upcomingQuestion = null;
+    } else {
+        currentQuestion = selectNextQuestion();
+        window.currentQuestion = currentQuestion;
+    }
+    notifyChatQuestionChanged();
+    updatePreviewDisplay();
+
+    pinyinMeaningStage = 'pinyin';
+    pinyinMeaningCardAttempted = false;
+    pinyinMeaningCardHadError = false;
+    answered = false;
+    questionAttemptRecorded = false;
+    lastAnswerCorrect = false;
+
+    markSchedulerServed(currentQuestion);
+    updateCurrentWordConfidence();
+
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+    }
+
+    renderPinyinMeaningFlowStep();
+    feedback.textContent = '';
+    hint.textContent = '';
+}
+
+function checkPinyinMeaningPinyinAnswer(answer) {
+    const isFirstAttempt = !questionAttemptRecorded;
+    ensurePinyinMeaningCardAttempt();
+    if (isFirstAttempt) {
+        questionAttemptRecorded = true;
+    }
+
+    const pinyinOptions = currentQuestion.pinyin.split('/').map(p => p.trim()).filter(Boolean);
+    const normalizedAnswer = normalizePinyinForChoice(answer);
+    const correct = pinyinOptions.some(option => normalizePinyinForChoice(option) === normalizedAnswer);
+
+    const firstPinyin = pinyinOptions[0];
+    if (window.playPinyinAudio && firstPinyin) {
+        playPinyinAudio(firstPinyin, currentQuestion.char);
+    }
+
+    if (correct) {
+        playCorrectSound();
+        if (isFirstAttempt) {
+            markSchedulerOutcome(true);
+        }
+        updateStats();
+        advancePinyinMeaningToNextStage();
+        return;
+    }
+
+    playWrongSound();
+    pinyinMeaningCardHadError = true;
+    if (isFirstAttempt) {
+        markSchedulerOutcome(false);
+    }
+
+    threeColumnInlineFeedback = {
+        message: `✗ Correct: ${currentQuestion.pinyin}`,
+        type: 'incorrect'
+    };
+
+    updateStats();
+
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+        setTimeout(() => fuzzyInput.focus(), 0);
+    }
+
+    renderPinyinMeaningFlowStep();
+    feedback.textContent = '';
+    hint.textContent = '';
+}
+
+function checkPinyinMeaningMeaningAnswer(answer) {
+    if (pinyinMeaningStage !== 'meaning') return;
+
+    const isFirstAttempt = !questionAttemptRecorded;
+    if (isFirstAttempt) {
+        questionAttemptRecorded = true;
+    }
+
+    const correct = answer === currentQuestion.meaning;
+
+    if (mode !== 'audio-to-meaning' && mode !== 'sentence' && currentQuestion.pinyin) {
+        const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
+        if (window.playPinyinAudio) {
+            playPinyinAudio(firstPinyin, currentQuestion.char);
+        }
+    }
+
+    if (correct) {
+        playCorrectSound();
+        if (isFirstAttempt) {
+            markSchedulerOutcome(true);
+        }
+        const cardWasPerfect = !pinyinMeaningCardHadError;
+        if (cardWasPerfect) {
+            score++;
+        }
+        updateStats();
+        advanceAfterPinyinMeaningComplete(cardWasPerfect);
+        return;
+    }
+
+    playWrongSound();
+    pinyinMeaningCardHadError = true;
+    if (isFirstAttempt) {
+        markSchedulerOutcome(false);
+    }
+
+    threeColumnInlineFeedback = {
+        message: `✗ Correct:\n${formatMeaningCorrectionText(currentQuestion)}`,
+        type: 'incorrect'
+    };
+
+    updateStats();
+
+    if (fuzzyInput) {
+        fuzzyInput.value = '';
+        setTimeout(() => fuzzyInput.focus(), 0);
+    }
+
+    renderPinyinMeaningFlowStep();
+    feedback.textContent = '';
+    hint.textContent = '';
+}
+
 function checkFuzzyPinyinAnswer(answer) {
     if (answered) return;
     if (!answer) return;
+
+    if (mode === 'char-to-pinyin-meaning') {
+        checkPinyinMeaningPinyinAnswer(answer);
+        return;
+    }
 
     const isFirstAttempt = !questionAttemptRecorded;
     if (isFirstAttempt) {
@@ -10239,6 +10446,11 @@ function checkMeaningToCharPinyinAnswer(answer) {
 function checkFuzzyAnswer(answer) {
     if (answered) return;
     if (!answer) return;
+
+    if (mode === 'char-to-pinyin-meaning' && pinyinMeaningStage === 'meaning') {
+        checkPinyinMeaningMeaningAnswer(answer);
+        return;
+    }
 
     const isFirstAttempt = !questionAttemptRecorded;
     if (isFirstAttempt) {
@@ -17946,6 +18158,7 @@ function getCurrentPromptText() {
             return asString(question.meaning);
         case 'char-to-pinyin':
         case 'char-to-pinyin-mc':
+        case 'char-to-pinyin-meaning':
         case 'char-to-pinyin-tones-mc':
         case 'char-to-tones':
         case 'char-to-meaning':
@@ -17998,7 +18211,7 @@ function fallbackCopy(text) {
 }
 
 function getActiveInputField() {
-    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'meaning-to-char-pinyin' || mode === 'audio-to-meaning' || mode === 'blend' || mode === 'blend-mc') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'char-to-pinyin-meaning' || mode === 'meaning-to-char-pinyin' || mode === 'audio-to-meaning' || mode === 'blend' || mode === 'blend-mc') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
         return fuzzyInput;
     }
     if (answerInput && isElementReallyVisible(answerInput)) {
@@ -18308,6 +18521,7 @@ function updateHandwritingSpaceHint(holding) {
 function initQuizCommandPalette() {
     const defaultModes = [
         { name: 'Char → Pinyin (MC)', mode: 'char-to-pinyin-type', type: 'mode' },
+        { name: 'Char → Pinyin → Meaning', mode: 'char-to-pinyin-meaning', type: 'mode' },
         { name: 'Char → Pinyin → Tones (MC)', mode: 'char-to-pinyin-tones-mc', type: 'mode' },
         { name: 'Char → Pinyin', mode: 'char-to-pinyin', type: 'mode' },
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
@@ -18975,6 +19189,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     loadComposerState();
     loadWordMarkings(); // Load user word markings
     ensureModeButton('composer', 'Composer');
+    ensureModeButton('char-to-pinyin-meaning', 'Pinyin → Meaning');
     ensureModeButton('meaning-to-char-pinyin', 'Meaning → Char + Pinyin');
     ensureModeButton('sentence', 'Sentence');
     if (document.querySelector('.mode-btn[data-mode="draw-char"]')) {
