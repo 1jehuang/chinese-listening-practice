@@ -50,6 +50,20 @@ function makeElement(tagName = 'div') {
       this.childNodes.push(child);
       return child;
     },
+    insertBefore(child, referenceChild) {
+      if (!child) return child;
+      child.parentNode = this;
+      child.parentElement = this;
+      const refIndex = this.children.indexOf(referenceChild);
+      if (refIndex === -1) {
+        this.children.push(child);
+        this.childNodes.push(child);
+      } else {
+        this.children.splice(refIndex, 0, child);
+        this.childNodes.splice(refIndex, 0, child);
+      }
+      return child;
+    },
     addEventListener() {},
     removeEventListener() {},
     setAttribute(name, value) { this[name] = value; },
@@ -200,6 +214,8 @@ function createContext() {
     URLSearchParams,
   });
 
+  document.body.appendChild(questionDisplayEl);
+
   ctx.window.document = document;
   ctx.window.window = ctx.window;
   vm.runInContext(`
@@ -277,8 +293,11 @@ function createContext() {
         syllable: btn.dataset.syllable || ''
       }));
     }
+    function __getCurrentWordConfidenceHtml() {
+      const indicator = (document.body.children || []).find(child => child && child.id === 'currentWordConfidence');
+      return indicator ? (indicator.innerHTML || '') : '';
+    }
   `, ctx);
-
   return { ctx, optionsEl };
 }
 
@@ -887,6 +906,50 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
     'tone options should be the five tone-mark variants for the current syllable'
   );
   console.log('✓ char-to-pinyin-tones-mc phase 2 uses one tone-marked syllable at a time');
+})();
+
+(function testToneMcWrongPinyinStaysOnSameWordForRetry() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  ctx.__setQuizCharacters([
+    word,
+    { char: '老师', pinyin: 'lǎo shī', meaning: 'teacher' },
+    { char: '明天', pinyin: 'míng tiān', meaning: 'tomorrow' },
+    { char: '水果', pinyin: 'shuǐ guǒ', meaning: 'fruit' },
+    { char: '朋友', pinyin: 'péng yǒu', meaning: 'friend' },
+  ]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin-tones-mc');
+  ctx.__initTestDomRefs();
+
+  ctx.startPinyinToneMcFlow(true);
+  ctx.__handleToneFlowPinyinChoiceSingle('lao shi');
+
+  assert.strictEqual(ctx.__getToneFlowIndex(), 0, 'wrong pinyin should not advance into the tone phase');
+  assert.strictEqual(ctx.__getToneFlowExpectedNoTone(), 'hao tian', 'wrong pinyin should keep the same target word active');
+  assert.strictEqual(ctx.window.currentQuestion.char, '好天', 'wrong pinyin should keep the same question instead of advancing');
+  assert.strictEqual(
+    ctx.document.getElementById('feedback').textContent,
+    '✗ Not quite. Try the same word again.',
+    'wrong pinyin should prompt a retry on the same word'
+  );
+  console.log('✓ char-to-pinyin-tones-mc wrong pinyin stays on the same word for retry');
+})();
+
+(function testCharToPinyinRetryRefreshesConfidenceIndicator() {
+  const { ctx } = createContext();
+  const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };
+  ctx.__setQuizCharacters([word]);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('char-to-pinyin');
+  ctx.__initTestDomRefs();
+  ctx.document.getElementById('answerInput').value = 'wrong';
+
+  ctx.checkAnswer();
+
+  const confidenceHtml = ctx.__getCurrentWordConfidenceHtml();
+  assert.ok(confidenceHtml.includes('20%'), 'wrong retry path should refresh the confidence indicator to the updated BKT score');
+  console.log('✓ char-to-pinyin retry path refreshes confidence indicator after wrong answers');
 })();
 
 (function testToneMcOnlyAdvancesOnCorrectToneChoice() {

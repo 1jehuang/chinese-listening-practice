@@ -11437,7 +11437,8 @@ function handleToneFlowPinyinChoiceSingle(choice, btn) {
             btn.classList.add('bg-red-100', 'border-red-500');
             btn.innerHTML = `✗ ${choice}`;
         }
-        feedback.innerHTML = `Wrong — correct pinyin is <strong>${toneFlowExpectedNoTone}</strong>`;
+        playWrongSound();
+        feedback.textContent = '✗ Not quite. Try the same word again.';
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
         renderToneFlowPinyinWordStep();
     }
@@ -13213,7 +13214,10 @@ function displayQuestion() {
     } else {
         // Fallback: for other modes, just call generateQuestion
         generateQuestion();
+        return;
     }
+
+    updateCurrentWordConfidence();
 }
 
 // ============================================================
