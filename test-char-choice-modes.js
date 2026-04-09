@@ -307,6 +307,8 @@ const vocab = [
   { char: '学', pinyin: 'xué', meaning: 'study' },
 ];
 
+const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitude' };
+
 (function testPinyinToCharFiltersDuplicatePinyinAndShowsMeaning() {
   const { ctx } = createContext();
   ctx.__setQuizCharacters(vocab);
@@ -395,6 +397,44 @@ const vocab = [
   );
 
   console.log('✓ blend directions exclude audio-to-pinyin and preserve no-audio blend mode');
+})();
+
+(function testLivePinyinProgressDetectsPartialFirstSyllable() {
+  const { ctx } = createContext();
+  ctx.__setCurrentQuestion(multiSyllableWord);
+
+  const state = ctx.getLivePinyinProgressState('ta', multiSyllableWord);
+
+  assert.strictEqual(state.matchedCount, 0, 'partial first syllable should not count as fully matched yet');
+  assert.strictEqual(state.activeIndex, 0, 'partial input should activate the first syllable/character');
+  console.log('✓ live pinyin progress marks the first character during partial first-syllable input');
+})();
+
+(function testLivePinyinProgressAdvancesAcrossCharacters() {
+  const { ctx } = createContext();
+  ctx.__setCurrentQuestion(multiSyllableWord);
+
+  const state = ctx.getLivePinyinProgressState('taid', multiSyllableWord);
+
+  assert.strictEqual(state.matchedCount, 1, 'finished first syllable should be counted as matched');
+  assert.strictEqual(state.activeIndex, 1, 'remaining partial input should activate the second syllable/character');
+  console.log('✓ live pinyin progress carries partial matching forward to the next character');
+})();
+
+(function testCharToPinyinTypeLayoutShowsLiveCharacterProgress() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion(multiSyllableWord);
+  ctx.__setUpcomingQuestion(vocab[0]);
+  ctx.__setMode('char-to-pinyin-type');
+  ctx.document.getElementById('fuzzyInput').value = 'ta';
+
+  ctx.renderThreeColumnPinyinLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.match(html, /pinyin-progress-segment is-active[^"]*"[^>]*>态<\/span>/, 'layout should highlight the first character while its syllable is being typed');
+  assert.doesNotMatch(html, /pinyin-progress-segment is-active[^"]*"[^>]*>度<\/span>/, 'layout should not highlight later characters too early');
+  console.log('✓ char-to-pinyin fuzzy layout shows live per-character pinyin progress');
 })();
 
 (function testPrepareUiStopsExistingPromptAudio() {
@@ -659,14 +699,44 @@ const vocab = [
   const { ctx } = createContext();
   ctx.__initTestDomRefs();
   ctx.__setCurrentQuestion({ char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' });
+  ctx.__setMode('char-to-meaning');
 
   ctx.renderMeaningQuestionLayout();
 
-  const html = ctx.document.getElementById('questionDisplay').innerHTML;
-  assert.ok(html.includes('Tiny usage'), 'meaning layout should render a tiny usage example');
-  assert.ok(/我们[\s\S]*喜欢/.test(html), 'meaning layout should show a short word-specific example sentence');
-  assert.ok(html.includes('Common Verbs'), 'meaning layout should show the source grammar category');
-  console.log('✓ meaning layout fallback shows tiny usage examples for tagged words');
+  let html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(!html.includes('Tiny usage'), 'meaning layout should hide the tiny usage example before an attempt');
+
+  ctx.checkMultipleChoice('wrong');
+
+  html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('Tiny usage'), 'meaning layout should show the tiny usage example after an attempt');
+  assert.ok(/我们[\s\S]*喜欢/.test(html), 'meaning layout should show a short word-specific example sentence after an attempt');
+  assert.ok(html.includes('Common Verbs'), 'meaning layout should show the source grammar category after an attempt');
+  ctx.clearPendingNextQuestion();
+  console.log('✓ meaning layout shows tiny usage examples only after an attempt');
+})();
+
+(function testThreeColumnMeaningHidesUsageUntilTypedAttempt() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion({ char: '尽力', pinyin: 'jìnlì', meaning: 'to do one’s best', category: 'Common Verbs' });
+  ctx.__setQuizCharacters([
+    { char: '尽力', pinyin: 'jìnlì', meaning: 'to do one’s best', category: 'Common Verbs' },
+    { char: '成功', pinyin: 'chénggōng', meaning: 'success', category: 'Nouns' }
+  ]);
+  ctx.__setMode('char-to-meaning-type');
+
+  ctx.renderThreeColumnMeaningLayout();
+  let html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(!html.includes('Tiny usage'), 'three-column meaning layout should hide tiny usage before a typed attempt');
+
+  ctx.checkFuzzyAnswer('wrong');
+
+  html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('Tiny usage'), 'three-column meaning layout should show tiny usage after a typed attempt');
+  assert.ok(/我们[\s\S]*尽力/.test(html), 'three-column meaning layout should show a short word-specific example after a typed attempt');
+  ctx.clearPendingNextQuestion();
+  console.log('✓ three-column meaning layout reveals tiny usage after a typed attempt');
 })();
 
 (function testTutorialModeUsesMeaningSkillKey() {

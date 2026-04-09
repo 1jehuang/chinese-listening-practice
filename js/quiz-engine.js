@@ -7121,15 +7121,156 @@ function getPartialMatch(userAnswer, correct) {
     };
 }
 
+function getSharedPrefixLength(left = '', right = '') {
+    const a = String(left || '');
+    const b = String(right || '');
+    const max = Math.min(a.length, b.length);
+    let index = 0;
+    while (index < max && a[index] === b[index]) {
+        index += 1;
+    }
+    return index;
+}
+
+function buildPinyinProgressParts(question = currentQuestion) {
+    const chars = Array.from(question?.char || '');
+    const syllables = getPrimaryPinyinSyllables(question);
+    const parts = [];
+    let syllableIndex = 0;
+
+    chars.forEach((char) => {
+        if (isDictationSyllableChar(char) && syllableIndex < syllables.length) {
+            parts.push({
+                text: char,
+                syllable: syllables[syllableIndex],
+                syllableIndex,
+                isProgressable: true
+            });
+            syllableIndex += 1;
+            return;
+        }
+
+        parts.push({
+            text: char,
+            syllable: '',
+            syllableIndex: -1,
+            isProgressable: false
+        });
+    });
+
+    return {
+        parts,
+        syllables
+    };
+}
+
+function getLivePinyinProgressState(userAnswer = '', question = currentQuestion) {
+    const { parts, syllables } = buildPinyinProgressParts(question);
+    const baseSyllables = syllables.map((syllable) => normalizePinyin(stripToneMarks(String(syllable || '')))).filter(Boolean);
+    const normalizedInput = normalizePinyin(userAnswer || '');
+
+    let remaining = normalizedInput;
+    let matchedCount = 0;
+    let activeIndex = -1;
+    let activeLength = 0;
+
+    for (let index = 0; index < baseSyllables.length; index += 1) {
+        const syllable = baseSyllables[index];
+        if (!remaining || !syllable) break;
+
+        if (remaining.startsWith(syllable)) {
+            matchedCount += 1;
+            remaining = remaining.slice(syllable.length);
+            continue;
+        }
+
+        const prefixLength = getSharedPrefixLength(remaining, syllable);
+        if (prefixLength > 0) {
+            activeIndex = index;
+            activeLength = prefixLength;
+        }
+        break;
+    }
+
+    return {
+        parts,
+        hasInput: Boolean(normalizedInput),
+        matchedCount,
+        activeIndex,
+        activeLength,
+        totalSyllables: baseSyllables.length
+    };
+}
+
+function buildPinyinProgressWordHtml(question = currentQuestion, userAnswer = '', options = {}) {
+    if (!question?.char) return '';
+
+    const progress = getLivePinyinProgressState(userAnswer, question);
+    const fontSize = options.fontSize || getCharLargeFontSize(question.char || '');
+    const inlineStyles = [
+        `font-size: ${fontSize}`
+    ];
+
+    if (options.maxWidth) inlineStyles.push(`max-width: ${options.maxWidth}`);
+    if (options.lineHeight) inlineStyles.push(`line-height: ${options.lineHeight}`);
+    if (options.wordWrap) inlineStyles.push(`word-wrap: ${options.wordWrap}`);
+
+    const segmentHtml = progress.parts.map((part) => {
+        const classes = ['pinyin-progress-segment'];
+        if (!part.isProgressable) {
+            classes.push('is-delimiter');
+        } else if (progress.hasInput && part.syllableIndex < progress.matchedCount) {
+            classes.push('is-matched');
+        } else if (progress.hasInput && part.syllableIndex === progress.activeIndex) {
+            classes.push('is-active');
+        }
+
+        const attrs = part.isProgressable
+            ? ` data-pinyin-progress-index="${part.syllableIndex}" data-pinyin-progress-syllable="${escapeHtml(part.syllable || '')}"`
+            : '';
+
+        return `<span class="${classes.join(' ')}"${attrs}>${escapeHtml(part.text)}</span>`;
+    }).join('');
+
+    return `<div class="column-char-large pinyin-progress-word" style="${inlineStyles.join('; ')}">${segmentHtml}</div>`;
+}
+
+function syncCurrentPinyinProgressWord(options = {}) {
+    if (!questionDisplay || !currentQuestion || options.isAudioMode) return;
+    if (typeof questionDisplay.querySelector !== 'function') return;
+
+    const focusRing = questionDisplay.querySelector('.column-current .column-focus-ring');
+    if (!focusRing) return;
+
+    const inputValue = typeof options.inputValue === 'string'
+        ? options.inputValue
+        : (fuzzyInput?.value || answerInput?.value || '');
+
+    focusRing.innerHTML = buildPinyinProgressWordHtml(currentQuestion, inputValue, options);
+}
+
 function updatePartialProgress() {
-    // Disable live preview feedback for char-to-pinyin - only show feedback after Enter
-    if (mode === 'char-to-pinyin') return;
-    if (mode !== 'audio-to-pinyin' || answered) return;
+    if ((mode !== 'char-to-pinyin' && mode !== 'audio-to-pinyin') || answered) return;
 
     const userAnswer = answerInput.value.trim();
+
+    if (mode === 'char-to-pinyin') {
+        syncCurrentPinyinProgressWord({
+            inputValue: userAnswer,
+            fontSize: getTranslationFontSize(currentQuestion?.char),
+            maxWidth: '260px',
+            lineHeight: '1.3',
+            wordWrap: 'break-word'
+        });
+    }
+
     if (!userAnswer) {
         hint.textContent = '';
         hint.className = 'text-center text-2xl font-semibold my-4';
+        return;
+    }
+
+    if (mode === 'char-to-pinyin') {
         return;
     }
 
@@ -7714,7 +7855,7 @@ function renderQuestionUiForChoiceModes() {
                 mode,
                 char: escapeHtml(currentQuestion.char),
                 fontSize: getCharLargeFontSize(currentQuestion.char),
-                usageHint: getQuestionUsageHintData(currentQuestion, { showMeaning: false })
+                usageHint: shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null
             });
         } else {
             questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div>`;
@@ -9549,6 +9690,10 @@ function generateFuzzyPinyinOptions() {
                         if (window.JcodeQuizFuzzyUI?.render) {
                             window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildFuzzyProps(newHighlight, value));
                         }
+                        syncCurrentPinyinProgressWord({
+                            inputValue: value,
+                            fontSize: getCharLargeFontSize(currentQuestion?.char || '')
+                        });
                     },
                     onSubmit: () => {
                         const selected = allOptions[currentHighlight];
@@ -9577,6 +9722,10 @@ function generateFuzzyPinyinOptions() {
             }
 
             window.JcodeQuizFuzzyUI.render(fuzzyContainer, buildFuzzyProps(-1, fuzzyInput.value || ''));
+            syncCurrentPinyinProgressWord({
+                inputValue: fuzzyInput.value || '',
+                fontSize: getCharLargeFontSize(currentQuestion?.char || '')
+            });
 
             // Auto-submit prefilled value
             if (fuzzyInput.value) {
@@ -9616,6 +9765,11 @@ function generateFuzzyPinyinOptions() {
         } else {
             nextAnswerBuffer = '';
         }
+
+        syncCurrentPinyinProgressWord({
+            inputValue: fuzzyInput.value,
+            fontSize: getCharLargeFontSize(currentQuestion?.char || '')
+        });
 
         const input = fuzzyInput.value.trim().toLowerCase();
         if (!input) {
@@ -10331,7 +10485,7 @@ function renderBlendLayout() {
                              previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
 
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const currentUsageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
     const inlineFeedback = threeColumnInlineFeedback;
     const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
 
@@ -10400,7 +10554,7 @@ function renderBlendLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now · <span style="font-weight: 600; color: #6366f1;">${dirLabel}</span></div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
+                ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring">
                     ${getBlendPromptHtml(currentQuestion, blendDirection)}
                 </div>
@@ -10761,6 +10915,7 @@ function checkMultipleChoice(answer) {
         lastAnswerCorrect = true;
         markSchedulerOutcome(true);
         if (mode === 'char-to-meaning') {
+            renderMeaningQuestionLayout();
             renderMeaningHint(currentQuestion, 'correct');
         } else if (mode === 'sentence') {
             hint.textContent = `「${currentQuestion.target || currentQuestion.char}」: ${currentQuestion.meaning}`;
@@ -10795,6 +10950,7 @@ function checkMultipleChoice(answer) {
         lastAnswerCorrect = false;
         markSchedulerOutcome(false);
         if (mode === 'char-to-meaning') {
+            renderMeaningQuestionLayout();
             renderMeaningHint(currentQuestion, 'incorrect');
         } else if (mode === 'sentence') {
             hint.textContent = `「${currentQuestion.target || currentQuestion.char}」: ${currentQuestion.meaning}`;
@@ -11812,6 +11968,10 @@ function getQuestionUsageHintData(question = currentQuestion, options = {}) {
     return getWordUsageExample(question, { showMeaning: options.showMeaning === true });
 }
 
+function shouldShowPostAttemptUsageHint() {
+    return Boolean(answered || questionAttemptRecorded);
+}
+
 function createTutorialModeUiState() {
     return {
         feedback: null,
@@ -12063,7 +12223,7 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
 
 function buildTutorialModeViewModel() {
     const state = getTutorialModeUiState();
-    const usageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const usageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
     const wordType = getTutorialWordType(currentQuestion);
     return {
         title: 'Tutorial Mode',
@@ -12612,7 +12772,7 @@ function renderMeaningQuestionLayout() {
 
     componentPanelsHaveContent = false;
     const charHtml = escapeHtml(currentQuestion.char || '');
-    const usageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const usageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
 
     if (window.JcodeQuizQuestionUI?.render) {
         window.JcodeQuizQuestionUI.render(questionDisplay, {
@@ -12632,7 +12792,7 @@ function renderMeaningQuestionLayout() {
         <div class="meaning-question-layout${showComponentBreakdown ? '' : ' components-hidden'}">
             <div class="component-panel component-panel-left" id="componentPanelLeft"></div>
             <div class="meaning-char-column">
-                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
+                ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="answer-summary-card" id="answerSummaryCard">
                     <div class="summary-card-header">
                         <span class="summary-card-char" id="answerSummaryChar"></span>
@@ -12757,7 +12917,7 @@ function renderThreeColumnMeaningLayout() {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const currentUsageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -12824,7 +12984,7 @@ function renderThreeColumnMeaningLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
+                ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring">
                     ${mode === 'audio-to-meaning' ? `
                         ${getInlinePromptAudioHtml('Listen and choose meaning')}
@@ -12885,7 +13045,7 @@ function renderThreeColumnPinyinLayout() {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const currentUsageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -12923,6 +13083,9 @@ function renderThreeColumnPinyinLayout() {
             columns: columns,
             inlineFeedback: feedback
         });
+        syncCurrentPinyinProgressWord({
+            fontSize: currentCharFontSize
+        });
         return;
     }
 
@@ -12945,9 +13108,9 @@ function renderThreeColumnPinyinLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
+                ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring">
-                    <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
+                    ${buildPinyinProgressWordHtml(currentQuestion, fuzzyInput?.value || '', { fontSize: currentCharFontSize })}
                 </div>
                 ${inlineFeedback ? `
                     <div class="column-inline-feedback ${inlineFeedback.type === 'incorrect' ? 'is-incorrect' : 'is-correct'}">
@@ -13152,7 +13315,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
 
     // Build current column - show Chinese text or audio icon
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const currentUsageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
     let currentContent = '';
     if (isAudioMode) {
         currentContent = `
@@ -13172,7 +13335,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
+                ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -13236,7 +13399,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentFontSize = getTranslationFontSize(currentQuestion.char);
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
+    const currentUsageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
 
     const upcomingChar = pinyinDictationUpcomingQuestion ? escapeHtml(pinyinDictationUpcomingQuestion.char || '') : '';
     const upcomingFontSize = getTranslationFontSize(pinyinDictationUpcomingQuestion?.char);
@@ -13272,7 +13435,12 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
             <div style="font-size: 14px; color: #64748b;">Listen and type pinyin</div>
         `;
     } else {
-        currentContent = `<div class="column-char-large" style="font-size: ${currentFontSize}; line-height: 1.3; max-width: 260px; word-wrap: break-word;">${currentChar}</div>`;
+        currentContent = buildPinyinProgressWordHtml(currentQuestion, answerInput?.value || '', {
+            fontSize: currentFontSize,
+            lineHeight: '1.3',
+            maxWidth: '260px',
+            wordWrap: 'break-word'
+        });
     }
 
     questionDisplay.innerHTML = `
@@ -13284,7 +13452,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
             <div class="column-current column-card" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
+                ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -13302,6 +13470,15 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
             </div>
         </div>
     `;
+
+    syncCurrentPinyinProgressWord({
+        isAudioMode,
+        inputValue: answerInput?.value || '',
+        fontSize: currentFontSize,
+        lineHeight: '1.3',
+        maxWidth: '260px',
+        wordWrap: 'break-word'
+    });
 }
 
 // ============================================================

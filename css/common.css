@@ -2064,6 +2064,43 @@ body.feedback-left-layout #questionDisplay .my-8 {
     white-space: nowrap;
 }
 
+.pinyin-progress-word {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.08em;
+}
+
+.pinyin-progress-segment {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1em;
+    border-radius: 0.18em;
+    padding: 0.02em 0.08em;
+    color: inherit;
+    transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.pinyin-progress-segment.is-matched {
+    background: rgba(59, 130, 246, 0.16);
+    color: #1d4ed8;
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.32);
+}
+
+.pinyin-progress-segment.is-active {
+    background: rgba(96, 165, 250, 0.18);
+    color: #1d4ed8;
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.55);
+}
+
+.pinyin-progress-segment.is-delimiter {
+    min-width: auto;
+    padding-left: 0;
+    padding-right: 0;
+}
+
 .three-column-meaning-layout .column-placeholder {
     flex: 1;
     display: flex;
@@ -2796,6 +2833,21 @@ body.study-mode-active .main-content {
     body.theme-dark .three-column-meaning-layout .column-char,
     body.theme-dark .three-column-meaning-layout .column-char-large {
         color: var(--dm-text);
+    }
+
+    body.theme-dark .pinyin-progress-segment.is-matched,
+    body.theme-dark .pinyin-progress-segment.is-active {
+        color: #bfdbfe;
+    }
+
+    body.theme-dark .pinyin-progress-segment.is-matched {
+        background: rgba(59, 130, 246, 0.22);
+        box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.3);
+    }
+
+    body.theme-dark .pinyin-progress-segment.is-active {
+        background: rgba(96, 165, 250, 0.24);
+        box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.45);
     }
 
     body.theme-dark .three-column-meaning-layout .column-meaning {
