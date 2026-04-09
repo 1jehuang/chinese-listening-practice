@@ -12107,7 +12107,7 @@ function submitTutorialModeAssessment(correct) {
     markSchedulerOutcome(Boolean(correct));
     updateStats();
     renderTutorialModeLayout();
-    scheduleNextQuestion(correct ? 1300 : 1900);
+    scheduleNextQuestion(correct ? 350 : 550);
 }
 
 function renderTutorialModeFallback(viewModel) {
