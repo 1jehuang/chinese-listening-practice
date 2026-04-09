@@ -34,16 +34,14 @@ function MeaningDisplay({ meaning }) {
 }
 
 function UsageHint({ hint }) {
-  if (!hint?.label || (!hint.before && !hint.after)) return null;
+  if (!hint?.sentenceHtml) return null;
 
   return (
     <div className="word-usage-hint">
-      <div className="word-usage-hint-kicker">Usage pattern{hint.category ? ` · ${hint.category}` : ''}</div>
-      <div className="word-usage-hint-example">
-        {hint.before ? <span>{hint.before} </span> : null}
-        <span className="word-usage-hint-pill">[{hint.label}]</span>
-        {hint.after ? <span> {hint.after}</span> : null}
-      </div>
+      <div className="word-usage-hint-kicker">{hint.title || 'Tiny usage'}{hint.wordType ? ` · ${hint.wordType}` : ''}</div>
+      <div className="word-usage-hint-example" dangerouslySetInnerHTML={{ __html: hint.sentenceHtml }} />
+      {hint.meaning ? <div className="word-usage-hint-meaning">{hint.meaning}</div> : null}
+      {hint.sourceLabel ? <div className="word-usage-hint-meta">{hint.sourceLabel}</div> : null}
     </div>
   );
 }

@@ -663,10 +663,10 @@ const vocab = [
   ctx.renderMeaningQuestionLayout();
 
   const html = ctx.document.getElementById('questionDisplay').innerHTML;
-  assert.ok(html.includes('Usage pattern'), 'meaning layout should render a usage hint');
-  assert.ok(html.includes('[VERB]'), 'meaning layout should show the compact part-of-speech label');
+  assert.ok(html.includes('Tiny usage'), 'meaning layout should render a tiny usage example');
+  assert.ok(/我们[\s\S]*喜欢/.test(html), 'meaning layout should show a short word-specific example sentence');
   assert.ok(html.includes('Common Verbs'), 'meaning layout should show the source grammar category');
-  console.log('✓ meaning layout fallback shows usage hints for tagged words');
+  console.log('✓ meaning layout fallback shows tiny usage examples for tagged words');
 })();
 
 (function testTutorialModeUsesMeaningSkillKey() {
@@ -693,12 +693,12 @@ const vocab = [
 
   const html = ctx.document.getElementById('questionDisplay').innerHTML;
   assert.ok(html.includes('Tutorial Mode'), 'tutorial mode should render its title');
-  assert.ok(html.includes('Word type'), 'tutorial mode should show the word type label');
   assert.ok(html.includes('Noun'), 'tutorial mode should show a human-readable word type');
-  assert.ok(html.includes('wǒ xǐhuan [NOUN]'), 'tutorial mode should show a sentence frame for tagged words');
-  assert.ok(html.includes('Tiny example'), 'tutorial mode should label the example as tiny example');
+  assert.ok(html.includes('Tiny sentence'), 'tutorial mode should foreground a tiny sentence first');
   assert.ok(/我学[\s\S]*数学/.test(html), 'tutorial mode should prefer the shortest matching example sentence');
   assert.ok(html.includes('I study math.'), 'tutorial mode should show the shortest example translation');
+  assert.ok(html.includes('Use it like this'), 'tutorial mode should show a compact usage section');
+  assert.ok(html.includes('Remember it'), 'tutorial mode should show a compact memory clue section');
   assert.ok(!html.includes('My younger brother does not like math.'), 'tutorial mode should avoid showing the longer example when a tiny one exists');
   console.log('✓ tutorial mode fallback shows structure and matched sentence examples');
 })();
@@ -724,7 +724,7 @@ const vocab = [
   ctx.renderTutorialModeLayout();
 
   const html = ctx.document.getElementById('questionDisplay').innerHTML;
-  assert.ok(html.includes('Tiny example'), 'tutorial mode should show a tiny example section even without the sentence dataset');
+  assert.ok(html.includes('Tiny sentence'), 'tutorial mode should show a tiny sentence section even without the sentence dataset');
   assert.ok(/这是[\s\S]*制度/.test(html), 'tutorial mode should generate a tiny fallback example when no real match exists');
   console.log('✓ tutorial mode generates a tiny fallback example when dataset matches are unavailable');
 })();

@@ -1,19 +1,22 @@
-import { h, Fragment, render as preactRender } from 'preact';
+import { h, render as preactRender } from 'preact';
 
-function MeaningChip({ text }) {
-  if (!text) return null;
-  return <span className="tutorial-mode-chip">{text}</span>;
+function Pill({ children, muted = false }) {
+  return <span className={`tutorial-mode-pill${muted ? ' is-muted' : ''}`}>{children}</span>;
 }
 
-function WordTypeRow({ wordType }) {
-  if (!wordType?.shortLabel) return null;
+function SectionCard({ step, title, accent, children, compact = false }) {
+  const classes = ['tutorial-mode-card'];
+  if (accent) classes.push(`is-${accent}`);
+  if (compact) classes.push('is-compact');
 
   return (
-    <div className="tutorial-mode-word-type-row">
-      <span className="tutorial-mode-word-type-label">Word type</span>
-      <span className="tutorial-mode-word-type-value">{wordType.shortLabel}</span>
-      {wordType.sourceLabel ? <span className="tutorial-mode-word-type-source">{wordType.sourceLabel}</span> : null}
-    </div>
+    <section className={classes.join(' ')}>
+      <div className="tutorial-mode-card-head">
+        {step ? <div className="tutorial-mode-step">{step}</div> : null}
+        <div className="tutorial-mode-card-title">{title}</div>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -30,68 +33,71 @@ function FeedbackBanner({ feedback }) {
   );
 }
 
-function StructureCard({ structure, usageHint }) {
-  if (!structure && !usageHint) return null;
-
+function HeroSection({ char, pinyin, meaning, wordType, extraMeanings }) {
   return (
-    <section className="tutorial-mode-card">
-      <div className="tutorial-mode-card-kicker">Sentence slot</div>
-      {usageHint?.shortLabel ? (
-        <div className="tutorial-mode-card-subtitle">
-          {usageHint.shortLabel}
-          {usageHint.sourceLabel ? ` · ${usageHint.sourceLabel}` : ''}
+    <section className="tutorial-mode-hero">
+      <div className="tutorial-mode-char">{char}</div>
+      {pinyin ? <div className="tutorial-mode-pinyin">{pinyin}</div> : null}
+      {meaning ? <div className="tutorial-mode-meaning">{meaning}</div> : null}
+      <div className="tutorial-mode-pill-row">
+        {wordType?.shortLabel ? <Pill>{wordType.shortLabel}</Pill> : null}
+        {wordType?.sourceLabel ? <Pill muted>{wordType.sourceLabel}</Pill> : null}
+      </div>
+      {extraMeanings?.length ? (
+        <div className="tutorial-mode-alt-meanings">
+          Also: {extraMeanings.join(' · ')}
         </div>
       ) : null}
-      {structure?.template ? (
-        <Fragment>
-          <div className="tutorial-mode-pattern-label">Pattern</div>
-          <div className="tutorial-mode-pattern-line">{structure.template}</div>
-        </Fragment>
+    </section>
+  );
+}
+
+function TinySentenceCard({ example }) {
+  if (!example) return null;
+
+  return (
+    <SectionCard step="1" title="Tiny sentence" accent="primary">
+      <div
+        className="tutorial-mode-example-sentence"
+        dangerouslySetInnerHTML={{ __html: example.highlightedSentenceHtml || example.sentence || '' }}
+      />
+      {example.meaning ? <div className="tutorial-mode-example-meaning">{example.meaning}</div> : null}
+    </SectionCard>
+  );
+}
+
+function UsageCard({ structure, wordType }) {
+  if (!structure && !wordType) return null;
+
+  return (
+    <SectionCard step="2" title="Use it like this" compact>
+      {wordType?.shortLabel ? (
+        <div className="tutorial-mode-inline-meta">
+          Think of it as a <strong>{wordType.shortLabel.toLowerCase()}</strong>
+          {wordType.sourceLabel ? ` · ${wordType.sourceLabel}` : ''}
+        </div>
       ) : null}
-      {structure?.filled ? (
-        <Fragment>
-          <div className="tutorial-mode-pattern-label">With this word</div>
-          <div className="tutorial-mode-pattern-line tutorial-mode-pattern-line-filled">{structure.filled}</div>
-        </Fragment>
-      ) : null}
+      {structure?.filled ? <div className="tutorial-mode-pattern-line tutorial-mode-pattern-line-filled">{structure.filled}</div> : null}
+      {structure?.template ? <div className="tutorial-mode-pattern-line">Frame: {structure.template}</div> : null}
       {structure?.note ? <div className="tutorial-mode-card-note">{structure.note}</div> : null}
-    </section>
+    </SectionCard>
   );
 }
 
-function SentenceExampleCard({ sentenceExamples }) {
-  if (!sentenceExamples?.length) return null;
-
-  return (
-    <section className="tutorial-mode-card">
-      <div className="tutorial-mode-card-kicker">Tiny example</div>
-      <div className="tutorial-mode-example-list">
-        {sentenceExamples.map((example, index) => (
-          <div key={`${example.sentence}-${index}`} className="tutorial-mode-example-item">
-            <div
-              className="tutorial-mode-example-sentence"
-              dangerouslySetInnerHTML={{ __html: example.highlightedSentenceHtml || example.sentence || '' }}
-            />
-            {example.meaning ? <div className="tutorial-mode-example-meaning">{example.meaning}</div> : null}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CharacterClueCard({ perCharLines }) {
+function RememberCard({ perCharLines }) {
   if (!perCharLines?.length) return null;
+  const previewLines = perCharLines.slice(0, 2);
+  const hiddenCount = perCharLines.length - previewLines.length;
 
   return (
-    <section className="tutorial-mode-card">
-      <div className="tutorial-mode-card-kicker">Character clues</div>
+    <SectionCard step="3" title="Remember it" compact>
       <div className="tutorial-mode-line-list">
-        {perCharLines.map((line, index) => (
+        {previewLines.map((line, index) => (
           <div key={`${line}-${index}`} className="tutorial-mode-line-item">{line}</div>
         ))}
       </div>
-    </section>
+      {hiddenCount > 0 ? <div className="tutorial-mode-card-note">+{hiddenCount} more clue{hiddenCount === 1 ? '' : 's'}</div> : null}
+    </SectionCard>
   );
 }
 
@@ -115,7 +121,6 @@ function TutorialModeView({
   meaning,
   meaningAnchors,
   wordType,
-  usageHint,
   structure,
   sentenceExamples,
   perCharLines,
@@ -124,35 +129,35 @@ function TutorialModeView({
   onNeedsWork,
   onGotIt
 }) {
+  const primaryExample = sentenceExamples?.[0] || null;
+  const extraMeanings = (meaningAnchors || []).filter((item) => item && item !== meaning).slice(0, 2);
+
   return (
     <div className="tutorial-mode-shell">
       <div className="tutorial-mode-header">
         <div className="tutorial-mode-kicker">{title || 'Tutorial Mode'}</div>
-        <div className="tutorial-mode-subtitle">{subtitle || 'Learn the word first, then rate how well it feels.'}</div>
+        <div className="tutorial-mode-subtitle">{subtitle || 'See one tiny sentence, understand the role, then rate it fast.'}</div>
       </div>
 
-      <section className="tutorial-mode-hero">
-        <div className="tutorial-mode-char">{char}</div>
-        {pinyin ? <div className="tutorial-mode-pinyin">{pinyin}</div> : null}
-        {meaning ? <div className="tutorial-mode-meaning">{meaning}</div> : null}
-        <WordTypeRow wordType={wordType} />
-        {meaningAnchors?.length ? (
-          <div className="tutorial-mode-chip-row">
-            {meaningAnchors.map((item, index) => <MeaningChip key={`${item}-${index}`} text={item} />)}
-          </div>
-        ) : null}
-      </section>
+      <HeroSection
+        char={char}
+        pinyin={pinyin}
+        meaning={meaning}
+        wordType={wordType}
+        extraMeanings={extraMeanings}
+      />
 
-      <div className="tutorial-mode-grid">
-        <StructureCard structure={structure} usageHint={structure ? (wordType || usageHint) : null} />
-        <SentenceExampleCard sentenceExamples={sentenceExamples} />
-        <CharacterClueCard perCharLines={perCharLines} />
+      <TinySentenceCard example={primaryExample} />
+
+      <div className="tutorial-mode-grid tutorial-mode-grid-secondary">
+        <UsageCard structure={structure} wordType={wordType} />
+        <RememberCard perCharLines={perCharLines} />
       </div>
 
       <FeedbackBanner feedback={feedback} />
 
       <div className="tutorial-mode-actions">
-        <ActionButton label="Needs work" disabled={locked} onClick={onNeedsWork} />
+        <ActionButton label="Again" disabled={locked} onClick={onNeedsWork} />
         <ActionButton label="Got it" primary disabled={locked} onClick={onGotIt} />
       </div>
     </div>

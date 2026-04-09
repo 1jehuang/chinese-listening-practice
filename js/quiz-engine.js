@@ -7714,7 +7714,7 @@ function renderQuestionUiForChoiceModes() {
                 mode,
                 char: escapeHtml(currentQuestion.char),
                 fontSize: getCharLargeFontSize(currentQuestion.char),
-                usageHint: getWordUsageHint(currentQuestion)
+                usageHint: getQuestionUsageHintData(currentQuestion, { showMeaning: false })
             });
         } else {
             questionDisplay.innerHTML = `<div class="text-center text-8xl my-8 font-normal text-gray-800">${escapeHtml(currentQuestion.char)}</div>`;
@@ -10331,7 +10331,7 @@ function renderBlendLayout() {
                              previousQuestionResult === 'incorrect' ? 'Missed it' : 'Reviewed';
 
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getWordUsageHint(currentQuestion);
+    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
     const inlineFeedback = threeColumnInlineFeedback;
     const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
 
@@ -10400,7 +10400,7 @@ function renderBlendLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now · <span style="font-weight: 600; color: #6366f1;">${dirLabel}</span></div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentUsageHint)}
+                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
                 <div class="column-focus-ring">
                     ${getBlendPromptHtml(currentQuestion, blendDirection)}
                 </div>
@@ -11778,19 +11778,38 @@ function getWordUsageHint(question = currentQuestion) {
     return hint;
 }
 
-function buildWordUsageHintHtml(hint) {
-    if (!hint || !hint.label || (!hint.before && !hint.after)) return '';
-    const kicker = hint.category ? `Usage pattern · ${escapeHtml(hint.category)}` : 'Usage pattern';
+function getWordUsageExample(question = currentQuestion, options = {}) {
+    if (!question) return null;
+    const showMeaning = options.showMeaning !== false;
+    const wordType = getTutorialWordType(question);
+    const example = getTutorialSentenceExamples(question, { limit: 1 })[0] || getTutorialGeneratedExample(question);
+    if (!example) return null;
+
+    return {
+        title: 'Tiny usage',
+        sentence: String(example.sentence || '').trim(),
+        sentenceHtml: example.highlightedSentenceHtml || escapeHtml(example.sentence || ''),
+        meaning: showMeaning ? String(example.meaning || '').trim() : '',
+        wordType: wordType?.shortLabel || '',
+        sourceLabel: wordType?.sourceLabel || ''
+    };
+}
+
+function buildWordUsageHintHtml(question = currentQuestion, options = {}) {
+    const hint = getWordUsageExample(question, options);
+    if (!hint?.sentenceHtml) return '';
     return `
         <div class="word-usage-hint">
-            <div class="word-usage-hint-kicker">${kicker}</div>
-            <div class="word-usage-hint-example">
-                ${hint.before ? `<span>${escapeHtml(hint.before)}</span>` : ''}
-                <span class="word-usage-hint-pill">[${escapeHtml(hint.label)}]</span>
-                ${hint.after ? `<span>${escapeHtml(hint.after)}</span>` : ''}
-            </div>
+            <div class="word-usage-hint-kicker">${escapeHtml(hint.title)}${hint.wordType ? ` · ${escapeHtml(hint.wordType)}` : ''}</div>
+            <div class="word-usage-hint-example">${hint.sentenceHtml}</div>
+            ${hint.meaning ? `<div class="word-usage-hint-meaning">${escapeHtml(hint.meaning)}</div>` : ''}
+            ${hint.sourceLabel ? `<div class="word-usage-hint-meta">${escapeHtml(hint.sourceLabel)}</div>` : ''}
         </div>
     `;
+}
+
+function getQuestionUsageHintData(question = currentQuestion, options = {}) {
+    return getWordUsageExample(question, { showMeaning: options.showMeaning === true });
 }
 
 function createTutorialModeUiState() {
@@ -12044,11 +12063,11 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
 
 function buildTutorialModeViewModel() {
     const state = getTutorialModeUiState();
-    const usageHint = getWordUsageHint(currentQuestion);
+    const usageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
     const wordType = getTutorialWordType(currentQuestion);
     return {
         title: 'Tutorial Mode',
-        subtitle: 'Learn the word first, then rate how well it feels.',
+        subtitle: 'See one tiny sentence, understand the role, then rate it fast.',
         char: String(currentQuestion?.char || '').trim(),
         pinyin: cleanPinyinForDisplay(String(currentQuestion?.pinyin || '').trim()),
         meaning: String(currentQuestion?.meaning || '').trim(),
@@ -12112,44 +12131,47 @@ function submitTutorialModeAssessment(correct) {
 
 function renderTutorialModeFallback(viewModel) {
     if (!questionDisplay) return;
-    const meaningAnchors = (viewModel.meaningAnchors || []).map(item => `<span class="tutorial-mode-chip">${escapeHtml(item)}</span>`).join('');
-    const wordTypeHtml = viewModel.wordType?.shortLabel ? `
-        <div class="tutorial-mode-word-type-row">
-            <span class="tutorial-mode-word-type-label">Word type</span>
-            <span class="tutorial-mode-word-type-value">${escapeHtml(viewModel.wordType.shortLabel)}</span>
-            ${viewModel.wordType?.sourceLabel ? `<span class="tutorial-mode-word-type-source">${escapeHtml(viewModel.wordType.sourceLabel)}</span>` : ''}
-        </div>
-    ` : '';
-    const structureHtml = viewModel.structure ? `
-        <section class="tutorial-mode-card">
-            <div class="tutorial-mode-card-kicker">Sentence slot</div>
-            ${viewModel.wordType?.shortLabel ? `<div class="tutorial-mode-card-subtitle">${escapeHtml(viewModel.wordType.shortLabel)}${viewModel.wordType?.sourceLabel ? ` · ${escapeHtml(viewModel.wordType.sourceLabel)}` : ''}</div>` : ''}
-            <div class="tutorial-mode-pattern-label">Pattern</div>
-            <div class="tutorial-mode-pattern-line">${escapeHtml(viewModel.structure.template || '')}</div>
-            <div class="tutorial-mode-pattern-label">With this word</div>
-            <div class="tutorial-mode-pattern-line tutorial-mode-pattern-line-filled">${escapeHtml(viewModel.structure.filled || '')}</div>
-            ${viewModel.structure.note ? `<div class="tutorial-mode-card-note">${escapeHtml(viewModel.structure.note)}</div>` : ''}
-        </section>
-    ` : '';
-    const examplesHtml = Array.isArray(viewModel.sentenceExamples) && viewModel.sentenceExamples.length ? `
-        <section class="tutorial-mode-card">
-            <div class="tutorial-mode-card-kicker">Tiny example</div>
-            <div class="tutorial-mode-example-list">
-                ${viewModel.sentenceExamples.map(example => `
-                    <div class="tutorial-mode-example-item">
-                        <div class="tutorial-mode-example-sentence">${example.highlightedSentenceHtml || escapeHtml(example.sentence || '')}</div>
-                        <div class="tutorial-mode-example-meaning">${escapeHtml(example.meaning || '')}</div>
-                    </div>
-                `).join('')}
+    const extraMeanings = (viewModel.meaningAnchors || []).filter(item => item && item !== viewModel.meaning).slice(0, 2);
+    const pillHtml = [
+        viewModel.wordType?.shortLabel ? `<span class="tutorial-mode-pill">${escapeHtml(viewModel.wordType.shortLabel)}</span>` : '',
+        viewModel.wordType?.sourceLabel ? `<span class="tutorial-mode-pill is-muted">${escapeHtml(viewModel.wordType.sourceLabel)}</span>` : ''
+    ].filter(Boolean).join('');
+    const altMeaningsHtml = extraMeanings.length ? `<div class="tutorial-mode-alt-meanings">Also: ${escapeHtml(extraMeanings.join(' · '))}</div>` : '';
+    const primaryExample = Array.isArray(viewModel.sentenceExamples) && viewModel.sentenceExamples.length ? viewModel.sentenceExamples[0] : null;
+    const examplesHtml = primaryExample ? `
+        <section class="tutorial-mode-card is-primary">
+            <div class="tutorial-mode-card-head">
+                <div class="tutorial-mode-step">1</div>
+                <div class="tutorial-mode-card-title">Tiny sentence</div>
             </div>
+            <div class="tutorial-mode-example-sentence">${primaryExample.highlightedSentenceHtml || escapeHtml(primaryExample.sentence || '')}</div>
+            ${primaryExample.meaning ? `<div class="tutorial-mode-example-meaning">${escapeHtml(primaryExample.meaning)}</div>` : ''}
         </section>
     ` : '';
-    const cluesHtml = Array.isArray(viewModel.perCharLines) && viewModel.perCharLines.length ? `
-        <section class="tutorial-mode-card">
-            <div class="tutorial-mode-card-kicker">Character clues</div>
+    const structureHtml = (viewModel.structure || viewModel.wordType?.shortLabel) ? `
+        <section class="tutorial-mode-card is-compact">
+            <div class="tutorial-mode-card-head">
+                <div class="tutorial-mode-step">2</div>
+                <div class="tutorial-mode-card-title">Use it like this</div>
+            </div>
+            ${viewModel.wordType?.shortLabel ? `<div class="tutorial-mode-inline-meta">Think of it as a <strong>${escapeHtml(viewModel.wordType.shortLabel.toLowerCase())}</strong>${viewModel.wordType?.sourceLabel ? ` · ${escapeHtml(viewModel.wordType.sourceLabel)}` : ''}</div>` : ''}
+            ${viewModel.structure?.filled ? `<div class="tutorial-mode-pattern-line tutorial-mode-pattern-line-filled">${escapeHtml(viewModel.structure.filled)}</div>` : ''}
+            ${viewModel.structure?.template ? `<div class="tutorial-mode-pattern-line">Frame: ${escapeHtml(viewModel.structure.template)}</div>` : ''}
+            ${viewModel.structure?.note ? `<div class="tutorial-mode-card-note">${escapeHtml(viewModel.structure.note)}</div>` : ''}
+        </section>
+    ` : '';
+    const clueLines = Array.isArray(viewModel.perCharLines) ? viewModel.perCharLines.slice(0, 2) : [];
+    const hiddenClueCount = Array.isArray(viewModel.perCharLines) ? Math.max(0, viewModel.perCharLines.length - clueLines.length) : 0;
+    const cluesHtml = clueLines.length ? `
+        <section class="tutorial-mode-card is-compact">
+            <div class="tutorial-mode-card-head">
+                <div class="tutorial-mode-step">3</div>
+                <div class="tutorial-mode-card-title">Remember it</div>
+            </div>
             <div class="tutorial-mode-line-list">
-                ${viewModel.perCharLines.map(line => `<div class="tutorial-mode-line-item">${escapeHtml(line)}</div>`).join('')}
+                ${clueLines.map(line => `<div class="tutorial-mode-line-item">${escapeHtml(line)}</div>`).join('')}
             </div>
+            ${hiddenClueCount ? `<div class="tutorial-mode-card-note">+${hiddenClueCount} more clue${hiddenClueCount === 1 ? '' : 's'}</div>` : ''}
         </section>
     ` : '';
     const feedbackHtml = viewModel.feedback ? `
@@ -12169,17 +12191,17 @@ function renderTutorialModeFallback(viewModel) {
                 <div class="tutorial-mode-char">${escapeHtml(viewModel.char || '')}</div>
                 ${viewModel.pinyin ? `<div class="tutorial-mode-pinyin">${escapeHtml(viewModel.pinyin)}</div>` : ''}
                 ${viewModel.meaning ? `<div class="tutorial-mode-meaning">${escapeHtml(viewModel.meaning)}</div>` : ''}
-                ${wordTypeHtml}
-                ${meaningAnchors ? `<div class="tutorial-mode-chip-row">${meaningAnchors}</div>` : ''}
+                ${pillHtml ? `<div class="tutorial-mode-pill-row">${pillHtml}</div>` : ''}
+                ${altMeaningsHtml}
             </section>
-            <div class="tutorial-mode-grid">
+            ${examplesHtml}
+            <div class="tutorial-mode-grid tutorial-mode-grid-secondary">
                 ${structureHtml}
-                ${examplesHtml}
                 ${cluesHtml}
             </div>
             ${feedbackHtml}
             <div class="tutorial-mode-actions">
-                <button type="button" id="tutorialNeedsWorkBtn" class="tutorial-mode-action is-secondary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Needs work</button>
+                <button type="button" id="tutorialNeedsWorkBtn" class="tutorial-mode-action is-secondary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Again</button>
                 <button type="button" id="tutorialGotItBtn" class="tutorial-mode-action is-primary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Got it</button>
             </div>
         </div>
@@ -12590,7 +12612,7 @@ function renderMeaningQuestionLayout() {
 
     componentPanelsHaveContent = false;
     const charHtml = escapeHtml(currentQuestion.char || '');
-    const usageHint = getWordUsageHint(currentQuestion);
+    const usageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
 
     if (window.JcodeQuizQuestionUI?.render) {
         window.JcodeQuizQuestionUI.render(questionDisplay, {
@@ -12610,7 +12632,7 @@ function renderMeaningQuestionLayout() {
         <div class="meaning-question-layout${showComponentBreakdown ? '' : ' components-hidden'}">
             <div class="component-panel component-panel-left" id="componentPanelLeft"></div>
             <div class="meaning-char-column">
-                ${buildWordUsageHintHtml(usageHint)}
+                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
                 <div class="answer-summary-card" id="answerSummaryCard">
                     <div class="summary-card-header">
                         <span class="summary-card-char" id="answerSummaryChar"></span>
@@ -12735,7 +12757,7 @@ function renderThreeColumnMeaningLayout() {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getWordUsageHint(currentQuestion);
+    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -12802,7 +12824,7 @@ function renderThreeColumnMeaningLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentUsageHint)}
+                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
                 <div class="column-focus-ring">
                     ${mode === 'audio-to-meaning' ? `
                         ${getInlinePromptAudioHtml('Listen and choose meaning')}
@@ -12863,7 +12885,7 @@ function renderThreeColumnPinyinLayout() {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getWordUsageHint(currentQuestion);
+    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
 
@@ -12923,7 +12945,7 @@ function renderThreeColumnPinyinLayout() {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentUsageHint)}
+                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
                 <div class="column-focus-ring">
                     <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                 </div>
@@ -13130,7 +13152,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
 
     // Build current column - show Chinese text or audio icon
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getWordUsageHint(currentQuestion);
+    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
     let currentContent = '';
     if (isAudioMode) {
         currentContent = `
@@ -13150,7 +13172,7 @@ function renderThreeColumnTranslationLayout(isAudioMode = false) {
             <div class="column-current column-card ${inlineFeedback ? (inlineFeedback.type === 'incorrect' ? 'has-error' : 'has-success') : ''}" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentUsageHint)}
+                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
@@ -13214,7 +13236,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
     const currentChar = escapeHtml(currentQuestion.char || '');
     const currentFontSize = getTranslationFontSize(currentQuestion.char);
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
-    const currentUsageHint = getWordUsageHint(currentQuestion);
+    const currentUsageHint = getQuestionUsageHintData(currentQuestion, { showMeaning: false });
 
     const upcomingChar = pinyinDictationUpcomingQuestion ? escapeHtml(pinyinDictationUpcomingQuestion.char || '') : '';
     const upcomingFontSize = getTranslationFontSize(pinyinDictationUpcomingQuestion?.char);
@@ -13262,7 +13284,7 @@ function renderThreeColumnPinyinDictationLayout(isAudioMode = false) {
             <div class="column-current column-card" style="position: relative;">
                 <div class="column-label">Now</div>
                 ${currentMarkingBadge}
-                ${buildWordUsageHintHtml(currentUsageHint)}
+                ${buildWordUsageHintHtml(currentQuestion, { showMeaning: false })}
                 <div class="column-focus-ring" style="padding: 12px;">
                     ${currentContent}
                 </div>
