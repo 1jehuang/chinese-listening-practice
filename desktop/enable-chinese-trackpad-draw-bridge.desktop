@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Enable Chinese Trackpad Draw Bridge
+Comment=Start the native trackpad draw bridge for Chinese listening practice
+Exec=/home/jeremy/.local/bin/enable-chinese-trackpad-draw-bridge
+Path=/home/jeremy/chinese-listening-practice
+Terminal=false
+Categories=Education;Languages;
+StartupNotify=true
