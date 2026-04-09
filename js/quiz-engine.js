@@ -15809,7 +15809,7 @@ function revealDrawingAnswer() {
 
     if (ocrResult) {
         ocrResult.textContent = displayExpectedChar;
-        ocrResult.style.fontFamily = "'Noto Sans SC', sans-serif";
+        ocrResult.style.fontFamily = "'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif";
         ocrResult.style.fontWeight = '700';
         if (displayExpectedChar.length > 1) {
             ocrResult.className = 'text-5xl min-h-[80px] text-blue-600 font-bold';
@@ -16060,7 +16060,7 @@ function enterFullscreenLearnMode() {
             color: rgba(0, 0, 0, 0.3);
             pointer-events: none;
             z-index: 100;
-            font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            font-family: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
             transition: opacity 0.3s ease;
         `;
         document.body.appendChild(overlay);
@@ -16993,7 +16993,7 @@ function ensureFullscreenDrawLayout() {
             <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
                 <div class="pointer-events-auto bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-200 w-32">
                     <div class="text-xs uppercase tracking-[0.25em] text-gray-400 mb-2">Match</div>
-                    <div id="fullscreenOcrResult" class="text-6xl font-bold text-blue-600 text-center min-h-[80px]" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">&nbsp;</div>
+                    <div id="fullscreenOcrResult" class="text-6xl font-bold text-blue-600 text-center min-h-[80px]" style="font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif;">&nbsp;</div>
                     <div id="fullscreenHintBox" class="hidden mt-3 rounded-xl border border-blue-100 bg-blue-50/70 p-2">
                         <div class="text-xs uppercase tracking-[0.2em] text-blue-400 text-center">Hint</div>
                         <div id="fullscreenHintWriter" class="mt-2 mx-auto w-20 h-20"></div>
@@ -17295,7 +17295,7 @@ async function renderThreeColumnComponentLayout() {
         if (fullWord[i] === targetChar) {
             wordDisplay += `<span id="currentPartialChar" style="display: inline-block; width: 80px; height: 80px; vertical-align: middle;"></span>`;
         } else {
-            wordDisplay += `<span style="font-size: 5rem; font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif; vertical-align: middle; color: #1f2937;">${fullWord[i]}</span>`;
+            wordDisplay += `<span style="font-size: 5rem; font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif; vertical-align: middle; color: #1f2937;">${fullWord[i]}</span>`;
         }
     }
 
@@ -17313,7 +17313,7 @@ async function renderThreeColumnComponentLayout() {
                 ${wordDisplay}
             </div>
             <div class="text-base text-gray-600 mt-2">
-                <span class="text-xl text-gray-700" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${givenComponent.char}</span>
+                <span class="text-xl text-gray-700" style="font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif;">${givenComponent.char}</span>
                 <span class="text-gray-400 mx-2">+</span>
                 <span class="text-xl text-blue-500 font-bold">?</span>
             </div>
@@ -17490,7 +17490,7 @@ function generateComponentOptions() {
         const btn = document.createElement('button');
         btn.className = 'px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 transition flex items-center gap-3';
         btn.innerHTML = `
-            <span class="text-3xl text-gray-800" style="font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;">${option.char}</span>
+            <span class="text-3xl text-gray-800" style="font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'SimSun', serif;">${option.char}</span>
             <span class="text-lg text-gray-700">${option.pinyin}</span>
         `;
         btn.dataset.pinyin = option.pinyin;
