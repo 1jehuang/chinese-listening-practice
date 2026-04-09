@@ -14,6 +14,8 @@ let quizCharacters = [];
 let originalQuizCharacters = []; // Store original characters array
 let config = {};
 let nextAnswerBuffer = ''; // carry typed text into the next question after showing feedback
+const RECENT_CORRECT_EXCLUSION_WINDOW = 3;
+let recentCorrectChars = [];
 
 const debugState = {
     events: [],
@@ -3230,6 +3232,7 @@ function markSchedulerOutcome(correct) {
     const stats = getSchedulerStats(char);
     const now = Date.now();
     if (correct) {
+        rememberRecentCorrectChar(char);
         stats.correct += 1;
         stats.lastCorrect = now;
         stats.streak = (stats.streak || 0) + 1;
@@ -6777,9 +6780,11 @@ function selectWeighted(pool) {
 }
 
 function selectNextQuestion(exclusions = []) {
-    const exclusionSet = new Set(exclusions || []);
+    const baseExclusionSet = new Set(exclusions || []);
     if (mode === 'sentence') {
-        const pool = getSentenceModeQuestionPool().filter(item => item && !exclusionSet.has(item.char));
+        const questionPool = getSentenceModeQuestionPool();
+        const exclusionSet = buildRecentCorrectExclusionSet(questionPool, Array.from(baseExclusionSet));
+        const pool = questionPool.filter(item => item && !exclusionSet.has(item.char));
         return pool.length ? selectRandom(pool) : null;
     }
     let sourcePool = quizCharacters;
@@ -6790,6 +6795,7 @@ function selectNextQuestion(exclusions = []) {
     } else if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR || schedulerMode === SCHEDULER_MODES.FEED_EEG) {
         sourcePool = getFeedQuestionPool();
     }
+    const exclusionSet = buildRecentCorrectExclusionSet(sourcePool, Array.from(baseExclusionSet));
     const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
     if (!pool.length) return null;
 
@@ -7600,6 +7606,44 @@ function resetForNextQuestion(prefillAnswer) {
     setChoiceModeListLayout(false);
     restoreChoiceModeHome();
     syncModeLayoutState();
+}
+
+function rememberRecentCorrectChar(char) {
+    if (!char) return;
+    recentCorrectChars = recentCorrectChars.filter(value => value !== char);
+    recentCorrectChars.push(char);
+    if (recentCorrectChars.length > RECENT_CORRECT_EXCLUSION_WINDOW) {
+        recentCorrectChars = recentCorrectChars.slice(-RECENT_CORRECT_EXCLUSION_WINDOW);
+    }
+}
+
+function buildRecentCorrectExclusionSet(pool, baseExclusions = []) {
+    const exclusionSet = new Set(baseExclusions || []);
+    const usablePool = Array.isArray(pool) ? pool.filter(item => item && item.char) : [];
+    if (!usablePool.length || !recentCorrectChars.length) {
+        return exclusionSet;
+    }
+
+    const availableChars = Array.from(new Set(usablePool.map(item => item.char))).filter(char => !exclusionSet.has(char));
+    if (availableChars.length <= 1) {
+        return exclusionSet;
+    }
+
+    const recentInPool = recentCorrectChars.filter(char => availableChars.includes(char));
+    if (!recentInPool.length) {
+        return exclusionSet;
+    }
+
+    let remainingChoices = availableChars.length;
+    for (let i = recentInPool.length - 1; i >= 0; i--) {
+        const char = recentInPool[i];
+        if (exclusionSet.has(char)) continue;
+        if (remainingChoices <= 1) break;
+        exclusionSet.add(char);
+        remainingChoices -= 1;
+    }
+
+    return exclusionSet;
 }
 
 function prepareSchedulerForNextQuestion() {
