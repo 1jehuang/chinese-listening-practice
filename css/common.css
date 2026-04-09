@@ -1,5 +1,9 @@
 /* Common styles shared across all quiz pages */
 
+:root {
+    --chinese-serif-font-stack: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+}
+
 /* Home button */
 .home-btn {
     position: fixed;
@@ -587,6 +591,19 @@ body.tutorial-mode-active .question-row #questionDisplay {
     font-weight: 500;
 }
 
+.tutorial-mode-char,
+.summary-card-char,
+.summary-card-characters,
+.question-char-display,
+.component-tag,
+.component-chip-symbol,
+.three-column-meaning-layout .column-char,
+.three-column-meaning-layout .column-char-large,
+.choice-grid button.quiz-char-choice,
+.quiz-char-pinyin-choice-char {
+    font-family: var(--chinese-serif-font-stack);
+}
+
 .tutorial-mode-pinyin {
     font-size: 1.25rem;
     color: #334155;
@@ -1096,7 +1113,7 @@ body.theme-dark .choice-btn:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-family: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+    font-family: var(--chinese-serif-font-stack);
     min-width: 36px;
 }
 
@@ -1401,7 +1418,7 @@ body.feedback-left-layout #questionDisplay .my-8 {
 .component-chip-symbol {
     font-size: 36px;
     line-height: 1;
-    font-family: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+    font-family: var(--chinese-serif-font-stack);
     margin-bottom: 6px;
 }
 
@@ -1930,7 +1947,7 @@ body.feedback-left-layout #questionDisplay .my-8 {
     font-size: clamp(36px, 6vw, 52px);
     line-height: 1.2;
     color: #111827;
-    font-family: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+    font-family: var(--chinese-serif-font-stack);
     text-align: center;
 }
 
@@ -2060,7 +2077,7 @@ body.feedback-left-layout #questionDisplay .my-8 {
     font-size: clamp(56px, 10vw, 100px);
     line-height: 1;
     color: #0f172a;
-    font-family: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+    font-family: var(--chinese-serif-font-stack);
     white-space: nowrap;
 }
 
