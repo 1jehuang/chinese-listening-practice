@@ -680,6 +680,7 @@ const vocab = [
   const word = { char: '数学', pinyin: 'shùxué', meaning: 'math', category: 'Nouns' };
   const sentencePool = [
     { target: '数学', sentence: '我弟弟不喜欢数学。', meaning: 'My younger brother does not like math.' },
+    { target: '数学', sentence: '我学数学。', meaning: 'I study math.' },
     { target: '数学', sentence: '数学有时候很难。', meaning: 'Math is sometimes hard.' }
   ];
 
@@ -692,10 +693,26 @@ const vocab = [
 
   const html = ctx.document.getElementById('questionDisplay').innerHTML;
   assert.ok(html.includes('Tutorial Mode'), 'tutorial mode should render its title');
+  assert.ok(html.includes('Word type'), 'tutorial mode should show the word type label');
+  assert.ok(html.includes('Noun'), 'tutorial mode should show a human-readable word type');
   assert.ok(html.includes('wǒ xǐhuan [NOUN]'), 'tutorial mode should show a sentence frame for tagged words');
-  assert.ok(html.includes('我弟弟不喜欢'), 'tutorial mode should show a short example sentence when one matches the word');
-  assert.ok(html.includes('My younger brother does not like math.'), 'tutorial mode should show the example translation');
+  assert.ok(html.includes('Tiny example'), 'tutorial mode should label the example as tiny example');
+  assert.ok(/我学[\s\S]*数学/.test(html), 'tutorial mode should prefer the shortest matching example sentence');
+  assert.ok(html.includes('I study math.'), 'tutorial mode should show the shortest example translation');
+  assert.ok(!html.includes('My younger brother does not like math.'), 'tutorial mode should avoid showing the longer example when a tiny one exists');
   console.log('✓ tutorial mode fallback shows structure and matched sentence examples');
+})();
+
+(function testTutorialModeWordTypeHelperIsReadable() {
+  const { ctx } = createContext();
+  const wordType = ctx.getTutorialWordType({ category: 'Common Verbs' });
+  const inferred = ctx.getTutorialWordType({ meaning: 'even if' });
+
+  assert.strictEqual(wordType.shortLabel, 'Verb', 'tutorial mode should expose a readable word type label');
+  assert.strictEqual(wordType.sourceLabel, 'Common Verbs', 'tutorial mode should preserve the source category label');
+  assert.strictEqual(inferred.shortLabel, 'Connector', 'tutorial mode should infer connector-like words from meaning when metadata is missing');
+  assert.strictEqual(inferred.sourceLabel, 'Inferred from meaning', 'tutorial mode should disclose when the word type is inferred');
+  console.log('✓ tutorial mode exposes readable word type labels');
 })();
 
 (function testTutorialModeGenerateQuestionRendersTutorialCard() {

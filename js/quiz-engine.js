@@ -11819,6 +11819,66 @@ function getTutorialMeaningAnchors(question = currentQuestion) {
     return Array.from(new Set(parts)).slice(0, 4);
 }
 
+function getTutorialWordType(question = currentQuestion) {
+    const usageHint = getWordUsageHint(question);
+    const displayMap = {
+        NOUN: 'Noun',
+        PRONOUN: 'Pronoun',
+        VERB: 'Verb',
+        ADVERB: 'Adverb',
+        PREP: 'Preposition',
+        PARTICLE: 'Particle',
+        CONNECTOR: 'Connector',
+        TIME: 'Time word',
+        QUESTION: 'Question word',
+        MW: 'Measure word',
+        NEGATION: 'Negation',
+        PHRASE: 'Phrase',
+        ADJ: 'Adjective',
+        WORD: 'Word'
+    };
+
+    if (usageHint?.label) {
+        return {
+            shortLabel: displayMap[usageHint.label] || usageHint.label,
+            sourceLabel: usageHint.category || usageHint.label
+        };
+    }
+
+    const rawMeaning = String(question?.meaning || '').trim().toLowerCase();
+    const connectorMeanings = ['even if', 'if', 'because', 'so that', 'therefore', 'however', 'although', 'though', 'but', 'and', 'or', 'while', 'whereas'];
+    const adverbMeanings = ['already', 'also', 'only', 'still', 'again', 'often', 'usually', 'always', 'immediately', 'perhaps', 'maybe'];
+    const prepositionMeanings = ['from', 'to', 'for', 'with', 'without', 'about', 'toward', 'towards', 'according to', 'between', 'among'];
+    const negationMeanings = ['not', 'no', 'never'];
+
+    let inferredLabel = null;
+    if (connectorMeanings.includes(rawMeaning)) {
+        inferredLabel = 'CONNECTOR';
+    } else if (rawMeaning.startsWith('to ')) {
+        inferredLabel = 'VERB';
+    } else if (adverbMeanings.includes(rawMeaning)) {
+        inferredLabel = 'ADVERB';
+    } else if (prepositionMeanings.includes(rawMeaning)) {
+        inferredLabel = 'PREP';
+    } else if (negationMeanings.includes(rawMeaning)) {
+        inferredLabel = 'NEGATION';
+    }
+
+    if (!inferredLabel) return null;
+
+    return {
+        shortLabel: displayMap[inferredLabel] || inferredLabel,
+        sourceLabel: 'Inferred from meaning'
+    };
+}
+
+function getTutorialSentenceLengthScore(sentence) {
+    const normalized = String(sentence || '')
+        .replace(/[\s，。！？、；：,.!?;:~…]/g, '')
+        .trim();
+    return normalized.length || Number.POSITIVE_INFINITY;
+}
+
 function getTutorialStructure(question = currentQuestion) {
     const usageHint = getWordUsageHint(question);
     if (!usageHint || (!usageHint.before && !usageHint.after)) return null;
@@ -11852,7 +11912,7 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
     const word = String(question?.char || '').trim();
     if (!word || !Array.isArray(sentenceModeDataset) || !sentenceModeDataset.length) return [];
 
-    const limit = Number.isFinite(options.limit) ? Math.max(1, options.limit) : 2;
+    const limit = Number.isFinite(options.limit) ? Math.max(1, options.limit) : 1;
     const exactMatches = [];
     const containsMatches = [];
 
@@ -11871,7 +11931,12 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
         }
     });
 
-    const byShortestSentence = (a, b) => a.sentence.length - b.sentence.length;
+    const byShortestSentence = (a, b) => {
+        const scoreDiff = getTutorialSentenceLengthScore(a.sentence) - getTutorialSentenceLengthScore(b.sentence);
+        if (scoreDiff !== 0) return scoreDiff;
+        return a.sentence.length - b.sentence.length;
+    };
+
     return exactMatches
         .sort(byShortestSentence)
         .concat(containsMatches.sort(byShortestSentence))
@@ -11885,6 +11950,7 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
 function buildTutorialModeViewModel() {
     const state = getTutorialModeUiState();
     const usageHint = getWordUsageHint(currentQuestion);
+    const wordType = getTutorialWordType(currentQuestion);
     return {
         title: 'Tutorial Mode',
         subtitle: 'Learn the word first, then rate how well it feels.',
@@ -11892,6 +11958,7 @@ function buildTutorialModeViewModel() {
         pinyin: cleanPinyinForDisplay(String(currentQuestion?.pinyin || '').trim()),
         meaning: String(currentQuestion?.meaning || '').trim(),
         meaningAnchors: getTutorialMeaningAnchors(currentQuestion),
+        wordType,
         usageHint,
         structure: getTutorialStructure(currentQuestion),
         sentenceExamples: getTutorialSentenceExamples(currentQuestion),
@@ -11951,10 +12018,17 @@ function submitTutorialModeAssessment(correct) {
 function renderTutorialModeFallback(viewModel) {
     if (!questionDisplay) return;
     const meaningAnchors = (viewModel.meaningAnchors || []).map(item => `<span class="tutorial-mode-chip">${escapeHtml(item)}</span>`).join('');
+    const wordTypeHtml = viewModel.wordType?.shortLabel ? `
+        <div class="tutorial-mode-word-type-row">
+            <span class="tutorial-mode-word-type-label">Word type</span>
+            <span class="tutorial-mode-word-type-value">${escapeHtml(viewModel.wordType.shortLabel)}</span>
+            ${viewModel.wordType?.sourceLabel ? `<span class="tutorial-mode-word-type-source">${escapeHtml(viewModel.wordType.sourceLabel)}</span>` : ''}
+        </div>
+    ` : '';
     const structureHtml = viewModel.structure ? `
         <section class="tutorial-mode-card">
             <div class="tutorial-mode-card-kicker">Sentence slot</div>
-            ${viewModel.usageHint?.category ? `<div class="tutorial-mode-card-subtitle">${escapeHtml(viewModel.usageHint.category)}</div>` : ''}
+            ${viewModel.wordType?.shortLabel ? `<div class="tutorial-mode-card-subtitle">${escapeHtml(viewModel.wordType.shortLabel)}${viewModel.wordType?.sourceLabel ? ` · ${escapeHtml(viewModel.wordType.sourceLabel)}` : ''}</div>` : ''}
             <div class="tutorial-mode-pattern-label">Pattern</div>
             <div class="tutorial-mode-pattern-line">${escapeHtml(viewModel.structure.template || '')}</div>
             <div class="tutorial-mode-pattern-label">With this word</div>
@@ -11964,7 +12038,7 @@ function renderTutorialModeFallback(viewModel) {
     ` : '';
     const examplesHtml = Array.isArray(viewModel.sentenceExamples) && viewModel.sentenceExamples.length ? `
         <section class="tutorial-mode-card">
-            <div class="tutorial-mode-card-kicker">Short example</div>
+            <div class="tutorial-mode-card-kicker">Tiny example</div>
             <div class="tutorial-mode-example-list">
                 ${viewModel.sentenceExamples.map(example => `
                     <div class="tutorial-mode-example-item">
@@ -12000,6 +12074,7 @@ function renderTutorialModeFallback(viewModel) {
                 <div class="tutorial-mode-char">${escapeHtml(viewModel.char || '')}</div>
                 ${viewModel.pinyin ? `<div class="tutorial-mode-pinyin">${escapeHtml(viewModel.pinyin)}</div>` : ''}
                 ${viewModel.meaning ? `<div class="tutorial-mode-meaning">${escapeHtml(viewModel.meaning)}</div>` : ''}
+                ${wordTypeHtml}
                 ${meaningAnchors ? `<div class="tutorial-mode-chip-row">${meaningAnchors}</div>` : ''}
             </section>
             <div class="tutorial-mode-grid">

@@ -5,6 +5,18 @@ function MeaningChip({ text }) {
   return <span className="tutorial-mode-chip">{text}</span>;
 }
 
+function WordTypeRow({ wordType }) {
+  if (!wordType?.shortLabel) return null;
+
+  return (
+    <div className="tutorial-mode-word-type-row">
+      <span className="tutorial-mode-word-type-label">Word type</span>
+      <span className="tutorial-mode-word-type-value">{wordType.shortLabel}</span>
+      {wordType.sourceLabel ? <span className="tutorial-mode-word-type-source">{wordType.sourceLabel}</span> : null}
+    </div>
+  );
+}
+
 function FeedbackBanner({ feedback }) {
   if (!feedback) return null;
   const classes = ['tutorial-mode-feedback'];
@@ -24,7 +36,12 @@ function StructureCard({ structure, usageHint }) {
   return (
     <section className="tutorial-mode-card">
       <div className="tutorial-mode-card-kicker">Sentence slot</div>
-      {usageHint?.category ? <div className="tutorial-mode-card-subtitle">{usageHint.category}</div> : null}
+      {usageHint?.shortLabel ? (
+        <div className="tutorial-mode-card-subtitle">
+          {usageHint.shortLabel}
+          {usageHint.sourceLabel ? ` · ${usageHint.sourceLabel}` : ''}
+        </div>
+      ) : null}
       {structure?.template ? (
         <Fragment>
           <div className="tutorial-mode-pattern-label">Pattern</div>
@@ -47,7 +64,7 @@ function SentenceExampleCard({ sentenceExamples }) {
 
   return (
     <section className="tutorial-mode-card">
-      <div className="tutorial-mode-card-kicker">Short example</div>
+      <div className="tutorial-mode-card-kicker">Tiny example</div>
       <div className="tutorial-mode-example-list">
         {sentenceExamples.map((example, index) => (
           <div key={`${example.sentence}-${index}`} className="tutorial-mode-example-item">
@@ -97,6 +114,7 @@ function TutorialModeView({
   pinyin,
   meaning,
   meaningAnchors,
+  wordType,
   usageHint,
   structure,
   sentenceExamples,
@@ -117,6 +135,7 @@ function TutorialModeView({
         <div className="tutorial-mode-char">{char}</div>
         {pinyin ? <div className="tutorial-mode-pinyin">{pinyin}</div> : null}
         {meaning ? <div className="tutorial-mode-meaning">{meaning}</div> : null}
+        <WordTypeRow wordType={wordType} />
         {meaningAnchors?.length ? (
           <div className="tutorial-mode-chip-row">
             {meaningAnchors.map((item, index) => <MeaningChip key={`${item}-${index}`} text={item} />)}
@@ -125,7 +144,7 @@ function TutorialModeView({
       </section>
 
       <div className="tutorial-mode-grid">
-        <StructureCard structure={structure} usageHint={usageHint} />
+        <StructureCard structure={structure} usageHint={structure ? (wordType || usageHint) : null} />
         <SentenceExampleCard sentenceExamples={sentenceExamples} />
         <CharacterClueCard perCharLines={perCharLines} />
       </div>

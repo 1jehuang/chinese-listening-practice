@@ -563,6 +563,34 @@ body.tutorial-mode-active .question-row #questionDisplay {
     font-weight: 600;
 }
 
+.tutorial-mode-word-type-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.1rem;
+}
+
+.tutorial-mode-word-type-label,
+.tutorial-mode-word-type-source {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.tutorial-mode-word-type-value {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.62rem;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
 .tutorial-mode-chip-row {
     display: flex;
     flex-wrap: wrap;
@@ -704,10 +732,18 @@ body.theme-dark.tutorial-mode-active .tutorial-mode-card-note,
 body.theme-dark.tutorial-mode-active .tutorial-mode-example-meaning,
 body.theme-dark.tutorial-mode-active .tutorial-mode-feedback-message,
 body.theme-dark.tutorial-mode-active .tutorial-mode-line-item,
+body.theme-dark.tutorial-mode-active .tutorial-mode-word-type-label,
+body.theme-dark.tutorial-mode-active .tutorial-mode-word-type-source,
 body.theme-dark.tutorial-mode-active .tutorial-mode-kicker,
 body.theme-dark.tutorial-mode-active .tutorial-mode-card-kicker,
 body.theme-dark.tutorial-mode-active .tutorial-mode-pattern-label {
     color: #94a3b8;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-word-type-value {
+    background: #1e293b;
+    border-color: #475569;
+    color: #e2e8f0;
 }
 
 body.theme-dark.tutorial-mode-active .tutorial-mode-chip {

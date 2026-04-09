@@ -261,6 +261,10 @@
     if (!text) return null;
     return /* @__PURE__ */ k("span", { className: "tutorial-mode-chip" }, text);
   }
+  function WordTypeRow({ wordType }) {
+    if (!(wordType == null ? void 0 : wordType.shortLabel)) return null;
+    return /* @__PURE__ */ k("div", { className: "tutorial-mode-word-type-row" }, /* @__PURE__ */ k("span", { className: "tutorial-mode-word-type-label" }, "Word type"), /* @__PURE__ */ k("span", { className: "tutorial-mode-word-type-value" }, wordType.shortLabel), wordType.sourceLabel ? /* @__PURE__ */ k("span", { className: "tutorial-mode-word-type-source" }, wordType.sourceLabel) : null);
+  }
   function FeedbackBanner({ feedback }) {
     if (!feedback) return null;
     const classes = ["tutorial-mode-feedback"];
@@ -269,11 +273,11 @@
   }
   function StructureCard({ structure, usageHint }) {
     if (!structure && !usageHint) return null;
-    return /* @__PURE__ */ k("section", { className: "tutorial-mode-card" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-card-kicker" }, "Sentence slot"), (usageHint == null ? void 0 : usageHint.category) ? /* @__PURE__ */ k("div", { className: "tutorial-mode-card-subtitle" }, usageHint.category) : null, (structure == null ? void 0 : structure.template) ? /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-label" }, "Pattern"), /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-line" }, structure.template)) : null, (structure == null ? void 0 : structure.filled) ? /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-label" }, "With this word"), /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-line tutorial-mode-pattern-line-filled" }, structure.filled)) : null, (structure == null ? void 0 : structure.note) ? /* @__PURE__ */ k("div", { className: "tutorial-mode-card-note" }, structure.note) : null);
+    return /* @__PURE__ */ k("section", { className: "tutorial-mode-card" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-card-kicker" }, "Sentence slot"), (usageHint == null ? void 0 : usageHint.shortLabel) ? /* @__PURE__ */ k("div", { className: "tutorial-mode-card-subtitle" }, usageHint.shortLabel, usageHint.sourceLabel ? ` \xB7 ${usageHint.sourceLabel}` : "") : null, (structure == null ? void 0 : structure.template) ? /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-label" }, "Pattern"), /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-line" }, structure.template)) : null, (structure == null ? void 0 : structure.filled) ? /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-label" }, "With this word"), /* @__PURE__ */ k("div", { className: "tutorial-mode-pattern-line tutorial-mode-pattern-line-filled" }, structure.filled)) : null, (structure == null ? void 0 : structure.note) ? /* @__PURE__ */ k("div", { className: "tutorial-mode-card-note" }, structure.note) : null);
   }
   function SentenceExampleCard({ sentenceExamples }) {
     if (!(sentenceExamples == null ? void 0 : sentenceExamples.length)) return null;
-    return /* @__PURE__ */ k("section", { className: "tutorial-mode-card" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-card-kicker" }, "Short example"), /* @__PURE__ */ k("div", { className: "tutorial-mode-example-list" }, sentenceExamples.map((example, index) => /* @__PURE__ */ k("div", { key: `${example.sentence}-${index}`, className: "tutorial-mode-example-item" }, /* @__PURE__ */ k(
+    return /* @__PURE__ */ k("section", { className: "tutorial-mode-card" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-card-kicker" }, "Tiny example"), /* @__PURE__ */ k("div", { className: "tutorial-mode-example-list" }, sentenceExamples.map((example, index) => /* @__PURE__ */ k("div", { key: `${example.sentence}-${index}`, className: "tutorial-mode-example-item" }, /* @__PURE__ */ k(
       "div",
       {
         className: "tutorial-mode-example-sentence",
@@ -298,6 +302,7 @@
     pinyin,
     meaning,
     meaningAnchors,
+    wordType,
     usageHint,
     structure,
     sentenceExamples,
@@ -307,7 +312,7 @@
     onNeedsWork,
     onGotIt
   }) {
-    return /* @__PURE__ */ k("div", { className: "tutorial-mode-shell" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-header" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-kicker" }, title || "Tutorial Mode"), /* @__PURE__ */ k("div", { className: "tutorial-mode-subtitle" }, subtitle || "Learn the word first, then rate how well it feels.")), /* @__PURE__ */ k("section", { className: "tutorial-mode-hero" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-char" }, char), pinyin ? /* @__PURE__ */ k("div", { className: "tutorial-mode-pinyin" }, pinyin) : null, meaning ? /* @__PURE__ */ k("div", { className: "tutorial-mode-meaning" }, meaning) : null, (meaningAnchors == null ? void 0 : meaningAnchors.length) ? /* @__PURE__ */ k("div", { className: "tutorial-mode-chip-row" }, meaningAnchors.map((item, index) => /* @__PURE__ */ k(MeaningChip, { key: `${item}-${index}`, text: item }))) : null), /* @__PURE__ */ k("div", { className: "tutorial-mode-grid" }, /* @__PURE__ */ k(StructureCard, { structure, usageHint }), /* @__PURE__ */ k(SentenceExampleCard, { sentenceExamples }), /* @__PURE__ */ k(CharacterClueCard, { perCharLines })), /* @__PURE__ */ k(FeedbackBanner, { feedback }), /* @__PURE__ */ k("div", { className: "tutorial-mode-actions" }, /* @__PURE__ */ k(ActionButton, { label: "Needs work", disabled: locked, onClick: onNeedsWork }), /* @__PURE__ */ k(ActionButton, { label: "Got it", primary: true, disabled: locked, onClick: onGotIt })));
+    return /* @__PURE__ */ k("div", { className: "tutorial-mode-shell" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-header" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-kicker" }, title || "Tutorial Mode"), /* @__PURE__ */ k("div", { className: "tutorial-mode-subtitle" }, subtitle || "Learn the word first, then rate how well it feels.")), /* @__PURE__ */ k("section", { className: "tutorial-mode-hero" }, /* @__PURE__ */ k("div", { className: "tutorial-mode-char" }, char), pinyin ? /* @__PURE__ */ k("div", { className: "tutorial-mode-pinyin" }, pinyin) : null, meaning ? /* @__PURE__ */ k("div", { className: "tutorial-mode-meaning" }, meaning) : null, /* @__PURE__ */ k(WordTypeRow, { wordType }), (meaningAnchors == null ? void 0 : meaningAnchors.length) ? /* @__PURE__ */ k("div", { className: "tutorial-mode-chip-row" }, meaningAnchors.map((item, index) => /* @__PURE__ */ k(MeaningChip, { key: `${item}-${index}`, text: item }))) : null), /* @__PURE__ */ k("div", { className: "tutorial-mode-grid" }, /* @__PURE__ */ k(StructureCard, { structure, usageHint: structure ? wordType || usageHint : null }), /* @__PURE__ */ k(SentenceExampleCard, { sentenceExamples }), /* @__PURE__ */ k(CharacterClueCard, { perCharLines })), /* @__PURE__ */ k(FeedbackBanner, { feedback }), /* @__PURE__ */ k("div", { className: "tutorial-mode-actions" }, /* @__PURE__ */ k(ActionButton, { label: "Needs work", disabled: locked, onClick: onNeedsWork }), /* @__PURE__ */ k(ActionButton, { label: "Got it", primary: true, disabled: locked, onClick: onGotIt })));
   }
   function render(container, props) {
     if (!container) return;
