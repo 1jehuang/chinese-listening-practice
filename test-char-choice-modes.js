@@ -632,6 +632,51 @@ const vocab = [
   console.log('✓ meaning layout fallback shows usage hints for tagged words');
 })();
 
+(function testTutorialModeUsesMeaningSkillKey() {
+  const { ctx } = createContext();
+  assert.strictEqual(ctx.getCurrentSkillKey('tutorial'), 'meaning', 'tutorial mode should track meaning skill');
+  console.log('✓ tutorial mode maps to meaning skill tracking');
+})();
+
+(function testTutorialModeFallbackShowsStructureAndExample() {
+  const { ctx } = createContext();
+  const word = { char: '数学', pinyin: 'shùxué', meaning: 'math', category: 'Nouns' };
+  const sentencePool = [
+    { target: '数学', sentence: '我弟弟不喜欢数学。', meaning: 'My younger brother does not like math.' },
+    { target: '数学', sentence: '数学有时候很难。', meaning: 'Math is sometimes hard.' }
+  ];
+
+  ctx.__initTestDomRefs();
+  ctx.__configureSentenceMode({}, sentencePool);
+  ctx.__setCurrentQuestion(word);
+  ctx.__setMode('tutorial');
+
+  ctx.renderTutorialModeLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('Tutorial Mode'), 'tutorial mode should render its title');
+  assert.ok(html.includes('wǒ xǐhuan [NOUN]'), 'tutorial mode should show a sentence frame for tagged words');
+  assert.ok(html.includes('我弟弟不喜欢'), 'tutorial mode should show a short example sentence when one matches the word');
+  assert.ok(html.includes('My younger brother does not like math.'), 'tutorial mode should show the example translation');
+  console.log('✓ tutorial mode fallback shows structure and matched sentence examples');
+})();
+
+(function testTutorialModeAssessmentLocksAndSchedulesAdvance() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion({ char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' });
+  ctx.__setMode('tutorial');
+
+  ctx.renderTutorialModeLayout();
+  ctx.submitTutorialModeAssessment(true);
+
+  const state = ctx.getTutorialModeUiState();
+  assert.strictEqual(state.locked, true, 'tutorial mode should lock after self-rating');
+  assert.strictEqual(state.feedback.type, 'correct', 'tutorial mode should store success feedback after a positive self-rating');
+  ctx.clearPendingNextQuestion();
+  console.log('✓ tutorial mode self-rating locks the card and records feedback');
+})();
+
 (function testToneMcUsesWholeWordPinyinWithoutToneMarks() {
   const { ctx } = createContext();
   const word = { char: '好天', pinyin: 'hǎo tiān', meaning: 'good weather' };

@@ -97,6 +97,8 @@ let sentenceModeDifficulty = '';
 let sentenceModeDifficultyOptions = [];
 let sentenceModeUiState = null;
 const SENTENCE_MODE_DIFFICULTY_KEY_PREFIX = 'sentenceModeDifficulty::';
+let tutorialModeUiLoadPromise = null;
+let tutorialModeUiState = null;
 let modeSidebarUiLoadPromise = null;
 let modeButtonDefinitions = [];
 let modeSidebarNav = null;
@@ -703,6 +705,26 @@ function ensureSentenceModeUiLibrary() {
     return sentenceModeUiLoadPromise;
 }
 
+function ensureTutorialModeUiLibrary() {
+    if (window.JcodeTutorialModeUI?.render) {
+        return Promise.resolve(window.JcodeTutorialModeUI);
+    }
+    if (tutorialModeUiLoadPromise) {
+        return tutorialModeUiLoadPromise;
+    }
+    tutorialModeUiLoadPromise = loadScriptFile('js/tutorial-mode-ui.js')
+        .then(() => {
+            if (!window.JcodeTutorialModeUI?.render) {
+                throw new Error('Tutorial mode UI loaded but renderer is unavailable.');
+            }
+            return window.JcodeTutorialModeUI;
+        })
+        .finally(() => {
+            tutorialModeUiLoadPromise = null;
+        });
+    return tutorialModeUiLoadPromise;
+}
+
 function ensureConfidencePanelUiLibrary() {
     if (window.JcodeConfidencePanelUI?.render) {
         return Promise.resolve(window.JcodeConfidencePanelUI);
@@ -832,6 +854,15 @@ function unmountSentenceModeUi() {
     }
     if (window.JcodeSentenceModeUI?.unmount && questionDisplay) {
         window.JcodeSentenceModeUI.unmount(questionDisplay);
+    }
+}
+
+function unmountTutorialModeUi() {
+    if (document.body?.dataset) {
+        delete document.body.dataset.tutorialUi;
+    }
+    if (window.JcodeTutorialModeUI?.unmount && questionDisplay) {
+        window.JcodeTutorialModeUI.unmount(questionDisplay);
     }
 }
 
@@ -3088,7 +3119,7 @@ function getCurrentSkillKey(customMode = mode) {
         if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin' || dir === 'pinyin-to-char') return 'pinyin-mc';
         return 'meaning';
     }
-    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'sentence') {
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'sentence' || m === 'tutorial') {
         return 'meaning';
     }
     if (m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type') {
@@ -7381,7 +7412,9 @@ function resetForNextQuestion(prefillAnswer) {
     clearPendingNextQuestion();
     stopTimer();
     unmountSentenceModeUi();
+    unmountTutorialModeUi();
     resetSentenceModeUiState(prefillAnswer);
+    resetTutorialModeUiState();
     enteredSyllables = [];
     enteredTones = '';
     toneFlowStage = null;
@@ -8330,7 +8363,7 @@ function warmPromptAudio(question) {
 }
 
 function modeUsesPromptAudio(activeMode = mode) {
-    if (activeMode === 'audio-to-pinyin' || activeMode === 'audio-to-meaning' || activeMode === 'dictation-chat') {
+    if (activeMode === 'audio-to-pinyin' || activeMode === 'audio-to-meaning' || activeMode === 'dictation-chat' || activeMode === 'tutorial') {
         return true;
     }
     if (activeMode === 'blend' || activeMode === 'blend-mc') {
@@ -11751,6 +11784,264 @@ function buildWordUsageHintHtml(hint) {
             </div>
         </div>
     `;
+}
+
+function createTutorialModeUiState() {
+    return {
+        feedback: null,
+        locked: false
+    };
+}
+
+function resetTutorialModeUiState() {
+    tutorialModeUiState = createTutorialModeUiState();
+}
+
+function getTutorialModeUiState() {
+    if (!tutorialModeUiState) {
+        tutorialModeUiState = createTutorialModeUiState();
+    }
+    return tutorialModeUiState;
+}
+
+function getTutorialMeaningAnchors(question = currentQuestion) {
+    const meaning = String(question?.meaning || '').trim();
+    if (!meaning) return [];
+    const rawParts = meaning.split(/\s*;\s*|\s*\/\s*/).map(part => part.trim()).filter(Boolean);
+    const parts = rawParts.length ? rawParts : [meaning];
+    return Array.from(new Set(parts)).slice(0, 4);
+}
+
+function getTutorialStructure(question = currentQuestion) {
+    const usageHint = getWordUsageHint(question);
+    if (!usageHint || (!usageHint.before && !usageHint.after)) return null;
+
+    const label = usageHint.label || 'WORD';
+    const word = String(question?.char || label).trim() || label;
+    const template = [usageHint.before, `[${label}]`, usageHint.after].filter(Boolean).join(' ');
+    const filled = [usageHint.before, word, usageHint.after].filter(Boolean).join(' ');
+
+    let note = 'Say the frame first, then plug the word into the open slot.';
+    if (label === 'NOUN') {
+        note = 'Think of this as the thing slot after a verb like xǐhuan.';
+    } else if (label === 'VERB') {
+        note = 'Think of this as the action slot after the subject.';
+    } else if (label === 'ADJ') {
+        note = 'Adjectives often attach to a degree word like hěn.';
+    } else if (label === 'MW') {
+        note = 'Measure words sit between the number and the noun.';
+    } else if (label === 'PHRASE') {
+        note = 'Treat it as one whole chunk, not as separate word-by-word grammar.';
+    }
+
+    return {
+        template,
+        filled,
+        note
+    };
+}
+
+function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
+    const word = String(question?.char || '').trim();
+    if (!word || !Array.isArray(sentenceModeDataset) || !sentenceModeDataset.length) return [];
+
+    const limit = Number.isFinite(options.limit) ? Math.max(1, options.limit) : 2;
+    const exactMatches = [];
+    const containsMatches = [];
+
+    sentenceModeDataset.forEach((item) => {
+        const sentence = String(item?.sentence || '').trim();
+        const meaning = String(item?.meaning || '').trim();
+        const target = String(item?.target || item?.char || '').trim();
+        if (!sentence || !meaning) return;
+
+        if (target === word) {
+            exactMatches.push({ sentence, meaning, target: target || word });
+            return;
+        }
+        if (sentence.includes(word)) {
+            containsMatches.push({ sentence, meaning, target: word });
+        }
+    });
+
+    const byShortestSentence = (a, b) => a.sentence.length - b.sentence.length;
+    return exactMatches
+        .sort(byShortestSentence)
+        .concat(containsMatches.sort(byShortestSentence))
+        .slice(0, limit)
+        .map((item) => ({
+            ...item,
+            highlightedSentenceHtml: highlightSentenceModeTarget(item.sentence, item.target)
+        }));
+}
+
+function buildTutorialModeViewModel() {
+    const state = getTutorialModeUiState();
+    const usageHint = getWordUsageHint(currentQuestion);
+    return {
+        title: 'Tutorial Mode',
+        subtitle: 'Learn the word first, then rate how well it feels.',
+        char: String(currentQuestion?.char || '').trim(),
+        pinyin: cleanPinyinForDisplay(String(currentQuestion?.pinyin || '').trim()),
+        meaning: String(currentQuestion?.meaning || '').trim(),
+        meaningAnchors: getTutorialMeaningAnchors(currentQuestion),
+        usageHint,
+        structure: getTutorialStructure(currentQuestion),
+        sentenceExamples: getTutorialSentenceExamples(currentQuestion),
+        perCharLines: buildPerCharMeaningLineList(currentQuestion?.char || ''),
+        feedback: state.feedback,
+        locked: state.locked,
+        onNeedsWork: () => submitTutorialModeAssessment(false),
+        onGotIt: () => submitTutorialModeAssessment(true)
+    };
+}
+
+function getTutorialFeedback(correct) {
+    if (correct) {
+        return {
+            type: 'correct',
+            title: 'Got it',
+            message: 'Counted as a strong review. Keep the meaning and sentence slot linked together.'
+        };
+    }
+    return {
+        type: 'incorrect',
+        title: 'Keep it in rotation',
+        message: 'Counted as needs work. Replay the audio and read the frame one more time.'
+    };
+}
+
+function submitTutorialModeAssessment(correct) {
+    if (!currentQuestion) return;
+    const state = getTutorialModeUiState();
+    if (state.locked) return;
+
+    stopTimer();
+    state.locked = true;
+    state.feedback = getTutorialFeedback(correct);
+
+    if (correct) {
+        playCorrectSound();
+    } else {
+        playWrongSound();
+    }
+
+    if (!answered) {
+        answered = true;
+        total += 1;
+        if (correct) {
+            score += 1;
+        }
+    }
+
+    lastAnswerCorrect = Boolean(correct);
+    markSchedulerOutcome(Boolean(correct));
+    updateStats();
+    renderTutorialModeLayout();
+    scheduleNextQuestion(correct ? 1300 : 1900);
+}
+
+function renderTutorialModeFallback(viewModel) {
+    if (!questionDisplay) return;
+    const meaningAnchors = (viewModel.meaningAnchors || []).map(item => `<span class="tutorial-mode-chip">${escapeHtml(item)}</span>`).join('');
+    const structureHtml = viewModel.structure ? `
+        <section class="tutorial-mode-card">
+            <div class="tutorial-mode-card-kicker">Sentence slot</div>
+            ${viewModel.usageHint?.category ? `<div class="tutorial-mode-card-subtitle">${escapeHtml(viewModel.usageHint.category)}</div>` : ''}
+            <div class="tutorial-mode-pattern-label">Pattern</div>
+            <div class="tutorial-mode-pattern-line">${escapeHtml(viewModel.structure.template || '')}</div>
+            <div class="tutorial-mode-pattern-label">With this word</div>
+            <div class="tutorial-mode-pattern-line tutorial-mode-pattern-line-filled">${escapeHtml(viewModel.structure.filled || '')}</div>
+            ${viewModel.structure.note ? `<div class="tutorial-mode-card-note">${escapeHtml(viewModel.structure.note)}</div>` : ''}
+        </section>
+    ` : '';
+    const examplesHtml = Array.isArray(viewModel.sentenceExamples) && viewModel.sentenceExamples.length ? `
+        <section class="tutorial-mode-card">
+            <div class="tutorial-mode-card-kicker">Short example</div>
+            <div class="tutorial-mode-example-list">
+                ${viewModel.sentenceExamples.map(example => `
+                    <div class="tutorial-mode-example-item">
+                        <div class="tutorial-mode-example-sentence">${example.highlightedSentenceHtml || escapeHtml(example.sentence || '')}</div>
+                        <div class="tutorial-mode-example-meaning">${escapeHtml(example.meaning || '')}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </section>
+    ` : '';
+    const cluesHtml = Array.isArray(viewModel.perCharLines) && viewModel.perCharLines.length ? `
+        <section class="tutorial-mode-card">
+            <div class="tutorial-mode-card-kicker">Character clues</div>
+            <div class="tutorial-mode-line-list">
+                ${viewModel.perCharLines.map(line => `<div class="tutorial-mode-line-item">${escapeHtml(line)}</div>`).join('')}
+            </div>
+        </section>
+    ` : '';
+    const feedbackHtml = viewModel.feedback ? `
+        <div class="tutorial-mode-feedback ${viewModel.feedback.type === 'correct' ? 'is-correct' : 'is-incorrect'}">
+            <div class="tutorial-mode-feedback-title">${escapeHtml(viewModel.feedback.title || '')}</div>
+            <div class="tutorial-mode-feedback-message">${escapeHtml(viewModel.feedback.message || '')}</div>
+        </div>
+    ` : '';
+
+    questionDisplay.innerHTML = `
+        <div class="tutorial-mode-shell">
+            <div class="tutorial-mode-header">
+                <div class="tutorial-mode-kicker">${escapeHtml(viewModel.title || 'Tutorial Mode')}</div>
+                <div class="tutorial-mode-subtitle">${escapeHtml(viewModel.subtitle || '')}</div>
+            </div>
+            <section class="tutorial-mode-hero">
+                <div class="tutorial-mode-char">${escapeHtml(viewModel.char || '')}</div>
+                ${viewModel.pinyin ? `<div class="tutorial-mode-pinyin">${escapeHtml(viewModel.pinyin)}</div>` : ''}
+                ${viewModel.meaning ? `<div class="tutorial-mode-meaning">${escapeHtml(viewModel.meaning)}</div>` : ''}
+                ${meaningAnchors ? `<div class="tutorial-mode-chip-row">${meaningAnchors}</div>` : ''}
+            </section>
+            <div class="tutorial-mode-grid">
+                ${structureHtml}
+                ${examplesHtml}
+                ${cluesHtml}
+            </div>
+            ${feedbackHtml}
+            <div class="tutorial-mode-actions">
+                <button type="button" id="tutorialNeedsWorkBtn" class="tutorial-mode-action is-secondary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Needs work</button>
+                <button type="button" id="tutorialGotItBtn" class="tutorial-mode-action is-primary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Got it</button>
+            </div>
+        </div>
+    `;
+
+    const needsWorkBtn = document.getElementById('tutorialNeedsWorkBtn');
+    const gotItBtn = document.getElementById('tutorialGotItBtn');
+    if (needsWorkBtn) needsWorkBtn.onclick = () => submitTutorialModeAssessment(false);
+    if (gotItBtn) gotItBtn.onclick = () => submitTutorialModeAssessment(true);
+}
+
+function renderTutorialModeLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+
+    const viewModel = buildTutorialModeViewModel();
+
+    if (window.JcodeTutorialModeUI?.render) {
+        if (document.body?.dataset) {
+            document.body.dataset.tutorialUi = 'preact';
+        }
+        window.JcodeTutorialModeUI.render(questionDisplay, viewModel);
+        return;
+    }
+
+    if (document.body?.dataset) {
+        delete document.body.dataset.tutorialUi;
+    }
+
+    ensureTutorialModeUiLibrary()
+        .then(() => {
+            if (mode === 'tutorial' && questionDisplay && currentQuestion) {
+                renderTutorialModeLayout();
+            }
+        })
+        .catch(error => {
+            console.warn('Tutorial mode UI unavailable, falling back to HTML renderer.', error);
+        });
+
+    renderTutorialModeFallback(viewModel);
 }
 
 function clearComponentBreakdown() {
@@ -17637,6 +17928,7 @@ function initQuizCommandPalette() {
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
         { name: 'Sentence', mode: 'sentence', type: 'mode' },
+        { name: 'Tutorial', mode: 'tutorial', type: 'mode' },
         { name: 'Dictation Chat', mode: 'dictation-chat', type: 'mode' },
         { name: 'Pinyin → Char', mode: 'pinyin-to-char', type: 'mode' },
         { name: 'Char → Meaning', mode: 'char-to-meaning', type: 'mode' },
@@ -18269,6 +18561,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     quizCharacters = charactersData;
     config = userConfig || {};
     ensureSentenceModeUiLibrary().catch(() => {});
+    ensureTutorialModeUiLibrary().catch(() => {});
     ensureConfidencePanelUiLibrary().catch(() => {});
     sentenceModeDataset = normalizeSentenceModeDataset(config.sentenceModeDataset || []);
     sentenceModeLoadPromise = null;

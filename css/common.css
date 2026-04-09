@@ -470,6 +470,280 @@ body.theme-dark .sentence-mode-feedback-detail {
     }
 }
 
+body.tutorial-mode-active .input-section {
+    display: none;
+}
+
+body.tutorial-mode-active .quiz-display {
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.35rem 0 0.9rem;
+}
+
+body.tutorial-mode-active #feedback,
+body.tutorial-mode-active #hint {
+    display: none;
+}
+
+body.tutorial-mode-active .question-row #questionDisplay {
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+}
+
+.tutorial-mode-shell {
+    width: min(100%, 980px);
+    margin: 0 auto;
+    display: grid;
+    gap: 0.9rem;
+    color: #0f172a;
+}
+
+.tutorial-mode-header {
+    display: grid;
+    gap: 0.2rem;
+    justify-items: center;
+    text-align: center;
+}
+
+.tutorial-mode-kicker,
+.tutorial-mode-card-kicker,
+.tutorial-mode-pattern-label {
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.tutorial-mode-subtitle,
+.tutorial-mode-card-subtitle,
+.tutorial-mode-card-note,
+.tutorial-mode-example-meaning,
+.tutorial-mode-feedback-message,
+.tutorial-mode-line-item {
+    color: #475569;
+}
+
+.tutorial-mode-hero,
+.tutorial-mode-card,
+.tutorial-mode-feedback {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.9rem;
+    padding: 1rem 1.1rem;
+    box-shadow: none;
+}
+
+.tutorial-mode-hero {
+    display: grid;
+    gap: 0.35rem;
+    justify-items: center;
+    text-align: center;
+}
+
+.tutorial-mode-char {
+    font-size: clamp(4rem, 10vw, 7.25rem);
+    line-height: 1;
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.tutorial-mode-pinyin {
+    font-size: 1.25rem;
+    color: #334155;
+    font-weight: 600;
+}
+
+.tutorial-mode-meaning {
+    font-size: 1.1rem;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.tutorial-mode-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: center;
+}
+
+.tutorial-mode-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.62rem;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #e2e8f0;
+    color: #1e293b;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.tutorial-mode-grid {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.tutorial-mode-card {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.tutorial-mode-pattern-line,
+.tutorial-mode-example-sentence,
+.tutorial-mode-feedback-title {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.tutorial-mode-pattern-line {
+    font-size: 1rem;
+    line-height: 1.55;
+}
+
+.tutorial-mode-pattern-line-filled {
+    color: #1e293b;
+}
+
+.tutorial-mode-example-list,
+.tutorial-mode-line-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.tutorial-mode-example-item {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.tutorial-mode-example-sentence {
+    font-size: 1.05rem;
+    line-height: 1.65;
+}
+
+.tutorial-mode-example-sentence .bg-yellow-200 {
+    background: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+.tutorial-mode-feedback.is-correct {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.tutorial-mode-feedback.is-incorrect {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.tutorial-mode-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.tutorial-mode-action {
+    min-width: 10.5rem;
+    padding: 0.8rem 1rem;
+    border-radius: 0.8rem;
+    border: 1px solid #475569;
+    background: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.tutorial-mode-action:hover {
+    background: #cbd5e1;
+}
+
+.tutorial-mode-action.is-primary {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #f8fafc;
+}
+
+.tutorial-mode-action.is-primary:hover {
+    background: #1e293b;
+}
+
+.tutorial-mode-action.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-shell {
+    color: var(--dm-text);
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-hero,
+body.theme-dark.tutorial-mode-active .tutorial-mode-card,
+body.theme-dark.tutorial-mode-active .tutorial-mode-feedback {
+    background: #111827;
+    border-color: #334155;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-char,
+body.theme-dark.tutorial-mode-active .tutorial-mode-pinyin,
+body.theme-dark.tutorial-mode-active .tutorial-mode-meaning,
+body.theme-dark.tutorial-mode-active .tutorial-mode-pattern-line,
+body.theme-dark.tutorial-mode-active .tutorial-mode-example-sentence,
+body.theme-dark.tutorial-mode-active .tutorial-mode-feedback-title {
+    color: #e2e8f0;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-subtitle,
+body.theme-dark.tutorial-mode-active .tutorial-mode-card-subtitle,
+body.theme-dark.tutorial-mode-active .tutorial-mode-card-note,
+body.theme-dark.tutorial-mode-active .tutorial-mode-example-meaning,
+body.theme-dark.tutorial-mode-active .tutorial-mode-feedback-message,
+body.theme-dark.tutorial-mode-active .tutorial-mode-line-item,
+body.theme-dark.tutorial-mode-active .tutorial-mode-kicker,
+body.theme-dark.tutorial-mode-active .tutorial-mode-card-kicker,
+body.theme-dark.tutorial-mode-active .tutorial-mode-pattern-label {
+    color: #94a3b8;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-chip {
+    background: #1e293b;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-example-sentence .bg-yellow-200 {
+    background: #334155 !important;
+    color: #f8fafc !important;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-action {
+    background: #1e293b;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-action:hover {
+    background: #334155;
+}
+
+body.theme-dark.tutorial-mode-active .tutorial-mode-action.is-primary {
+    background: #e2e8f0;
+    border-color: #e2e8f0;
+    color: #0f172a;
+}
+
+@media (min-width: 860px) {
+    .tutorial-mode-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+}
+
 @media (max-height: 820px) {
     .sentence-mode-chip {
         padding: 0.28rem 0.58rem;
