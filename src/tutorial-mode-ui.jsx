@@ -142,6 +142,7 @@ function TutorialModeView({
 
 function render(container, props) {
   if (!container) return;
+  container.innerHTML = '';
   preactRender(<TutorialModeView {...props} />, container);
 }
 

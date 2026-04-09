@@ -311,6 +311,7 @@
   }
   function render(container, props) {
     if (!container) return;
+    container.innerHTML = "";
     R(/* @__PURE__ */ k(TutorialModeView, { ...props }), container);
   }
   function unmount(container) {

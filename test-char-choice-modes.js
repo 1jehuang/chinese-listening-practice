@@ -3,6 +3,11 @@ const vm = require('vm');
 const assert = require('assert');
 
 function makeElement(tagName = 'div') {
+  let classNameValue = '';
+  const getClassSet = () => new Set(String(classNameValue || '').split(/\s+/).filter(Boolean));
+  const setClassSet = (classSet) => {
+    classNameValue = Array.from(classSet).join(' ');
+  };
   const el = {
     tagName: String(tagName).toUpperCase(),
     style: {},
@@ -11,7 +16,32 @@ function makeElement(tagName = 'div') {
     childNodes: [],
     textContent: '',
     _innerHTML: '',
-    classList: { add() {}, remove() {}, contains() { return false; }, toggle() { return false; } },
+    classList: {
+      add(...names) {
+        const classSet = getClassSet();
+        names.filter(Boolean).forEach((name) => classSet.add(name));
+        setClassSet(classSet);
+      },
+      remove(...names) {
+        const classSet = getClassSet();
+        names.filter(Boolean).forEach((name) => classSet.delete(name));
+        setClassSet(classSet);
+      },
+      contains(name) {
+        return getClassSet().has(name);
+      },
+      toggle(name, force) {
+        const classSet = getClassSet();
+        const shouldAdd = force === undefined ? !classSet.has(name) : Boolean(force);
+        if (shouldAdd) {
+          classSet.add(name);
+        } else {
+          classSet.delete(name);
+        }
+        setClassSet(classSet);
+        return shouldAdd;
+      }
+    },
     appendChild(child) {
       if (!child) return child;
       child.parentNode = this;
@@ -31,6 +61,13 @@ function makeElement(tagName = 'div') {
     querySelector() { return null; },
     querySelectorAll() { return []; },
   };
+  Object.defineProperty(el, 'className', {
+    get() { return classNameValue; },
+    set(value) { classNameValue = String(value || '').trim().replace(/\s+/g, ' '); }
+  });
+  Object.defineProperty(el, 'options', {
+    get() { return this.children; }
+  });
   Object.defineProperty(el, 'innerHTML', {
     get() { return this._innerHTML; },
     set(value) {
@@ -659,6 +696,23 @@ const vocab = [
   assert.ok(html.includes('我弟弟不喜欢'), 'tutorial mode should show a short example sentence when one matches the word');
   assert.ok(html.includes('My younger brother does not like math.'), 'tutorial mode should show the example translation');
   console.log('✓ tutorial mode fallback shows structure and matched sentence examples');
+})();
+
+(function testTutorialModeGenerateQuestionRendersTutorialCard() {
+  const { ctx } = createContext();
+  const word = { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' };
+
+  ctx.__initTestDomRefs();
+  ctx.__setQuizCharacters([word]);
+  ctx.__setMode('tutorial');
+
+  ctx.generateQuestion();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  const audioSection = ctx.document.getElementById('audioSection');
+  assert.ok(html.includes('Tutorial Mode'), 'generateQuestion should render the tutorial mode card');
+  assert.strictEqual(audioSection.classList.contains('hidden'), false, 'tutorial mode should show shared audio controls');
+  console.log('✓ tutorial mode generateQuestion renders the tutorial card with audio controls');
 })();
 
 (function testTutorialModeAssessmentLocksAndSchedulesAdvance() {

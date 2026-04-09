@@ -7775,6 +7775,13 @@ function renderQuestionUiForChoiceModes() {
         return true;
     }
 
+    if (mode === 'tutorial') {
+        renderTutorialModeLayout();
+        if (audioSection) audioSection.classList.remove('hidden');
+        setupAudioMode({ focusAnswer: false });
+        return true;
+    }
+
     if (mode === 'char-to-meaning-type' && fuzzyMode) {
         renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
@@ -12821,6 +12828,10 @@ function displayQuestion() {
         if (audioSection) audioSection.classList.remove('hidden');
         setupChunkAudioMode(currentQuestion.sentence);
         focusSentenceModeInputSoon(50);
+    } else if (mode === 'tutorial') {
+        renderTutorialModeLayout();
+        if (audioSection) audioSection.classList.remove('hidden');
+        setupAudioMode({ focusAnswer: false });
     } else if (mode === 'dictation-chat') {
         renderDictationChatQuestion({ reset: false });
     } else if (mode === 'text-to-meaning') {
