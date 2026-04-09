@@ -1121,11 +1121,6 @@ function focusSentenceModeInputSoon(delay = 0) {
 function handleSentenceModeInput(value) {
     const state = getSentenceModeUiState();
     state.inputValue = String(value || '');
-    if (answered && lastAnswerCorrect) {
-        nextAnswerBuffer = state.inputValue;
-    } else {
-        nextAnswerBuffer = '';
-    }
     if (!state.locked) {
         state.highlightedIndex = getSentenceModeHighlightIndex(state.inputValue, state.options);
     }
@@ -7971,7 +7966,7 @@ function renderQuestionUiForChoiceModes() {
     }
 
     if (mode === 'sentence' && fuzzyMode) {
-        generateFuzzySentenceModeOptions({ autoSubmitPrefill: Boolean(getSentenceModeUiState().inputValue) });
+        generateFuzzySentenceModeOptions({ autoSubmitPrefill: false });
         renderSentenceModeLayout();
         if (audioSection) audioSection.classList.remove('hidden');
         setupChunkAudioMode(currentQuestion.sentence);
@@ -13437,7 +13432,7 @@ function displayQuestion() {
             setTimeout(() => fuzzyInput.focus(), 50);
         }
     } else if (mode === 'sentence') {
-        generateFuzzySentenceModeOptions({ autoSubmitPrefill: Boolean(getSentenceModeUiState().inputValue) });
+        generateFuzzySentenceModeOptions({ autoSubmitPrefill: false });
         renderSentenceModeLayout();
         if (audioSection) audioSection.classList.remove('hidden');
         setupChunkAudioMode(currentQuestion.sentence);
@@ -14187,8 +14182,6 @@ function goToNextQuestionAfterCorrect() {
     // Capture from whichever input field is active
     if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput) {
         nextAnswerBuffer = fuzzyInput.value;
-    } else if (mode === 'sentence') {
-        nextAnswerBuffer = getSentenceModeUiState().inputValue || '';
     } else if (answerInput) {
         nextAnswerBuffer = answerInput.value;
     }
@@ -14212,8 +14205,6 @@ function scheduleNextQuestion(delay) {
             buffered = nextAnswerBuffer;
         } else if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type') && fuzzyInput) {
             buffered = fuzzyInput.value;
-        } else if (mode === 'sentence') {
-            buffered = getSentenceModeUiState().inputValue || '';
         } else if (answerInput) {
             buffered = answerInput.value;
         }
