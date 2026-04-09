@@ -715,6 +715,20 @@ const vocab = [
   console.log('✓ tutorial mode exposes readable word type labels');
 })();
 
+(function testTutorialModeGeneratesTinyExampleWhenDatasetMissing() {
+  const { ctx } = createContext();
+  ctx.__initTestDomRefs();
+  ctx.__setCurrentQuestion({ char: '制度', pinyin: 'zhìdù', meaning: 'system; institution', category: 'Nouns' });
+  ctx.__setMode('tutorial');
+
+  ctx.renderTutorialModeLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('Tiny example'), 'tutorial mode should show a tiny example section even without the sentence dataset');
+  assert.ok(/这是[\s\S]*制度/.test(html), 'tutorial mode should generate a tiny fallback example when no real match exists');
+  console.log('✓ tutorial mode generates a tiny fallback example when dataset matches are unavailable');
+})();
+
 (function testTutorialModeGenerateQuestionRendersTutorialCard() {
   const { ctx } = createContext();
   const word = { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' };

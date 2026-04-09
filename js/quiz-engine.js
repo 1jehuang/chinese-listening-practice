@@ -11879,6 +11879,89 @@ function getTutorialSentenceLengthScore(sentence) {
     return normalized.length || Number.POSITIVE_INFINITY;
 }
 
+function getTutorialGeneratedExample(question = currentQuestion) {
+    const word = String(question?.char || '').trim();
+    if (!word) return null;
+
+    const wordType = getTutorialWordType(question);
+    const primaryMeaning = getTutorialMeaningAnchors(question)[0] || String(question?.meaning || '').trim() || 'it';
+    const overrides = {
+        '即使': { sentence: '即使下雨，也去。', meaning: 'Even if it rains, I will still go.' },
+        '由': { sentence: '由老师决定。', meaning: 'It is decided by the teacher.' },
+        '任何': { sentence: '任何人都行。', meaning: 'Anyone is fine.' },
+        '万般皆下品': { sentence: '万般皆下品。', meaning: 'All other pursuits are of lesser value.' },
+        '唯有读书高': { sentence: '唯有读书高。', meaning: 'Only scholarship is truly noble.' },
+        '不如': { sentence: '不如试试吧。', meaning: 'It would be better to give it a try.' },
+        '这类的': { sentence: '这类的很多。', meaning: 'There are many of this kind.' },
+        '表面上': { sentence: '表面上很好。', meaning: 'On the surface, it looks good.' },
+        '充分': { sentence: '要充分准备。', meaning: 'Prepare fully.' },
+        '有天分': { sentence: '她很有天分。', meaning: 'She is very talented.' },
+        '将来': { sentence: '将来再说。', meaning: 'We can talk about the future later.' },
+        '恐怕': { sentence: '恐怕不行。', meaning: 'I’m afraid it will not work.' },
+        '难怪': { sentence: '难怪他累。', meaning: 'No wonder he is tired.' }
+    };
+
+    if (overrides[word]) {
+        return {
+            ...overrides[word],
+            target: word,
+            highlightedSentenceHtml: highlightSentenceModeTarget(overrides[word].sentence, word)
+        };
+    }
+
+    let sentence = '';
+    let meaning = '';
+    if (wordType?.shortLabel === 'Noun') {
+        sentence = `这是${word}。`;
+        meaning = `This is ${primaryMeaning}.`;
+    } else if (wordType?.shortLabel === 'Verb') {
+        sentence = `我们${word}。`;
+        meaning = `We ${primaryMeaning.replace(/^to\s+/i, '')}.`;
+    } else if (wordType?.shortLabel === 'Adjective') {
+        sentence = `太${word}了。`;
+        meaning = `It is very ${primaryMeaning}.`;
+    } else if (wordType?.shortLabel === 'Connector') {
+        sentence = `${word}很忙，也去。`;
+        meaning = `${primaryMeaning.charAt(0).toUpperCase() + primaryMeaning.slice(1)}, we still go.`;
+    } else if (wordType?.shortLabel === 'Preposition') {
+        sentence = `${word}老师安排。`;
+        meaning = `It is arranged by the teacher.`;
+    } else if (wordType?.shortLabel === 'Pronoun') {
+        sentence = `${word}都可以。`;
+        meaning = `${primaryMeaning.charAt(0).toUpperCase() + primaryMeaning.slice(1)} is okay.`;
+    } else if (wordType?.shortLabel === 'Time word') {
+        sentence = `${word}再说。`;
+        meaning = `We can discuss the future later.`;
+    } else if (wordType?.shortLabel === 'Phrase') {
+        sentence = `${word}也行。`;
+        meaning = `${primaryMeaning.charAt(0).toUpperCase() + primaryMeaning.slice(1)} also works.`;
+    }
+
+    if (!sentence || !meaning) return null;
+    return {
+        sentence,
+        meaning,
+        target: word,
+        highlightedSentenceHtml: highlightSentenceModeTarget(sentence, word)
+    };
+}
+
+function ensureTutorialSentenceExamplesLoaded() {
+    if ((Array.isArray(sentenceModeDataset) && sentenceModeDataset.length) || sentenceModeLoadPromise) {
+        return;
+    }
+
+    ensureSentenceModeDataset()
+        .then(() => {
+            if (mode === 'tutorial' && questionDisplay && currentQuestion) {
+                renderTutorialModeLayout();
+            }
+        })
+        .catch((error) => {
+            console.warn('Tutorial mode sentence examples unavailable, keeping fallback example.', error);
+        });
+}
+
 function getTutorialStructure(question = currentQuestion) {
     const usageHint = getWordUsageHint(question);
     if (!usageHint || (!usageHint.before && !usageHint.after)) return null;
@@ -11910,7 +11993,12 @@ function getTutorialStructure(question = currentQuestion) {
 
 function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
     const word = String(question?.char || '').trim();
-    if (!word || !Array.isArray(sentenceModeDataset) || !sentenceModeDataset.length) return [];
+    if (!word) return [];
+
+    if (!Array.isArray(sentenceModeDataset) || !sentenceModeDataset.length) {
+        const generated = getTutorialGeneratedExample(question);
+        return generated ? [generated] : [];
+    }
 
     const limit = Number.isFinite(options.limit) ? Math.max(1, options.limit) : 1;
     const exactMatches = [];
@@ -11937,7 +12025,7 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
         return a.sentence.length - b.sentence.length;
     };
 
-    return exactMatches
+    const matches = exactMatches
         .sort(byShortestSentence)
         .concat(containsMatches.sort(byShortestSentence))
         .slice(0, limit)
@@ -11945,6 +12033,13 @@ function getTutorialSentenceExamples(question = currentQuestion, options = {}) {
             ...item,
             highlightedSentenceHtml: highlightSentenceModeTarget(item.sentence, item.target)
         }));
+
+    if (matches.length) {
+        return matches;
+    }
+
+    const generated = getTutorialGeneratedExample(question);
+    return generated ? [generated] : [];
 }
 
 function buildTutorialModeViewModel() {
@@ -12098,6 +12193,8 @@ function renderTutorialModeFallback(viewModel) {
 
 function renderTutorialModeLayout() {
     if (!questionDisplay || !currentQuestion) return;
+
+    ensureTutorialSentenceExamplesLoaded();
 
     const viewModel = buildTutorialModeViewModel();
 

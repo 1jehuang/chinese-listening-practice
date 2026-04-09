@@ -316,6 +316,7 @@
   }
   function render(container, props) {
     if (!container) return;
+    R(null, container);
     container.innerHTML = "";
     R(/* @__PURE__ */ k(TutorialModeView, { ...props }), container);
   }

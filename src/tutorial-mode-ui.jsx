@@ -161,6 +161,7 @@ function TutorialModeView({
 
 function render(container, props) {
   if (!container) return;
+  preactRender(null, container);
   container.innerHTML = '';
   preactRender(<TutorialModeView {...props} />, container);
 }
