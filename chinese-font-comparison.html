@@ -4,21 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chinese Font Comparison</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f7f7fb;
+      --bg: #f6f7fb;
       --card: #ffffff;
       --line: #e5e7eb;
       --text: #111827;
       --muted: #6b7280;
-      --accent: #2563eb;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --yellow-soft: #fffbeb;
+      --yellow-line: #fde68a;
       --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
 
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       padding: 24px;
@@ -28,19 +29,19 @@
     }
 
     .wrap {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
     }
 
-    .hero, .controls, .card {
+    .panel {
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: 18px;
       box-shadow: var(--shadow);
     }
 
-    .hero {
-      padding: 24px;
+    .hero, .controls, .tips {
+      padding: 20px;
       margin-bottom: 18px;
     }
 
@@ -50,32 +51,38 @@
       line-height: 1.1;
     }
 
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
     .sub {
       color: var(--muted);
-      font-size: 16px;
-      line-height: 1.5;
+      line-height: 1.55;
       margin-bottom: 14px;
     }
 
-    .callout {
-      display: inline-block;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: #eff6ff;
-      color: #1d4ed8;
-      font-weight: 600;
-      margin-right: 8px;
-      margin-bottom: 8px;
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
-    .controls {
-      padding: 18px;
-      margin-bottom: 18px;
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #1d4ed8;
+      font-weight: 700;
+      font-size: 14px;
     }
 
     .controls-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr 1fr;
+      grid-template-columns: 1.4fr 1fr 1fr;
       gap: 16px;
       align-items: start;
     }
@@ -87,42 +94,46 @@
       margin-bottom: 8px;
     }
 
-    textarea {
+    textarea,
+    select,
+    input[type="range"] {
       width: 100%;
-      min-height: 120px;
-      resize: vertical;
+    }
+
+    textarea,
+    select {
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 12px;
-      font-size: 18px;
-      line-height: 1.6;
       background: #fff;
       color: var(--text);
     }
 
-    input[type="range"], select {
-      width: 100%;
-    }
-
-    select {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: #fff;
-      font-size: 15px;
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+      font-size: 18px;
+      line-height: 1.65;
     }
 
     .muted {
       color: var(--muted);
       font-size: 13px;
+      line-height: 1.5;
       margin-top: 8px;
-      line-height: 1.45;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 22px;
+      font-weight: 800;
     }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
       gap: 16px;
+      margin-bottom: 22px;
     }
 
     .card {
@@ -151,7 +162,7 @@
     .meta {
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .badge {
@@ -161,29 +172,38 @@
       font-size: 12px;
       font-weight: 700;
       border: 1px solid var(--line);
-      background: #f9fafb;
+      background: #f3f4f6;
+      color: #374151;
     }
 
-    .badge.ok { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
-    .badge.maybe { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .badge.good {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+
+    .badge.maybe {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
 
     .sample {
       margin-top: 14px;
-      line-height: 1.5;
-      word-break: break-word;
-      color: #111827;
-      min-height: 170px;
+      min-height: 210px;
       padding: 14px;
       border: 1px dashed #d1d5db;
       border-radius: 14px;
       background: #fcfcfd;
+      line-height: 1.45;
+      word-break: break-word;
     }
 
-    .sample .latin {
+    .sample .roman {
       display: block;
-      margin-top: 12px;
+      margin-top: 14px;
       color: #4b5563;
-      font-size: 0.48em;
+      font-size: 0.42em;
       letter-spacing: 0.02em;
     }
 
@@ -199,16 +219,8 @@
     }
 
     .tips {
-      margin-top: 18px;
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 16px;
-      padding: 16px 18px;
-    }
-
-    .tips h2 {
-      font-size: 18px;
-      margin: 0 0 8px;
+      background: var(--yellow-soft);
+      border: 1px solid var(--yellow-line);
     }
 
     .tips ul {
@@ -217,7 +229,13 @@
       line-height: 1.6;
     }
 
-    @media (max-width: 900px) {
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 22px 0 18px;
+    }
+
+    @media (max-width: 920px) {
       .controls-grid {
         grid-template-columns: 1fr;
       }
@@ -226,220 +244,249 @@
 </head>
 <body>
   <div class="wrap">
-    <section class="hero">
+    <section class="panel hero">
       <h1>Chinese Font Comparison</h1>
       <div class="sub">
-        Paste your quiz text below and compare a bunch of common Chinese fonts side by side.
-        I also highlighted the font your current app is using now.
+        I checked your machine and the reason everything looked the same is that most of those fonts are not installed.
+        Right now you mainly have <strong>Noto Sans CJK</strong> and <strong>Noto Serif CJK</strong> available, so I rebuilt this page to compare fonts that should actually render differently on your system.
       </div>
-      <div class="callout">Current app quiz font: Noto Sans SC</div>
-      <div class="callout">Current CSS: "Noto Sans SC", "Microsoft YaHei", sans-serif</div>
+      <div class="pill-row">
+        <div class="pill">Current app CSS: "Noto Sans SC", "Microsoft YaHei", sans-serif</div>
+        <div class="pill">Effective local match: Noto Sans CJK SC</div>
+      </div>
     </section>
 
-    <section class="controls">
+    <section class="panel controls">
       <div class="controls-grid">
         <div>
-          <label for="sampleText">Paste quiz text here</label>
+          <label for="sampleText">Paste the exact quiz text here</label>
           <textarea id="sampleText">你好！我是中国人。
 学习汉语很有意思。
 听说读写，汉字测验，练习本。
-你好 我 喜欢 中文 字体 比较</textarea>
-          <div class="muted">Tip: paste the exact Chinese words or sentence from your quiz for the best visual match.</div>
+这 题 语 说 读 写 边 纸 练 习</textarea>
+          <div class="muted">Paste the real word or sentence from your quiz. Characters like 这、题、语、边 are useful because small shape differences are easier to notice.</div>
         </div>
         <div>
-          <label for="fontSize">Sample size: <span id="fontSizeValue">48</span>px</label>
-          <input id="fontSize" type="range" min="24" max="88" value="48" />
-          <div class="muted">Larger sizes make stroke shapes easier to compare.</div>
+          <label for="fontSize">Sample size: <span id="fontSizeValue">52</span>px</label>
+          <input id="fontSize" type="range" min="28" max="96" value="52" />
+          <div class="muted">Bigger text makes stroke shape differences easier to compare.</div>
         </div>
         <div>
           <label for="fontWeight">Weight</label>
           <select id="fontWeight">
-            <option value="400">400 Regular</option>
+            <option value="300">300 Light</option>
+            <option value="400" selected>400 Regular</option>
             <option value="500">500 Medium</option>
             <option value="700">700 Bold</option>
+            <option value="900">900 Black</option>
           </select>
-          <div class="muted">Try bold if your quiz characters look thicker.</div>
+          <div class="muted">Try 500 or 700 if your quiz text looks thicker.</div>
         </div>
       </div>
     </section>
 
-    <section id="fontGrid" class="grid"></section>
+    <div class="section-title">Best matches for your current quiz setup</div>
+    <section id="matchGrid" class="grid"></section>
 
-    <section class="tips">
-      <h2>How to spot the right one</h2>
+    <div class="divider"></div>
+
+    <div class="section-title">Other Chinese fonts actually installed on your machine</div>
+    <section id="installedGrid" class="grid"></section>
+
+    <section class="panel tips">
+      <h2>What to look for</h2>
       <ul>
-        <li><strong>Noto Sans SC / Microsoft YaHei / PingFang SC</strong> feel clean and modern, with even strokes.</li>
-        <li><strong>Noto Serif SC / SimSun / Songti SC</strong> feel more textbook or print-like, with serif details.</li>
-        <li><strong>KaiTi</strong> looks brush-like and calligraphic, common in educational materials.</li>
-        <li><strong>SimHei / Heiti SC</strong> look heavier and blockier.</li>
-        <li>If you pick one you like, I can update the site CSS for you next.</li>
+        <li><strong>Noto Sans CJK SC</strong> is the most likely match for your current quizzes. It is clean, modern, and even.</li>
+        <li><strong>Noto Serif CJK SC</strong> will look more print-like or textbook-like because of the serif details.</li>
+        <li><strong>Noto Sans Mono CJK SC</strong> is fixed-width and should look obviously different.</li>
+        <li><strong>SC vs TC vs HK vs JP</strong> can show small regional glyph differences for some characters.</li>
+        <li>Once you spot the closest one, tell me the exact card name and I can update the quiz font for you.</li>
       </ul>
     </section>
   </div>
 
   <script>
-    const fonts = [
+    const likelyMatches = [
       {
-        name: 'Noto Sans SC',
+        name: 'App CSS as written',
         family: '"Noto Sans SC", "Microsoft YaHei", sans-serif',
-        notes: 'Current app font. Clean, modern sans-serif.',
+        detect: 'Noto Sans CJK SC',
+        notes: 'This is the exact stack your quiz uses now. On this machine it effectively resolves to Noto Sans CJK SC.',
         current: true,
-        detect: 'Noto Sans SC'
+        forceWeight: null
       },
       {
-        name: 'Microsoft YaHei',
-        family: '"Microsoft YaHei", "PingFang SC", sans-serif',
-        notes: 'Very common Windows Chinese UI font.',
-        detect: 'Microsoft YaHei'
+        name: 'Noto Sans CJK SC Regular',
+        family: '"Noto Sans CJK SC", sans-serif',
+        detect: 'Noto Sans CJK SC',
+        notes: 'Most likely real match for your current quiz text.',
+        current: true,
+        forceWeight: 400
       },
       {
-        name: 'PingFang SC',
-        family: '"PingFang SC", "Hiragino Sans GB", sans-serif',
-        notes: 'Common Apple Chinese sans-serif.',
-        detect: 'PingFang SC'
+        name: 'Noto Sans CJK SC Medium',
+        family: '"Noto Sans CJK SC", sans-serif',
+        detect: 'Noto Sans CJK SC',
+        notes: 'Good if the quiz looks a little thicker.',
+        current: false,
+        forceWeight: 500
       },
       {
-        name: 'Noto Serif SC',
-        family: '"Noto Serif SC", "Songti SC", serif',
-        notes: 'Print-like serif with textbook feel.',
-        detect: 'Noto Serif SC'
+        name: 'Noto Sans CJK SC Bold',
+        family: '"Noto Sans CJK SC", sans-serif',
+        detect: 'Noto Sans CJK SC',
+        notes: 'Useful if your quiz Chinese characters look heavy.',
+        current: false,
+        forceWeight: 700
       },
       {
-        name: 'Songti SC / SimSun',
-        family: '"Songti SC", "SimSun", serif',
-        notes: 'Classic printed Song style.',
-        detect: 'Songti SC'
+        name: 'Noto Serif CJK SC Regular',
+        family: '"Noto Serif CJK SC", serif',
+        detect: 'Noto Serif CJK SC',
+        notes: 'This will look more like a printed textbook font.',
+        current: false,
+        forceWeight: 400
       },
       {
-        name: 'SimHei / Heiti SC',
-        family: '"SimHei", "Heiti SC", sans-serif',
-        notes: 'Older bold sans style.',
-        detect: 'SimHei'
-      },
-      {
-        name: 'KaiTi',
-        family: '"KaiTi", "Kaiti SC", cursive',
-        notes: 'Brush-like educational style.',
-        detect: 'KaiTi'
-      },
-      {
-        name: 'FangSong',
-        family: '"FangSong", "STFangsong", serif',
-        notes: 'Traditional print style with lighter elegance.',
-        detect: 'FangSong'
-      },
-      {
-        name: 'Source Han Sans SC',
-        family: '"Source Han Sans SC", "Noto Sans CJK SC", sans-serif',
-        notes: 'Adobe/Google CJK sans family.',
-        detect: 'Source Han Sans SC'
-      },
-      {
-        name: 'Source Han Serif SC',
-        family: '"Source Han Serif SC", "Noto Serif CJK SC", serif',
-        notes: 'Adobe/Google CJK serif family.',
-        detect: 'Source Han Serif SC'
-      },
-      {
-        name: 'WenQuanYi Zen Hei',
-        family: '"WenQuanYi Zen Hei", sans-serif',
-        notes: 'Common Linux Chinese font.',
-        detect: 'WenQuanYi Zen Hei'
-      },
-      {
-        name: 'ZCOOL XiaoWei',
-        family: '"ZCOOL XiaoWei", serif',
-        notes: 'Decorative but readable.',
-        detect: 'ZCOOL XiaoWei'
-      },
-      {
-        name: 'Ma Shan Zheng',
-        family: '"Ma Shan Zheng", cursive',
-        notes: 'Very handwritten and brush-like.',
-        detect: 'Ma Shan Zheng'
-      },
-      {
-        name: 'Long Cang',
-        family: '"Long Cang", cursive',
-        notes: 'Loose handwritten style.',
-        detect: 'Long Cang'
-      },
-      {
-        name: 'ZCOOL QingKe HuangYou',
-        family: '"ZCOOL QingKe HuangYou", sans-serif',
-        notes: 'Rounded playful display font.',
-        detect: 'ZCOOL QingKe HuangYou'
-      },
-      {
-        name: 'ZCOOL KuaiLe',
-        family: '"ZCOOL KuaiLe", sans-serif',
-        notes: 'Chunky display font.',
-        detect: 'ZCOOL KuaiLe'
+        name: 'Noto Sans Mono CJK SC',
+        family: '"Noto Sans Mono CJK SC", monospace',
+        detect: 'Noto Sans Mono CJK SC',
+        notes: 'Monospaced. Included so you can quickly rule it out.',
+        current: false,
+        forceWeight: 400
       }
     ];
 
-    const grid = document.getElementById('fontGrid');
+    const installedFamilies = [
+      {
+        name: 'Noto Sans CJK SC',
+        family: '"Noto Sans CJK SC", sans-serif',
+        detect: 'Noto Sans CJK SC',
+        notes: 'Simplified Chinese sans-serif.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Serif CJK SC',
+        family: '"Noto Serif CJK SC", serif',
+        detect: 'Noto Serif CJK SC',
+        notes: 'Simplified Chinese serif.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Sans Mono CJK SC',
+        family: '"Noto Sans Mono CJK SC", monospace',
+        detect: 'Noto Sans Mono CJK SC',
+        notes: 'Simplified Chinese monospaced.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Sans CJK TC',
+        family: '"Noto Sans CJK TC", sans-serif',
+        detect: 'Noto Sans CJK TC',
+        notes: 'Traditional Chinese sans-serif.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Serif CJK TC',
+        family: '"Noto Serif CJK TC", serif',
+        detect: 'Noto Serif CJK TC',
+        notes: 'Traditional Chinese serif.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Sans CJK HK',
+        family: '"Noto Sans CJK HK", sans-serif',
+        detect: 'Noto Sans CJK HK',
+        notes: 'Hong Kong variant.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Serif CJK HK',
+        family: '"Noto Serif CJK HK", serif',
+        detect: 'Noto Serif CJK HK',
+        notes: 'Hong Kong serif variant.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Sans CJK JP',
+        family: '"Noto Sans CJK JP", sans-serif',
+        detect: 'Noto Sans CJK JP',
+        notes: 'Japanese CJK sans variant.',
+        forceWeight: null
+      },
+      {
+        name: 'Noto Serif CJK JP',
+        family: '"Noto Serif CJK JP", serif',
+        detect: 'Noto Serif CJK JP',
+        notes: 'Japanese CJK serif variant.',
+        forceWeight: null
+      }
+    ];
+
+    const matchGrid = document.getElementById('matchGrid');
+    const installedGrid = document.getElementById('installedGrid');
     const sampleText = document.getElementById('sampleText');
     const fontSize = document.getElementById('fontSize');
     const fontWeight = document.getElementById('fontWeight');
     const fontSizeValue = document.getElementById('fontSizeValue');
 
-    function detectFont(fontName) {
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+
+    function isFontAvailable(fontName) {
+      if (!fontName) return false;
       if (document.fonts && document.fonts.check(`16px "${fontName}"`)) return true;
 
       const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      const testText = '汉语字体比較中文ABC123';
-      context.font = '72px monospace';
-      const baseline = context.measureText(testText).width;
-      context.font = `72px "${fontName}", monospace`;
-      const width = context.measureText(testText).width;
-      return Math.abs(width - baseline) > 0.5;
+      const ctx = canvas.getContext('2d');
+      const probe = '汉语字体比较这题边读写ABC123';
+      ctx.font = '72px monospace';
+      const base = ctx.measureText(probe).width;
+      ctx.font = `72px "${fontName}", monospace`;
+      const measured = ctx.measureText(probe).width;
+      return Math.abs(measured - base) > 0.5;
+    }
+
+    function renderCard(font, globalWeight) {
+      const available = isFontAvailable(font.detect);
+      const badgeText = available ? 'installed here' : 'fallback risk';
+      const badgeClass = available ? 'good' : 'maybe';
+      const actualWeight = font.forceWeight ?? Number(globalWeight);
+      const sampleHtml = escapeHtml(sampleText.value.trim() || '你好 我是中国人 学习汉语') +
+        '<span class="roman">Sample latin: zhōngwén hànzì cèyàn liànxí</span>';
+
+      return `
+        <article class="panel card ${font.current ? 'current' : ''}">
+          <div class="topline">
+            <div>
+              <div class="name">${font.name}</div>
+              <div class="meta">${font.notes}</div>
+            </div>
+            <div class="badge ${badgeClass}">${badgeText}</div>
+          </div>
+          <div class="sample" style="font-family:${font.family}; font-size:${fontSize.value}px; font-weight:${actualWeight};">
+            ${sampleHtml}
+          </div>
+          <div class="code">font-family: ${font.family}; font-weight: ${actualWeight};</div>
+        </article>
+      `;
     }
 
     function render() {
-      const text = sampleText.value.trim() || '你好 我是中国人 学习汉语';
-      const size = fontSize.value;
-      const weight = fontWeight.value;
-      fontSizeValue.textContent = size;
-
-      grid.innerHTML = fonts.map(font => {
-        const available = detectFont(font.detect || font.name);
-        const statusClass = available ? 'ok' : 'maybe';
-        const statusText = available ? 'available' : 'fallback or not loaded';
-        const sampleHtml = text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\n/g, '<br>');
-
-        return `
-          <article class="card ${font.current ? 'current' : ''}">
-            <div class="topline">
-              <div>
-                <div class="name">${font.name}</div>
-                <div class="meta">${font.notes}</div>
-              </div>
-              <div class="badge ${statusClass}">${statusText}</div>
-            </div>
-            <div class="sample" style="font-family:${font.family}; font-size:${size}px; font-weight:${weight};">
-              ${sampleHtml}
-              <span class="latin">Sample latin: zhōngwén hànzì cèyàn liànxí</span>
-            </div>
-            <div class="code">font-family: ${font.family};</div>
-          </article>
-        `;
-      }).join('');
+      fontSizeValue.textContent = fontSize.value;
+      const globalWeight = fontWeight.value;
+      matchGrid.innerHTML = likelyMatches.map(font => renderCard(font, globalWeight)).join('');
+      installedGrid.innerHTML = installedFamilies.map(font => renderCard(font, globalWeight)).join('');
     }
 
     sampleText.addEventListener('input', render);
     fontSize.addEventListener('input', render);
     fontWeight.addEventListener('change', render);
-
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(render);
-    }
-
     render();
   </script>
 </body>
