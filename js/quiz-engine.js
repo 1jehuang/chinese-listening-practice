@@ -15012,16 +15012,50 @@ async function runOCR() {
     }
 }
 
+function clearPendingOcrTimeout() {
+    if (ocrTimeout) {
+        clearTimeout(ocrTimeout);
+        ocrTimeout = null;
+    }
+}
+
+async function ensureInlineOcrResult() {
+    const ocrResult = document.getElementById('ocrResult');
+    if (!ocrResult) return '';
+
+    let recognized = ocrResult.textContent.trim();
+    if (recognized || !hasAnyDrawInk()) {
+        return recognized;
+    }
+
+    clearPendingOcrTimeout();
+    await runOCR();
+    recognized = ocrResult.textContent.trim();
+    return recognized;
+}
+
+async function ensureFullscreenOcrResult() {
+    const ocrResult = document.getElementById('fullscreenOcrResult');
+    if (!ocrResult) return '';
+
+    let recognized = ocrResult.textContent.trim();
+    if (recognized || !hasAnyDrawInk()) {
+        return recognized;
+    }
+
+    clearPendingOcrTimeout();
+    await runFullscreenOCR();
+    recognized = ocrResult.textContent.trim();
+    return recognized;
+}
+
 function clearCanvas() {
     if (!ctx || !canvas) return;
     strokes = [];
     undoneStrokes = [];
     currentStroke = null;
     drawStartTime = null;
-    if (ocrTimeout) {
-        clearTimeout(ocrTimeout);
-        ocrTimeout = null;
-    }
+    clearPendingOcrTimeout();
     redrawCanvas();
     updateOcrCandidates();
     updateUndoRedoButtons();
@@ -15403,13 +15437,16 @@ async function showDrawHint(isFullscreen = false) {
     }
 }
 
-function submitDrawing() {
+async function submitDrawing() {
     const ocrResult = document.getElementById('ocrResult');
     if (!ocrResult) return;
 
-    const recognized = ocrResult.textContent.trim();
+    const hadInk = hasAnyDrawInk();
+    const recognized = await ensureInlineOcrResult();
     if (!recognized) {
-        feedback.textContent = '✗ Please draw a character first!';
+        feedback.textContent = hadInk
+            ? '✗ I could not recognize that drawing yet. Try redrawing it or wait a moment and submit again.'
+            : '✗ Please draw a character first!';
         feedback.className = 'text-center text-2xl font-semibold my-4 text-red-600';
         return;
     }
@@ -15444,6 +15481,7 @@ function submitDrawing() {
         }
         markSchedulerOutcome(correct);
     }
+    lastAnswerCorrect = correct;
 
     if (requireMeaning && drawMeaningChoices.length > 0) {
         showDrawMeaningResult('drawMeaningChoicesInline', correct);
@@ -15604,6 +15642,15 @@ function normalizeDrawAnswer(text = '') {
     const stripped = stripPlaceholderChars(text).replace(/\s+/g, '').trim();
     const hanziOnly = Array.from(stripped).filter(char => isHanziCharacter(char)).join('');
     return hanziOnly || stripped;
+}
+
+function isHanziCharacter(char = '') {
+    if (!char) return false;
+    try {
+        return /\p{Script=Han}/u.test(char);
+    } catch (error) {
+        return /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/.test(char);
+    }
 }
 
 function getDrawDisplayTarget(text = '') {
@@ -16342,15 +16389,18 @@ function updateFullscreenUndoRedoButtons() {
     }
 }
 
-function submitFullscreenDrawing() {
+async function submitFullscreenDrawing() {
     const ocrResult = document.getElementById('fullscreenOcrResult');
     if (!ocrResult) return;
 
     const isFirstAttempt = !answered;
 
-    const recognized = ocrResult.textContent.trim();
+    const hadInk = hasAnyDrawInk();
+    const recognized = await ensureFullscreenOcrResult();
     if (!recognized) {
-        alert('Please draw a character first!');
+        alert(hadInk
+            ? 'I could not recognize that drawing yet. Try redrawing it or wait a moment and submit again.'
+            : 'Please draw a character first!');
         return;
     }
 
@@ -16383,6 +16433,7 @@ function submitFullscreenDrawing() {
     } else {
         playWrongSound();
     }
+    lastAnswerCorrect = correct;
 
     if (isFirstAttempt) {
         markSchedulerOutcome(correct);
