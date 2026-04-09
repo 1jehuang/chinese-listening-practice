@@ -1,11 +1,29 @@
 // Shared LLM + markdown helpers used by quiz-engine and chat panels.
 
-function getGroqApiKey() {
-    return window.getGroqApiKey ? window.getGroqApiKey() : '';
+const GROQ_API_KEY_STORAGE = 'groq_api_key';
+
+function readGroqApiKey() {
+    const externalGetter = typeof window.getGroqApiKey === 'function' && window.getGroqApiKey !== readGroqApiKey
+        ? window.getGroqApiKey
+        : null;
+
+    if (externalGetter) {
+        try {
+            return externalGetter() || '';
+        } catch {
+            // Fall back to direct storage access below.
+        }
+    }
+
+    try {
+        return localStorage.getItem(GROQ_API_KEY_STORAGE) || '';
+    } catch {
+        return '';
+    }
 }
 
 async function callGroqChat({ system, messages = [], maxTokens = 400, temperature = 0.7, model = 'moonshotai/kimi-k2-instruct' }) {
-    const apiKey = getGroqApiKey();
+    const apiKey = readGroqApiKey();
     if (!apiKey) {
         const err = new Error('MISSING_API_KEY');
         err.code = 'MISSING_API_KEY';
