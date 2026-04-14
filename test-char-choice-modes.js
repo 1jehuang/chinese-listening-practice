@@ -298,6 +298,7 @@ function createContext() {
       return indicator ? (indicator.innerHTML || '') : '';
     }
     function __getPinyinMeaningStage() { return pinyinMeaningStage; }
+    function __playMeaningFeedbackAudio(delay) { return playMeaningFeedbackAudio(currentQuestion, { delay: delay == null ? 0 : delay }); }
   `, ctx);
   return { ctx, optionsEl };
 }
@@ -532,6 +533,46 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   ctx.warmUpcomingPromptAudioForCurrentMode();
   assert.deepStrictEqual(warmed, ['中', '国'], 'audio prompt helpers should warm both current and upcoming prompts');
   console.log('✓ prompt warmup helpers only preload audio-capable modes');
+})();
+
+(function testMeaningFeedbackAudioSpeaksEnglishMeaning() {
+  const { ctx } = createContext();
+  const spoken = [];
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.window.playEnglishTTS = (text) => {
+    spoken.push(text);
+    return true;
+  };
+
+  const started = ctx.__playMeaningFeedbackAudio(0);
+
+  assert.strictEqual(started, true, 'meaning feedback audio should start when English TTS is available');
+  assert.deepStrictEqual(spoken, ['middle'], 'meaning feedback audio should speak the English meaning');
+  console.log('✓ meaning feedback audio speaks the English meaning');
+})();
+
+(function testAudioMeaningWrongAnswerSpeaksEnglishMeaning() {
+  const { ctx } = createContext();
+  const spoken = [];
+  ctx.__initTestDomRefs();
+  ctx.__setQuizCharacters(vocab);
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setUpcomingQuestion(vocab[2]);
+  ctx.__setMode('audio-to-meaning');
+  ctx.window.playEnglishTTS = (text) => {
+    spoken.push(text);
+    return true;
+  };
+  ctx.setTimeout = (fn) => {
+    fn();
+    return 1;
+  };
+  ctx.clearTimeout = () => {};
+
+  ctx.checkFuzzyAnswer('person');
+
+  assert.deepStrictEqual(spoken, ['middle'], 'audio-to-meaning wrong answers should speak the English meaning');
+  console.log('✓ audio-to-meaning wrong answers speak the English meaning');
 })();
 
 (function testEnsureAudioOriginsPreconnectedAddsRemoteHintsOnce() {

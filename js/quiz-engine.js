@@ -143,6 +143,7 @@ let previewQueueSize = 3;
 let previewElement = null;
 let previewListElement = null;
 let previewApplicableModes = null;
+let pendingMeaningAnnouncementTimeout = null;
 let dictationParts = [];
 let dictationPartElements = [];
 let dictationTotalSyllables = 0;
@@ -371,6 +372,49 @@ function isTrackpadDrawMode(modeName = mode) {
 
 function isDrawCharLikeMode(modeName = mode) {
     return modeName === 'draw-char' || modeName === 'trackpad-draw';
+}
+
+function extractHanziChars(text = '') {
+    return Array.from(String(text || '')).filter(char => isHanziCharacter(char));
+}
+
+function getDrawQuestionPool(sourcePool = quizCharacters) {
+    const pool = Array.isArray(sourcePool) ? sourcePool : [];
+    const seen = new Set();
+    const result = [];
+
+    const pushItem = (item) => {
+        if (!item || !item.char) return;
+        const normalizedChar = normalizeDrawAnswer(item.char);
+        if (!normalizedChar || normalizedChar.length !== 1 || seen.has(normalizedChar)) return;
+        seen.add(normalizedChar);
+        result.push({
+            ...item,
+            char: normalizedChar,
+            pinyin: item.pinyin || '',
+            meaning: item.meaning || ''
+        });
+    };
+
+    pool.forEach((item) => {
+        if (!item || !item.char) return;
+        const normalizedChar = normalizeDrawAnswer(item.char);
+        if (normalizedChar.length === 1) {
+            pushItem(item);
+            return;
+        }
+
+        extractHanziChars(item.char).forEach((char) => {
+            const charInfo = (lessonCharMap && lessonCharMap[char])
+                ? lessonCharMap[char]
+                : null;
+            if (charInfo) {
+                pushItem(charInfo);
+            }
+        });
+    });
+
+    return result;
 }
 
 function requiresDrawMeaningSelection(modeName = mode) {
@@ -6783,12 +6827,18 @@ function selectNextQuestion(exclusions = []) {
         return pool.length ? selectRandom(pool) : null;
     }
     let sourcePool = quizCharacters;
+    if (isDrawCharLikeMode()) {
+        sourcePool = getDrawQuestionPool(sourcePool);
+    }
     if (isBatchMode()) {
         sourcePool = getBatchQuestionPool();
     } else if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
         sourcePool = getAdaptiveQuestionPool();
     } else if (schedulerMode === SCHEDULER_MODES.FEED || schedulerMode === SCHEDULER_MODES.FEED_SR || schedulerMode === SCHEDULER_MODES.FEED_EEG) {
         sourcePool = getFeedQuestionPool();
+    }
+    if (isDrawCharLikeMode()) {
+        sourcePool = getDrawQuestionPool(sourcePool);
     }
     const exclusionSet = buildRecentCorrectExclusionSet(sourcePool, Array.from(baseExclusionSet));
     const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
@@ -8550,6 +8600,10 @@ function attachAudioSectionToInlineSlot(slotId = 'inlinePromptAudioSlot') {
 
 function resetPromptAudioState(options = {}) {
     const { stopPlayback = true } = options;
+    if (pendingMeaningAnnouncementTimeout) {
+        clearTimeout(pendingMeaningAnnouncementTimeout);
+        pendingMeaningAnnouncementTimeout = null;
+    }
     if (stopPlayback) {
         if (typeof stopActiveAudio === 'function') {
             stopActiveAudio();
@@ -8561,6 +8615,31 @@ function resetPromptAudioState(options = {}) {
         }
     }
     window.currentAudioPlayFunc = null;
+}
+
+function playMeaningFeedbackAudio(question, options = {}) {
+    const { delay = 220 } = options;
+    const meaningText = (question?.meaning || '').toString().trim();
+    if (!meaningText || typeof window.playEnglishTTS !== 'function') {
+        return false;
+    }
+
+    if (pendingMeaningAnnouncementTimeout) {
+        clearTimeout(pendingMeaningAnnouncementTimeout);
+        pendingMeaningAnnouncementTimeout = null;
+    }
+
+    const speak = () => {
+        pendingMeaningAnnouncementTimeout = null;
+        return window.playEnglishTTS(meaningText);
+    };
+
+    if (delay > 0) {
+        pendingMeaningAnnouncementTimeout = setTimeout(speak, delay);
+        return true;
+    }
+
+    return speak();
 }
 
 function warmPromptAudio(question) {
@@ -10579,6 +10658,9 @@ function checkFuzzyAnswer(answer) {
         generateFuzzyMeaningOptions();
         feedback.textContent = '';
         hint.textContent = '';
+        if (mode === 'audio-to-meaning') {
+            playMeaningFeedbackAudio(currentQuestion);
+        }
         return;
     }
 
@@ -11123,6 +11205,9 @@ function checkBlendAnswer(answer) {
     generateBlendOptions();
     feedback.textContent = '';
     hint.textContent = '';
+    if (dir === 'audio-to-meaning') {
+        playMeaningFeedbackAudio(currentQuestion);
+    }
 }
 
 function checkMultipleChoice(answer) {

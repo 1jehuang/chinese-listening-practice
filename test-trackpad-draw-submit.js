@@ -267,6 +267,23 @@ function createContext() {
       updateCurrentWordConfidence = function () {};
       markSchedulerServed = function () {};
     }
+    function __setDrawQuestionPoolState(chars, datasets) {
+      quizCharacters = Array.isArray(chars) ? chars : [];
+      window.__LESSON_DATASETS__ = datasets || {};
+      buildLessonCharMap();
+      currentQuestion = null;
+      window.currentQuestion = null;
+      mode = 'trackpad-draw';
+      schedulerMode = 'random';
+      recentCorrectChars = [];
+    }
+    function __getDrawQuestionPoolChars() {
+      return getDrawQuestionPool().map(item => item.char);
+    }
+    function __selectTrackpadQuestion() {
+      const next = selectNextQuestion();
+      return next ? { char: next.char, pinyin: next.pinyin, meaning: next.meaning } : null;
+    }
     function __getTrackpadDrawTestState() {
       return {
         score,
@@ -309,6 +326,31 @@ async function main() {
   assert.match(state.feedback, /Correct! 学 \(xué\)/, 'feedback should show the recognized correct answer');
 
   console.log('✓ trackpad draw submit flushes pending OCR before grading');
+
+  const combinedWords = [
+    { char: '重视', pinyin: 'zhòngshì', meaning: 'to emphasize' },
+    { char: '教育', pinyin: 'jiàoyù', meaning: 'education' }
+  ];
+  const datasets = {
+    dushu: {
+      charMap: [
+        { char: '重', pinyin: 'zhòng', meaning: 'heavy; important' },
+        { char: '视', pinyin: 'shì', meaning: 'to regard' },
+        { char: '教', pinyin: 'jiào', meaning: 'to teach' },
+        { char: '育', pinyin: 'yù', meaning: 'to educate' }
+      ]
+    }
+  };
+
+  ctx.__setDrawQuestionPoolState(combinedWords, datasets);
+  const drawPoolChars = Array.from(ctx.__getDrawQuestionPoolChars());
+  assert.deepStrictEqual(drawPoolChars, ['重', '视', '教', '育'], 'trackpad draw should expand combined vocab into per-character prompts');
+
+  const selected = ctx.__selectTrackpadQuestion();
+  assert.ok(selected, 'trackpad draw should still be able to select a question from combined vocab');
+  assert.strictEqual(selected.char.length, 1, 'trackpad draw should select a single-character prompt on combined vocab pages');
+
+  console.log('✓ trackpad draw uses per-character prompts for combined vocab pages');
 }
 
 main().catch((error) => {

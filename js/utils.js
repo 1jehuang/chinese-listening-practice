@@ -548,6 +548,26 @@ function getChineseVoice() {
     return preferred || null;
 }
 
+function getEnglishVoice() {
+    if (!voicesLoaded) loadVoices();
+    const enVoices = cachedVoices.filter(v => typeof v.lang === 'string' && v.lang.toLowerCase().startsWith('en'));
+    if (!enVoices.length) return null;
+
+    const isRobotic = (voice) => {
+        const name = (voice?.name || '').toLowerCase();
+        const uri = (voice?.voiceURI || '').toLowerCase();
+        return name.includes('espeak') || name.includes('festival') || name.includes('flite') ||
+            uri.includes('espeak') || uri.includes('festival') || uri.includes('flite');
+    };
+
+    const preferred = enVoices.find(v => v.lang === 'en-US' && !isRobotic(v)) ||
+        enVoices.find(v => v.lang === 'en-GB' && !isRobotic(v)) ||
+        enVoices.find(v => !isRobotic(v)) ||
+        enVoices[0];
+
+    return preferred || null;
+}
+
 function isFirefoxBrowser() {
     return typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
 }
@@ -649,6 +669,46 @@ function playTTS(chineseChar) {
         speechSynthesis.speak(utterance);
     }, 10);
 }
+
+function playEnglishTTS(text) {
+    stopActiveAudio();
+
+    const trimmed = (text || '').toString().trim();
+    if (!trimmed) return false;
+
+    const hasSpeech = typeof window !== 'undefined' &&
+        typeof window.speechSynthesis !== 'undefined' &&
+        typeof window.SpeechSynthesisUtterance !== 'undefined';
+
+    if (!hasSpeech) {
+        console.warn('English speech synthesis is not supported in this browser.');
+        return false;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(trimmed);
+    const englishVoice = getEnglishVoice();
+    utterance.lang = englishVoice?.lang || 'en-US';
+    utterance.rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
+    if (englishVoice) {
+        utterance.voice = englishVoice;
+    }
+
+    try {
+        speechSynthesis.cancel();
+    } catch (_) {}
+
+    setTimeout(() => {
+        try {
+            speechSynthesis.speak(utterance);
+        } catch (err) {
+            console.warn('Failed to speak English meaning audio', err);
+        }
+    }, 10);
+
+    return true;
+}
+
+globalScope.playEnglishTTS = playEnglishTTS;
 
 function mapRateToSentenceSpeed(rate) {
     const clamped = clampTtsRate(rate);
