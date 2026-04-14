@@ -300,6 +300,8 @@ function createContext() {
     function __getCurrentMode() { return mode; }
     function __setStoredQuizMode(storedMode) { localStorage.setItem(getQuizModeKey(), storedMode); }
     function __loadQuizMode() { loadQuizMode(); }
+    function __getCurrentQuestionChar() { return currentQuestion ? currentQuestion.char : null; }
+    function __getUpcomingQuestionChar() { return upcomingQuestion ? upcomingQuestion.char : null; }
     function __getWordMarking(char) { return getWordMarking(char); }
     function __getLatestMarkingToastText() {
       const toast = (document.body.children || []).find(child => child && String(child.className || '').includes('marking-toast'));
@@ -638,6 +640,33 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
 
   assert.deepStrictEqual(spoken, ['middle'], 'audio-to-meaning wrong answers should speak the English meaning');
   console.log('✓ audio-to-meaning wrong answers speak the English meaning');
+})();
+
+(function testAudioMeaningWrongAnswerRepeatsSameWordNext() {
+  const { ctx } = createContext();
+  const spoken = [];
+  ctx.__initTestDomRefs();
+  ctx.__setQuizCharacters(vocab);
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setUpcomingQuestion(vocab[2]);
+  ctx.__setMode('audio-to-meaning');
+  ctx.window.playEnglishTTS = (text) => {
+    spoken.push(text);
+    return true;
+  };
+  ctx.setTimeout = (fn) => {
+    fn();
+    return 1;
+  };
+  ctx.clearTimeout = () => {};
+
+  ctx.checkFuzzyAnswer('person');
+  assert.strictEqual(ctx.__getUpcomingQuestionChar(), '中', 'audio-to-meaning wrong answers should reserve the same word as the upcoming repeat');
+
+  ctx.checkFuzzyAnswer('middle');
+  assert.strictEqual(ctx.__getCurrentQuestionChar(), '中', 'after a wrong answer, the next audio-to-meaning card should repeat the same word');
+  assert.deepStrictEqual(spoken, ['middle'], 'wrong-answer repeat flow should still speak the English meaning once');
+  console.log('✓ audio-to-meaning wrong answers repeat the same word next');
 })();
 
 (function testEnsureAudioOriginsPreconnectedAddsRemoteHintsOnce() {

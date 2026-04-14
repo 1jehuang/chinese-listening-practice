@@ -80,6 +80,11 @@ let previousQuestionResult = null; // 'correct' or 'incorrect'
 let upcomingQuestion = null;
 let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
+function reserveCurrentQuestionAsUpcomingRepeat() {
+    if (!currentQuestion || !currentQuestion.char) return;
+    upcomingQuestion = currentQuestion;
+}
+
 // Blend mode state
 let blendDirection = null; // current direction: 'char-to-meaning', 'char-to-pinyin', 'audio-to-meaning'
 let blendPreviousDirection = null; // direction of the previous question (for display in left column)
@@ -10656,6 +10661,10 @@ function checkFuzzyAnswer(answer) {
         if (fuzzyInput) {
             fuzzyInput.value = '';
             setTimeout(() => fuzzyInput.focus(), 0);
+        }
+
+        if (mode === 'audio-to-meaning') {
+            reserveCurrentQuestionAsUpcomingRepeat();
         }
 
         renderThreeColumnMeaningLayout();
