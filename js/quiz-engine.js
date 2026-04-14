@@ -511,6 +511,40 @@ function buildDrawPromptHtml(question, subtitleHtml = '') {
     return `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div>${subtitleHtml}${sourceContext}</div>`;
 }
 
+function getFullscreenDrawPromptText(question) {
+    if (!question) {
+        return 'Draw';
+    }
+
+    const displayTarget = getDrawDisplayTarget(question.char);
+    const displayPinyin = prettifyHandwritingPinyin(question.pinyin || '');
+    const sourceWord = String(question.sourceWord || '').trim();
+
+    if (isTrackpadDrawMode()) {
+        if (sourceWord && sourceWord !== question.char && displayTarget) {
+            return `Draw ${displayTarget} from ${sourceWord}`;
+        }
+        if (displayTarget && displayTarget.length > 1) {
+            return `Draw the full word ${displayTarget}`;
+        }
+        if (displayTarget) {
+            return `Draw ${displayTarget}`;
+        }
+        if (displayPinyin) {
+            return `Draw ${displayPinyin}`;
+        }
+        return 'Draw';
+    }
+
+    if (displayPinyin) {
+        return `Draw: ${displayPinyin}`;
+    }
+    if (displayTarget) {
+        return `Draw: ${displayTarget}`;
+    }
+    return 'Draw';
+}
+
 function requiresDrawMeaningSelection(modeName = mode) {
     return modeName === 'draw-char';
 }
@@ -16076,6 +16110,23 @@ let fullscreenCanvas, fullscreenCtx;
 let isFullscreenMode = false;
 let isFullscreenLearnMode = false;
 let learnModeBlinkInterval = null;
+let fullscreenResizeHandler = null;
+
+function teardownFullscreenDrawingSession() {
+    if (fullscreenResizeHandler) {
+        window.removeEventListener('resize', fullscreenResizeHandler);
+        fullscreenResizeHandler = null;
+    }
+    if (fullscreenCanvas) {
+        fullscreenCanvas.removeEventListener('mousedown', startFullscreenDrawing);
+        fullscreenCanvas.removeEventListener('mousemove', drawFullscreen);
+        fullscreenCanvas.removeEventListener('mouseup', stopFullscreenDrawing);
+        fullscreenCanvas.removeEventListener('mouseout', stopFullscreenDrawing);
+        fullscreenCanvas.removeEventListener('touchstart', handleFullscreenTouchStart);
+        fullscreenCanvas.removeEventListener('touchmove', handleFullscreenTouchMove);
+        fullscreenCanvas.removeEventListener('touchend', stopFullscreenDrawing);
+    }
+}
 
 function enterFullscreenDrawing() {
     const container = document.getElementById('fullscreenDrawContainer');
@@ -16083,6 +16134,8 @@ function enterFullscreenDrawing() {
     if (!currentQuestion) {
         generateQuestion();
     }
+
+    teardownFullscreenDrawingSession();
 
     isFullscreenMode = true;
     container.classList.remove('hidden');
@@ -16112,14 +16165,14 @@ function enterFullscreenDrawing() {
     fullscreenCanvas.style.webkitTapHighlightColor = 'transparent';
     fullscreenCanvas.style.overscrollBehavior = 'contain';
 
-    const resizeFullscreenCanvas = () => {
+    fullscreenResizeHandler = () => {
         const dpr = window.devicePixelRatio || 1;
         fullscreenCanvas.width = window.innerWidth * dpr;
         fullscreenCanvas.height = window.innerHeight * dpr;
         fullscreenCanvas.style.width = window.innerWidth + 'px';
         fullscreenCanvas.style.height = window.innerHeight + 'px';
         if (fullscreenCtx) {
-            fullscreenCtx.scale(dpr, dpr);
+            fullscreenCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
             fullscreenCtx.lineWidth = 6;
             fullscreenCtx.lineCap = 'round';
             fullscreenCtx.lineJoin = 'round';
@@ -16127,8 +16180,8 @@ function enterFullscreenDrawing() {
             redrawFullscreenCanvas();
         }
     };
-    resizeFullscreenCanvas();
-    window.addEventListener('resize', resizeFullscreenCanvas);
+    fullscreenResizeHandler();
+    window.addEventListener('resize', fullscreenResizeHandler);
 
     // Add event listeners
     fullscreenCanvas.addEventListener('mousedown', startFullscreenDrawing);
@@ -16200,6 +16253,7 @@ function exitFullscreenDrawing() {
         container.classList.add('hidden');
     }
     isFullscreenMode = false;
+    teardownFullscreenDrawingSession();
 
     // Clean up learn mode if active
     if (isFullscreenLearnMode) {
@@ -16210,6 +16264,8 @@ function exitFullscreenDrawing() {
     if (fullscreenCanvas && fullscreenCtx) {
         fullscreenCtx.clearRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
     }
+    fullscreenCanvas = null;
+    fullscreenCtx = null;
     clearDrawHintContext(true);
 }
 
