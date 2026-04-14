@@ -487,9 +487,41 @@ function buildDrawSourceContextHtml(question) {
     return `<div class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${sourceWord}${details ? ` · ${details}` : ''}</div>`;
 }
 
+function getTrackpadPromptPrimaryText(question) {
+    if (!question) return '';
+    return String(question.meaning || '').trim() || String(question.sourceMeaning || '').trim() || '';
+}
+
+function getTrackpadPromptSecondaryText(question) {
+    if (!question) return '';
+    return prettifyHandwritingPinyin(question.pinyin || question.sourcePinyin || '');
+}
+
+function getTrackpadPromptSummary(question) {
+    if (!question) return '';
+    const primary = getTrackpadPromptPrimaryText(question);
+    const secondary = getTrackpadPromptSecondaryText(question);
+    if (primary && secondary) {
+        return `${primary} (${secondary})`;
+    }
+    if (primary) return primary;
+    if (secondary) return secondary;
+    return getDrawDisplayTarget(question.char);
+}
+
 function buildDrawPromptHtml(question, subtitleHtml = '') {
     if (!question) {
         return `<div class="text-center mt-4 mb-2">${subtitleHtml}</div>`;
+    }
+
+    if (isTrackpadDrawMode()) {
+        const primaryText = escapeHtml(getTrackpadPromptPrimaryText(question));
+        const secondaryText = escapeHtml(getTrackpadPromptSecondaryText(question));
+        const sourceContext = buildDrawSourceContextHtml(question);
+        const fallbackTarget = escapeHtml(getDrawDisplayTarget(question.char));
+        const heading = primaryText || fallbackTarget;
+        const subheading = secondaryText || (!primaryText ? fallbackTarget : '');
+        return `<div class="text-center mt-4 mb-2"><div class="text-3xl font-bold text-gray-700">${heading}</div>${subheading ? `<div class="text-lg text-gray-500 mt-2">${subheading}</div>` : ''}${subtitleHtml}${sourceContext}</div>`;
     }
 
     if (question.sourceWord && question.sourceWord !== question.char) {
@@ -521,17 +553,18 @@ function getFullscreenDrawPromptText(question) {
     const sourceWord = String(question.sourceWord || '').trim();
 
     if (isTrackpadDrawMode()) {
+        const promptSummary = getTrackpadPromptSummary(question);
+        if (promptSummary) {
+            return `Draw: ${promptSummary}`;
+        }
         if (sourceWord && sourceWord !== question.char && displayTarget) {
             return `Draw ${displayTarget} from ${sourceWord}`;
         }
-        if (displayTarget && displayTarget.length > 1) {
-            return `Draw the full word ${displayTarget}`;
+        if (displayPinyin) {
+            return `Draw: ${displayPinyin}`;
         }
         if (displayTarget) {
-            return `Draw ${displayTarget}`;
-        }
-        if (displayPinyin) {
-            return `Draw ${displayPinyin}`;
+            return `Draw: ${displayTarget}`;
         }
         return 'Draw';
     }
