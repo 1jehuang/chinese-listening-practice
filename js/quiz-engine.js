@@ -448,6 +448,30 @@ function buildDrawSourceContextHtml(question) {
     return `<div class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${sourceWord}${details ? ` · ${details}` : ''}</div>`;
 }
 
+function buildDrawPromptHtml(question, subtitleHtml = '') {
+    if (!question) {
+        return `<div class="text-center mt-4 mb-2">${subtitleHtml}</div>`;
+    }
+
+    if (question.sourceWord && question.sourceWord !== question.char) {
+        const sourceWord = escapeHtml(question.sourceWord);
+        const sourcePinyin = escapeHtml(prettifyHandwritingPinyin(question.sourcePinyin || ''));
+        const sourceMeaning = escapeHtml(question.sourceMeaning || '');
+        const targetChar = escapeHtml(question.char || '');
+        const targetPinyin = escapeHtml(prettifyHandwritingPinyin(question.pinyin || ''));
+        const positionLabel = question.sourceCharCount > 1 && question.sourceCharIndex >= 0
+            ? `Draw character ${question.sourceCharIndex + 1} of ${question.sourceCharCount}`
+            : 'Draw this character';
+        const sourceDetails = [sourcePinyin, sourceMeaning].filter(Boolean).join(' · ');
+        const targetDetails = [targetChar, targetPinyin].filter(Boolean).join(' · ');
+        return `<div class="text-center mt-4 mb-2"><div class="text-5xl font-bold text-gray-700">${sourceWord}</div>${sourceDetails ? `<div class="text-lg text-gray-500 mt-2">${sourceDetails}</div>` : ''}${subtitleHtml}<div class="text-sm text-gray-500 mt-3"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${targetDetails}</div></div>`;
+    }
+
+    const displayPinyin = escapeHtml(prettifyHandwritingPinyin(question.pinyin || ''));
+    const sourceContext = buildDrawSourceContextHtml(question);
+    return `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div>${subtitleHtml}${sourceContext}</div>`;
+}
+
 function requiresDrawMeaningSelection(modeName = mode) {
     return modeName === 'draw-char';
 }
@@ -3085,38 +3109,31 @@ function loadQuizMode() {
         // URL parameter takes priority over localStorage
         const urlMode = getModeFromUrl();
         if (urlMode) {
-            const btn = document.querySelector(`[data-mode="${urlMode}"]`);
-            if (btn) {
-                if (urlMode === 'composer') {
-                    composerEnabled = true;
-                    saveComposerState();
-                    const stage = getComposerCurrentStage();
-                    mode = stage ? stage.mode : mode;
-                } else {
-                    mode = urlMode;
-                    composerEnabled = false;
-                    saveComposerState();
-                }
-                return; // URL mode found and valid
+            if (urlMode === 'composer') {
+                composerEnabled = true;
+                saveComposerState();
+                const stage = getComposerCurrentStage();
+                mode = stage ? stage.mode : mode;
+            } else {
+                mode = urlMode;
+                composerEnabled = false;
+                saveComposerState();
             }
+            return;
         }
 
         // Fall back to localStorage
         const stored = localStorage.getItem(getQuizModeKey());
         if (stored) {
-            // Verify the mode button exists on this page
-            const btn = document.querySelector(`[data-mode="${stored}"]`);
-            if (btn) {
-                if (stored === 'composer') {
-                    composerEnabled = true;
-                    saveComposerState();
-                    const stage = getComposerCurrentStage();
-                    mode = stage ? stage.mode : mode;
-                } else {
-                    mode = stored;
-                    composerEnabled = false;
-                    saveComposerState();
-                }
+            if (stored === 'composer') {
+                composerEnabled = true;
+                saveComposerState();
+                const stage = getComposerCurrentStage();
+                mode = stage ? stage.mode : mode;
+            } else {
+                mode = stored;
+                composerEnabled = false;
+                saveComposerState();
             }
         }
     } catch (e) {
@@ -8113,12 +8130,10 @@ function renderQuestionUiForHandwritingModes() {
     }
 
     if (isDrawCharLikeMode() && drawCharMode) {
-        const displayPinyin = prettifyHandwritingPinyin(currentQuestion.pinyin);
         const subtitle = isTrackpadDrawMode()
             ? '<div class="text-sm text-gray-500 mt-1">Native absolute trackpad mode</div>'
             : '';
-        const sourceContext = buildDrawSourceContextHtml(currentQuestion);
-        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${escapeHtml(displayPinyin)}</div>${subtitle}${sourceContext}</div>`;
+        questionDisplay.innerHTML = buildDrawPromptHtml(currentQuestion, subtitle);
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();

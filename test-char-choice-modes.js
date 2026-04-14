@@ -297,6 +297,9 @@ function createContext() {
       const indicator = (document.body.children || []).find(child => child && child.id === 'currentWordConfidence');
       return indicator ? (indicator.innerHTML || '') : '';
     }
+    function __getCurrentMode() { return mode; }
+    function __setStoredQuizMode(storedMode) { localStorage.setItem(getQuizModeKey(), storedMode); }
+    function __loadQuizMode() { loadQuizMode(); }
     function __getWordMarking(char) { return getWordMarking(char); }
     function __getLatestMarkingToastText() {
       const toast = (document.body.children || []).find(child => child && String(child.className || '').includes('marking-toast'));
@@ -563,6 +566,38 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   assert.strictEqual(ctx.__getWordMarking('中'), 'needs-work', 'needs-work hotkey should mark the current word');
   assert.match(ctx.__getLatestMarkingToastText(), /needs work/i, 'needs-work hotkey should show a visible confirmation toast');
   console.log('✓ needs-work hotkey marks the current word and shows a toast');
+})();
+
+(function testStoredQuizModeLoadsWithoutModeButtonsPresent() {
+  const { ctx } = createContext();
+  ctx.__setMode('char-to-meaning-type');
+  ctx.__setStoredQuizMode('audio-to-meaning');
+
+  ctx.__loadQuizMode();
+
+  assert.strictEqual(ctx.__getCurrentMode(), 'audio-to-meaning', 'saved quiz mode should restore even before mode buttons are mounted');
+  console.log('✓ saved quiz mode restores on refresh without requiring mounted mode buttons');
+})();
+
+(function testCombinedTrackpadDrawPromptShowsFullSourceWord() {
+  const { ctx } = createContext();
+  const html = ctx.buildDrawPromptHtml({
+    char: '茶',
+    pinyin: 'chá',
+    meaning: 'tea',
+    sourceWord: '茶叶蛋',
+    sourcePinyin: 'chá yè dàn',
+    sourceMeaning: 'tea egg',
+    sourceCharIndex: 0,
+    sourceCharCount: 3
+  }, '<div class="text-sm text-gray-500 mt-1">Native absolute trackpad mode</div>');
+
+  assert.ok(html.includes('茶叶蛋'), 'combined draw prompt should show the full source vocab word');
+  assert.ok(html.includes('chá yè dàn'), 'combined draw prompt should show the source-word pinyin');
+  assert.ok(html.includes('tea egg'), 'combined draw prompt should show the source-word meaning');
+  assert.ok(html.includes('Draw character 1 of 3'), 'combined draw prompt should still clarify which character to draw');
+  assert.ok(html.includes('茶'), 'combined draw prompt should still include the actual draw target character');
+  console.log('✓ combined trackpad draw prompts show the full source word context');
 })();
 
 (function testMeaningFeedbackAudioSpeaksEnglishMeaning() {
