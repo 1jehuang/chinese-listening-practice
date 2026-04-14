@@ -396,6 +396,7 @@
     title,
     subtitle,
     sentence,
+    sentenceHtml,
     prompt,
     helperText,
     difficultyLabel,
@@ -439,7 +440,13 @@
         selected: option.id === activeDifficulty,
         onSelect: onSelectDifficulty
       }
-    ))), difficultyDescription ? /* @__PURE__ */ k("div", { className: "sentence-mode-description" }, difficultyDescription) : null) : null), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-card--sentence" }, /* @__PURE__ */ k("div", { className: "sentence-mode-subtitle" }, subtitle), /* @__PURE__ */ k("div", { className: "sentence-mode-sentence" }, sentence)), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-card--prompt" }, /* @__PURE__ */ k("div", { className: "sentence-mode-prompt" }, "\u{1F449} ", prompt), /* @__PURE__ */ k("div", { className: "sentence-mode-helper" }, helperText)), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-answer-panel" }, /* @__PURE__ */ k("div", { className: "sentence-mode-answer-label" }, "Answer choices"), /* @__PURE__ */ k("div", { className: "sentence-mode-filter-row" }, /* @__PURE__ */ k(
+    ))), difficultyDescription ? /* @__PURE__ */ k("div", { className: "sentence-mode-description" }, difficultyDescription) : null) : null), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-card--sentence" }, /* @__PURE__ */ k("div", { className: "sentence-mode-subtitle" }, subtitle), /* @__PURE__ */ k(
+      "div",
+      {
+        className: "sentence-mode-sentence",
+        dangerouslySetInnerHTML: { __html: sentenceHtml || sentence || "" }
+      }
+    )), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-card--prompt" }, /* @__PURE__ */ k("div", { className: "sentence-mode-prompt" }, "\u{1F449} ", prompt), /* @__PURE__ */ k("div", { className: "sentence-mode-helper" }, helperText)), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-answer-panel" }, /* @__PURE__ */ k("div", { className: "sentence-mode-answer-label" }, "Answer choices"), /* @__PURE__ */ k("div", { className: "sentence-mode-filter-row" }, /* @__PURE__ */ k(
       "input",
       {
         ref: inputRef,

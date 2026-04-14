@@ -413,15 +413,17 @@ function extractHanziChars(text = '') {
     return Array.from(String(text || '')).filter(char => isHanziCharacter(char));
 }
 
-function getDrawQuestionPool(sourcePool = quizCharacters) {
+function getDrawQuestionPool(sourcePool = quizCharacters, options = {}) {
     const pool = Array.isArray(sourcePool) ? sourcePool : [];
     const seen = new Set();
     const result = [];
+    const splitMultiCharWords = options.splitMultiCharWords !== false;
 
     const pushItem = (item, sourceMeta = null) => {
         if (!item || !item.char) return;
         const normalizedChar = normalizeDrawAnswer(item.char);
-        if (!normalizedChar || normalizedChar.length !== 1 || seen.has(normalizedChar)) return;
+        const allowMultiChar = !splitMultiCharWords;
+        if (!normalizedChar || (!allowMultiChar && normalizedChar.length !== 1) || seen.has(normalizedChar)) return;
         seen.add(normalizedChar);
         result.push({
             ...item,
@@ -439,7 +441,7 @@ function getDrawQuestionPool(sourcePool = quizCharacters) {
     pool.forEach((item) => {
         if (!item || !item.char) return;
         const normalizedChar = normalizeDrawAnswer(item.char);
-        if (normalizedChar.length === 1) {
+        if (normalizedChar.length === 1 || !splitMultiCharWords) {
             pushItem(item);
             return;
         }
@@ -6884,7 +6886,7 @@ function selectNextQuestion(exclusions = []) {
     }
     let sourcePool = quizCharacters;
     if (isDrawCharLikeMode()) {
-        sourcePool = getDrawQuestionPool(sourcePool);
+        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: !isTrackpadDrawMode() });
     }
     if (isBatchMode()) {
         sourcePool = getBatchQuestionPool();
@@ -6894,7 +6896,7 @@ function selectNextQuestion(exclusions = []) {
         sourcePool = getFeedQuestionPool();
     }
     if (isDrawCharLikeMode()) {
-        sourcePool = getDrawQuestionPool(sourcePool);
+        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: !isTrackpadDrawMode() });
     }
     const focused = filterPoolToNeedsWorkMarkedWords(sourcePool);
     const exclusionSet = buildRecentCorrectExclusionSet(focused.pool, Array.from(baseExclusionSet));
@@ -16084,7 +16086,7 @@ function enterFullscreenDrawing() {
     // Update prompt
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
-        prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
+        prompt.textContent = getFullscreenDrawPromptText(currentQuestion);
     }
 
     updateFullscreenConfidence();
@@ -16620,7 +16622,7 @@ async function submitFullscreenDrawing() {
             generateQuestion();
             const prompt = document.getElementById('fullscreenPrompt');
             if (prompt && currentQuestion) {
-                prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
+                prompt.textContent = getFullscreenDrawPromptText(currentQuestion);
             }
             renderDrawMeaningChoices('fullscreenMeaningChoices');
 
@@ -16674,7 +16676,7 @@ function nextFullscreenQuestion() {
 
     const prompt = document.getElementById('fullscreenPrompt');
     if (prompt && currentQuestion) {
-        prompt.textContent = `Draw: ${currentQuestion.pinyin}`;
+        prompt.textContent = getFullscreenDrawPromptText(currentQuestion);
     }
 
     updateFullscreenConfidence();

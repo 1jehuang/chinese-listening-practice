@@ -1042,6 +1042,33 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   console.log('✓ tutorial mode generates a tiny fallback example when dataset matches are unavailable');
 })();
 
+(function testSentenceHighlightBoldsTargetWord() {
+  const { ctx } = createContext();
+  const html = ctx.__highlightSentenceModeTarget('中国人都很重视教育。', '重视');
+  assert.ok(html.includes('<strong'), 'sentence highlighting should use bold emphasis');
+  assert.ok(html.includes('重视'), 'sentence highlighting should keep the target word visible');
+  console.log('✓ sentence mode bolds the target word inside the sentence');
+})();
+
+(function testTrackpadDrawPoolKeepsWholeWords() {
+  const { ctx } = createContext();
+  const pool = ctx.__getDrawQuestionPool([
+    { char: '读书', pinyin: 'dúshū', meaning: 'to study' },
+    { char: '重视', pinyin: 'zhòngshì', meaning: 'to value highly' }
+  ], { splitMultiCharWords: false });
+  assert.deepStrictEqual(pool.map(item => item.char), ['读书', '重视'], 'trackpad draw should keep whole words instead of splitting them into characters');
+  console.log('✓ trackpad draw question pool keeps full words');
+})();
+
+(function testTrackpadPromptShowsWholeWordWithoutPerCharacterStep() {
+  const { ctx } = createContext();
+  const html = ctx.__buildDrawPromptHtml({ char: '读书', pinyin: 'dúshū', meaning: 'to study' }, 'trackpad-draw');
+  assert.ok(html.includes('读书'), 'trackpad prompt should show the full target word');
+  assert.ok(html.includes('Draw the full word'), 'trackpad prompt should explicitly tell the learner to draw the full word');
+  assert.ok(!html.includes('character 1 of 2'), 'trackpad prompt should not show per-character progress text');
+  console.log('✓ trackpad draw prompt shows only the full word target');
+})();
+
 (function testTutorialModeGenerateQuestionRendersTutorialCard() {
   const { ctx } = createContext();
   const word = { char: '喜欢', pinyin: 'xǐhuān', meaning: 'like', category: 'Common Verbs' };

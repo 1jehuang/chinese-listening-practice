@@ -135,7 +135,11 @@
             enablePreviewQueue: true,
             previewQueueSize: 1,
             previewElementId: 'upcomingCharacters',
-            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning', 'blend']
+            previewApplicableModes: ['char-to-meaning-type', 'char-to-meaning', 'audio-to-meaning', 'blend'],
+            sentenceModeDataset: window.__LESSON_DATASETS__['dushu'].sentenceMode.items,
+            sentenceModeDifficulties: window.__LESSON_DATASETS__['dushu'].sentenceMode.difficulties,
+            defaultSentenceDifficulty: 'micro',
+            sentenceModeFilterToQuizCharacters: true
         });
     </script>
 </body>

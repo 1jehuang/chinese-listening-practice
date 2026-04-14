@@ -53,6 +53,7 @@ function SentenceModeView({
   title,
   subtitle,
   sentence,
+  sentenceHtml,
   prompt,
   helperText,
   difficultyLabel,
@@ -116,7 +117,10 @@ function SentenceModeView({
 
       <div className="sentence-mode-card sentence-mode-card--sentence">
         <div className="sentence-mode-subtitle">{subtitle}</div>
-        <div className="sentence-mode-sentence">{sentence}</div>
+        <div
+          className="sentence-mode-sentence"
+          dangerouslySetInnerHTML={{ __html: sentenceHtml || sentence || '' }}
+        />
       </div>
 
       <div className="sentence-mode-card sentence-mode-card--prompt">
