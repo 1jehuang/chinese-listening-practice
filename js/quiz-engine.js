@@ -383,7 +383,7 @@ function getDrawQuestionPool(sourcePool = quizCharacters) {
     const seen = new Set();
     const result = [];
 
-    const pushItem = (item) => {
+    const pushItem = (item, sourceMeta = null) => {
         if (!item || !item.char) return;
         const normalizedChar = normalizeDrawAnswer(item.char);
         if (!normalizedChar || normalizedChar.length !== 1 || seen.has(normalizedChar)) return;
@@ -392,7 +392,12 @@ function getDrawQuestionPool(sourcePool = quizCharacters) {
             ...item,
             char: normalizedChar,
             pinyin: item.pinyin || '',
-            meaning: item.meaning || ''
+            meaning: item.meaning || '',
+            sourceWord: sourceMeta?.sourceWord || '',
+            sourceMeaning: sourceMeta?.sourceMeaning || '',
+            sourcePinyin: sourceMeta?.sourcePinyin || '',
+            sourceCharIndex: typeof sourceMeta?.sourceCharIndex === 'number' ? sourceMeta.sourceCharIndex : -1,
+            sourceCharCount: typeof sourceMeta?.sourceCharCount === 'number' ? sourceMeta.sourceCharCount : 0
         });
     };
 
@@ -404,17 +409,43 @@ function getDrawQuestionPool(sourcePool = quizCharacters) {
             return;
         }
 
-        extractHanziChars(item.char).forEach((char) => {
+        const chars = extractHanziChars(item.char);
+        chars.forEach((char, index) => {
             const charInfo = (lessonCharMap && lessonCharMap[char])
                 ? lessonCharMap[char]
                 : null;
+            const sourceMeta = {
+                sourceWord: item.char,
+                sourceMeaning: item.meaning || '',
+                sourcePinyin: item.pinyin || '',
+                sourceCharIndex: index,
+                sourceCharCount: chars.length
+            };
             if (charInfo) {
-                pushItem(charInfo);
+                pushItem(charInfo, sourceMeta);
+            } else {
+                pushItem({
+                    char,
+                    pinyin: '',
+                    meaning: ''
+                }, sourceMeta);
             }
         });
     });
 
     return result;
+}
+
+function buildDrawSourceContextHtml(question) {
+    if (!question?.sourceWord || question.sourceWord === question.char) return '';
+    const sourceWord = escapeHtml(question.sourceWord);
+    const sourceMeaning = escapeHtml(question.sourceMeaning || '');
+    const sourcePinyin = escapeHtml(prettifyHandwritingPinyin(question.sourcePinyin || ''));
+    const positionLabel = question.sourceCharCount > 1 && question.sourceCharIndex >= 0
+        ? `Character ${question.sourceCharIndex + 1} of ${question.sourceCharCount}`
+        : 'Part of word';
+    const details = [sourcePinyin, sourceMeaning].filter(Boolean).join(' · ');
+    return `<div class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${sourceWord}${details ? ` · ${details}` : ''}</div>`;
 }
 
 function requiresDrawMeaningSelection(modeName = mode) {
@@ -5771,9 +5802,6 @@ function ensureConfidencePanel() {
         .catch(() => {});
 }
 
-const CONFIDENCE_SECTIONED_THRESHOLD = 50; // use 3-section layout when deck exceeds this size
-const CONFIDENCE_SECTION_SIZE = 10;        // number of items per section in sectioned view
-
 function buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore) {
     const { item, stats, score } = entry;
     const served = stats.served || 0;
@@ -5878,68 +5906,28 @@ function buildConfidencePanelViewModel() {
     const formulaLabel = isBKT ? 'BKT' : 'heuristic';
     const goalText = allAboveGoal ? (isBKT ? ' · all mastered 🎉' : ` · all ≥ ${CONFIDENCE_GOAL} 🎉`) : '';
 
-    const pinnedLowest = buildConfidenceRowViewModel(scored[0], isBKT, minScore, maxScore);
-    const pinnedHighest = totalCount > 1
-        ? buildConfidenceRowViewModel(scored[totalCount - 1], isBKT, minScore, maxScore)
-        : null;
-    const scrollableEntries = totalCount > 2 ? scored.slice(1, -1) : [];
-    const scrollableCount = scrollableEntries.length;
+    const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, totalCount);
+    const visibleEntries = scored.slice(0, renderCount);
+    const scopeText = renderCount < totalCount
+        ? `Showing ${renderCount}/${totalCount} words`
+        : `${totalCount} words`;
 
-    let sections;
-    let summary;
-
-    if (scrollableCount > CONFIDENCE_SECTIONED_THRESHOLD) {
-        const sectionSize = CONFIDENCE_SECTION_SIZE;
-        const lowest = scrollableEntries.slice(0, sectionSize);
-        const middleStart = Math.floor((scrollableCount - sectionSize) / 2);
-        const middle = scrollableEntries.slice(middleStart, middleStart + sectionSize);
-        const highest = scrollableEntries.slice(-sectionSize).reverse();
-
-        sections = [
-            {
-                key: 'lowest',
-                title: `Lowest Confidence (${Math.min(sectionSize, lowest.length)})`,
-                colorClass: 'text-amber-600',
-                rows: lowest.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
-            },
-            {
-                key: 'middle',
-                title: `Middle (${Math.min(sectionSize, middle.length)})`,
-                colorClass: 'text-yellow-600',
-                rows: middle.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
-            },
-            {
-                key: 'highest',
-                title: `Highest Confidence (${Math.min(sectionSize, highest.length)})`,
-                colorClass: 'text-emerald-600',
-                rows: highest.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
-            }
-        ].filter(section => section.rows.length > 0);
-        summary = `${totalCount} words · extremes pinned · sectioned view · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
-    } else {
-        const renderCount = Math.min(CONFIDENCE_RENDER_LIMIT, scrollableCount);
-        const visible = scrollableEntries.slice(0, renderCount);
-        const scopeText = renderCount < scrollableCount
-            ? `Showing middle ${renderCount}/${scrollableCount}`
-            : `${totalCount} words`;
-
-        sections = visible.length ? [{
-            key: 'all',
-            title: visible.length && totalCount > 2 ? 'Middle' : '',
-            colorClass: '',
-            rows: visible.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
-        }] : [];
-        summary = `${scopeText} · extremes pinned · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
-    }
+    const sections = visibleEntries.length ? [{
+        key: 'all',
+        title: '',
+        colorClass: '',
+        rows: visibleEntries.map(entry => buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore))
+    }] : [];
+    const summary = `${scopeText} · full list · ${formulaLabel}${goalText} · skill: ${skillLabel}`;
 
     return {
         summary,
         goalReached: allAboveGoal,
         goalLabel: isBKT ? 'All mastered' : `All ≥ ${CONFIDENCE_GOAL}`,
-        pinnedLowest,
-        pinnedHighest,
+        pinnedLowest: null,
+        pinnedHighest: null,
         sections,
-        emptyMessage: totalCount > 0 ? 'No additional words between the pinned extremes.' : ''
+        emptyMessage: totalCount > 0 ? 'No words available to display.' : ''
     };
 }
 
@@ -8129,7 +8117,8 @@ function renderQuestionUiForHandwritingModes() {
         const subtitle = isTrackpadDrawMode()
             ? '<div class="text-sm text-gray-500 mt-1">Native absolute trackpad mode</div>'
             : '';
-        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${escapeHtml(displayPinyin)}</div>${subtitle}</div>`;
+        const sourceContext = buildDrawSourceContextHtml(currentQuestion);
+        questionDisplay.innerHTML = `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${escapeHtml(displayPinyin)}</div>${subtitle}${sourceContext}</div>`;
         drawCharMode.style.display = 'block';
         initCanvas();
         clearCanvas();

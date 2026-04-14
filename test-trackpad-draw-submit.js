@@ -280,9 +280,22 @@ function createContext() {
     function __getDrawQuestionPoolChars() {
       return getDrawQuestionPool().map(item => item.char);
     }
+    function __getDrawQuestionPoolEntries() {
+      return getDrawQuestionPool().map(item => ({
+        char: item.char,
+        sourceWord: item.sourceWord || '',
+        sourceMeaning: item.sourceMeaning || ''
+      }));
+    }
     function __selectTrackpadQuestion() {
       const next = selectNextQuestion();
-      return next ? { char: next.char, pinyin: next.pinyin, meaning: next.meaning } : null;
+      return next ? {
+        char: next.char,
+        pinyin: next.pinyin,
+        meaning: next.meaning,
+        sourceWord: next.sourceWord || '',
+        sourceMeaning: next.sourceMeaning || ''
+      } : null;
     }
     function __getTrackpadDrawTestState() {
       return {
@@ -344,7 +357,9 @@ async function main() {
 
   ctx.__setDrawQuestionPoolState(combinedWords, datasets);
   const drawPoolChars = Array.from(ctx.__getDrawQuestionPoolChars());
+  const drawPoolEntries = Array.from(ctx.__getDrawQuestionPoolEntries());
   assert.deepStrictEqual(drawPoolChars, ['重', '视', '教', '育'], 'trackpad draw should expand combined vocab into per-character prompts');
+  assert.ok(drawPoolEntries.every(entry => entry.sourceWord), 'expanded trackpad draw prompts should keep the original word context');
 
   const selected = ctx.__selectTrackpadQuestion();
   assert.ok(selected, 'trackpad draw should still be able to select a question from combined vocab');
