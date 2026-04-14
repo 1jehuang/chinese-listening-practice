@@ -281,5 +281,377 @@ window.__LESSON_DATASETS__['dushu'] = {
       { difficulty: 'source-full', target: '工程', sentence: '一个对音乐或画画儿有天分的孩子为了将来工作的考虑而改学会计或工程是常有的事。', meaning: 'It is common for a talented child in music or painting to switch to accounting or engineering for future work considerations.' },
       { difficulty: 'source-full', target: '难怪', sentence: '难怪许多人找到工作以后就再也不读书了。', meaning: 'No wonder many people stop reading entirely after they find a job.' }
     ]
-  }
+  },
+  structureSortMode: [
+      {
+          "id": "jishi-ye",
+          "structure": "即使 ... 也 ...",
+          "pattern": "即使 + condition, 也 + result",
+          "keyTitle": "How to use it",
+          "keyBody": "Use 即使 to introduce a strong concession, and pair it with 也 in the main clause.",
+          "keyExample": "即使家里穷困，他们也会尽力让孩子读书。",
+          "prompt": "Sort the examples by whether they correctly use 即使 ... 也 ....",
+          "validItems": [
+              {
+                  "text": "即使竞争很激烈，他也想继续深造。",
+                  "pinyin": "jí shǐ jìng zhēng hěn jī liè， tā yě xiǎng jì xù shēn zào。",
+                  "english": "Even if competition is intense, he still wants to continue advanced study."
+              },
+              {
+                  "text": "即使没有权力，他们也重视教育。",
+                  "pinyin": "jí shǐ méi yǒu quán lì， tā men yě zhòng shì jiào yù。",
+                  "english": "Even if they have no power, they still value education."
+              },
+              {
+                  "text": "即使入学不容易，她也会尽力。",
+                  "pinyin": "jí shǐ rù xué bù róng yì， tā yě huì jìn lì。",
+                  "english": "Even if getting into school is not easy, she will still do her best."
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "即使竞争很激烈，他想也继续深造。",
+                  "pinyin": "jí shǐ jìng zhēng hěn jī liè， tā xiǎng yě jì xù shēn zào。",
+                  "english": "Even if competition is intense, he still wants to continue advanced study."
+              },
+              {
+                  "text": "他们也重视教育，即使没有权力也。",
+                  "pinyin": "tā men yě zhòng shì jiào yù， jí shǐ méi yǒu quán lì yě。",
+                  "english": "Even if they have no power, they still value education."
+              },
+              {
+                  "text": "即使入学不容易，她会尽力也。",
+                  "pinyin": "jí shǐ rù xué bù róng yì， tā huì jìn lì yě。",
+                  "english": "Even if getting into school is not easy, she will still do her best."
+              }
+          ]
+      },
+      {
+          "id": "you-passive",
+          "structure": "由 + agent + verb",
+          "pattern": "X 由 + person / institution + verb",
+          "keyTitle": "How to use it",
+          "keyBody": "由 introduces the person or institution that carries out the action, often in formal writing.",
+          "keyExample": "这个制度由政府主持。",
+          "prompt": "Sort the examples by whether they correctly use 由 in this formal pattern.",
+          "validItems": [
+              {
+                  "text": "这个考试由学校主持。",
+                  "pinyin": "zhè ge kǎo shì yóu xué xiào zhǔ chí。",
+                  "english": "This exam is run by the school."
+              },
+              {
+                  "text": "这个制度由官员决定。",
+                  "pinyin": "zhè ge zhì dù yóu guān yuán jué dìng。",
+                  "english": "This system is decided by officials."
+              },
+              {
+                  "text": "这个活动由研究所安排。",
+                  "pinyin": "zhè ge huó dòng yóu yán jiū suǒ ān pái。",
+                  "english": "This activity is arranged by the institute."
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "这个考试学校由主持。",
+                  "pinyin": "zhè ge kǎo shì xué xiào yóu zhǔ chí。",
+                  "english": "This exam is run by the school."
+              },
+              {
+                  "text": "这个制度决定由官员。",
+                  "pinyin": "zhè ge zhì dù jué dìng yóu guān yuán。",
+                  "english": "This system is decided by officials."
+              },
+              {
+                  "text": "这个活动研究所由安排。",
+                  "pinyin": "zhè ge huó dòng yán jiū suǒ yóu ān pái。",
+                  "english": "This activity is arranged by the institute."
+              }
+          ]
+      },
+      {
+          "id": "tongguo-lai",
+          "structure": "通过 ... 来 ...",
+          "pattern": "通过 + method + 来 + goal / result",
+          "keyTitle": "How to use it",
+          "keyBody": "Use 通过 for the method or means, then 来 before the purpose or result.",
+          "keyExample": "他们想通过读书来提高地位。",
+          "prompt": "Sort the examples by whether they correctly use 通过 ... 来 ....",
+          "validItems": [
+              {
+                  "text": "很多人想通过教育来改变生活。",
+                  "pinyin": "hěn duō rén xiǎng tōng guò jiào yù lái gǎi biàn shēng huó。",
+                  "english": "Many people want to change their lives through education."
+              },
+              {
+                  "text": "她通过研究来解决问题。",
+                  "pinyin": "tā tōng guò yán jiū lái jiě jué wèn tí。",
+                  "english": "She solves problems through research."
+              },
+              {
+                  "text": "他们通过出国来继续深造。",
+                  "pinyin": "tā men tōng guò chū guó lái jì xù shēn zào。",
+                  "english": "They continue advanced study by going abroad."
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "很多人想通过教育改变来生活。",
+                  "pinyin": "hěn duō rén xiǎng tōng guò jiào yù gǎi biàn lái shēng huó。",
+                  "english": "Many people want to change their lives through education."
+              },
+              {
+                  "text": "她通过来研究解决问题。",
+                  "pinyin": "tā tōng guò lái yán jiū jiě jué wèn tí。",
+                  "english": "She solves problems through research."
+              },
+              {
+                  "text": "他们来通过出国继续深造。",
+                  "pinyin": "tā men lái tōng guò chū guó jì xù shēn zào。",
+                  "english": "They continue advanced study by going abroad."
+              }
+          ]
+      },
+      {
+          "id": "buru",
+          "structure": "A 不如 B",
+          "pattern": "A + 不如 + B",
+          "keyTitle": "How to use it",
+          "keyBody": "Use 不如 to say A is not as good as B, or one option is inferior to another.",
+          "keyExample": "做大官不如做研究。",
+          "prompt": "Sort the examples by whether they correctly use 不如 for comparison.",
+          "validItems": [
+              {
+                  "text": "这个办法不如那个办法实际。",
+                  "pinyin": "zhè ge bàn fǎ bù rú nà ge bàn fǎ shí jì。",
+                  "english": "This method is not as practical as that one."
+              },
+              {
+                  "text": "只看表面不如认真研究。",
+                  "pinyin": "zhī kàn biǎo miàn bù rú rèn zhēn yán jiū。",
+                  "english": "Just looking at the surface is not as good as careful research."
+              },
+              {
+                  "text": "为了权力读书不如为了知识读书。",
+                  "pinyin": "wèi le quán lì dú shū bù rú wèi le zhī shi dú shū。",
+                  "english": "Studying for power is not as good as studying for knowledge."
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "这个办法实际不如那个办法。",
+                  "pinyin": "zhè ge bàn fǎ shí jì bù rú nà ge bàn fǎ。",
+                  "english": "This method is not as practical as that one."
+              },
+              {
+                  "text": "只看表面不如认真研究得。",
+                  "pinyin": "zhī kàn biǎo miàn bù rú rèn zhēn yán jiū dé。",
+                  "english": "Just looking at the surface is not as good as careful research."
+              },
+              {
+                  "text": "为了权力读书为了知识不如读书。",
+                  "pinyin": "wèi le quán lì dú shū wèi le zhī shi bù rú dú shū。",
+                  "english": "Studying for power is not as good as studying for knowledge."
+              }
+          ]
+      },
+      {
+          "id": "nanguai",
+          "structure": "难怪 ...",
+          "pattern": "难怪 + clause",
+          "keyTitle": "How to use it",
+          "keyBody": "Use 难怪 before a clause to mean “no wonder.”",
+          "keyExample": "他一直这么功利，难怪大家不喜欢。",
+          "prompt": "Sort the examples by whether they correctly use 难怪.",
+          "validItems": [
+              {
+                  "text": "难怪他们都想出国深造。",
+                  "pinyin": "nán guài tā men dōu xiǎng chū guó shēn zào。",
+                  "english": "No wonder they all want to go abroad for advanced study."
+              },
+              {
+                  "text": "她准备得这么充分，难怪通过考试了。",
+                  "pinyin": "tā zhǔn bèi dé zhè me chōng fèn， nán guài tōng guò kǎo shì le。",
+                  "english": "She was so well prepared, no wonder she passed the exam."
+              },
+              {
+                  "text": "难怪父母为孩子感到骄傲。",
+                  "pinyin": "nán guài fù mǔ wèi hái zi gǎn dào jiāo ào。",
+                  "english": "No wonder the parents feel proud of their child."
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "他们都想出国深造，难怪都。",
+                  "pinyin": "tā men dōu xiǎng chū guó shēn zào， nán guài dōu。",
+                  "english": "No wonder they all want to go abroad for advanced study."
+              },
+              {
+                  "text": "她准备得这么充分，通过难怪考试了。",
+                  "pinyin": "tā zhǔn bèi dé zhè me chōng fèn， tōng guò nán guài kǎo shì le。",
+                  "english": "She was so well prepared, no wonder she passed the exam."
+              },
+              {
+                  "text": "父母为孩子难怪感到骄傲。",
+                  "pinyin": "fù mǔ wèi hái zi nán guài gǎn dào jiāo ào。",
+                  "english": "No wonder the parents feel proud of their child."
+              }
+          ]
+      }
+  ],
+  translationValidityMode: [
+      {
+          "id": "valid-concession",
+          "english": "Even if a family is poor, they still do their best to educate their children.",
+          "structure": "即使 ... 也 ...",
+          "keyTitle": "Key",
+          "keyBody": "Use 即使 for the concession and 也 in the main clause.",
+          "keyExample": "即使家里穷困，他们也尽力教育孩子。",
+          "prompt": "Sort the Chinese sentences into valid and invalid ways to express the English.",
+          "validItems": [
+              {
+                  "text": "即使家里穷困，他们也尽力教育孩子。",
+                  "pinyin": "jí shǐ jiā lǐ qióng kùn， tā men yě jìn lì jiào yù hái zi。"
+              },
+              {
+                  "text": "即使家里很穷困，他们也会尽力让孩子读书。",
+                  "pinyin": "jí shǐ jiā lǐ hěn qióng kùn， tā men yě huì jìn lì ràng hái zi dú shū。"
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "即使家里穷困，他们尽力也教育孩子。",
+                  "pinyin": "jí shǐ jiā lǐ qióng kùn， tā men jìn lì yě jiào yù hái zi。"
+              },
+              {
+                  "text": "他们也尽力教育孩子，即使家里穷困也。",
+                  "pinyin": "tā men yě jìn lì jiào yù hái zi， jí shǐ jiā lǐ qióng kùn yě。"
+              },
+              {
+                  "text": "即使家里穷困，也他们尽力教育孩子。",
+                  "pinyin": "jí shǐ jiā lǐ qióng kùn， yě tā men jìn lì jiào yù hái zi。"
+              }
+          ]
+      },
+      {
+          "id": "valid-formal-by",
+          "english": "The exam system was run by government officials.",
+          "structure": "由 + agent + verb",
+          "keyTitle": "Key",
+          "keyBody": "Use 由 before the agent in formal passive-like expressions.",
+          "keyExample": "考试制度由政府官员主持。",
+          "prompt": "Sort the Chinese sentences into valid and invalid ways to express the English.",
+          "validItems": [
+              {
+                  "text": "考试制度由政府官员主持。",
+                  "pinyin": "kǎo shì zhì dù yóu zhèng fǔ guān yuán zhǔ chí。"
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "考试制度政府官员由主持。",
+                  "pinyin": "kǎo shì zhì dù zhèng fǔ guān yuán yóu zhǔ chí。"
+              },
+              {
+                  "text": "考试制度由主持政府官员。",
+                  "pinyin": "kǎo shì zhì dù yóu zhǔ chí zhèng fǔ guān yuán。"
+              },
+              {
+                  "text": "由考试制度政府官员主持。",
+                  "pinyin": "yóu kǎo shì zhì dù zhèng fǔ guān yuán zhǔ chí。"
+              }
+          ]
+      },
+      {
+          "id": "valid-method",
+          "english": "Many young people want to improve their status through education.",
+          "structure": "通过 ... 来 ...",
+          "keyTitle": "Key",
+          "keyBody": "Use 通过 for the means and 来 before the intended result.",
+          "keyExample": "很多年轻人想通过教育来提高自己的地位。",
+          "prompt": "Sort the Chinese sentences into valid and invalid ways to express the English.",
+          "validItems": [
+              {
+                  "text": "很多年轻人想通过教育来提高自己的地位。",
+                  "pinyin": "hěn duō nián qīng rén xiǎng tōng guò jiào yù lái tí gāo zì jǐ de dì wèi。"
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "很多年轻人想通过教育提高来自己的地位。",
+                  "pinyin": "hěn duō nián qīng rén xiǎng tōng guò jiào yù tí gāo lái zì jǐ de dì wèi。"
+              },
+              {
+                  "text": "很多年轻人来通过教育提高自己的地位。",
+                  "pinyin": "hěn duō nián qīng rén lái tōng guò jiào yù tí gāo zì jǐ de dì wèi。"
+              },
+              {
+                  "text": "很多年轻人想提高自己的地位通过教育来。",
+                  "pinyin": "hěn duō nián qīng rén xiǎng tí gāo zì jǐ de dì wèi tōng guò jiào yù lái。"
+              }
+          ]
+      },
+      {
+          "id": "valid-not-as-good",
+          "english": "For some people, doing research is better than becoming a big official.",
+          "structure": "A 不如 B",
+          "keyTitle": "Key",
+          "keyBody": "Use 不如 to compare two options and say one is not as good as the other.",
+          "keyExample": "做大官不如做研究。",
+          "prompt": "Sort the Chinese sentences into valid and invalid ways to express the English.",
+          "validItems": [
+              {
+                  "text": "做大官不如做研究。",
+                  "pinyin": "zuò dà guān bù rú zuò yán jiū。"
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "做大官做研究不如。",
+                  "pinyin": "zuò dà guān zuò yán jiū bù rú。"
+              },
+              {
+                  "text": "不如做研究做大官。",
+                  "pinyin": "bù rú zuò yán jiū zuò dà guān。"
+              },
+              {
+                  "text": "做大官研究不如做。",
+                  "pinyin": "zuò dà guān yán jiū bù rú zuò。"
+              }
+          ]
+      },
+      {
+          "id": "valid-no-wonder",
+          "english": "No wonder the parents feel proud.",
+          "structure": "难怪 ...",
+          "keyTitle": "Key",
+          "keyBody": "Place 难怪 before the full clause.",
+          "keyExample": "难怪父母感到骄傲。",
+          "prompt": "Sort the Chinese sentences into valid and invalid ways to express the English.",
+          "validItems": [
+              {
+                  "text": "难怪父母感到骄傲。",
+                  "pinyin": "nán guài fù mǔ gǎn dào jiāo ào。"
+              },
+              {
+                  "text": "孩子这么成功，难怪父母感到骄傲。",
+                  "pinyin": "hái zi zhè me chéng gōng， nán guài fù mǔ gǎn dào jiāo ào。"
+              }
+          ],
+          "invalidItems": [
+              {
+                  "text": "父母难怪感到骄傲。",
+                  "pinyin": "fù mǔ nán guài gǎn dào jiāo ào。"
+              },
+              {
+                  "text": "难怪感到父母骄傲。",
+                  "pinyin": "nán guài gǎn dào fù mǔ jiāo ào。"
+              },
+              {
+                  "text": "孩子这么成功，父母感到难怪骄傲。",
+                  "pinyin": "hái zi zhè me chéng gōng， fù mǔ gǎn dào nán guài jiāo ào。"
+              }
+          ]
+      }
+  ]
 };

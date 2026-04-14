@@ -643,6 +643,26 @@ function isSortMode(activeMode = mode) {
     return activeMode === 'structure-sort' || activeMode === 'translation-validity-sort';
 }
 
+function normalizeSortModeCardEntry(value, fallbackEnglish = '') {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const text = String(value.text || value.sentence || value.char || '').trim();
+        if (!text) return null;
+        return {
+            text,
+            pinyin: String(value.pinyin || '').trim(),
+            english: String(value.english || fallbackEnglish || '').trim()
+        };
+    }
+
+    const text = String(value || '').trim();
+    if (!text) return null;
+    return {
+        text,
+        pinyin: '',
+        english: String(fallbackEnglish || '').trim()
+    };
+}
+
 function normalizeSortModeDataset(data, kind) {
     if (!Array.isArray(data)) return [];
     return data.map((item, index) => {
@@ -654,11 +674,16 @@ function normalizeSortModeDataset(data, kind) {
         const keyBody = String(item?.keyBody || item?.key || '').trim();
         const keyExample = String(item?.keyExample || item?.template || '').trim();
         const pattern = String(item?.pattern || '').trim();
+        const fallbackEnglish = kind === 'translation' ? english : '';
         const validItems = Array.isArray(item?.validItems)
-            ? item.validItems.map(value => String(value || '').trim()).filter(Boolean)
+            ? item.validItems
+                .map(value => normalizeSortModeCardEntry(value, fallbackEnglish))
+                .filter(entry => entry?.text)
             : [];
         const invalidItems = Array.isArray(item?.invalidItems)
-            ? item.invalidItems.map(value => String(value || '').trim()).filter(Boolean)
+            ? item.invalidItems
+                .map(value => normalizeSortModeCardEntry(value, fallbackEnglish))
+                .filter(entry => entry?.text)
             : [];
         return {
             ...item,
@@ -686,8 +711,20 @@ function normalizeSortModeDataset(data, kind) {
 function createPreparedSortQuestion(item) {
     if (!item) return null;
     const cards = [
-        ...item.validItems.map((text, index) => ({ id: `${item.id}::valid::${index}`, text, group: 'valid' })),
-        ...item.invalidItems.map((text, index) => ({ id: `${item.id}::invalid::${index}`, text, group: 'invalid' }))
+        ...item.validItems.map((entry, index) => ({
+            id: `${item.id}::valid::${index}`,
+            text: entry.text,
+            pinyin: entry.pinyin || '',
+            english: entry.english || '',
+            group: 'valid'
+        })),
+        ...item.invalidItems.map((entry, index) => ({
+            id: `${item.id}::invalid::${index}`,
+            text: entry.text,
+            pinyin: entry.pinyin || '',
+            english: entry.english || '',
+            group: 'invalid'
+        }))
     ].sort(() => Math.random() - 0.5);
     return {
         ...item,
@@ -13611,7 +13648,26 @@ function renderSortModeLayout() {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `w-full text-left rounded-2xl border px-4 py-3 shadow-sm bg-white transition ${bucketColorClass}`;
-        btn.textContent = card.text;
+
+        const textEl = document.createElement('div');
+        textEl.className = 'text-base font-medium text-slate-900';
+        textEl.textContent = card.text;
+        btn.appendChild(textEl);
+
+        if (card.pinyin) {
+            const pinyinEl = document.createElement('div');
+            pinyinEl.className = 'mt-1 text-sm text-indigo-600';
+            pinyinEl.textContent = card.pinyin;
+            btn.appendChild(pinyinEl);
+        }
+
+        if (card.english) {
+            const englishEl = document.createElement('div');
+            englishEl.className = 'mt-2 text-sm text-slate-500';
+            englishEl.textContent = card.english;
+            btn.appendChild(englishEl);
+        }
+
         btn.draggable = !state.locked;
         btn.disabled = state.locked;
         if (!state.locked) {
