@@ -297,6 +297,24 @@ function createContext() {
       const indicator = (document.body.children || []).find(child => child && child.id === 'currentWordConfidence');
       return indicator ? (indicator.innerHTML || '') : '';
     }
+    function __getWordMarking(char) { return getWordMarking(char); }
+    function __getLatestMarkingToastText() {
+      const toast = (document.body.children || []).find(child => child && String(child.className || '').includes('marking-toast'));
+      return toast ? (toast.textContent || '') : '';
+    }
+    function __pressQuizHotkey(key) {
+      let prevented = false;
+      handleQuizHotkeys({
+        key,
+        target: null,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        preventDefault() { prevented = true; }
+      });
+      return prevented;
+    }
     function __getPinyinMeaningStage() { return pinyinMeaningStage; }
     function __playMeaningFeedbackAudio(delay) { return playMeaningFeedbackAudio(currentQuestion, { delay: delay == null ? 0 : delay }); }
   `, ctx);
@@ -533,6 +551,18 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   ctx.warmUpcomingPromptAudioForCurrentMode();
   assert.deepStrictEqual(warmed, ['中', '国'], 'audio prompt helpers should warm both current and upcoming prompts');
   console.log('✓ prompt warmup helpers only preload audio-capable modes');
+})();
+
+(function testNeedsWorkHotkeyMarksCurrentWordAndShowsToast() {
+  const { ctx } = createContext();
+  ctx.__setCurrentQuestion(vocab[0]);
+
+  const prevented = ctx.__pressQuizHotkey('w');
+
+  assert.strictEqual(prevented, true, 'needs-work hotkey should prevent default browser behavior');
+  assert.strictEqual(ctx.__getWordMarking('中'), 'needs-work', 'needs-work hotkey should mark the current word');
+  assert.match(ctx.__getLatestMarkingToastText(), /needs work/i, 'needs-work hotkey should show a visible confirmation toast');
+  console.log('✓ needs-work hotkey marks the current word and shows a toast');
 })();
 
 (function testMeaningFeedbackAudioSpeaksEnglishMeaning() {

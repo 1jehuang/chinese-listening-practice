@@ -18601,14 +18601,14 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Word marking keybinds: [ = needs work, ] = learned, \ = unmark
+    // Word marking keybinds: W or [ = needs work, ] = learned, \ = unmark
     if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         if (isTypingTarget(target)) {
             // Skip if in input field
-        } else if (e.key === '[' && currentQuestion?.char) {
+        } else if ((e.key === 'w' || e.key === 'W' || e.key === '[') && currentQuestion?.char) {
             e.preventDefault();
             markWord(currentQuestion.char, 'needs-work');
-            showMarkingToast(`"${currentQuestion.char}" marked as needs work`, 'warning');
+            showMarkingToast(`⚠ "${currentQuestion.char}" marked as needs work`, 'warning');
             return;
         } else if (e.key === ']' && currentQuestion?.char) {
             e.preventDefault();
@@ -18853,6 +18853,22 @@ function initQuizCommandPalette() {
                 }
             },
             available: () => Boolean(window.currentQuestion?.pinyin) && typeof window.playPinyinAudio === 'function',
+            scope: 'This page only'
+        });
+
+        actions.push({
+            name: 'Mark Current Word as Needs Work',
+            type: 'action',
+            description: 'Flag the current card for extra review',
+            keywords: 'mark needs work flag difficult hard review word',
+            shortcut: 'W',
+            action: () => {
+                if (window.currentQuestion?.char) {
+                    markWord(window.currentQuestion.char, 'needs-work');
+                    showMarkingToast(`⚠ "${window.currentQuestion.char}" marked as needs work`, 'warning');
+                }
+            },
+            available: () => Boolean(window.currentQuestion?.char),
             scope: 'This page only'
         });
 
