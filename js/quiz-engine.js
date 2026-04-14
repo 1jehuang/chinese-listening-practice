@@ -749,7 +749,9 @@ function createSortModeState(question) {
         cards,
         placements,
         locked: false,
-        feedback: null
+        feedback: null,
+        misplacedCardIds: [],
+        hadIncorrectAttempt: false
     };
 }
 
@@ -13504,6 +13506,8 @@ function moveSortCard(cardId, bucket) {
     const state = getSortModeState();
     if (!state || state.locked || !state.placements?.[cardId]) return;
     state.placements[cardId] = bucket;
+    state.feedback = null;
+    state.misplacedCardIds = [];
     renderSortModeLayout();
 }
 
@@ -13536,6 +13540,7 @@ function submitSortModeAnswer() {
 
     const unresolved = state.cards.filter(card => (state.placements?.[card.id] || 'bank') === 'bank');
     if (unresolved.length) {
+        state.misplacedCardIds = unresolved.map(card => card.id);
         state.feedback = {
             type: 'incorrect',
             title: 'Place every card first',
@@ -13556,16 +13561,21 @@ function submitSortModeAnswer() {
     }
 
     const correct = wrongCards.length === 0;
-    lastAnswerCorrect = correct;
-    markSchedulerOutcome(correct);
 
     if (correct) {
-        score++;
+        if (!state.hadIncorrectAttempt) {
+            lastAnswerCorrect = true;
+            markSchedulerOutcome(true);
+            score++;
+        }
         state.locked = true;
+        state.misplacedCardIds = [];
         state.feedback = {
             type: 'correct',
             title: 'Correct',
-            message: 'Nice grouping. The examples match the structure.',
+            message: state.hadIncorrectAttempt
+                ? 'You fixed the grouping. Moving on.'
+                : 'Nice grouping. The examples match the structure.',
             detail: currentQuestion.keyExample || currentQuestion.pattern || ''
         };
         updateStats();
@@ -13574,16 +13584,36 @@ function submitSortModeAnswer() {
         return;
     }
 
-    state.locked = true;
+    lastAnswerCorrect = false;
+    if (!state.hadIncorrectAttempt) {
+        markSchedulerOutcome(false);
+    }
+    state.hadIncorrectAttempt = true;
+    state.misplacedCardIds = wrongCards.map(card => card.id);
     state.feedback = {
         type: 'incorrect',
-        title: 'Not quite',
-        message: `${wrongCards.length} card${wrongCards.length === 1 ? '' : 's'} ended up in the wrong group.`,
-        detail: currentQuestion.keyExample || currentQuestion.pattern || ''
+        title: 'Not quite yet',
+        message: `${wrongCards.length} card${wrongCards.length === 1 ? '' : 's'} ${wrongCards.length === 1 ? 'is' : 'are'} in the wrong group. Move the highlighted card${wrongCards.length === 1 ? '' : 's'} and check again.`,
+        detail: currentQuestion.keyExample || currentQuestion.pattern || '',
+        items: wrongCards.map(card => {
+            const placed = state.placements?.[card.id] || 'bank';
+            return {
+                text: card.text,
+                pinyin: card.pinyin || '',
+                english: card.english || '',
+                expectedLabel: card.group === 'valid'
+                    ? (currentQuestion.validLabel || 'Valid')
+                    : (currentQuestion.invalidLabel || 'Invalid'),
+                placedLabel: placed === 'valid'
+                    ? (currentQuestion.validLabel || 'Valid')
+                    : placed === 'invalid'
+                        ? (currentQuestion.invalidLabel || 'Invalid')
+                        : 'Cards to sort'
+            };
+        })
     };
     updateStats();
     renderSortModeLayout();
-    scheduleNextQuestion(1700);
 }
 
 function renderSortModeLayout() {
@@ -13598,6 +13628,20 @@ function renderSortModeLayout() {
         : getCardsForBucket(state, 'invalid');
     const introText = getSortModeIntroText(currentQuestion);
     const feedback = state.feedback;
+    const feedbackItemsHtml = Array.isArray(feedback?.items) && feedback.items.length
+        ? `
+            <div class="mt-3 space-y-2">
+                ${feedback.items.map(item => `
+                    <div class="rounded-xl border border-amber-200 bg-white/80 px-3 py-3">
+                        <div class="text-sm font-semibold text-slate-900">${escapeHtml(item.text || '')}</div>
+                        ${item.pinyin ? `<div class="text-sm text-indigo-600 mt-1">${escapeHtml(item.pinyin)}</div>` : ''}
+                        ${item.english ? `<div class="text-sm text-slate-500 mt-2">${escapeHtml(item.english)}</div>` : ''}
+                        <div class="text-xs text-amber-700 mt-2">Currently in <span class="font-semibold">${escapeHtml(item.placedLabel || 'Cards to sort')}</span> → move to <span class="font-semibold">${escapeHtml(item.expectedLabel || '')}</span></div>
+                    </div>
+                `).join('')}
+            </div>
+        `
+        : '';
 
     questionDisplay.innerHTML = `
         <div class="max-w-6xl mx-auto w-full px-4 py-4">
@@ -13631,7 +13675,7 @@ function renderSortModeLayout() {
 
             <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
                 <button id="sortModeResetBtn" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Reset</button>
-                <button id="sortModeSubmitBtn" type="button" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Check groups</button>
+                <button id="sortModeSubmitBtn" type="button" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">${feedback?.type === 'incorrect' ? 'Check again' : 'Check groups'}</button>
             </div>
 
             ${feedback ? `
@@ -13639,6 +13683,7 @@ function renderSortModeLayout() {
                     <div class="text-base font-semibold ${feedback.type === 'correct' ? 'text-emerald-700' : 'text-rose-700'}">${escapeHtml(feedback.title || '')}</div>
                     <div class="text-sm text-slate-700 mt-1">${escapeHtml(feedback.message || '')}</div>
                     ${feedback.detail ? `<div class="text-sm text-slate-500 mt-2">${escapeHtml(feedback.detail)}</div>` : ''}
+                    ${feedbackItemsHtml}
                 </div>
             ` : ''}
         </div>
@@ -13648,6 +13693,7 @@ function renderSortModeLayout() {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `w-full text-left rounded-2xl border px-4 py-3 shadow-sm bg-white transition ${bucketColorClass}`;
+        const isMisplaced = Array.isArray(state.misplacedCardIds) && state.misplacedCardIds.includes(card.id);
 
         const textEl = document.createElement('div');
         textEl.className = 'text-base font-medium text-slate-900';
@@ -13677,6 +13723,9 @@ function renderSortModeLayout() {
                 const nextBucket = currentBucket === 'bank' ? 'valid' : currentBucket === 'valid' ? 'invalid' : 'bank';
                 moveSortCard(card.id, nextBucket);
             });
+        }
+        if (isMisplaced && !state.locked) {
+            btn.classList.add('border-amber-400', 'bg-amber-50');
         }
         if (state.locked) {
             btn.classList.add(...(card.group === 'valid'
@@ -13717,7 +13766,11 @@ function renderSortModeLayout() {
     const resetBtn = document.getElementById('sortModeResetBtn');
     if (resetBtn) {
         resetBtn.onclick = () => {
+            const hadIncorrectAttempt = !!state.hadIncorrectAttempt;
             resetSortModeState(currentQuestion);
+            if (sortModeState) {
+                sortModeState.hadIncorrectAttempt = hadIncorrectAttempt;
+            }
             renderSortModeLayout();
         };
     }
