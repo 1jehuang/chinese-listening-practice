@@ -16080,6 +16080,9 @@ let learnModeBlinkInterval = null;
 function enterFullscreenDrawing() {
     const container = document.getElementById('fullscreenDrawContainer');
     if (!container) return;
+    if (!currentQuestion) {
+        generateQuestion();
+    }
 
     isFullscreenMode = true;
     container.classList.remove('hidden');
