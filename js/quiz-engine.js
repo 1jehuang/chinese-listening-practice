@@ -103,6 +103,10 @@ let sentenceModeUiLoadPromise = null;
 let sentenceModeDifficulty = '';
 let sentenceModeDifficultyOptions = [];
 let sentenceModeUiState = null;
+let structureSortDataset = [];
+let translationValidityDataset = [];
+let sortModeState = null;
+let sortModeDraggedCardId = '';
 const SENTENCE_MODE_DIFFICULTY_KEY_PREFIX = 'sentenceModeDifficulty::';
 let tutorialModeUiLoadPromise = null;
 let tutorialModeUiState = null;
@@ -633,6 +637,95 @@ function normalizeSentenceModeDataset(data) {
             };
         })
         .filter(item => item.sentence && item.meaning);
+}
+
+function isSortMode(activeMode = mode) {
+    return activeMode === 'structure-sort' || activeMode === 'translation-validity-sort';
+}
+
+function normalizeSortModeDataset(data, kind) {
+    if (!Array.isArray(data)) return [];
+    return data.map((item, index) => {
+        const id = String(item?.id || `${kind}-${index + 1}`).trim();
+        const structure = String(item?.structure || '').trim();
+        const english = String(item?.english || '').trim();
+        const prompt = String(item?.prompt || '').trim();
+        const keyTitle = String(item?.keyTitle || 'Key').trim();
+        const keyBody = String(item?.keyBody || item?.key || '').trim();
+        const keyExample = String(item?.keyExample || item?.template || '').trim();
+        const pattern = String(item?.pattern || '').trim();
+        const validItems = Array.isArray(item?.validItems)
+            ? item.validItems.map(value => String(value || '').trim()).filter(Boolean)
+            : [];
+        const invalidItems = Array.isArray(item?.invalidItems)
+            ? item.invalidItems.map(value => String(value || '').trim()).filter(Boolean)
+            : [];
+        return {
+            ...item,
+            id,
+            kind,
+            char: id,
+            structure,
+            english,
+            meaning: english || structure || id,
+            prompt: prompt || (kind === 'structure'
+                ? 'Sort the examples into valid and invalid uses of the structure.'
+                : 'Sort the Chinese sentences into valid and invalid translations.'),
+            keyTitle,
+            keyBody,
+            keyExample,
+            pattern,
+            validLabel: String(item?.validLabel || 'Valid').trim() || 'Valid',
+            invalidLabel: String(item?.invalidLabel || 'Invalid').trim() || 'Invalid',
+            validItems,
+            invalidItems
+        };
+    }).filter(item => item.id && (item.validItems.length || item.invalidItems.length));
+}
+
+function createPreparedSortQuestion(item) {
+    if (!item) return null;
+    const cards = [
+        ...item.validItems.map((text, index) => ({ id: `${item.id}::valid::${index}`, text, group: 'valid' })),
+        ...item.invalidItems.map((text, index) => ({ id: `${item.id}::invalid::${index}`, text, group: 'invalid' }))
+    ].sort(() => Math.random() - 0.5);
+    return {
+        ...item,
+        cards
+    };
+}
+
+function getSortModeQuestionPool(activeMode = mode) {
+    if (activeMode === 'structure-sort') return Array.isArray(structureSortDataset) ? structureSortDataset : [];
+    if (activeMode === 'translation-validity-sort') return Array.isArray(translationValidityDataset) ? translationValidityDataset : [];
+    return [];
+}
+
+function createSortModeState(question) {
+    const cards = Array.isArray(question?.cards) ? question.cards.slice() : [];
+    const placements = {};
+    cards.forEach(card => {
+        placements[card.id] = 'bank';
+    });
+    return {
+        questionId: question?.id || question?.char || '',
+        cards,
+        placements,
+        locked: false,
+        feedback: null
+    };
+}
+
+function resetSortModeState(question = currentQuestion) {
+    sortModeState = createSortModeState(question);
+    return sortModeState;
+}
+
+function getSortModeState() {
+    if (!sortModeState || sortModeState.questionId !== (currentQuestion?.id || currentQuestion?.char || '')) {
+        resetSortModeState(currentQuestion);
+    }
+    return sortModeState;
 }
 
 function normalizeSentenceModeDifficultyOptions(options, dataset = sentenceModeDataset) {
@@ -6943,6 +7036,16 @@ function selectWeighted(pool) {
 
 function selectNextQuestion(exclusions = []) {
     const baseExclusionSet = new Set(exclusions || []);
+    if (isSortMode()) {
+        const pool = getSortModeQuestionPool();
+        if (!pool.length) return null;
+        let candidates = pool.filter(item => item && !baseExclusionSet.has(item.char));
+        if (!candidates.length) {
+            candidates = pool.slice();
+        }
+        const picked = selectRandom(candidates);
+        return picked ? createPreparedSortQuestion(picked) : null;
+    }
     if (mode === 'sentence') {
         const questionPool = getSentenceModeQuestionPool();
         const focused = filterPoolToNeedsWorkMarkedWords(questionPool);
@@ -7983,6 +8086,10 @@ function ensureDecompositionsLoadedOrDefer(targetMode) {
 function renderQuestionUiForTypingModes() {
     if (mode !== 'dictation-chat') {
         restoreDictationChatAudio();
+    }
+    if (isSortMode()) {
+        renderSortModeLayout();
+        return true;
     }
     if (mode === 'dictation-chat') {
         renderDictationChatQuestion({ reset: true });
@@ -13338,6 +13445,226 @@ function renderSentenceModeLayout() {
         </div>
     `;
     renderSentenceModeFallback(getSentenceModeUiState());
+}
+
+function getSortModeUiLabel(activeMode = mode) {
+    return activeMode === 'structure-sort' ? 'Structure Sort' : 'English → Chinese Sort';
+}
+
+function getSortModeIntroText(question) {
+    if (!question) return '';
+    if (question.kind === 'translation') {
+        return question.english ? `English: ${question.english}` : '';
+    }
+    return question.structure || '';
+}
+
+function getCardsForBucket(state, bucket) {
+    return (state?.cards || []).filter(card => (state.placements?.[card.id] || 'bank') === bucket);
+}
+
+function moveSortCard(cardId, bucket) {
+    const state = getSortModeState();
+    if (!state || state.locked || !state.placements?.[cardId]) return;
+    state.placements[cardId] = bucket;
+    renderSortModeLayout();
+}
+
+function allowSortDrop(event) {
+    if (event?.preventDefault) event.preventDefault();
+}
+
+function handleSortDragStart(event, cardId) {
+    sortModeDraggedCardId = cardId;
+    try {
+        event.dataTransfer.setData('text/plain', cardId);
+        event.dataTransfer.effectAllowed = 'move';
+    } catch (_) {}
+}
+
+function handleSortDrop(event, bucket) {
+    if (event?.preventDefault) event.preventDefault();
+    let cardId = sortModeDraggedCardId;
+    try {
+        cardId = event.dataTransfer.getData('text/plain') || cardId;
+    } catch (_) {}
+    if (!cardId) return;
+    moveSortCard(cardId, bucket);
+    sortModeDraggedCardId = '';
+}
+
+function submitSortModeAnswer() {
+    const state = getSortModeState();
+    if (!state || !currentQuestion) return;
+
+    const unresolved = state.cards.filter(card => (state.placements?.[card.id] || 'bank') === 'bank');
+    if (unresolved.length) {
+        state.feedback = {
+            type: 'incorrect',
+            title: 'Place every card first',
+            message: `You still have ${unresolved.length} card${unresolved.length === 1 ? '' : 's'} in the unsorted area.`
+        };
+        renderSortModeLayout();
+        return;
+    }
+
+    const wrongCards = state.cards.filter(card => {
+        const placed = state.placements?.[card.id] || 'bank';
+        return placed !== card.group;
+    });
+
+    if (!answered) {
+        answered = true;
+        total++;
+    }
+
+    const correct = wrongCards.length === 0;
+    lastAnswerCorrect = correct;
+    markSchedulerOutcome(correct);
+
+    if (correct) {
+        score++;
+        state.locked = true;
+        state.feedback = {
+            type: 'correct',
+            title: 'Correct',
+            message: 'Nice grouping. The examples match the structure.',
+            detail: currentQuestion.keyExample || currentQuestion.pattern || ''
+        };
+        updateStats();
+        renderSortModeLayout();
+        scheduleNextQuestion(900);
+        return;
+    }
+
+    state.locked = true;
+    state.feedback = {
+        type: 'incorrect',
+        title: 'Not quite',
+        message: `${wrongCards.length} card${wrongCards.length === 1 ? '' : 's'} ended up in the wrong group.`,
+        detail: currentQuestion.keyExample || currentQuestion.pattern || ''
+    };
+    updateStats();
+    renderSortModeLayout();
+    scheduleNextQuestion(1700);
+}
+
+function renderSortModeLayout() {
+    if (!questionDisplay || !currentQuestion) return;
+    const state = getSortModeState();
+    const bankCards = state.locked ? [] : getCardsForBucket(state, 'bank');
+    const validCards = state.locked
+        ? (state.cards || []).filter(card => card.group === 'valid')
+        : getCardsForBucket(state, 'valid');
+    const invalidCards = state.locked
+        ? (state.cards || []).filter(card => card.group === 'invalid')
+        : getCardsForBucket(state, 'invalid');
+    const introText = getSortModeIntroText(currentQuestion);
+    const feedback = state.feedback;
+
+    questionDisplay.innerHTML = `
+        <div class="max-w-6xl mx-auto w-full px-4 py-4">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 mb-4">
+                <div class="text-xs uppercase tracking-[0.35em] text-slate-400 mb-2">${escapeHtml(getSortModeUiLabel())}</div>
+                ${introText ? `<div class="text-2xl font-semibold text-slate-900 mb-2">${escapeHtml(introText)}</div>` : ''}
+                ${currentQuestion.pattern ? `<div class="text-sm text-slate-600 mb-1"><span class="font-semibold text-slate-700">Frame:</span> ${escapeHtml(currentQuestion.pattern)}</div>` : ''}
+                <div class="text-sm text-slate-600"><span class="font-semibold text-slate-700">${escapeHtml(currentQuestion.keyTitle || 'Key')}:</span> ${escapeHtml(currentQuestion.keyBody || '')}</div>
+                ${currentQuestion.keyExample ? `<div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-slate-800"><span class="font-semibold text-slate-700">Example:</span> ${escapeHtml(currentQuestion.keyExample)}</div>` : ''}
+            </div>
+
+            <div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 mb-4">
+                <div class="text-sm font-semibold text-blue-700 mb-1">Task</div>
+                <div class="text-sm text-blue-900">${escapeHtml(currentQuestion.prompt || 'Sort the cards into valid and invalid groups.')}</div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="text-sm font-semibold text-slate-700 mb-3">Cards to sort</div>
+                    <div id="sortBucketBank" class="min-h-[220px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-3 flex flex-col gap-3"></div>
+                </div>
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                    <div class="text-sm font-semibold text-emerald-700 mb-3">${escapeHtml(currentQuestion.validLabel || 'Valid')}</div>
+                    <div id="sortBucketValid" class="min-h-[220px] rounded-2xl border-2 border-dashed border-emerald-300 bg-white/80 p-3 flex flex-col gap-3"></div>
+                </div>
+                <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                    <div class="text-sm font-semibold text-rose-700 mb-3">${escapeHtml(currentQuestion.invalidLabel || 'Invalid')}</div>
+                    <div id="sortBucketInvalid" class="min-h-[220px] rounded-2xl border-2 border-dashed border-rose-300 bg-white/80 p-3 flex flex-col gap-3"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
+                <button id="sortModeResetBtn" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:border-blue-400 hover:text-blue-600 transition">Reset</button>
+                <button id="sortModeSubmitBtn" type="button" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Check groups</button>
+            </div>
+
+            ${feedback ? `
+                <div class="mt-4 rounded-2xl border ${feedback.type === 'correct' ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'} p-4">
+                    <div class="text-base font-semibold ${feedback.type === 'correct' ? 'text-emerald-700' : 'text-rose-700'}">${escapeHtml(feedback.title || '')}</div>
+                    <div class="text-sm text-slate-700 mt-1">${escapeHtml(feedback.message || '')}</div>
+                    ${feedback.detail ? `<div class="text-sm text-slate-500 mt-2">${escapeHtml(feedback.detail)}</div>` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    const renderCardButton = (card, bucketColorClass) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `w-full text-left rounded-2xl border px-4 py-3 shadow-sm bg-white transition ${bucketColorClass}`;
+        btn.textContent = card.text;
+        btn.draggable = !state.locked;
+        btn.disabled = state.locked;
+        if (!state.locked) {
+            btn.addEventListener('dragstart', (event) => handleSortDragStart(event, card.id));
+            btn.addEventListener('click', () => {
+                const currentBucket = state.placements?.[card.id] || 'bank';
+                const nextBucket = currentBucket === 'bank' ? 'valid' : currentBucket === 'valid' ? 'invalid' : 'bank';
+                moveSortCard(card.id, nextBucket);
+            });
+        }
+        if (state.locked) {
+            btn.classList.add(...(card.group === 'valid'
+                ? ['border-emerald-300', 'bg-emerald-50']
+                : ['border-rose-300', 'bg-rose-50']));
+        }
+        return btn;
+    };
+
+    const bucketMap = [
+        { id: 'sortBucketBank', cards: bankCards, bucket: 'bank', cardClass: 'border-slate-200 hover:border-slate-300' },
+        { id: 'sortBucketValid', cards: validCards, bucket: 'valid', cardClass: 'border-emerald-200 hover:border-emerald-400' },
+        { id: 'sortBucketInvalid', cards: invalidCards, bucket: 'invalid', cardClass: 'border-rose-200 hover:border-rose-400' }
+    ];
+
+    bucketMap.forEach(entry => {
+        const bucketEl = document.getElementById(entry.id);
+        if (!bucketEl) return;
+        bucketEl.innerHTML = '';
+        if (!state.locked) {
+            bucketEl.addEventListener('dragover', allowSortDrop);
+            bucketEl.addEventListener('drop', (event) => handleSortDrop(event, entry.bucket));
+        }
+        entry.cards.forEach(card => bucketEl.appendChild(renderCardButton(card, entry.cardClass)));
+        if (!entry.cards.length) {
+            const empty = document.createElement('div');
+            empty.className = 'text-sm text-slate-400 italic px-2 py-6 text-center';
+            empty.textContent = entry.bucket === 'bank' ? 'Drag or click cards into a group.' : 'Drop cards here.';
+            bucketEl.appendChild(empty);
+        }
+    });
+
+    const submitBtn = document.getElementById('sortModeSubmitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = state.locked;
+        submitBtn.onclick = submitSortModeAnswer;
+    }
+    const resetBtn = document.getElementById('sortModeResetBtn');
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            resetSortModeState(currentQuestion);
+            renderSortModeLayout();
+        };
+    }
 }
 
 // Calculate dynamic font size based on character count
@@ -19521,6 +19848,8 @@ function initQuizPersistentState(charactersData, userConfig) {
     ensureTutorialModeUiLibrary().catch(() => {});
     ensureConfidencePanelUiLibrary().catch(() => {});
     sentenceModeDataset = normalizeSentenceModeDataset(config.sentenceModeDataset || []);
+    structureSortDataset = normalizeSortModeDataset(config.structureSortDataset || [], 'structure');
+    translationValidityDataset = normalizeSortModeDataset(config.translationValidityDataset || [], 'translation');
     sentenceModeLoadPromise = null;
     sentenceModeDifficultyOptions = [];
     refreshSentenceModeDifficultyOptions();
@@ -19549,6 +19878,12 @@ function initQuizPersistentState(charactersData, userConfig) {
     ensureModeButton('char-to-pinyin-meaning', 'Pinyin → Meaning');
     ensureModeButton('meaning-to-char-pinyin', 'Meaning → Char + Pinyin');
     ensureModeButton('sentence', 'Sentence');
+    if (structureSortDataset.length) {
+        ensureModeButton('structure-sort', 'Structure Sort');
+    }
+    if (translationValidityDataset.length) {
+        ensureModeButton('translation-validity-sort', 'English → Chinese Sort');
+    }
     if (document.querySelector('.mode-btn[data-mode="draw-char"]')) {
         ensureModeButton('trackpad-draw', 'Trackpad Draw');
     }

@@ -199,5 +199,191 @@ window.__LESSON_DATASETS__['lesson-15'] = {
       { difficulty: 'dialogue', target: '送', sentence: '爸妈送她进大学，是希望她将来找到好工作。', meaning: 'Her parents sent her to college hoping she will find a good job in the future.' },
       { difficulty: 'dialogue', target: '重要', sentence: '她觉得学自己真正感兴趣的东西比找工作更重要。', meaning: 'She thinks studying something she is truly interested in is more important than finding a job.' }
     ]
-  }
+  },
+  structureSortMode: [
+    {
+      id: 'dui-ganxingqu',
+      structure: '对 + topic + 感兴趣',
+      pattern: 'Subject + 对 + topic + 很 / 不太 / 越来越 + 感兴趣',
+      keyTitle: 'How to use it',
+      keyBody: 'Use 对 before the topic you are interested in. 感兴趣 comes after the topic phrase.',
+      keyExample: '我对中国音乐很感兴趣。',
+      prompt: 'Sort the examples by whether they use 对 + topic + 感兴趣 correctly.',
+      validItems: [
+        '我对电子工程很感兴趣。',
+        '她对音乐越来越感兴趣了。',
+        '我弟弟对数学不太感兴趣。'
+      ],
+      invalidItems: [
+        '我电子工程很感兴趣。',
+        '她感兴趣对音乐。',
+        '我对很感兴趣数学。'
+      ]
+    },
+    {
+      id: 'zuowei',
+      structure: '把 A 作为 B',
+      pattern: 'Subject + 把 + A + 作为 + B',
+      keyTitle: 'How to use it',
+      keyBody: 'Use 把 A 作为 B to mean “treat A as B” or “use A as B.”',
+      keyExample: '你可以把音乐作为一个爱好。',
+      prompt: 'Sort the examples by whether they use 作为 in a natural lesson-15 pattern.',
+      validItems: [
+        '你可以把音乐作为一个爱好。',
+        '他想把电子工程作为专业。',
+        '她一直把钢琴作为生活的一部分。'
+      ],
+      invalidItems: [
+        '你可以音乐作为一个爱好。',
+        '他想作为电子工程专业。',
+        '她把作为钢琴生活的一部分。'
+      ]
+    },
+    {
+      id: 'bi-geng',
+      structure: '比 + clause + 更 + adjective',
+      pattern: 'A + 比 + B + 更 + adjective',
+      keyTitle: 'How to use it',
+      keyBody: 'Put the thing being compared after 比, then use 更 before the adjective.',
+      keyExample: '学自己喜欢的东西比找到工作更重要。',
+      prompt: 'Sort the examples by whether they correctly use 比 ... 更 ....',
+      validItems: [
+        '学自己喜欢的东西比找到工作更重要。',
+        '这个办法比那个办法更顺利。',
+        '她比以前更怕数学了。'
+      ],
+      invalidItems: [
+        '学自己喜欢的东西更重要比找到工作。',
+        '这个办法比那个办法重要更。',
+        '她比以前怕更数学。'
+      ]
+    },
+    {
+      id: 'bingbushi-ershi',
+      structure: '并不是 ..., 而是 ...',
+      pattern: '并不是 + X, 而是 + Y',
+      keyTitle: 'How to use it',
+      keyBody: 'Use 并不是 to reject one idea, then 而是 to replace it with the right one.',
+      keyExample: '进大学并不是只为了找工作，而是为了学自己喜欢的东西。',
+      prompt: 'Sort the examples by whether they correctly use 并不是 ..., 而是 ....',
+      validItems: [
+        '进大学并不是只为了找工作，而是为了学自己喜欢的东西。',
+        '这并不是一件小事，而是很重要的决定。',
+        '并不是妈妈不支持她，而是爸爸更担心将来的工作。'
+      ],
+      invalidItems: [
+        '进大学并不是只为了找工作，而为了学自己喜欢的东西。',
+        '这不是并一件小事，而是很重要的决定。',
+        '并不是妈妈不支持她，是而爸爸更担心将来的工作。'
+      ]
+    },
+    {
+      id: 'buyiding-jiu',
+      structure: '不一定就 ...',
+      pattern: 'Subject + 也 / 不 + 一定 + 就 + verb / result',
+      keyTitle: 'How to use it',
+      keyBody: 'Use 不一定 to say something is not necessarily true. 就 often comes before the result clause.',
+      keyExample: '学钢琴也不一定就找不到工作。',
+      prompt: 'Sort the examples by whether they correctly use 不一定(就)....',
+      validItems: [
+        '学钢琴也不一定就找不到工作。',
+        '学经济学不一定就更容易。',
+        '换专业以后也不一定就会后悔。'
+      ],
+      invalidItems: [
+        '学钢琴也就不一定找不到工作。',
+        '学经济学不就一定更容易。',
+        '换专业以后也一定不就会后悔。'
+      ]
+    }
+  ],
+  translationValidityMode: [
+    {
+      id: 'valid-interest',
+      english: 'I am very interested in Chinese music.',
+      structure: '对 + topic + 感兴趣',
+      keyTitle: 'Key',
+      keyBody: 'To say you are interested in something, use 对 + topic + 感兴趣.',
+      keyExample: '我对中国音乐很感兴趣。',
+      prompt: 'Sort the Chinese sentences into valid and invalid ways to express the English.',
+      validItems: [
+        '我对中国音乐很感兴趣。',
+        '我对中国音乐特别感兴趣。'
+      ],
+      invalidItems: [
+        '我中国音乐很感兴趣。',
+        '我对中国音乐很兴趣。',
+        '我很感兴趣对中国音乐。'
+      ]
+    },
+    {
+      id: 'valid-hobby',
+      english: 'You can treat music as a hobby.',
+      structure: '把 A 作为 B',
+      keyTitle: 'Key',
+      keyBody: 'Use 把 A 作为 B to express “treat A as B” or “use A as B.”',
+      keyExample: '你可以把音乐作为一个爱好。',
+      prompt: 'Sort the Chinese sentences into valid and invalid ways to express the English.',
+      validItems: [
+        '你可以把音乐作为一个爱好。'
+      ],
+      invalidItems: [
+        '你可以音乐作为一个爱好。',
+        '你可以把音乐是一个爱好。',
+        '你可以作为音乐一个爱好。'
+      ]
+    },
+    {
+      id: 'valid-more-important',
+      english: 'Studying something you really like is more important than finding a job.',
+      structure: '比 + clause + 更 + adjective',
+      keyTitle: 'Key',
+      keyBody: 'Use 比 before the thing you compare against, and put 更 before the adjective.',
+      keyExample: '学一个自己真正喜欢的东西比找到工作更重要。',
+      prompt: 'Sort the Chinese sentences into valid and invalid ways to express the English.',
+      validItems: [
+        '学一个自己真正喜欢的东西比找到工作更重要。'
+      ],
+      invalidItems: [
+        '学一个自己真正喜欢的东西更重要比找到工作。',
+        '找到工作比学一个自己真正喜欢的东西重要更。',
+        '学一个自己真正喜欢的东西比找到工作重要更。'
+      ]
+    },
+    {
+      id: 'valid-not-but',
+      english: 'Going to college is not only for finding a job, but for studying what you love.',
+      structure: '并不是 ..., 而是 ...',
+      keyTitle: 'Key',
+      keyBody: 'Use 并不是 to reject one purpose, then 而是 to state the real one.',
+      keyExample: '进大学并不是只为了找工作，而是为了学自己喜欢的东西。',
+      prompt: 'Sort the Chinese sentences into valid and invalid ways to express the English.',
+      validItems: [
+        '进大学并不是只为了找工作，而是为了学自己喜欢的东西。'
+      ],
+      invalidItems: [
+        '进大学并不是只为了找工作，而为了学自己喜欢的东西。',
+        '进大学而是为了学自己喜欢的东西，并不是只为了找工作。',
+        '进大学不是并只为了找工作，而是为了学自己喜欢的东西。'
+      ]
+    },
+    {
+      id: 'valid-not-necessarily',
+      english: 'Studying piano does not necessarily mean you cannot find a job.',
+      structure: '不一定就 ...',
+      keyTitle: 'Key',
+      keyBody: 'Use 不一定(就) to say something is not necessarily true.',
+      keyExample: '学钢琴也不一定就找不到工作。',
+      prompt: 'Sort the Chinese sentences into valid and invalid ways to express the English.',
+      validItems: [
+        '学钢琴也不一定就找不到工作。',
+        '学钢琴不一定就找不到工作。'
+      ],
+      invalidItems: [
+        '学钢琴也就不一定找不到工作。',
+        '学钢琴不就一定找不到工作。',
+        '学钢琴也一定不就找不到工作。'
+      ]
+    }
+  ]
 };
