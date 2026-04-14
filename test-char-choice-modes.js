@@ -329,15 +329,16 @@ function createContext() {
       const toast = (document.body.children || []).find(child => child && String(child.className || '').includes('marking-toast'));
       return toast ? (toast.textContent || '') : '';
     }
-    function __pressQuizHotkey(key) {
+    function __pressQuizHotkey(key, extra = {}) {
       let prevented = false;
       handleQuizHotkeys({
         key,
-        target: null,
-        altKey: false,
-        ctrlKey: false,
-        metaKey: false,
-        shiftKey: false,
+        code: extra.code || '',
+        target: extra.target || null,
+        altKey: Boolean(extra.altKey),
+        ctrlKey: Boolean(extra.ctrlKey),
+        metaKey: Boolean(extra.metaKey),
+        shiftKey: Boolean(extra.shiftKey),
         preventDefault() { prevented = true; }
       });
       return prevented;
@@ -590,6 +591,28 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   assert.strictEqual(ctx.__getWordMarking('中'), 'needs-work', 'needs-work hotkey should mark the current word');
   assert.match(ctx.__getLatestMarkingToastText(), /needs work/i, 'needs-work hotkey should show a visible confirmation toast');
   console.log('✓ needs-work hotkey marks the current word and shows a toast');
+})();
+
+(function testBracketLeftHotkeyMarksNeedsWorkByCode() {
+  const { ctx } = createContext();
+  ctx.__setCurrentQuestion(vocab[0]);
+
+  const prevented = ctx.__pressQuizHotkey('{', { code: 'BracketLeft' });
+
+  assert.strictEqual(prevented, true, 'BracketLeft should prevent default browser behavior');
+  assert.strictEqual(ctx.__getWordMarking('中'), 'needs-work', 'BracketLeft should mark the current word as needs work even when key text varies');
+  console.log('✓ BracketLeft hotkey marks needs work by keycode');
+})();
+
+(function testMetaBracketLeftHotkeyOverridesBrowserBack() {
+  const { ctx } = createContext();
+  ctx.__setCurrentQuestion(vocab[0]);
+
+  const prevented = ctx.__pressQuizHotkey('[', { code: 'BracketLeft', metaKey: true });
+
+  assert.strictEqual(prevented, true, 'Meta+BracketLeft should prevent browser back navigation');
+  assert.strictEqual(ctx.__getWordMarking('中'), 'needs-work', 'Meta+BracketLeft should still mark needs work');
+  console.log('✓ Meta+BracketLeft marks needs work instead of navigating back');
 })();
 
 (function testNeedsWorkMarksFocusQuizSelectionPool() {

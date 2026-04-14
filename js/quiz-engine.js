@@ -18664,21 +18664,28 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Word marking keybinds: W or [ = needs work, ] = learned, \ = unmark
-    if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        if (isTypingTarget(target)) {
-            // Skip if in input field
-        } else if ((e.key === 'w' || e.key === 'W' || e.key === '[') && currentQuestion?.char) {
+    // Word marking keybinds: W or [ = needs work, ] = learned, \\ = unmark
+    const typingTarget = isTypingTarget(target);
+    const isBracketLeftKey = e.key === '[' || e.key === '{' || e.code === 'BracketLeft';
+    const isBracketRightKey = e.key === ']' || e.key === '}' || e.code === 'BracketRight';
+    const isBackslashKey = e.key === '\\' || e.key === '|' || e.code === 'Backslash';
+    const allowModifiedBracketMark = !e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey);
+    const allowPlainMarkHotkey = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !typingTarget;
+
+    if (currentQuestion?.char) {
+        if ((allowPlainMarkHotkey && (e.key === 'w' || e.key === 'W' || isBracketLeftKey)) || (allowModifiedBracketMark && isBracketLeftKey)) {
             e.preventDefault();
             markWord(currentQuestion.char, 'needs-work');
             showMarkingToast(`⚠ "${currentQuestion.char}" marked as needs work`, 'warning');
             return;
-        } else if (e.key === ']' && currentQuestion?.char) {
+        }
+        if ((allowPlainMarkHotkey && isBracketRightKey) || (allowModifiedBracketMark && isBracketRightKey)) {
             e.preventDefault();
             markWord(currentQuestion.char, 'learned');
             showMarkingToast(`"${currentQuestion.char}" marked as learned`, 'success');
             return;
-        } else if (e.key === '\\' && currentQuestion?.char) {
+        }
+        if ((allowPlainMarkHotkey && isBackslashKey) || (allowModifiedBracketMark && isBackslashKey)) {
             e.preventDefault();
             markWord(currentQuestion.char, null);
             showMarkingToast(`"${currentQuestion.char}" unmarked`, 'info');
