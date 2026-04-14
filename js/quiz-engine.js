@@ -189,6 +189,8 @@ let fullscreenHintRequestId = 0;
 let drawHintUsed = false;
 let drawMeaningChoices = [];
 let drawSelectedMeaning = null;
+let lastInlineOcrCandidates = [];
+let lastFullscreenOcrCandidates = [];
 let feedStatusTicker = null;
 let feedDetailsExpanded = false;
 let choiceModeHome = null;
@@ -16396,18 +16398,18 @@ async function runFullscreenOCR() {
     }
 
     try {
-        const response = await fetch('https://www.google.com/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
+        const response = await fetch('https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                input_type: 0,
+                options: 'enable_pre_space',
                 requests: [{
-                    language: 'zh',
                     writing_guide: {
-                        width: fullscreenCanvas.width,
-                        height: fullscreenCanvas.height
+                        writing_area_width: fullscreenCanvas.width,
+                        writing_area_height: fullscreenCanvas.height
                     },
-                    ink: strokes.map(stroke => [stroke.x, stroke.y, stroke.t])
+                    ink: strokes.map(stroke => [stroke.x, stroke.y, stroke.t]),
+                    language: 'zh-Hans'
                 }]
             })
         });
@@ -16415,6 +16417,7 @@ async function runFullscreenOCR() {
         const data = await response.json();
         if (data && data[1] && data[1][0] && data[1][0][1]) {
             const candidates = data[1][0][1];
+            lastFullscreenOcrCandidates = Array.isArray(candidates) ? candidates.slice() : [];
             const ocrResult = document.getElementById('fullscreenOcrResult');
             const ocrPinyin = document.getElementById('fullscreenOcrPinyin');
             if (ocrResult && candidates.length > 0) {
@@ -16422,13 +16425,16 @@ async function runFullscreenOCR() {
                 ocrResult.textContent = matchedChar;
                 // Look up pinyin for the matched character
                 if (ocrPinyin) {
-                    const matchedItem = quizCharacters.find(item => item.char === matchedChar);
-                    ocrPinyin.textContent = matchedItem ? matchedItem.pinyin : '';
+                    const matchedItem = quizCharacters.find(item => item.char === matchedChar) || lookupWordInfo(matchedChar);
+                    ocrPinyin.textContent = matchedItem ? matchedItem.pinyin : getPinyinForText(matchedChar);
                 }
             }
+        } else {
+            lastFullscreenOcrCandidates = [];
         }
     } catch (error) {
         console.error('OCR Error:', error);
+        lastFullscreenOcrCandidates = [];
     }
 }
 
