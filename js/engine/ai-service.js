@@ -1,6 +1,6 @@
 // Shared LLM + markdown helpers used by quiz-engine and chat panels.
 
-const GROQ_API_KEY_STORAGE = 'groq_api_key';
+const AI_SERVICE_GROQ_API_KEY_STORAGE = 'groq_api_key';
 
 function readGroqApiKey() {
     const externalGetter = typeof window.getGroqApiKey === 'function' && window.getGroqApiKey !== readGroqApiKey
@@ -16,7 +16,7 @@ function readGroqApiKey() {
     }
 
     try {
-        return localStorage.getItem(GROQ_API_KEY_STORAGE) || '';
+            return localStorage.getItem(AI_SERVICE_GROQ_API_KEY_STORAGE) || '';
     } catch {
         return '';
     }
