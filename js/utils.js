@@ -680,32 +680,63 @@ function playEnglishTTS(text) {
         typeof window.speechSynthesis !== 'undefined' &&
         typeof window.SpeechSynthesisUtterance !== 'undefined';
 
-    if (!hasSpeech) {
-        console.warn('English speech synthesis is not supported in this browser.');
-        return false;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(trimmed);
-    const englishVoice = getEnglishVoice();
-    utterance.lang = englishVoice?.lang || 'en-US';
-    utterance.rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
-    if (englishVoice) {
-        utterance.voice = englishVoice;
-    }
-
-    try {
-        speechSynthesis.cancel();
-    } catch (_) {}
-
-    setTimeout(() => {
-        try {
-            speechSynthesis.speak(utterance);
-        } catch (err) {
-            console.warn('Failed to speak English meaning audio', err);
+    const playSpeechFallback = () => {
+        if (!hasSpeech) {
+            console.warn('English speech synthesis is not supported in this browser.');
+            return false;
         }
-    }, 10);
 
-    return true;
+        const utterance = new SpeechSynthesisUtterance(trimmed);
+        const englishVoice = getEnglishVoice();
+        utterance.lang = englishVoice?.lang || 'en-US';
+        utterance.rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
+        if (englishVoice) {
+            utterance.voice = englishVoice;
+        }
+
+        try {
+            speechSynthesis.cancel();
+        } catch (_) {}
+
+        setTimeout(() => {
+            try {
+                speechSynthesis.speak(utterance);
+            } catch (err) {
+                console.warn('Failed to speak English meaning audio', err);
+            }
+        }, 10);
+
+        setTtsDebug('speech', englishVoice?.name || 'default', 'speaking');
+        return true;
+    };
+
+    if (typeof Audio !== 'undefined') {
+        const audio = new Audio(googleTtsUrl(trimmed, 'en-US'));
+        setActiveAudio(audio);
+        setTtsDebug('remote', 'google-en', 'pending');
+
+        const onPlay = () => {
+            setTtsDebug('remote', 'google-en', 'playing');
+        };
+        const onError = () => {
+            audio.removeEventListener('error', onError);
+            audio.removeEventListener('playing', onPlay);
+            detachActiveAudio(audio);
+            setTtsDebug('remote', 'google-en', 'error');
+            playSpeechFallback();
+        };
+
+        audio.addEventListener('playing', onPlay, { once: true });
+        audio.addEventListener('error', onError, { once: true });
+
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => onError());
+        }
+        return true;
+    }
+
+    return playSpeechFallback();
 }
 
 globalScope.playEnglishTTS = playEnglishTTS;
@@ -724,8 +755,8 @@ function sentenceTtsUrl(sentence, rate) {
     return base + encodeURIComponent(sentence);
 }
 
-function googleTtsUrl(sentence) {
-    return `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=zh-CN&client=tw-ob&q=${encodeURIComponent(sentence)}`;
+function googleTtsUrl(sentence, lang = 'zh-CN') {
+    return `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(sentence)}`;
 }
 
 function playSentenceAudio(sentence) {
