@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>高考 Part 1 Vocab - Quiz</title>
+    <title>高考 Part 2 Vocab - Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="stylesheet" href="css/common.css">
@@ -26,13 +26,13 @@
 <body class="experimental-layout">
     <a href="home.html" class="home-btn">← Home</a>
     <a href="gaokao-materials.html" class="home-btn" style="left: 6.5rem;">📚 Materials</a>
-    <a href="gaokao-part-2.html" class="home-btn" style="left: 14.2rem;">➡ P3</a>
+    <a href="gaokao-part-1.html" class="home-btn" style="left: 14.2rem;">⬅ P2</a>
     <a href="gaokao-vocab.html" class="home-btn" style="left: 20.3rem;">📘 All</a>
 
     <div class="app-container">
         <aside class="sidebar">
             <h2>Quiz Modes</h2>
-            <p class="mode-desc">Study the 高考 P2 vocabulary for CRQ Gaokao-1 and tomorrow's 生词小考.</p>
+            <p class="mode-desc">Study the 高考 P3 vocabulary for CRQ Gaokao-2 and Thursday's second 生词小考.</p>
             <nav>
                 <button class="mode-btn" data-mode="char-to-meaning-type">Char → Meaning</button>
                 <button class="mode-btn" data-mode="char-to-pinyin-type">Char → Pinyin (MC)</button>
@@ -55,7 +55,7 @@
 
         <main class="main-content">
             <header class="quiz-header">
-                <h1>高考 Part 1 · P2 生词</h1>
+                <h1>高考 Part 2 · P3 生词</h1>
             </header>
 
             <section class="quiz-display">
@@ -116,7 +116,7 @@
                 </div>
 
                 <div id="studyMode">
-                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study the 高考 P2 vocabulary for the first GaoKao vocab quiz.</div>
+                    <div style="text-align: center; color: #6b7280; margin-bottom: 1rem;">Study the 高考 P3 vocabulary for the second GaoKao vocab quiz.</div>
                     <div id="studyList" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
 
@@ -131,10 +131,10 @@
     </div>
 
     <script>
-        const characters = window.__LESSON_DATASETS__['gaokao'].vocab.part1;
+        const characters = window.__LESSON_DATASETS__['gaokao'].vocab.part2;
 
         initQuiz(characters, {
-            pageId: 'gaokao-part-1',
+            pageId: 'gaokao-part-2',
             enablePreviewQueue: true,
             previewQueueSize: 1,
             previewElementId: 'upcomingCharacters',
