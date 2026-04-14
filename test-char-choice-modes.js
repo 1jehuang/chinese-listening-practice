@@ -97,6 +97,13 @@ function makeElement(tagName = 'div') {
 
 function createContext() {
   const storage = {};
+  const location = {
+    pathname: '/test-page.html',
+    search: '',
+    hash: '',
+    origin: 'https://example.test',
+    href: 'https://example.test/test-page.html'
+  };
   const inputSectionEl = makeElement('div');
   const questionDisplayEl = makeElement('div');
   const audioSectionEl = makeElement('div');
@@ -143,7 +150,7 @@ function createContext() {
 
   const ctx = vm.createContext({
     window: {
-      location: { pathname: '/test-page.html' },
+      location,
       innerWidth: 1200,
       __QUIZ_DEBUG__: {},
       addEventListener() {},
@@ -212,6 +219,15 @@ function createContext() {
     decodeURIComponent,
     URL,
     URLSearchParams,
+    history: {
+      replaceState(_state, _title, nextUrl) {
+        const parsed = new URL(String(nextUrl), location.origin);
+        location.pathname = parsed.pathname;
+        location.search = parsed.search;
+        location.hash = parsed.hash;
+        location.href = parsed.toString();
+      }
+    },
   });
 
   document.body.appendChild(questionDisplayEl);
@@ -300,8 +316,14 @@ function createContext() {
     function __getCurrentMode() { return mode; }
     function __setStoredQuizMode(storedMode) { localStorage.setItem(getQuizModeKey(), storedMode); }
     function __loadQuizMode() { loadQuizMode(); }
+    function __setUrlModeHash(modeName) {
+      window.location.search = '';
+      window.location.hash = modeName ? ('#mode=' + encodeURIComponent(modeName)) : '';
+      window.location.href = window.location.origin + window.location.pathname + window.location.search + window.location.hash;
+    }
     function __getCurrentQuestionChar() { return currentQuestion ? currentQuestion.char : null; }
     function __getUpcomingQuestionChar() { return upcomingQuestion ? upcomingQuestion.char : null; }
+    function __markWord(char, marking) { markWord(char, marking); }
     function __getWordMarking(char) { return getWordMarking(char); }
     function __getLatestMarkingToastText() {
       const toast = (document.body.children || []).find(child => child && String(child.className || '').includes('marking-toast'));
@@ -570,6 +592,38 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   console.log('✓ needs-work hotkey marks the current word and shows a toast');
 })();
 
+(function testNeedsWorkMarksFocusQuizSelectionPool() {
+  const { ctx } = createContext();
+  ctx.__setQuizCharacters(vocab);
+  ctx.__setMode('char-to-meaning');
+  ctx.__markWord('国', 'needs-work');
+  ctx.__markWord('人', 'learned');
+
+  const picked = ctx.selectNextQuestion();
+  assert.strictEqual(picked.char, '国', 'quiz selection should focus on needs-work words before unmarked or learned words');
+
+  const repeated = ctx.selectNextQuestion(['国']);
+  assert.strictEqual(repeated.char, '国', 'focused needs-work pools should still work even when the current word would normally be excluded');
+  console.log('✓ needs-work marks focus the main quiz selection pool');
+})();
+
+(function testNeedsWorkMarksFocusSentenceModePool() {
+  const { ctx } = createContext();
+  const sentencePool = [
+    { target: '中', sentence: '我在中间。', meaning: 'I am in the middle.', difficulty: 'standard' },
+    { target: '国', sentence: '我的国家很大。', meaning: 'My country is big.', difficulty: 'standard' }
+  ];
+  ctx.__configureSentenceMode({}, sentencePool);
+  ctx.__setQuizCharacters(vocab);
+  ctx.__setMode('sentence');
+  ctx.__markWord('国', 'needs-work');
+
+  const pool = Array.from(ctx.getSentenceModeQuestionPool());
+  assert.strictEqual(pool.length, 1, 'sentence mode should narrow to needs-work targets when any are marked');
+  assert.strictEqual(pool[0].target, '国', 'sentence mode should keep only needs-work targets');
+  console.log('✓ needs-work marks focus the sentence-mode question pool');
+})();
+
 (function testStoredQuizModeLoadsWithoutModeButtonsPresent() {
   const { ctx } = createContext();
   ctx.__setMode('char-to-meaning-type');
@@ -579,6 +633,17 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
 
   assert.strictEqual(ctx.__getCurrentMode(), 'audio-to-meaning', 'saved quiz mode should restore even before mode buttons are mounted');
   console.log('✓ saved quiz mode restores on refresh without requiring mounted mode buttons');
+})();
+
+(function testUrlHashModeLoadsWithoutModeButtonsPresent() {
+  const { ctx } = createContext();
+  ctx.__setMode('char-to-meaning-type');
+  ctx.__setUrlModeHash('trackpad-draw');
+
+  ctx.__loadQuizMode();
+
+  assert.strictEqual(ctx.__getCurrentMode(), 'trackpad-draw', 'URL hash mode should restore on hard refresh even before mode buttons are mounted');
+  console.log('✓ URL hash mode restores on refresh without requiring mounted mode buttons');
 })();
 
 (function testCombinedTrackpadDrawPromptShowsFullSourceWord() {

@@ -282,6 +282,36 @@ function getWordMarking(char) {
     return wordMarkings[char] || null;
 }
 
+function getMarkedWordsByType(marking) {
+    return Object.entries(wordMarkings || {})
+        .filter(([, value]) => value === marking)
+        .map(([char]) => char)
+        .filter(Boolean);
+}
+
+function getNeedsWorkMarkedWordsSet() {
+    return new Set(getMarkedWordsByType('needs-work'));
+}
+
+function getPoolItemMarkingKey(item) {
+    return String(item?.target || item?.sourceWord || item?.char || '').trim();
+}
+
+function filterPoolToNeedsWorkMarkedWords(pool) {
+    const items = Array.isArray(pool) ? pool.filter(Boolean) : [];
+    const needsWorkSet = getNeedsWorkMarkedWordsSet();
+    if (!items.length || !needsWorkSet.size) {
+        return { pool: items, focused: false };
+    }
+
+    const filtered = items.filter(item => needsWorkSet.has(getPoolItemMarkingKey(item)));
+    if (!filtered.length) {
+        return { pool: items, focused: false };
+    }
+
+    return { pool: filtered, focused: true };
+}
+
 function refreshMarkingIndicator() {
     // Update the marking indicator in the current question display
     const indicator = document.querySelector('.word-marking-indicator');
@@ -1057,7 +1087,7 @@ function getSentenceModeQuestionPool() {
         }
     }
 
-    return pool;
+    return filterPoolToNeedsWorkMarkedWords(pool).pool;
 }
 
 function createSentenceModeUiState(prefill = '') {
@@ -3088,8 +3118,14 @@ function getQuizModeKey() {
 
 function getModeFromUrl() {
     try {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('mode');
+        const params = new URLSearchParams(window.location.search || '');
+        const searchMode = params.get('mode');
+        if (searchMode) return searchMode;
+
+        const hash = String(window.location.hash || '').replace(/^#/, '');
+        if (!hash) return null;
+        const hashParams = new URLSearchParams(hash);
+        return hashParams.get('mode');
     } catch (e) {
         return null;
     }
@@ -3097,13 +3133,17 @@ function getModeFromUrl() {
 
 function updateUrlWithMode(newMode) {
     try {
-        const url = new URL(window.location);
+        const currentHref = window.location?.href || String(window.location?.pathname || '');
+        const fallbackBase = window.location?.origin || 'https://example.test';
+        const url = new URL(currentHref, fallbackBase);
         if (newMode) {
             url.searchParams.set('mode', newMode);
+            url.hash = `mode=${encodeURIComponent(newMode)}`;
         } else {
             url.searchParams.delete('mode');
+            url.hash = '';
         }
-        history.replaceState({}, '', url);
+        history.replaceState({}, '', url.toString());
     } catch (e) {
         console.warn('Failed to update URL with mode', e);
     }
@@ -5003,8 +5043,10 @@ function getFeedQuestionPool() {
     return (feedModeState.hand || []).map(char => availableMap.get(char)).filter(Boolean);
 }
 
-function selectFeedQuestion(excludeChars = []) {
-    const hand = getFeedQuestionPool();
+function selectFeedQuestion(excludeChars = [], sourcePool = null) {
+    const hand = Array.isArray(sourcePool) && sourcePool.length
+        ? sourcePool.filter(Boolean)
+        : getFeedQuestionPool();
     if (!hand.length) return null;
 
     const candidates = hand.filter(item => !excludeChars.includes(item.char));
@@ -6832,8 +6874,12 @@ function selectNextQuestion(exclusions = []) {
     const baseExclusionSet = new Set(exclusions || []);
     if (mode === 'sentence') {
         const questionPool = getSentenceModeQuestionPool();
-        const exclusionSet = buildRecentCorrectExclusionSet(questionPool, Array.from(baseExclusionSet));
-        const pool = questionPool.filter(item => item && !exclusionSet.has(item.char));
+        const focused = filterPoolToNeedsWorkMarkedWords(questionPool);
+        const exclusionSet = buildRecentCorrectExclusionSet(focused.pool, Array.from(baseExclusionSet));
+        let pool = focused.pool.filter(item => item && !exclusionSet.has(item.char));
+        if (!pool.length && focused.focused) {
+            pool = focused.pool.slice();
+        }
         return pool.length ? selectRandom(pool) : null;
     }
     let sourcePool = quizCharacters;
@@ -6850,8 +6896,12 @@ function selectNextQuestion(exclusions = []) {
     if (isDrawCharLikeMode()) {
         sourcePool = getDrawQuestionPool(sourcePool);
     }
-    const exclusionSet = buildRecentCorrectExclusionSet(sourcePool, Array.from(baseExclusionSet));
-    const pool = (Array.isArray(sourcePool) ? sourcePool : []).filter(item => item && !exclusionSet.has(item.char));
+    const focused = filterPoolToNeedsWorkMarkedWords(sourcePool);
+    const exclusionSet = buildRecentCorrectExclusionSet(focused.pool, Array.from(baseExclusionSet));
+    let pool = focused.pool.filter(item => item && !exclusionSet.has(item.char));
+    if (!pool.length && focused.focused) {
+        pool = focused.pool.slice();
+    }
     if (!pool.length) return null;
 
     switch (schedulerMode) {
@@ -6865,7 +6915,7 @@ function selectNextQuestion(exclusions = []) {
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.FEED:
         case SCHEDULER_MODES.FEED_SR:
-            return selectFeedQuestion(Array.from(exclusionSet)) || selectRandom(pool);
+            return selectFeedQuestion(Array.from(exclusionSet), pool) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.RANDOM:
