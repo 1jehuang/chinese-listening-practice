@@ -521,6 +521,13 @@ function loadVoices() {
     }
 }
 
+function isLikelyRoboticVoice(voice) {
+    const name = (voice?.name || '').toLowerCase();
+    const uri = (voice?.voiceURI || '').toLowerCase();
+    return name.includes('espeak') || name.includes('festival') || name.includes('flite') ||
+        uri.includes('espeak') || uri.includes('festival') || uri.includes('flite');
+}
+
 // Initialize voices on page load
 if (typeof window !== 'undefined' && window.speechSynthesis) {
     loadVoices();
@@ -533,16 +540,9 @@ function getChineseVoice() {
     const zhVoices = cachedVoices.filter(v => typeof v.lang === 'string' && v.lang.toLowerCase().startsWith('zh'));
     if (!zhVoices.length) return null;
 
-    const isRobotic = (voice) => {
-        const name = (voice?.name || '').toLowerCase();
-        const uri = (voice?.voiceURI || '').toLowerCase();
-        return name.includes('espeak') || name.includes('festival') || name.includes('flite') ||
-            uri.includes('espeak') || uri.includes('festival') || uri.includes('flite');
-    };
-
-    const preferred = zhVoices.find(v => v.lang === 'zh-CN' && !isRobotic(v)) ||
-        zhVoices.find(v => v.lang === 'zh-Hans' && !isRobotic(v)) ||
-        zhVoices.find(v => !isRobotic(v)) ||
+    const preferred = zhVoices.find(v => v.lang === 'zh-CN' && !isLikelyRoboticVoice(v)) ||
+        zhVoices.find(v => v.lang === 'zh-Hans' && !isLikelyRoboticVoice(v)) ||
+        zhVoices.find(v => !isLikelyRoboticVoice(v)) ||
         zhVoices[0];
 
     return preferred || null;
@@ -553,16 +553,9 @@ function getEnglishVoice() {
     const enVoices = cachedVoices.filter(v => typeof v.lang === 'string' && v.lang.toLowerCase().startsWith('en'));
     if (!enVoices.length) return null;
 
-    const isRobotic = (voice) => {
-        const name = (voice?.name || '').toLowerCase();
-        const uri = (voice?.voiceURI || '').toLowerCase();
-        return name.includes('espeak') || name.includes('festival') || name.includes('flite') ||
-            uri.includes('espeak') || uri.includes('festival') || uri.includes('flite');
-    };
-
-    const preferred = enVoices.find(v => v.lang === 'en-US' && !isRobotic(v)) ||
-        enVoices.find(v => v.lang === 'en-GB' && !isRobotic(v)) ||
-        enVoices.find(v => !isRobotic(v)) ||
+    const preferred = enVoices.find(v => v.lang === 'en-US' && !isLikelyRoboticVoice(v)) ||
+        enVoices.find(v => v.lang === 'en-GB' && !isLikelyRoboticVoice(v)) ||
+        enVoices.find(v => !isLikelyRoboticVoice(v)) ||
         enVoices[0];
 
     return preferred || null;
@@ -577,7 +570,123 @@ function containsChineseText(text) {
 }
 
 function shouldAvoidSpeechFallback(text) {
-    return containsChineseText(text) && isFirefoxBrowser();
+    if (!containsChineseText(text) || !isFirefoxBrowser()) {
+        return false;
+    }
+    const chineseVoice = getChineseVoice();
+    return !chineseVoice || isLikelyRoboticVoice(chineseVoice);
+}
+
+function playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure } = {}) {
+    if (!audio) return false;
+
+    setActiveAudio(audio);
+    setTtsDebug('remote', voiceLabel, 'pending');
+
+    let settled = false;
+
+    const cleanup = () => {
+        audio.removeEventListener('playing', handlePlaying);
+        audio.removeEventListener('error', handleFailure);
+    };
+
+    const handlePlaying = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        setTtsDebug('remote', voiceLabel, 'playing');
+        if (typeof onPlaying === 'function') {
+            onPlaying(audio);
+        }
+    };
+
+    const handleFailure = (error) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        if (globalScope.__activeAudio === audio) {
+            stopActiveAudio();
+        } else {
+            detachActiveAudio(audio);
+        }
+        setTtsDebug('remote', voiceLabel, 'error');
+        if (typeof onFailure === 'function') {
+            onFailure(error);
+        }
+    };
+
+    audio.addEventListener('playing', handlePlaying, { once: true });
+    audio.addEventListener('error', handleFailure, { once: true });
+
+    try {
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(handleFailure);
+        }
+    } catch (error) {
+        handleFailure(error);
+    }
+
+    return true;
+}
+
+function playChineseSpeechFallback(text, { rate, voice, debugStatus = 'speaking' } = {}) {
+    const trimmed = (text || '').toString().trim();
+    if (!trimmed) return false;
+    if (typeof window === 'undefined' ||
+        typeof window.speechSynthesis === 'undefined' ||
+        typeof window.SpeechSynthesisUtterance === 'undefined') {
+        return false;
+    }
+
+    const chineseVoice = voice || getChineseVoice();
+    const utterance = new SpeechSynthesisUtterance(trimmed);
+    utterance.lang = chineseVoice?.lang || 'zh-CN';
+    utterance.rate = typeof rate === 'number'
+        ? clampTtsRate(rate)
+        : (typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE);
+
+    if (chineseVoice) {
+        utterance.voice = chineseVoice;
+    }
+
+    setTtsDebug('speech', chineseVoice?.name || 'default', debugStatus);
+
+    try {
+        speechSynthesis.cancel();
+    } catch (_) {}
+
+    setTimeout(() => {
+        try {
+            speechSynthesis.speak(utterance);
+        } catch (err) {
+            console.warn('Failed to speak Chinese audio', err);
+        }
+    }, 10);
+
+    return true;
+}
+
+function playGoogleChineseAudio(text, { allowSpeechFallback, rate, voice, onPlaying } = {}) {
+    if (typeof Audio === 'undefined') {
+        if (allowSpeechFallback) {
+            return playChineseSpeechFallback(text, { rate, voice, debugStatus: 'fallback' });
+        }
+        return false;
+    }
+
+    return playTrackedRemoteAudio(
+        primeAudioElement(new Audio(googleTtsUrl(text))),
+        {
+            voiceLabel: 'google',
+            onPlaying,
+            onFailure: () => {
+                if (allowSpeechFallback) {
+                    playChineseSpeechFallback(text, { rate, voice, debugStatus: 'fallback' });
+                }
+            }
+        }
+    );
 }
 
 // Play audio using TTS
@@ -596,78 +705,37 @@ function playTTS(chineseChar) {
     const hasChinese = containsChineseText(text);
     const avoidSpeechFallback = shouldAvoidSpeechFallback(text);
     const chineseVoice = hasSpeech ? getChineseVoice() : null;
-    const voiceName = (chineseVoice?.name || '').toLowerCase();
-    const voiceUri = (chineseVoice?.voiceURI || '').toLowerCase();
-    const isLikelyRobotic = voiceName.includes('espeak') || voiceName.includes('festival') || voiceName.includes('flite') ||
-        voiceUri.includes('espeak') || voiceUri.includes('festival') || voiceUri.includes('flite');
+    const isLikelyRobotic = isLikelyRoboticVoice(chineseVoice);
+    const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
 
     const preferRemote = hasChinese && (isFirefox || !chineseVoice || isLikelyRobotic);
 
     if (!hasSpeech || preferRemote) {
-        if (typeof Audio !== 'undefined') {
-            const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
-            const audio = new Audio(sentenceTtsUrl(text, rate));
-            audio.preload = 'auto';
-            setActiveAudio(audio);
-            setTtsDebug('remote', 'baidu', 'pending');
-            const onPlay = () => {
-                setTtsDebug('remote', 'baidu', 'playing');
-            };
-            audio.addEventListener('playing', onPlay, { once: true });
-            audio.addEventListener('error', () => {
-                audio.removeEventListener('playing', onPlay);
-                detachActiveAudio(audio);
-                setTtsDebug('remote', 'baidu', 'error');
-                if (avoidSpeechFallback) {
-                    return;
-                }
-                if (hasSpeech) {
-                    const fallback = new SpeechSynthesisUtterance(text);
-                    fallback.lang = 'zh-CN';
-                    if (typeof getQuizTtsRate === 'function') {
-                        fallback.rate = getQuizTtsRate();
+        const started = typeof Audio !== 'undefined'
+            ? playTrackedRemoteAudio(
+                primeAudioElement(new Audio(sentenceTtsUrl(text, rate))),
+                {
+                    voiceLabel: 'baidu',
+                    onFailure: () => {
+                        playGoogleChineseAudio(text, {
+                            allowSpeechFallback: hasSpeech && !avoidSpeechFallback,
+                            rate,
+                            voice: chineseVoice
+                        });
                     }
-                    if (chineseVoice) {
-                        fallback.voice = chineseVoice;
-                    }
-                    setTtsDebug('speech', chineseVoice?.name || 'default', 'fallback');
-                    speechSynthesis.cancel();
-                    speechSynthesis.speak(fallback);
                 }
-            }, { once: true });
-            audio.play().catch(() => {
-                detachActiveAudio(audio);
-                setTtsDebug('remote', 'baidu', avoidSpeechFallback ? 'blocked' : 'error');
-            });
-        } else if (!hasSpeech) {
+            )
+            : false;
+
+        if (!started && !hasSpeech) {
             console.warn('SpeechSynthesis not supported and Audio unavailable.');
+        } else if (!started && hasSpeech && !avoidSpeechFallback) {
+            playChineseSpeechFallback(text, { rate, voice: chineseVoice, debugStatus: 'fallback' });
         }
         return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-CN'; // Mandarin Chinese
-    if (typeof getQuizTtsRate === 'function') {
-        utterance.rate = getQuizTtsRate();
-    } else {
-        utterance.rate = DEFAULT_TTS_RATE;
-    }
-
-    // Use cached Chinese voice (iOS-compatible)
-    if (chineseVoice) {
-        utterance.voice = chineseVoice;
-    }
-    setTtsDebug('speech', chineseVoice?.name || 'default', 'speaking');
-
-    // Cancel any ongoing speech before starting new one
-    if (typeof speechSynthesis.cancel === 'function') {
-        speechSynthesis.cancel();
-    }
-
-    // iOS Safari workaround: sometimes needs a small delay after cancel
-    setTimeout(() => {
-        speechSynthesis.speak(utterance);
-    }, 10);
+    playChineseSpeechFallback(text, { rate, voice: chineseVoice, debugStatus: 'speaking' });
 }
 
 function playEnglishTTS(text) {
@@ -788,74 +856,27 @@ function playSentenceAudio(sentence) {
         }
     }
 
-    setActiveAudio(audio);
-    setTtsDebug('remote', 'baidu', 'pending');
-
-    const onPlay = () => {
-        setTtsDebug('remote', 'baidu', 'playing');
-        recordPromptAudioStart();
-    };
-    audio.addEventListener('playing', onPlay, { once: true });
-
-    const onError = () => {
-        console.log(`Sentence audio failed for "${cacheKey}", using SpeechSynthesis fallback`);
-        audio.removeEventListener('error', onError);
-        audio.removeEventListener('playing', onPlay);
-        detachActiveAudio(audio);
-        cache.delete(cacheKey);
-
-        // Try Google TTS as a secondary fallback before SpeechSynthesis
-        if (typeof Audio !== 'undefined') {
-            const googleAudio = new Audio(googleTtsUrl(trimmedSentence));
-            setActiveAudio(googleAudio);
-            setTtsDebug('remote', 'google', 'pending');
-
-            const onGooglePlay = () => {
-                setTtsDebug('remote', 'google', 'playing');
-            };
-            const onGoogleError = () => {
-                googleAudio.removeEventListener('error', onGoogleError);
-                googleAudio.removeEventListener('playing', onGooglePlay);
-                detachActiveAudio(googleAudio);
-                setTtsDebug('remote', 'google', 'error');
-                if (avoidSpeechFallback) {
-                    return;
-                }
-                playTTS(trimmedSentence);
-            };
-
-            googleAudio.addEventListener('playing', onGooglePlay, { once: true });
-            googleAudio.addEventListener('error', onGoogleError, { once: true });
-
-            const googlePlayPromise = googleAudio.play();
-            if (googlePlayPromise && typeof googlePlayPromise.catch === 'function') {
-                googlePlayPromise.catch(() => onGoogleError());
-            }
-            return;
-        }
-
-        playTTS(trimmedSentence);
-    };
-
-    audio.addEventListener('error', onError, { once: true });
-
-    const playPromise = audio.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(err => {
-            console.log(`Sentence audio playback rejected for "${cacheKey}", fallback to SpeechSynthesis`, err);
-            audio.removeEventListener('error', onError);
-            audio.removeEventListener('playing', onPlay);
-            if (globalScope.__activeAudio === audio) {
-                stopActiveAudio();
-            } else {
-                detachActiveAudio(audio);
-            }
-            cache.delete(cacheKey);
-            setTtsDebug('remote', 'baidu', avoidSpeechFallback ? 'blocked' : 'error');
-            if (!avoidSpeechFallback) {
-                playTTS(trimmedSentence);
-            }
+    const playGoogleFallback = () => {
+        playGoogleChineseAudio(trimmedSentence, {
+            allowSpeechFallback: !avoidSpeechFallback,
+            rate,
+            onPlaying: recordPromptAudioStart
         });
+    };
+
+    const started = playTrackedRemoteAudio(audio, {
+        voiceLabel: 'baidu',
+        onPlaying: recordPromptAudioStart,
+        onFailure: () => {
+            console.log(`Sentence audio failed for "${cacheKey}", using remote fallback`);
+            cache.delete(cacheKey);
+            playGoogleFallback();
+        }
+    });
+
+    if (!started) {
+        cache.delete(cacheKey);
+        playGoogleFallback();
     }
 }
 
