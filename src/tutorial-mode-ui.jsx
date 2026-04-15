@@ -157,8 +157,8 @@ function TutorialModeView({
       <FeedbackBanner feedback={feedback} />
 
       <div className="tutorial-mode-actions">
-        <ActionButton label="Again" disabled={locked} onClick={onNeedsWork} />
-        <ActionButton label="Got it" primary disabled={locked} onClick={onGotIt} />
+        <ActionButton label="Again (A)" disabled={locked} onClick={onNeedsWork} />
+        <ActionButton label="Got it (G)" primary disabled={locked} onClick={onGotIt} />
       </div>
     </div>
   );

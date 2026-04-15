@@ -328,7 +328,7 @@
         wordType,
         extraMeanings
       }
-    ), /* @__PURE__ */ k(TinySentenceCard, { example: primaryExample }), /* @__PURE__ */ k("div", { className: "tutorial-mode-grid tutorial-mode-grid-secondary" }, /* @__PURE__ */ k(UsageCard, { structure, wordType }), /* @__PURE__ */ k(RememberCard, { perCharLines })), /* @__PURE__ */ k(FeedbackBanner, { feedback }), /* @__PURE__ */ k("div", { className: "tutorial-mode-actions" }, /* @__PURE__ */ k(ActionButton, { label: "Again", disabled: locked, onClick: onNeedsWork }), /* @__PURE__ */ k(ActionButton, { label: "Got it", primary: true, disabled: locked, onClick: onGotIt })));
+    ), /* @__PURE__ */ k(TinySentenceCard, { example: primaryExample }), /* @__PURE__ */ k("div", { className: "tutorial-mode-grid tutorial-mode-grid-secondary" }, /* @__PURE__ */ k(UsageCard, { structure, wordType }), /* @__PURE__ */ k(RememberCard, { perCharLines })), /* @__PURE__ */ k(FeedbackBanner, { feedback }), /* @__PURE__ */ k("div", { className: "tutorial-mode-actions" }, /* @__PURE__ */ k(ActionButton, { label: "Again (A)", disabled: locked, onClick: onNeedsWork }), /* @__PURE__ */ k(ActionButton, { label: "Got it (G)", primary: true, disabled: locked, onClick: onGotIt })));
   }
   function render(container, props) {
     if (!container) return;

@@ -13008,8 +13008,8 @@ function renderTutorialModeFallback(viewModel) {
             </div>
             ${feedbackHtml}
             <div class="tutorial-mode-actions">
-                <button type="button" id="tutorialNeedsWorkBtn" class="tutorial-mode-action is-secondary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Again</button>
-                <button type="button" id="tutorialGotItBtn" class="tutorial-mode-action is-primary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Got it</button>
+                <button type="button" id="tutorialNeedsWorkBtn" class="tutorial-mode-action is-secondary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Again (A)</button>
+                <button type="button" id="tutorialGotItBtn" class="tutorial-mode-action is-primary${viewModel.locked ? ' is-disabled' : ''}" ${viewModel.locked ? 'disabled' : ''}>Got it (G)</button>
             </div>
         </div>
     `;
@@ -19171,6 +19171,20 @@ function handleQuizHotkeys(e) {
         if (!e.shiftKey && typeof window.currentAudioPlayFunc === 'function') {
             e.preventDefault();
             window.currentAudioPlayFunc();
+            return;
+        }
+    }
+
+    if (mode === 'tutorial' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        if (isTypingTarget(target)) return;
+        if (e.key === 'a' || e.key === 'A') {
+            e.preventDefault();
+            submitTutorialModeAssessment(false);
+            return;
+        }
+        if (e.key === 'g' || e.key === 'G') {
+            e.preventDefault();
+            submitTutorialModeAssessment(true);
             return;
         }
     }
