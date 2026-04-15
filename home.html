@@ -14,9 +14,156 @@
     <style>
         body { font-family: 'JetBrains Mono', monospace; font-weight: 300; }
         h1, h2, h3, .font-medium { font-weight: 400; }
+        .lesson-meta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.45rem;
+            border-radius: 9999px;
+            font-size: 0.68rem;
+            line-height: 1;
+            font-weight: 500;
+        }
     </style>
+    <script>
+        const HOME_CARD_META = {
+            "all-lessons-cumulative.html": { count: 361, difficulty: "Mixed" },
+            "common-characters.html": { count: 2500, difficulty: null },
+            "common-words-1-8.html": { count: 145, difficulty: "Mixed" },
+            "common-words.html": { count: 114, difficulty: null },
+            "dushu-part-1.html": { count: 33, difficulty: "Reading" },
+            "dushu-part-2.html": { count: 27, difficulty: "Reading" },
+            "dushu-vocab.html": { count: 60, difficulty: "Reading" },
+            "gaokao-part-1.html": { count: 14, difficulty: "Reading" },
+            "gaokao-part-2.html": { count: 22, difficulty: "Reading" },
+            "gaokao-vocab.html": { count: 36, difficulty: "Reading" },
+            "lesson-1-4-common-words.html": { count: 89, difficulty: "Mixed" },
+            "lesson-1-4-dialogue-vocab.html": { count: 137, difficulty: "Mixed" },
+            "lesson-1-4-only-words.html": { count: 382, difficulty: "Mixed" },
+            "lesson-1-8-cumulative.html": { count: 361, difficulty: "Mixed" },
+            "lesson-1-dual-sets-quiz.html": { count: 59, difficulty: "Beginner" },
+            "lesson-1-hard-subset.html": { count: 33, difficulty: "Beginner" },
+            "lesson-1-quiz.html": { count: 59, difficulty: "Beginner" },
+            "lesson-10-cumulative.html": { count: 36, difficulty: "Intermediate" },
+            "lesson-10-part-1.html": { count: 16, difficulty: "Intermediate" },
+            "lesson-10-part-2.html": { count: 20, difficulty: "Intermediate" },
+            "lesson-11-cumulative.html": { count: 47, difficulty: "Intermediate" },
+            "lesson-11-part-1.html": { count: 22, difficulty: "Intermediate" },
+            "lesson-11-part-2.html": { count: 25, difficulty: "Intermediate" },
+            "lesson-12-cumulative.html": { count: 44, difficulty: "Intermediate" },
+            "lesson-12-part-1.html": { count: 21, difficulty: "Intermediate" },
+            "lesson-12-part-2.html": { count: 23, difficulty: "Intermediate" },
+            "lesson-13-16-cumulative.html": { count: 24, difficulty: "Mixed" },
+            "lesson-13-cumulative.html": { count: 24, difficulty: "Intermediate+" },
+            "lesson-13-part-1.html": { count: 12, difficulty: "Intermediate+" },
+            "lesson-13-part-2.html": { count: 12, difficulty: "Intermediate+" },
+            "lesson-14-cumulative.html": { count: 33, difficulty: "Intermediate+" },
+            "lesson-14-part-1.html": { count: 15, difficulty: "Intermediate+" },
+            "lesson-14-part-2.html": { count: 18, difficulty: "Intermediate+" },
+            "lesson-15-cumulative.html": { count: 45, difficulty: "Intermediate+" },
+            "lesson-15-part-1.html": { count: 21, difficulty: "Intermediate+" },
+            "lesson-15-part-2.html": { count: 24, difficulty: "Intermediate+" },
+            "lesson-16-cumulative.html": { count: 24, difficulty: "Intermediate+" },
+            "lesson-16-part-1.html": { count: 18, difficulty: "Intermediate+" },
+            "lesson-16-part-2.html": { count: 6, difficulty: "Intermediate+" },
+            "lesson-17-cumulative.html": { count: 47, difficulty: "Advanced" },
+            "lesson-17-part-1.html": { count: 29, difficulty: "Advanced" },
+            "lesson-17-part-2.html": { count: 18, difficulty: "Advanced" },
+            "lesson-18-cumulative.html": { count: 47, difficulty: "Advanced" },
+            "lesson-18-part-1.html": { count: 29, difficulty: "Advanced" },
+            "lesson-18-part-2.html": { count: 18, difficulty: "Advanced" },
+            "lesson-19-cumulative.html": { count: 47, difficulty: "Advanced" },
+            "lesson-19-part-1.html": { count: 28, difficulty: "Advanced" },
+            "lesson-19-part-2.html": { count: 19, difficulty: "Advanced" },
+            "lesson-2-cumulative.html": { count: 62, difficulty: "Beginner" },
+            "lesson-2-part-1.html": { count: 35, difficulty: "Beginner" },
+            "lesson-2-part-2.html": { count: 27, difficulty: "Beginner" },
+            "lesson-21-cumulative.html": { count: 51, difficulty: "Advanced" },
+            "lesson-21-part-1.html": { count: 25, difficulty: "Advanced" },
+            "lesson-21-part-2.html": { count: 26, difficulty: "Advanced" },
+            "lesson-3-cumulative.html": { count: 34, difficulty: "Beginner" },
+            "lesson-3-part-1.html": { count: 19, difficulty: "Beginner" },
+            "lesson-3-part-2.html": { count: 15, difficulty: "Beginner" },
+            "lesson-4-7-common-words.html": { count: 216, difficulty: "Mixed" },
+            "lesson-4-cumulative.html": { count: 57, difficulty: "Beginner" },
+            "lesson-4-part-1.html": { count: 27, difficulty: "Beginner" },
+            "lesson-4-part-2.html": { count: 30, difficulty: "Beginner" },
+            "lesson-5-cumulative.html": { count: 31, difficulty: "Beginner+" },
+            "lesson-5-part-1.html": { count: 19, difficulty: "Beginner+" },
+            "lesson-5-part-2.html": { count: 12, difficulty: "Beginner+" },
+            "lesson-6-cumulative.html": { count: 45, difficulty: "Beginner+" },
+            "lesson-6-part-1.html": { count: 22, difficulty: "Beginner+" },
+            "lesson-6-part-2.html": { count: 23, difficulty: "Beginner+" },
+            "lesson-7-cumulative.html": { count: 61, difficulty: "Beginner+" },
+            "lesson-7-part-1.html": { count: 28, difficulty: "Beginner+" },
+            "lesson-7-part-2.html": { count: 33, difficulty: "Beginner+" },
+            "lesson-8-cumulative.html": { count: 33, difficulty: "Beginner+" },
+            "lesson-8-part-1.html": { count: 18, difficulty: "Beginner+" },
+            "lesson-8-part-2.html": { count: 15, difficulty: "Beginner+" },
+            "lesson-9-12-cumulative.html": { count: 41, difficulty: "Mixed" },
+            "lesson-9-cumulative.html": { count: 41, difficulty: "Intermediate" },
+            "lesson-9-part-1-dual-sets-quiz.html": { count: 26, difficulty: "Intermediate" },
+            "lesson-9-part-1.html": { count: 26, difficulty: "Intermediate" },
+            "lesson-9-part-2.html": { count: 15, difficulty: "Intermediate" },
+            "xiao-huangdi-part-1.html": { count: 28, difficulty: "Reading" },
+            "xiao-huangdi-part-2.html": { count: 27, difficulty: "Reading" }
+        };
+
+        const DIFFICULTY_STYLES = {
+            'Beginner': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+            'Beginner+': 'bg-teal-50 text-teal-700 border border-teal-200',
+            'Intermediate': 'bg-sky-50 text-sky-700 border border-sky-200',
+            'Intermediate+': 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+            'Advanced': 'bg-rose-50 text-rose-700 border border-rose-200',
+            'Reading': 'bg-amber-50 text-amber-700 border border-amber-200',
+            'Mixed': 'bg-slate-50 text-slate-700 border border-slate-200'
+        };
+
+        function createMetaBadge(text, extraClasses) {
+            const badge = document.createElement('span');
+            badge.className = `lesson-meta-badge ${extraClasses}`;
+            badge.textContent = text;
+            return badge;
+        }
+
+        function formatWordCount(count) {
+            if (!count || count < 1) return null;
+            return `${count} word${count === 1 ? '' : 's'}`;
+        }
+
+        function applyHomeCardMetadata() {
+            document.querySelectorAll('a[href]').forEach((card) => {
+                const href = card.getAttribute('href');
+                const meta = HOME_CARD_META[href];
+                if (!meta || card.dataset.metaApplied === 'true') return;
+                const title = card.querySelector('.font-medium');
+                if (!title) return;
+
+                const metaRow = document.createElement('div');
+                metaRow.className = 'mt-2 flex flex-wrap gap-2';
+
+                const wordCount = formatWordCount(meta.count);
+                if (wordCount) {
+                    metaRow.appendChild(createMetaBadge(wordCount, 'bg-gray-100 text-gray-700 border border-gray-200'));
+                }
+                if (meta.difficulty) {
+                    metaRow.appendChild(createMetaBadge(meta.difficulty, DIFFICULTY_STYLES[meta.difficulty] || DIFFICULTY_STYLES.Mixed));
+                }
+
+                if (metaRow.children.length > 0) {
+                    title.insertAdjacentElement('afterend', metaRow);
+                }
+                card.dataset.metaApplied = 'true';
+            });
+        }
+
+        function initializeHomePage() {
+            lucide.createIcons();
+            applyHomeCardMetadata();
+        }
+    </script>
 </head>
-<body class="bg-gray-100 min-h-screen" onload="lucide.createIcons();">
+<body class="bg-gray-100 min-h-screen" onload="initializeHomePage();">
     <div class="max-w-6xl mx-auto py-8 px-4">
         <!-- Header -->
         <div class="text-center mb-8">
