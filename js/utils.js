@@ -977,6 +977,7 @@ function playEdgeTtsChineseAudio(text, { rate, onPlaying, onFailure } = {}) {
     if (!trimmed || !canUseEdgeTtsBrowserSynthesis()) return false;
 
     const token = Symbol('edge-tts-playback');
+    const timeoutMs = 8000;
     globalScope.__pendingEdgeTtsToken = token;
     setTtsDebug('remote', 'edge-zh', 'synthesizing');
     updateAudioDiagnostics({ event: 'edge-synth-start', src: trimmed, error: '' });
@@ -985,6 +986,7 @@ function playEdgeTtsChineseAudio(text, { rate, onPlaying, onFailure } = {}) {
         try {
             const module = await loadEdgeTtsModule();
             if (globalScope.__pendingEdgeTtsToken !== token) return;
+            updateAudioDiagnostics({ event: 'edge-module-ready' });
             const EdgeTTS = module?.EdgeTTS;
             if (typeof EdgeTTS !== 'function') {
                 throw new Error('EdgeTTS module did not expose a constructor');
@@ -993,8 +995,22 @@ function playEdgeTtsChineseAudio(text, { rate, onPlaying, onFailure } = {}) {
             const tts = new EdgeTTS(trimmed, 'zh-CN-XiaoxiaoNeural', {
                 rate: edgeTtsRateString(rate)
             });
-            const result = await tts.synthesize();
+            const result = await Promise.race([
+                tts.synthesize(),
+                new Promise((_, reject) => {
+                    window.setTimeout(() => reject(new Error(`Edge TTS synthesis timed out after ${timeoutMs}ms`)), timeoutMs);
+                })
+            ]);
             if (globalScope.__pendingEdgeTtsToken !== token) return;
+            updateAudioDiagnostics({
+                event: 'edge-synth-complete',
+                error: '',
+                src: `edge-blob:${trimmed}`
+            });
+
+            if (!result?.audio || (typeof result.audio.size === 'number' && result.audio.size === 0)) {
+                throw new Error('Edge TTS returned an empty audio blob');
+            }
 
             const objectUrl = URL.createObjectURL(new Blob([result.audio], { type: 'audio/mpeg' }));
             const audio = primeAudioElement(new Audio(objectUrl));
@@ -1103,7 +1119,7 @@ function playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure } = {}
     return true;
 }
 
-function playChineseSpeechFallback(text, { rate, voice, debugStatus = 'speaking' } = {}) {
+function playChineseSpeechFallback(text, { rate, voice, debugStatus = 'speaking', forceVoice = false } = {}) {
     const trimmed = (text || '').toString().trim();
     if (!trimmed) return false;
     if (typeof window === 'undefined' ||
@@ -1112,7 +1128,7 @@ function playChineseSpeechFallback(text, { rate, voice, debugStatus = 'speaking'
         return false;
     }
 
-    const chineseVoice = voice || getChineseVoice();
+    const chineseVoice = forceVoice ? (voice || null) : (voice || getChineseVoice());
     const utterance = new SpeechSynthesisUtterance(trimmed);
     clearDeferredAudioPlayback();
     utterance.lang = chineseVoice?.lang || 'zh-CN';
@@ -1182,6 +1198,16 @@ function playTTS(chineseChar) {
         const started = playEdgeTtsChineseAudio(text, {
             rate,
             onFailure: () => {
+                if (hasSpeech) {
+                    playChineseSpeechFallback(text, {
+                        rate,
+                        voice: chineseVoice,
+                        debugStatus: avoidSpeechFallback ? 'robotic-fallback' : 'fallback',
+                        forceVoice: avoidSpeechFallback
+                    });
+                    return;
+                }
+
                 const directStarted = typeof Audio !== 'undefined'
                     ? playTrackedRemoteAudio(
                         primeAudioElement(new Audio(sentenceTtsUrl(text, rate))),
@@ -1189,7 +1215,7 @@ function playTTS(chineseChar) {
                             voiceLabel: 'baidu',
                             onFailure: () => {
                                 playGoogleChineseAudio(text, {
-                                    allowSpeechFallback: hasSpeech && !avoidSpeechFallback,
+                                    allowSpeechFallback: false,
                                     rate,
                                     voice: chineseVoice
                                 });
@@ -1197,8 +1223,8 @@ function playTTS(chineseChar) {
                         }
                     )
                     : false;
-                if (!directStarted && hasSpeech && !avoidSpeechFallback) {
-                    playChineseSpeechFallback(text, { rate, voice: chineseVoice, debugStatus: 'fallback' });
+                if (!directStarted) {
+                    console.warn('Firefox Chinese audio failed: Edge/blob path failed and no speech fallback is available.');
                 }
             }
         });
@@ -1329,17 +1355,19 @@ function playSentenceAudio(sentence) {
             rate,
             onPlaying: recordPromptAudioStart,
             onFailure: () => {
-                const cachedFallback = getSentenceAudioInstance(trimmedSentence, rate);
-                if (!cachedFallback) {
-                    if (!avoidSpeechFallback) {
-                        playGoogleChineseAudio(trimmedSentence, {
-                            allowSpeechFallback: true,
-                            rate,
-                            onPlaying: recordPromptAudioStart
-                        });
-                    }
+                if (typeof window !== 'undefined' &&
+                    typeof window.speechSynthesis !== 'undefined' &&
+                    typeof window.SpeechSynthesisUtterance !== 'undefined') {
+                    playChineseSpeechFallback(trimmedSentence, {
+                        rate,
+                        debugStatus: avoidSpeechFallback ? 'robotic-fallback' : 'fallback',
+                        forceVoice: avoidSpeechFallback
+                    });
                     return;
                 }
+
+                const cachedFallback = getSentenceAudioInstance(trimmedSentence, rate);
+                if (!cachedFallback) return;
 
                 let { audio, cacheKey, cache } = cachedFallback;
                 if (cache.has(cacheKey)) {
@@ -1356,7 +1384,7 @@ function playSentenceAudio(sentence) {
 
                 const playGoogleFallback = () => {
                     playGoogleChineseAudio(trimmedSentence, {
-                        allowSpeechFallback: !avoidSpeechFallback,
+                        allowSpeechFallback: false,
                         rate,
                         onPlaying: recordPromptAudioStart
                     });
