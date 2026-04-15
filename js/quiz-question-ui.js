@@ -277,12 +277,12 @@
     return /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "column-feedback" }, /* @__PURE__ */ k("span", { className: "column-result-icon" }, resultIcon), /* @__PURE__ */ k("span", { className: "column-feedback-text" }, feedbackText)), /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "column-pinyin" }, pinyin), /* @__PURE__ */ k("div", { className: "column-meaning" }, meaning), charDetails ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: charDetails } }) : null, dirLabel ? /* @__PURE__ */ k("div", { style: { fontSize: "10px", color: "#94a3b8", marginTop: "6px", textTransform: "uppercase", letterSpacing: "0.05em" } }, dirLabel) : null);
   }
   function CurrentCard({ char, fontSize, markingBadge, inlineFeedback, mode, inlinePromptAudioHtml, promptHtml, dirLabel, usageHint }) {
-    const isAudioMode = mode === "audio-to-meaning" || mode === "audio-to-pinyin";
+    const isAudioMode = mode === "audio-to-meaning" || mode === "audio-sentence-to-meaning" || mode === "audio-to-pinyin";
     return /* @__PURE__ */ k(S, null, markingBadge ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: markingBadge } }) : null, /* @__PURE__ */ k(UsageHint, { hint: usageHint }), /* @__PURE__ */ k("div", { className: "column-focus-ring" }, promptHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: promptHtml } }) : isAudioMode ? inlinePromptAudioHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: inlinePromptAudioHtml } }) : null : /* @__PURE__ */ k("div", { className: "column-char-large", style: { fontSize } }, char)), inlineFeedback ? /* @__PURE__ */ k("div", { className: `column-inline-feedback ${inlineFeedback.type === "incorrect" ? "is-incorrect" : "is-correct"}` }, inlineFeedback.message) : null);
   }
   function UpcomingCard({ char, mode }) {
     const isBlendMode = mode === "blend";
-    return /* @__PURE__ */ k("div", { className: "column-ondeck" }, isBlendMode ? /* @__PURE__ */ k("div", { style: { fontSize: "28px", color: "#d1d5db" } }, "?") : mode === "audio-to-meaning" || mode === "audio-to-pinyin" ? /* @__PURE__ */ k("div", { style: { fontSize: "32px", color: "#d1d5db" } }, "\u{1F50A}") : /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "ondeck-note" }, "On deck"));
+    return /* @__PURE__ */ k("div", { className: "column-ondeck" }, isBlendMode ? /* @__PURE__ */ k("div", { style: { fontSize: "28px", color: "#d1d5db" } }, "?") : mode === "audio-to-meaning" || mode === "audio-sentence-to-meaning" || mode === "audio-to-pinyin" ? /* @__PURE__ */ k("div", { style: { fontSize: "32px", color: "#d1d5db" } }, "\u{1F50A}") : /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "ondeck-note" }, "On deck"));
   }
   function ThreeColumnMeaningLayout({
     previous,
@@ -355,7 +355,7 @@
       content = /* @__PURE__ */ k(MeaningDisplay, { meaning });
     } else if (mode === "char-to-meaning" || mode === "char-to-meaning-type") {
       content = /* @__PURE__ */ k(S, null, /* @__PURE__ */ k(UsageHint, { hint: usageHint }), markingBadge ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: markingBadge } }) : null, /* @__PURE__ */ k(CharLargeDisplay, { char, fontSize }));
-    } else if (mode === "audio-to-meaning") {
+    } else if (mode === "audio-to-meaning" || mode === "audio-sentence-to-meaning") {
       content = /* @__PURE__ */ k(S, null, /* @__PURE__ */ k(UsageHint, { hint: usageHint }), inlinePromptAudioHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: inlinePromptAudioHtml } }) : null);
     } else {
       content = /* @__PURE__ */ k(S, null, /* @__PURE__ */ k(UsageHint, { hint: usageHint }), /* @__PURE__ */ k(CharLargeDisplay, { char, fontSize }));

@@ -80,6 +80,14 @@ let previousQuestionResult = null; // 'correct' or 'incorrect'
 let upcomingQuestion = null;
 let threeColumnInlineFeedback = null; // { message, type: 'correct' | 'incorrect' }
 
+function isAudioSentenceMeaningMode(activeMode = mode) {
+    return activeMode === 'audio-sentence-to-meaning';
+}
+
+function isAudioMeaningMode(activeMode = mode) {
+    return activeMode === 'audio-to-meaning' || isAudioSentenceMeaningMode(activeMode);
+}
+
 function reserveCurrentQuestionAsUpcomingRepeat() {
     if (!currentQuestion || !currentQuestion.char) return;
     upcomingQuestion = currentQuestion;
@@ -1349,6 +1357,41 @@ function getSentenceModeHighlightIndex(inputValue, options) {
         }
     });
     return bestMatch;
+}
+
+function getAudioSentenceMeaningExample(question = currentQuestion) {
+    const example = getTutorialSentenceExamples(question, { limit: 1 })[0] || getTutorialGeneratedExample(question);
+    if (!example) return null;
+
+    const sentence = String(example.sentence || '').trim();
+    const meaning = String(example.meaning || '').trim();
+    const target = String(example.target || question?.char || '').trim();
+    if (!sentence) return null;
+
+    return {
+        sentence,
+        meaning,
+        target,
+        highlightedSentenceHtml: example.highlightedSentenceHtml || highlightSentenceModeTarget(sentence, target)
+    };
+}
+
+function getAudioMeaningPromptSubtitle(activeMode = mode) {
+    if (isAudioSentenceMeaningMode(activeMode)) {
+        return 'Listen to the word, then a context sentence, and choose meaning';
+    }
+    return 'Listen and choose meaning';
+}
+
+function getAudioSentenceMeaningPromptText(question = currentQuestion) {
+    const word = String(question?.char || '').trim();
+    const example = getAudioSentenceMeaningExample(question);
+    const sentence = String(example?.sentence || '').trim();
+
+    if (word && sentence) {
+        return `${word}。${sentence}`;
+    }
+    return word || sentence || '';
 }
 
 function buildSentenceModeViewModel() {
@@ -3473,6 +3516,9 @@ function getCurrentSkillKey(customMode = mode) {
     }
     if (m === 'audio-to-meaning') {
         return 'audio-meaning';
+    }
+    if (m === 'audio-sentence-to-meaning') {
+        return 'audio-sentence-meaning';
     }
     if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'dictation-chat' || m === 'sentence' || m === 'tutorial') {
         return 'meaning';
@@ -8168,7 +8214,7 @@ function renderQuestionUiForTypingModes() {
         return true;
     }
 
-    if (mode === 'audio-to-meaning' && audioSection && fuzzyMode) {
+    if (isAudioMeaningMode(mode) && audioSection && fuzzyMode) {
         renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
         fuzzyMode.style.display = 'block';
@@ -8934,7 +8980,7 @@ function warmPromptAudio(question) {
 }
 
 function modeUsesPromptAudio(activeMode = mode) {
-    if (activeMode === 'audio-to-pinyin' || activeMode === 'audio-to-meaning' || activeMode === 'dictation-chat' || activeMode === 'tutorial') {
+    if (activeMode === 'audio-to-pinyin' || isAudioMeaningMode(activeMode) || activeMode === 'dictation-chat' || activeMode === 'tutorial') {
         return true;
     }
     if (activeMode === 'blend' || activeMode === 'blend-mc') {
@@ -8980,6 +9026,13 @@ function registerCurrentPromptAudio(options = {}) {
         if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
             window.__lastPromptAudioRequestedAt = performance.now();
             window.__audioPromptLatencyTargetMs = AUDIO_PROMPT_LATENCY_TARGET_MS;
+        }
+        if (isAudioSentenceMeaningMode(mode)) {
+            const contextualPrompt = getAudioSentenceMeaningPromptText(questionForPlayback);
+            if (contextualPrompt) {
+                playSentenceAudio(contextualPrompt);
+                return;
+            }
         }
         if (firstPinyin) {
             playPinyinAudio(firstPinyin, questionForPlayback.char);
@@ -9911,7 +9964,7 @@ function generateFuzzyMeaningOptions() {
                     },
                     onSelect: (value) => checkFuzzyAnswer(value),
                     onKeyDown: (e) => {
-                        if (e.key === ' ' && mode === 'audio-to-meaning' && window.currentAudioPlayFunc) {
+                        if (e.key === ' ' && isAudioMeaningMode(mode) && window.currentAudioPlayFunc) {
                             e.preventDefault();
                             window.currentAudioPlayFunc();
                         }
@@ -9998,7 +10051,7 @@ function generateFuzzyMeaningOptions() {
 
     // Enter key handler + space replay for audio-to-meaning
     fuzzyInput.onkeydown = (e) => {
-        if (e.key === ' ' && mode === 'audio-to-meaning' && window.currentAudioPlayFunc) {
+        if (e.key === ' ' && isAudioMeaningMode(mode) && window.currentAudioPlayFunc) {
             e.preventDefault();
             window.currentAudioPlayFunc();
             return;
@@ -10885,16 +10938,16 @@ function checkFuzzyAnswer(answer) {
 
     const correct = answer === currentQuestion.meaning;
 
-    // Play audio for the character (skip for audio-to-meaning since they already heard it)
-    if (mode !== 'audio-to-meaning' && mode !== 'sentence' && currentQuestion.pinyin) {
+    // Play audio for the character (skip for audio meaning modes since they already heard it)
+    if (!isAudioMeaningMode(mode) && mode !== 'sentence' && currentQuestion.pinyin) {
         const firstPinyin = currentQuestion.pinyin.split('/').map(p => p.trim())[0];
         if (window.playPinyinAudio) {
             playPinyinAudio(firstPinyin, currentQuestion.char);
         }
     }
 
-    // For 3-column layout in char-to-meaning-type and audio-to-meaning: immediately advance
-    if (mode === 'char-to-meaning-type' || mode === 'audio-to-meaning') {
+    // For 3-column layout in char-to-meaning-type and audio meaning modes: immediately advance
+    if (mode === 'char-to-meaning-type' || isAudioMeaningMode(mode)) {
         lastAnswerCorrect = correct;
 
         if (correct) {
@@ -10937,7 +10990,7 @@ function checkFuzzyAnswer(answer) {
             feedback.textContent = '';
             hint.textContent = '';
 
-            if (mode === 'audio-to-meaning') {
+            if (isAudioMeaningMode(mode)) {
                 setupAudioMode({ focusAnswer: false });
                 if (fuzzyInput) setTimeout(() => fuzzyInput.focus(), 50);
             }
@@ -10961,7 +11014,7 @@ function checkFuzzyAnswer(answer) {
             setTimeout(() => fuzzyInput.focus(), 0);
         }
 
-        if (mode === 'audio-to-meaning') {
+        if (isAudioMeaningMode(mode)) {
             reserveCurrentQuestionAsUpcomingRepeat();
         }
 
@@ -10969,7 +11022,7 @@ function checkFuzzyAnswer(answer) {
         generateFuzzyMeaningOptions();
         feedback.textContent = '';
         hint.textContent = '';
-        if (mode === 'audio-to-meaning') {
+        if (isAudioMeaningMode(mode)) {
             playMeaningFeedbackAudio(currentQuestion);
         }
         return;
@@ -13878,6 +13931,7 @@ function renderThreeColumnMeaningLayout() {
                 fontSize: currentCharFontSize,
                 markingBadge: currentMarkingBadge,
                 mode: mode,
+                inlinePromptAudioHtml: isAudioMeaningMode(mode) ? getInlinePromptAudioHtml(getAudioMeaningPromptSubtitle(mode)) : '',
                 usageHint: currentUsageHint
             },
             upcoming: upcomingQuestion ? {
@@ -13894,7 +13948,7 @@ function renderThreeColumnMeaningLayout() {
             columns: columns,
             inlineFeedback: feedback
         });
-        if (mode === 'audio-to-meaning') {
+        if (isAudioMeaningMode(mode)) {
             attachAudioSectionToInlineSlot();
         } else {
             restoreQuizAudioSectionHome();
@@ -13924,8 +13978,8 @@ function renderThreeColumnMeaningLayout() {
                 ${currentMarkingBadge}
                 ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring">
-                    ${mode === 'audio-to-meaning' ? `
-                        ${getInlinePromptAudioHtml('Listen and choose meaning')}
+                    ${isAudioMeaningMode(mode) ? `
+                        ${getInlinePromptAudioHtml(getAudioMeaningPromptSubtitle(mode))}
                     ` : `
                         <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
                     `}
@@ -13940,7 +13994,7 @@ function renderThreeColumnMeaningLayout() {
                 <div class="column-label">Upcoming</div>
                 ${upcomingQuestion ? `
                     <div class="column-ondeck">
-                        ${mode === 'audio-to-meaning' ? `
+                        ${isAudioMeaningMode(mode) ? `
                             <div style="font-size: 32px; color: #d1d5db;">🔊</div>
                         ` : `
                             <div class="column-char">${upcomingChar}</div>
@@ -14107,7 +14161,7 @@ function displayQuestion() {
         }
         // Re-setup audio mode for the new question
         setupAudioMode({ focusAnswer: true });
-    } else if (mode === 'audio-to-meaning') {
+    } else if (isAudioMeaningMode(mode)) {
         renderThreeColumnMeaningLayout();
         generateFuzzyMeaningOptions();
         if (fuzzyMode) fuzzyMode.style.display = 'block';
@@ -18976,6 +19030,7 @@ function getCurrentPromptText() {
             return asString(question.char);
         case 'audio-to-pinyin':
         case 'audio-to-meaning':
+        case 'audio-sentence-to-meaning':
         case 'sentence':
         case 'dictation-chat':
         case 'blend':
@@ -19017,7 +19072,7 @@ function fallbackCopy(text) {
 }
 
 function getActiveInputField() {
-    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'char-to-pinyin-meaning' || mode === 'meaning-to-char-pinyin' || mode === 'audio-to-meaning' || mode === 'blend' || mode === 'blend-mc') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
+    if ((mode === 'char-to-meaning-type' || mode === 'char-to-pinyin-type' || mode === 'char-to-pinyin-meaning' || mode === 'meaning-to-char-pinyin' || mode === 'audio-to-meaning' || mode === 'audio-sentence-to-meaning' || mode === 'blend' || mode === 'blend-mc') && fuzzyInput && isElementReallyVisible(fuzzyInput)) {
         return fuzzyInput;
     }
     if (answerInput && isElementReallyVisible(answerInput)) {
@@ -19362,6 +19417,7 @@ function initQuizCommandPalette() {
         { name: 'Char → Tones', mode: 'char-to-tones', type: 'mode' },
         { name: 'Audio → Pinyin', mode: 'audio-to-pinyin', type: 'mode' },
         { name: 'Audio → Meaning', mode: 'audio-to-meaning', type: 'mode' },
+        { name: 'Audio + Sentence → Meaning', mode: 'audio-sentence-to-meaning', type: 'mode' },
         { name: 'Sentence', mode: 'sentence', type: 'mode' },
         { name: 'Tutorial', mode: 'tutorial', type: 'mode' },
         { name: 'Dictation Chat', mode: 'dictation-chat', type: 'mode' },
@@ -20045,6 +20101,7 @@ function initQuizPersistentState(charactersData, userConfig) {
     ensureModeButton('char-to-pinyin-meaning', 'Pinyin → Meaning');
     ensureModeButton('meaning-to-char-pinyin', 'Meaning → Char + Pinyin');
     ensureModeButton('sentence', 'Sentence');
+    ensureModeButton('audio-sentence-to-meaning', 'Audio + Sentence');
     if (structureSortDataset.length) {
         ensureModeButton('structure-sort', 'Structure Sort');
     }
@@ -20302,7 +20359,7 @@ function initQuizEventListeners() {
             } else {
                 playCurrentDictationPart();
             }
-        } else if (e.key === ' ' && (mode === 'audio-to-pinyin' || mode === 'audio-to-meaning') && audioSection) {
+        } else if (e.key === ' ' && (mode === 'audio-to-pinyin' || isAudioMeaningMode(mode)) && audioSection) {
             e.preventDefault();
             if (window.currentAudioPlayFunc) {
                 window.currentAudioPlayFunc();

@@ -114,7 +114,7 @@ function PreviousCard({ char, pinyin, meaning, resultClass, resultIcon, feedback
 }
 
 function CurrentCard({ char, fontSize, markingBadge, inlineFeedback, mode, inlinePromptAudioHtml, promptHtml, dirLabel, usageHint }) {
-  const isAudioMode = mode === 'audio-to-meaning' || mode === 'audio-to-pinyin';
+  const isAudioMode = mode === 'audio-to-meaning' || mode === 'audio-sentence-to-meaning' || mode === 'audio-to-pinyin';
   return (
     <Fragment>
       {markingBadge ? <div dangerouslySetInnerHTML={{ __html: markingBadge }} /> : null}
@@ -143,7 +143,7 @@ function UpcomingCard({ char, mode }) {
     <div className="column-ondeck">
       {isBlendMode ? (
         <div style={{ fontSize: '28px', color: '#d1d5db' }}>?</div>
-      ) : mode === 'audio-to-meaning' || mode === 'audio-to-pinyin' ? (
+      ) : mode === 'audio-to-meaning' || mode === 'audio-sentence-to-meaning' || mode === 'audio-to-pinyin' ? (
         <div style={{ fontSize: '32px', color: '#d1d5db' }}>&#x1f50a;</div>
       ) : (
         <div className="column-char">{char}</div>
@@ -253,7 +253,7 @@ function QuestionDisplayView({
         <CharLargeDisplay char={char} fontSize={fontSize} />
       </Fragment>
     );
-  } else if (mode === 'audio-to-meaning') {
+  } else if (mode === 'audio-to-meaning' || mode === 'audio-sentence-to-meaning') {
     content = (
       <Fragment>
         <UsageHint hint={usageHint} />

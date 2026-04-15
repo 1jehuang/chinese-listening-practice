@@ -41,6 +41,9 @@ function getCurrentSkillKey(customMode = mode) {
     if (m === 'audio-to-meaning') {
         return 'audio-meaning';
     }
+    if (m === 'audio-sentence-to-meaning') {
+        return 'audio-sentence-meaning';
+    }
     if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char') {
         return 'meaning';
     }
@@ -227,7 +230,24 @@ test('Audio-to-meaning stats are tracked separately from meaning modes', () => {
     assertEqual(audioMeaningScore, 0, 'Audio meaning score should start fresh in its own bucket:');
 });
 
-// Test 8: Sidebar and indicator should see same data
+// Test 8: Audio sentence meaning is tracked independently from plain audio meaning
+test('Audio+sentence meaning stats are tracked separately from audio-to-meaning', () => {
+    resetState();
+    const char = '懂';
+
+    mode = 'audio-to-meaning';
+    updateBKT(char, true);
+    updateBKT(char, true);
+    const audioMeaningScore = getConfidenceScore(char);
+
+    mode = 'audio-sentence-to-meaning';
+    const audioSentenceMeaningScore = getConfidenceScore(char);
+
+    if (audioMeaningScore <= 0) throw new Error('Audio meaning score should be > 0 after practice');
+    assertEqual(audioSentenceMeaningScore, 0, 'Audio+sentence meaning score should start fresh in its own bucket:');
+});
+
+// Test 9: Sidebar and indicator should see same data
 test('Sidebar and indicator use same stats for same mode', () => {
     resetState();
     const char = '国';
