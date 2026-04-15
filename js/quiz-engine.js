@@ -1359,8 +1359,9 @@ function buildSentenceModeViewModel() {
 
     return {
         title: 'Sentence Mode',
-        subtitle: 'Listen to the sentence, read it, then choose the best full-sentence meaning.',
+        subtitle: 'Read the sentence, then choose the best full-sentence meaning.',
         sentence: currentQuestion?.sentence || '',
+        sentenceHtml: highlightSentenceModeTarget(currentQuestion?.sentence || '', currentQuestion?.target || currentQuestion?.char || ''),
         prompt: currentQuestion?.prompt || 'What does the whole sentence mean?',
         helperText: state.locked
             ? 'Review the feedback, then continue.'
@@ -13509,7 +13510,7 @@ function renderSentenceModeLayout() {
     questionDisplay.innerHTML = `
         <div class="sentence-mode-fallback">
             <div class="sentence-mode-fallback-label">Sentence Mode</div>
-            <div class="sentence-mode-fallback-sentence">${escapeHtml(currentQuestion.sentence || '')}</div>
+            <div class="sentence-mode-fallback-sentence">${highlightSentenceModeTarget(currentQuestion.sentence || '', currentQuestion?.target || currentQuestion?.char || '')}</div>
             <div class="sentence-mode-fallback-prompt">👉 ${escapeHtml(currentQuestion.prompt || 'What does the whole sentence mean?')}</div>
         </div>
     `;
