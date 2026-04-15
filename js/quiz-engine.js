@@ -1364,7 +1364,7 @@ function buildSentenceModeViewModel() {
         prompt: currentQuestion?.prompt || 'What does the whole sentence mean?',
         helperText: state.locked
             ? 'Review the feedback, then continue.'
-            : 'Type to filter the choices, then press Enter or click the best match.',
+            : 'Press Space to replay the sentence. Type to filter the choices, then press Enter or click the best match. Shift+Space inserts a space.',
         difficultyLabel: 'Difficulty',
         difficultyDescription: difficultyMeta?.description || '',
         difficultyOptions,
@@ -1384,7 +1384,12 @@ function buildSentenceModeViewModel() {
         onInputChange: (value) => handleSentenceModeInput(value),
         onSubmit: () => handleSentenceModeSubmit(),
         onSelectOption: (value) => submitSentenceModeAnswer(value),
-        onContinue: () => goToNextQuestionAfterCorrect()
+        onContinue: () => goToNextQuestionAfterCorrect(),
+        onReplay: () => {
+            if (typeof window !== 'undefined' && typeof window.currentAudioPlayFunc === 'function') {
+                window.currentAudioPlayFunc();
+            }
+        }
     };
 }
 
@@ -19158,6 +19163,14 @@ function handleQuizHotkeys(e) {
             // Any other key after answer shown = wrong
             e.preventDefault();
             handleHandwritingResult(false);
+            return;
+        }
+    }
+
+    if (mode === 'sentence' && !e.altKey && !e.ctrlKey && !e.metaKey && e.key === ' ') {
+        if (!e.shiftKey && typeof window.currentAudioPlayFunc === 'function') {
+            e.preventDefault();
+            window.currentAudioPlayFunc();
             return;
         }
     }

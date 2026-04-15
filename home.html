@@ -119,6 +119,16 @@
             'Mixed': 'bg-slate-50 text-slate-700 border border-slate-200'
         };
 
+        const DIFFICULTY_RATINGS = {
+            'Beginner': 1,
+            'Beginner+': 2,
+            'Intermediate': 3,
+            'Intermediate+': 4,
+            'Advanced': 5,
+            'Reading': 4,
+            'Mixed': 3
+        };
+
         function createMetaBadge(text, extraClasses) {
             const badge = document.createElement('span');
             badge.className = `lesson-meta-badge ${extraClasses}`;
@@ -147,7 +157,8 @@
                     metaRow.appendChild(createMetaBadge(wordCount, 'bg-gray-100 text-gray-700 border border-gray-200'));
                 }
                 if (meta.difficulty) {
-                    metaRow.appendChild(createMetaBadge(meta.difficulty, DIFFICULTY_STYLES[meta.difficulty] || DIFFICULTY_STYLES.Mixed));
+                    const difficultyRating = DIFFICULTY_RATINGS[meta.difficulty] || DIFFICULTY_RATINGS.Mixed;
+                    metaRow.appendChild(createMetaBadge(`Difficulty ${difficultyRating}/5`, DIFFICULTY_STYLES[meta.difficulty] || DIFFICULTY_STYLES.Mixed));
                 }
 
                 if (metaRow.children.length > 0) {

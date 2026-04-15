@@ -411,7 +411,8 @@
     onInputChange,
     onSubmit,
     onSelectOption,
-    onContinue
+    onContinue,
+    onReplay
   }) {
     const inputRef = A2(null);
     y2(() => {
@@ -440,7 +441,16 @@
         selected: option.id === activeDifficulty,
         onSelect: onSelectDifficulty
       }
-    ))), difficultyDescription ? /* @__PURE__ */ k("div", { className: "sentence-mode-description" }, difficultyDescription) : null) : null), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-card--sentence" }, /* @__PURE__ */ k("div", { className: "sentence-mode-subtitle" }, subtitle), /* @__PURE__ */ k(
+    ))), difficultyDescription ? /* @__PURE__ */ k("div", { className: "sentence-mode-description" }, difficultyDescription) : null) : null), /* @__PURE__ */ k("div", { className: "sentence-mode-card sentence-mode-card--sentence" }, /* @__PURE__ */ k("div", { className: "sentence-mode-sentence-header" }, /* @__PURE__ */ k("div", { className: "sentence-mode-subtitle" }, subtitle), /* @__PURE__ */ k(
+      "button",
+      {
+        type: "button",
+        className: "sentence-mode-replay",
+        onClick: onReplay
+      },
+      "\u{1F50A} Replay ",
+      /* @__PURE__ */ k("span", { className: "sentence-mode-replay-shortcut" }, "Space")
+    )), /* @__PURE__ */ k(
       "div",
       {
         className: "sentence-mode-sentence",
@@ -460,6 +470,9 @@
           if (event.key === "Enter") {
             event.preventDefault();
             onSubmit();
+          } else if (event.key === " " && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+            event.preventDefault();
+            onReplay();
           }
         }
       }

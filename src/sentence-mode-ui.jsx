@@ -68,7 +68,8 @@ function SentenceModeView({
   onInputChange,
   onSubmit,
   onSelectOption,
-  onContinue
+  onContinue,
+  onReplay
 }) {
   const inputRef = useRef(null);
 
@@ -116,7 +117,16 @@ function SentenceModeView({
       </div>
 
       <div className="sentence-mode-card sentence-mode-card--sentence">
-        <div className="sentence-mode-subtitle">{subtitle}</div>
+        <div className="sentence-mode-sentence-header">
+          <div className="sentence-mode-subtitle">{subtitle}</div>
+          <button
+            type="button"
+            className="sentence-mode-replay"
+            onClick={onReplay}
+          >
+            🔊 Replay <span className="sentence-mode-replay-shortcut">Space</span>
+          </button>
+        </div>
         <div
           className="sentence-mode-sentence"
           dangerouslySetInnerHTML={{ __html: sentenceHtml || sentence || '' }}
@@ -143,6 +153,9 @@ function SentenceModeView({
               if (event.key === 'Enter') {
                 event.preventDefault();
                 onSubmit();
+              } else if (event.key === ' ' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                event.preventDefault();
+                onReplay();
               }
             }}
           />
