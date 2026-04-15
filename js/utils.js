@@ -98,6 +98,7 @@ function detachActiveAudio(audio) {
 }
 
 function stopActiveAudio() {
+    globalScope.__pendingEdgeTtsToken = null;
     const current = globalScope.__activeAudio;
     if (!current) return;
 
@@ -557,6 +558,246 @@ function pinyinToAudioKey(pinyin) {
 let cachedVoices = [];
 let voicesLoaded = false;
 
+function isAudioDiagnosticsEnabled() {
+    if (typeof window === 'undefined') return false;
+    if (window.__audioDiagnosticsEnabled === true) return true;
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        if (params.has('audioDebug')) return true;
+    } catch (_) {}
+    try {
+        return window.localStorage?.getItem('audioDebug') === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function getAudioDiagnosticsState() {
+    if (!globalScope.__audioDiagnosticsState) {
+        globalScope.__audioDiagnosticsState = {
+            enabled: isAudioDiagnosticsEnabled(),
+            history: [],
+            engine: '',
+            voice: '',
+            status: '',
+            event: '',
+            src: '',
+            requestedAt: 0,
+            playStartedAt: 0,
+            currentTime: 0,
+            readyState: '',
+            networkState: '',
+            paused: '',
+            audible: 'unknown',
+            signalLevel: '0.000',
+            error: '',
+            pendingInteraction: 'false'
+        };
+    }
+    return globalScope.__audioDiagnosticsState;
+}
+
+function ensureAudioDiagnosticsPanel() {
+    const state = getAudioDiagnosticsState();
+    if (!state.enabled) return null;
+    if (typeof document === 'undefined' || !document.body) return null;
+
+    let panel = document.getElementById('audioDiagnosticsPanel');
+    if (!panel) {
+        panel = document.createElement('pre');
+        panel.id = 'audioDiagnosticsPanel';
+        panel.setAttribute('aria-live', 'polite');
+        Object.assign(panel.style, {
+            position: 'fixed',
+            left: '12px',
+            bottom: '12px',
+            zIndex: '99999',
+            maxWidth: 'min(92vw, 520px)',
+            maxHeight: '45vh',
+            overflow: 'auto',
+            margin: '0',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            background: 'rgba(17, 24, 39, 0.92)',
+            color: '#f9fafb',
+            font: '12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+            whiteSpace: 'pre-wrap',
+            pointerEvents: 'none'
+        });
+        document.body.appendChild(panel);
+    }
+    return panel;
+}
+
+function renderAudioDiagnostics() {
+    const state = getAudioDiagnosticsState();
+    if (!state.enabled) return;
+    const panel = ensureAudioDiagnosticsPanel();
+    if (!panel) return;
+    panel.textContent = [
+        'Audio diagnostics',
+        `engine: ${state.engine || '-'}`,
+        `voice: ${state.voice || '-'}`,
+        `status: ${state.status || '-'}`,
+        `event: ${state.event || '-'}`,
+        `pendingInteraction: ${state.pendingInteraction || 'false'}`,
+        `audible: ${state.audible || 'unknown'}`,
+        `signalLevel: ${state.signalLevel || '0.000'}`,
+        `currentTime: ${state.currentTime ?? 0}`,
+        `readyState: ${state.readyState || '-'}`,
+        `networkState: ${state.networkState || '-'}`,
+        `paused: ${state.paused || '-'}`,
+        `error: ${state.error || '-'}`,
+        `src: ${state.src || '-'}`,
+        'history:',
+        ...(state.history && state.history.length ? state.history : ['-'])
+    ].join('\n');
+}
+
+function updateAudioDiagnostics(patch = {}) {
+    const state = getAudioDiagnosticsState();
+    const nextEvent = patch.event;
+    const nextError = typeof patch.error === 'string' ? patch.error : '';
+    Object.assign(state, patch);
+    if (nextEvent || nextError) {
+        const stamp = new Date().toLocaleTimeString([], { hour12: false });
+        const entry = `${stamp} ${nextEvent || state.event || 'state'}${nextError ? ` | ${nextError}` : ''}`;
+        state.history = Array.isArray(state.history) ? state.history.concat(entry).slice(-8) : [entry];
+    }
+    if (typeof document !== 'undefined' && document.body) {
+        if (state.audible) document.body.dataset.ttsAudible = String(state.audible);
+        if (typeof state.signalLevel !== 'undefined') document.body.dataset.ttsSignalLevel = String(state.signalLevel);
+        if (state.event) document.body.dataset.ttsEvent = String(state.event);
+    }
+    renderAudioDiagnostics();
+}
+
+function describeMediaError(mediaError) {
+    if (!mediaError) return '';
+    const codeNames = {
+        1: 'MEDIA_ERR_ABORTED',
+        2: 'MEDIA_ERR_NETWORK',
+        3: 'MEDIA_ERR_DECODE',
+        4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
+    };
+    return codeNames[mediaError.code] || mediaError.message || `code ${mediaError.code || 'unknown'}`;
+}
+
+function describeAudioFailure(error) {
+    if (!error) return '';
+    const name = error.name ? `${error.name}` : 'Error';
+    const message = error.message ? `: ${error.message}` : '';
+    return `${name}${message}`;
+}
+
+function attachAudioDiagnostics(audio, details = {}) {
+    const state = getAudioDiagnosticsState();
+    if (!state.enabled || !audio) return () => {};
+
+    const cleanups = [];
+    let pollId = null;
+    let signalIntervalId = null;
+    let analyserContext = null;
+    let mediaStream = null;
+    let sourceNode = null;
+    let analyserNode = null;
+
+    updateAudioDiagnostics({
+        engine: details.engine || state.engine || '',
+        voice: details.voiceLabel || state.voice || '',
+        status: details.status || state.status || '',
+        event: 'attached',
+        src: audio.currentSrc || audio.src || '',
+        error: '',
+        currentTime: Number(audio.currentTime || 0).toFixed(3),
+        readyState: String(audio.readyState ?? ''),
+        networkState: String(audio.networkState ?? ''),
+        paused: String(Boolean(audio.paused)),
+        pendingInteraction: String(Boolean(document?.body?.dataset?.ttsPendingInteraction === 'true')),
+        audible: 'unknown',
+        signalLevel: '0.000'
+    });
+
+    const updateFromAudio = (eventName) => {
+        updateAudioDiagnostics({
+            event: eventName,
+            src: audio.currentSrc || audio.src || '',
+            currentTime: Number(audio.currentTime || 0).toFixed(3),
+            readyState: String(audio.readyState ?? ''),
+            networkState: String(audio.networkState ?? ''),
+            paused: String(Boolean(audio.paused)),
+            error: describeMediaError(audio.error),
+            pendingInteraction: String(Boolean(document?.body?.dataset?.ttsPendingInteraction === 'true'))
+        });
+    };
+
+    ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'play', 'playing', 'pause', 'waiting', 'stalled', 'suspend', 'timeupdate', 'ended', 'error'].forEach((eventName) => {
+        const handler = () => updateFromAudio(eventName);
+        audio.addEventListener(eventName, handler);
+        cleanups.push(() => audio.removeEventListener(eventName, handler));
+    });
+
+    const autoCleanupHandler = () => {
+        window.setTimeout(() => {
+            cleanups.forEach((fn) => {
+                try { fn(); } catch (_) {}
+            });
+        }, 1000);
+    };
+    audio.addEventListener('ended', autoCleanupHandler, { once: true });
+    audio.addEventListener('error', autoCleanupHandler, { once: true });
+    cleanups.push(() => audio.removeEventListener('ended', autoCleanupHandler));
+    cleanups.push(() => audio.removeEventListener('error', autoCleanupHandler));
+
+    pollId = window.setInterval(() => {
+        updateFromAudio('poll');
+    }, 250);
+    cleanups.push(() => window.clearInterval(pollId));
+
+    try {
+        const capture = typeof audio.captureStream === 'function'
+            ? audio.captureStream.bind(audio)
+            : (typeof audio.mozCaptureStream === 'function' ? audio.mozCaptureStream.bind(audio) : null);
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (capture && AudioCtx) {
+            mediaStream = capture();
+            analyserContext = new AudioCtx();
+            sourceNode = analyserContext.createMediaStreamSource(mediaStream);
+            analyserNode = analyserContext.createAnalyser();
+            analyserNode.fftSize = 2048;
+            sourceNode.connect(analyserNode);
+            const buffer = new Uint8Array(analyserNode.fftSize);
+            signalIntervalId = window.setInterval(() => {
+                analyserNode.getByteTimeDomainData(buffer);
+                let peak = 0;
+                for (let i = 0; i < buffer.length; i += 1) {
+                    const centered = Math.abs((buffer[i] - 128) / 128);
+                    if (centered > peak) peak = centered;
+                }
+                updateAudioDiagnostics({
+                    signalLevel: peak.toFixed(3),
+                    audible: peak > 0.02 ? 'yes' : (getAudioDiagnosticsState().audible === 'yes' ? 'yes' : 'no')
+                });
+            }, 120);
+            cleanups.push(() => window.clearInterval(signalIntervalId));
+            cleanups.push(() => {
+                try { sourceNode.disconnect(); } catch (_) {}
+                try { analyserNode.disconnect(); } catch (_) {}
+                try { analyserContext.close(); } catch (_) {}
+            });
+        }
+    } catch (err) {
+        updateAudioDiagnostics({ event: 'capture-error', error: err?.message || String(err) });
+    }
+
+    return () => {
+        cleanups.forEach((fn) => {
+            try { fn(); } catch (_) {}
+        });
+    };
+}
+
 function setTtsDebug(engine, voiceLabel, status) {
     if (typeof window !== 'undefined') {
         window.__lastTtsEngine = engine;
@@ -576,6 +817,7 @@ function setTtsDebug(engine, voiceLabel, status) {
             document.body.dataset.ttsStatus = status;
         }
     }
+    updateAudioDiagnostics({ engine, voice: voiceLabel || '', status: status || '' });
 }
 
 function recordPromptAudioStart() {
@@ -658,10 +900,147 @@ function shouldAvoidSpeechFallback(text) {
     return !chineseVoice || isLikelyRoboticVoice(chineseVoice);
 }
 
+function canUseEdgeTtsBrowserSynthesis() {
+    return typeof window !== 'undefined' &&
+        typeof fetch === 'function' &&
+        typeof Blob !== 'undefined' &&
+        typeof Audio !== 'undefined';
+}
+
+function edgeTtsRateString(rate) {
+    const clamped = clampTtsRate(typeof rate === 'number' ? rate : DEFAULT_TTS_RATE);
+    const percent = Math.round((clamped - 1) * 100);
+    return percent >= 0 ? `+${percent}%` : `${percent}%`;
+}
+
+async function loadEdgeTtsModule() {
+    if (globalScope.__EdgeTTSUniversal) {
+        return { EdgeTTS: globalScope.__EdgeTTSUniversal };
+    }
+    if (!globalScope.__edgeTtsModulePromise) {
+        globalScope.__edgeTtsModulePromise = new Promise((resolve, reject) => {
+            if (typeof document === 'undefined' || !document.head) {
+                reject(new Error('Document head is not available for EdgeTTS loader'));
+                return;
+            }
+
+            const readyEvent = '__edge_tts_ready__';
+            const errorEvent = '__edge_tts_error__';
+
+            const cleanup = () => {
+                window.removeEventListener(readyEvent, handleReady);
+                window.removeEventListener(errorEvent, handleError);
+            };
+
+            const handleReady = () => {
+                cleanup();
+                if (globalScope.__EdgeTTSUniversal) {
+                    resolve({ EdgeTTS: globalScope.__EdgeTTSUniversal });
+                } else {
+                    reject(new Error('EdgeTTS loader signaled ready without a constructor'));
+                }
+            };
+
+            const handleError = (event) => {
+                cleanup();
+                reject(new Error(event?.detail || 'Failed to load EdgeTTS browser module'));
+            };
+
+            window.addEventListener(readyEvent, handleReady, { once: true });
+            window.addEventListener(errorEvent, handleError, { once: true });
+
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.textContent = `
+                import('https://cdn.jsdelivr.net/npm/edge-tts-universal/dist/browser.js')
+                    .then((module) => {
+                        window.__EdgeTTSUniversal = module.EdgeTTS;
+                        window.dispatchEvent(new CustomEvent('${readyEvent}'));
+                    })
+                    .catch((error) => {
+                        window.dispatchEvent(new CustomEvent('${errorEvent}', {
+                            detail: error?.message || String(error)
+                        }));
+                    });
+            `;
+            script.onerror = () => {
+                window.dispatchEvent(new CustomEvent(errorEvent, { detail: 'Module script error while loading EdgeTTS' }));
+            };
+            document.head.appendChild(script);
+        });
+    }
+    return globalScope.__edgeTtsModulePromise;
+}
+
+function playEdgeTtsChineseAudio(text, { rate, onPlaying, onFailure } = {}) {
+    const trimmed = (text || '').toString().trim();
+    if (!trimmed || !canUseEdgeTtsBrowserSynthesis()) return false;
+
+    const token = Symbol('edge-tts-playback');
+    globalScope.__pendingEdgeTtsToken = token;
+    setTtsDebug('remote', 'edge-zh', 'synthesizing');
+    updateAudioDiagnostics({ event: 'edge-synth-start', src: trimmed, error: '' });
+
+    (async () => {
+        try {
+            const module = await loadEdgeTtsModule();
+            if (globalScope.__pendingEdgeTtsToken !== token) return;
+            const EdgeTTS = module?.EdgeTTS;
+            if (typeof EdgeTTS !== 'function') {
+                throw new Error('EdgeTTS module did not expose a constructor');
+            }
+
+            const tts = new EdgeTTS(trimmed, 'zh-CN-XiaoxiaoNeural', {
+                rate: edgeTtsRateString(rate)
+            });
+            const result = await tts.synthesize();
+            if (globalScope.__pendingEdgeTtsToken !== token) return;
+
+            const objectUrl = URL.createObjectURL(new Blob([result.audio], { type: 'audio/mpeg' }));
+            const audio = primeAudioElement(new Audio(objectUrl));
+            const cleanupUrl = () => {
+                try {
+                    URL.revokeObjectURL(objectUrl);
+                } catch (_) {}
+            };
+
+            audio.addEventListener('ended', cleanupUrl, { once: true });
+            audio.addEventListener('error', cleanupUrl, { once: true });
+
+            playTrackedRemoteAudio(audio, {
+                voiceLabel: 'edge-zh',
+                onPlaying,
+                onFailure: (error) => {
+                    cleanupUrl();
+                    if (typeof onFailure === 'function') {
+                        onFailure(error);
+                    }
+                }
+            });
+        } catch (error) {
+            if (globalScope.__pendingEdgeTtsToken !== token) return;
+            updateAudioDiagnostics({ event: 'edge-synth-failure', error: describeAudioFailure(error) });
+            if (typeof onFailure === 'function') {
+                onFailure(error);
+            }
+        }
+    })();
+
+    return true;
+}
+
 function playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure } = {}) {
     if (!audio) return false;
 
     clearDeferredAudioPlayback();
+    if (typeof audio.__diagnosticCleanup === 'function') {
+        try { audio.__diagnosticCleanup(); } catch (_) {}
+    }
+    audio.__diagnosticCleanup = attachAudioDiagnostics(audio, {
+        engine: 'remote',
+        voiceLabel,
+        status: 'pending'
+    });
     setActiveAudio(audio);
     setTtsDebug('remote', voiceLabel, 'pending');
 
@@ -690,6 +1069,11 @@ function playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure } = {}
             stopActiveAudio();
         } else {
             detachActiveAudio(audio);
+        }
+        updateAudioDiagnostics({ event: 'play-failure', error: describeAudioFailure(error) || describeMediaError(audio.error) });
+        if (typeof audio.__diagnosticCleanup === 'function') {
+            try { audio.__diagnosticCleanup(); } catch (_) {}
+            delete audio.__diagnosticCleanup;
         }
         if (isAutoplayBlockedError(error)) {
             setTtsDebug('remote', voiceLabel, 'blocked');
@@ -793,6 +1177,33 @@ function playTTS(chineseChar) {
     const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
 
     const preferRemote = hasChinese && (isFirefox || !chineseVoice || isLikelyRobotic);
+
+    if (hasChinese && isFirefox) {
+        const started = playEdgeTtsChineseAudio(text, {
+            rate,
+            onFailure: () => {
+                const directStarted = typeof Audio !== 'undefined'
+                    ? playTrackedRemoteAudio(
+                        primeAudioElement(new Audio(sentenceTtsUrl(text, rate))),
+                        {
+                            voiceLabel: 'baidu',
+                            onFailure: () => {
+                                playGoogleChineseAudio(text, {
+                                    allowSpeechFallback: hasSpeech && !avoidSpeechFallback,
+                                    rate,
+                                    voice: chineseVoice
+                                });
+                            }
+                        }
+                    )
+                    : false;
+                if (!directStarted && hasSpeech && !avoidSpeechFallback) {
+                    playChineseSpeechFallback(text, { rate, voice: chineseVoice, debugStatus: 'fallback' });
+                }
+            }
+        });
+        if (started) return;
+    }
 
     if (!hasSpeech || preferRemote) {
         const started = typeof Audio !== 'undefined'
@@ -911,6 +1322,65 @@ function playSentenceAudio(sentence) {
     const trimmedSentence = sentence.trim();
     const avoidSpeechFallback = shouldAvoidSpeechFallback(trimmedSentence);
     const rate = typeof getQuizTtsRate === 'function' ? getQuizTtsRate() : DEFAULT_TTS_RATE;
+    const isFirefox = isFirefoxBrowser();
+
+    if (containsChineseText(trimmedSentence) && isFirefox) {
+        const started = playEdgeTtsChineseAudio(trimmedSentence, {
+            rate,
+            onPlaying: recordPromptAudioStart,
+            onFailure: () => {
+                const cachedFallback = getSentenceAudioInstance(trimmedSentence, rate);
+                if (!cachedFallback) {
+                    if (!avoidSpeechFallback) {
+                        playGoogleChineseAudio(trimmedSentence, {
+                            allowSpeechFallback: true,
+                            rate,
+                            onPlaying: recordPromptAudioStart
+                        });
+                    }
+                    return;
+                }
+
+                let { audio, cacheKey, cache } = cachedFallback;
+                if (cache.has(cacheKey)) {
+                    try {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    } catch (err) {
+                        console.warn('Resetting cached audio failed, rebuilding instance', err);
+                        cache.delete(cacheKey);
+                        audio = primeAudioElement(new Audio(sentenceTtsUrl(trimmedSentence, rate)));
+                        cache.set(cacheKey, audio);
+                    }
+                }
+
+                const playGoogleFallback = () => {
+                    playGoogleChineseAudio(trimmedSentence, {
+                        allowSpeechFallback: !avoidSpeechFallback,
+                        rate,
+                        onPlaying: recordPromptAudioStart
+                    });
+                };
+
+                const directStarted = playTrackedRemoteAudio(audio, {
+                    voiceLabel: 'baidu',
+                    onPlaying: recordPromptAudioStart,
+                    onFailure: () => {
+                        console.log(`Sentence audio failed for "${cacheKey}", using remote fallback`);
+                        cache.delete(cacheKey);
+                        playGoogleFallback();
+                    }
+                });
+
+                if (!directStarted) {
+                    cache.delete(cacheKey);
+                    playGoogleFallback();
+                }
+            }
+        });
+        if (started) return;
+    }
+
     if (typeof Audio === 'undefined') {
         console.warn('Audio element not available, using SpeechSynthesis fallback for sentence.');
         stopActiveAudio();
