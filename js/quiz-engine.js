@@ -9008,7 +9008,8 @@ function setupAudioMode(options = {}) {
 
     ensureTtsSpeedControl();
     addKeyboardHints();
-    const playCurrentPrompt = registerCurrentPromptAudio({ autoplay: true, autoplayDelay: 75 });
+    const autoplayEnabled = !(typeof isFirefoxBrowser === 'function' && isFirefoxBrowser());
+    const playCurrentPrompt = registerCurrentPromptAudio({ autoplay: autoplayEnabled, autoplayDelay: 75 });
     playBtn.onclick = playCurrentPrompt;
     playBtn.innerHTML = '🔊 Replay audio <span class="text-xs opacity-75 ml-1">(Space)</span>';
 
@@ -9036,16 +9037,19 @@ function setupChunkAudioMode(chunkText) {
         setTimeout(() => answerInput.focus(), 100);
     }
 
-    const hasActiveUserGesture = typeof navigator !== 'undefined' &&
-        navigator.userActivation &&
-        navigator.userActivation.isActive;
+    const autoplayEnabled = !(typeof isFirefoxBrowser === 'function' && isFirefoxBrowser());
+    if (autoplayEnabled) {
+        const hasActiveUserGesture = typeof navigator !== 'undefined' &&
+            navigator.userActivation &&
+            navigator.userActivation.isActive;
 
-    if (hasActiveUserGesture) {
-        playChunk();
-    } else {
-        setTimeout(() => {
+        if (hasActiveUserGesture) {
             playChunk();
-        }, 75);
+        } else {
+            setTimeout(() => {
+                playChunk();
+            }, 75);
+        }
     }
 }
 

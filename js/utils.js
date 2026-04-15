@@ -99,6 +99,12 @@ function detachActiveAudio(audio) {
 
 function stopActiveAudio() {
     globalScope.__pendingEdgeTtsToken = null;
+    if (typeof globalScope.__stopActiveAudioSequence === 'function') {
+        try {
+            globalScope.__stopActiveAudioSequence();
+        } catch (_) {}
+        globalScope.__stopActiveAudioSequence = null;
+    }
     const current = globalScope.__activeAudio;
     if (!current) return;
 
@@ -1173,6 +1179,124 @@ function playGoogleChineseAudio(text, { allowSpeechFallback, rate, voice, onPlay
     );
 }
 
+function playPinyinSyllableSequenceAudio(pinyin, { onPlaying, onFailure } = {}) {
+    if (typeof Audio === 'undefined') return false;
+    if (typeof splitPinyinSyllables !== 'function') return false;
+
+    const syllables = splitPinyinSyllables((pinyin || '').replace(/\//g, ' ')).filter(Boolean);
+    if (!syllables.length) return false;
+
+    const urls = syllables.map((syllable) => `https://www.purpleculture.net/mp3/${pinyinToAudioKey(syllable)}.mp3`);
+    const token = Symbol('pinyin-sequence');
+    let currentAudio = null;
+    let cancelled = false;
+
+    const cleanup = () => {
+        cancelled = true;
+        if (currentAudio) {
+            try { currentAudio.pause(); } catch (_) {}
+            detachActiveAudio(currentAudio);
+            if (typeof currentAudio.__diagnosticCleanup === 'function') {
+                try { currentAudio.__diagnosticCleanup(); } catch (_) {}
+                delete currentAudio.__diagnosticCleanup;
+            }
+            currentAudio = null;
+        }
+        if (globalScope.__activeAudioSequenceToken === token) {
+            globalScope.__activeAudioSequenceToken = null;
+        }
+        if (globalScope.__stopActiveAudioSequence && globalScope.__activeAudioSequenceToken !== token) {
+            globalScope.__stopActiveAudioSequence = null;
+        }
+    };
+
+    globalScope.__activeAudioSequenceToken = token;
+    globalScope.__stopActiveAudioSequence = cleanup;
+
+    const playIndex = (index) => {
+        if (cancelled || globalScope.__activeAudioSequenceToken !== token) return;
+        if (index >= urls.length) {
+            cleanup();
+            return;
+        }
+
+        const audio = primeAudioElement(new Audio(urls[index]));
+        currentAudio = audio;
+        audio.__diagnosticCleanup = attachAudioDiagnostics(audio, {
+            engine: 'remote',
+            voiceLabel: 'purpleculture-seq',
+            status: index === 0 ? 'pending' : 'playing'
+        });
+        setActiveAudio(audio);
+        setTtsDebug('remote', 'purpleculture-seq', index === 0 ? 'pending' : 'playing');
+
+        let settled = false;
+        const finalize = () => {
+            if (settled) return;
+            settled = true;
+            audio.removeEventListener('playing', handlePlaying);
+            audio.removeEventListener('ended', handleEnded);
+            audio.removeEventListener('error', handleError);
+        };
+
+        const handlePlaying = () => {
+            setTtsDebug('remote', 'purpleculture-seq', 'playing');
+            if (index === 0 && typeof onPlaying === 'function') {
+                onPlaying(audio);
+            }
+        };
+
+        const handleEnded = () => {
+            finalize();
+            if (typeof audio.__diagnosticCleanup === 'function') {
+                try { audio.__diagnosticCleanup(); } catch (_) {}
+                delete audio.__diagnosticCleanup;
+            }
+            if (cancelled || globalScope.__activeAudioSequenceToken !== token) return;
+            playIndex(index + 1);
+        };
+
+        const handleError = (error) => {
+            finalize();
+            if (typeof audio.__diagnosticCleanup === 'function') {
+                try { audio.__diagnosticCleanup(); } catch (_) {}
+                delete audio.__diagnosticCleanup;
+            }
+            if (isAutoplayBlockedError(error)) {
+                setTtsDebug('remote', 'purpleculture-seq', 'blocked');
+                updateAudioDiagnostics({ event: 'purpleculture-seq-blocked', error: describeAudioFailure(error) || describeMediaError(audio.error) });
+                queueDeferredAudioPlayback(() => {
+                    playPinyinSyllableSequenceAudio(pinyin, { onPlaying, onFailure });
+                });
+                cleanup();
+                return;
+            }
+            cleanup();
+            setTtsDebug('remote', 'purpleculture-seq', 'error');
+            updateAudioDiagnostics({ event: 'purpleculture-seq-failure', error: describeAudioFailure(error) || describeMediaError(audio.error) });
+            if (typeof onFailure === 'function') {
+                onFailure(error);
+            }
+        };
+
+        audio.addEventListener('playing', handlePlaying, { once: true });
+        audio.addEventListener('ended', handleEnded, { once: true });
+        audio.addEventListener('error', handleError, { once: true });
+
+        try {
+            const playPromise = audio.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(handleError);
+            }
+        } catch (error) {
+            handleError(error);
+        }
+    };
+
+    playIndex(0);
+    return true;
+}
+
 // Play audio using TTS
 function playTTS(chineseChar) {
     stopActiveAudio();
@@ -1463,9 +1587,24 @@ function playPinyinAudio(pinyin, chineseChar) {
     const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent || '');
     console.log(`Playing audio for: ${pinyin} (${chineseChar}) -> ${isMultiChar ? 'sentence' : 'single-char'}`);
 
-    if (isFirefox && text) {
-        playSentenceAudio(text);
-        return;
+    if (isFirefox) {
+        const started = playPinyinSyllableSequenceAudio(pinyin, {
+            onPlaying: recordPromptAudioStart,
+            onFailure: () => {
+                if (text) {
+                    playSentenceAudio(text);
+                } else {
+                    playTTS(chineseChar || pinyin);
+                }
+            }
+        });
+        if (started) {
+            return;
+        }
+        if (text) {
+            playSentenceAudio(text);
+            return;
+        }
     }
 
     if (isMultiChar) {

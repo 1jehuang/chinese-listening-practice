@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <title>TTS Debug</title>
-  <script src="js/utils.js?v=debug-tts"></script>
+  <script src="js/pinyin-utils.js"></script>
+  <script src="js/utils.js?v=debug-tts-2"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     button { margin: 6px 0; padding: 10px 14px; }
@@ -32,6 +33,23 @@
       voiceEl.textContent = document.body.dataset.ttsVoice || '(none)';
     }
 
+    function runAutoMode() {
+      const params = new URLSearchParams(window.location.search);
+      const auto = params.get('auto');
+      if (!auto) return;
+      const action = () => {
+        if (auto === 'tts') {
+          playTTS('你好');
+        } else if (auto === 'sentence') {
+          playSentenceAudio('你好');
+        } else if (auto === 'pinyin') {
+          playPinyinAudio('ni3 hao3', '你好');
+        }
+        setTimeout(refreshDebug, 300);
+      };
+      setTimeout(action, 300);
+    }
+
     document.getElementById('btnTts').addEventListener('click', () => {
       playTTS('你好');
       setTimeout(refreshDebug, 100);
@@ -48,6 +66,7 @@
     });
 
     refreshDebug();
+    runAutoMode();
   </script>
 </body>
 </html>
