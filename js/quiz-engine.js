@@ -12288,7 +12288,7 @@ function handleToneFlowToneChoice(choice, btn) {
             answered = true;
             generateQuestion();
         } else {
-            setTimeout(() => renderToneFlowToneStep(), 250);
+            renderToneFlowToneStep();
         }
     } else {
         if (btn?.classList) {
@@ -12301,7 +12301,7 @@ function handleToneFlowToneChoice(choice, btn) {
         feedback.textContent = `✗ ${selectedSyllable} is not right. Try again.`;
         feedback.className = 'text-center text-lg font-semibold text-red-600 my-2';
         playWrongSound();
-        setTimeout(() => renderToneFlowToneStep(), 250);
+        setTimeout(() => renderToneFlowToneStep(), 120);
     }
 }
 
@@ -14620,7 +14620,7 @@ function renderCharToTonesMcLayout() {
     const progressText = chars.length > 1 ? `Char ${idx + 1}/${chars.length}` : '';
 
     questionDisplay.innerHTML = `
-        <div class="three-column-meaning-layout">
+        <div class="three-column-meaning-layout tone-mc-layout">
             <div class="column-previous column-card ${prevResultClass}">
                 <div class="column-label">Previous</div>
                 ${charToTonesMcPreviousQuestion ? `
@@ -14628,9 +14628,9 @@ function renderCharToTonesMcLayout() {
                         <span class="column-result-icon">${prevResultIcon}</span>
                         <span class="column-feedback-text">${prevFeedbackText}</span>
                     </div>
-                    <div class="column-char">${prevChar}</div>
-                    <div class="column-pinyin">${prevPinyin}</div>
-                    <div class="column-meaning">${prevMeaning}</div>
+                    <div class="column-char" style="word-break: break-word; line-height: 1.2;">${prevChar}</div>
+                    <div class="column-pinyin" style="word-break: break-word; line-height: 1.25;">${prevPinyin}</div>
+                    <div class="column-meaning" style="word-break: break-word; line-height: 1.35;">${prevMeaning}</div>
                 ` : `
                     <div class="column-placeholder">Your last answer will appear here</div>
                 `}
@@ -14651,8 +14651,8 @@ function renderCharToTonesMcLayout() {
                 <div class="column-label">Upcoming</div>
                 ${charToTonesMcUpcomingQuestion ? `
                     <div class="column-ondeck">
-                        <div class="column-char">${upcomingChar}</div>
-                        <div class="column-pinyin text-sm text-gray-400">${upcomingPinyin}</div>
+                        <div class="column-char" style="word-break: break-word; line-height: 1.2;">${upcomingChar}</div>
+                        <div class="column-pinyin text-sm text-gray-400" style="word-break: break-word; line-height: 1.25;">${upcomingPinyin}</div>
                         <div class="ondeck-note">On deck</div>
                     </div>
                 ` : `
@@ -14678,14 +14678,19 @@ function generateToneButtons() {
     ];
 
     optionsDiv.innerHTML = '';
-    optionsDiv.className = 'grid grid-cols-5 gap-2';
+    optionsDiv.className = 'grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 max-w-3xl mx-auto items-stretch';
+    if (choiceMode && choiceMode.style) {
+        choiceMode.style.width = '100%';
+        choiceMode.style.maxWidth = '48rem';
+        choiceMode.style.margin = '0 auto';
+    }
 
     toneLabels.forEach(tone => {
         const btn = document.createElement('button');
-        btn.className = 'tone-btn px-4 py-6 text-center bg-gray-100 hover:bg-blue-100 border-2 border-gray-300 hover:border-blue-400 rounded-lg transition-all';
+        btn.className = 'tone-btn min-h-[90px] sm:min-h-[110px] px-2 sm:px-3 py-3 sm:py-4 text-center bg-gray-100 hover:bg-blue-100 border-2 border-gray-300 hover:border-blue-400 rounded-lg transition-all flex flex-col items-center justify-center';
         btn.innerHTML = `
-            <div class="text-3xl font-bold">${tone.num}</div>
-            <div class="text-xs text-gray-500 mt-1">${tone.desc}</div>
+            <div class="text-2xl sm:text-3xl font-bold leading-none">${tone.num}</div>
+            <div class="text-[10px] sm:text-xs text-gray-500 mt-1 leading-tight">${tone.desc}</div>
         `;
         btn.dataset.tone = tone.num;
         btn.onclick = () => handleToneChoice(tone.num);
