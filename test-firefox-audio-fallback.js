@@ -8,9 +8,11 @@ function createContext({
   voices = [{ lang: 'zh-CN', name: 'eSpeak NG zh', voiceURI: 'espeak-zh' }],
   failBaidu = false,
   failGoogle = false,
+  blockBaiduAutoplay = false,
 } = {}) {
   const playedUrls = [];
   const spoken = [];
+  const docListeners = new Map();
 
   class FakeAudio {
     constructor(src) {
@@ -34,6 +36,12 @@ function createContext({
     load() {}
     play() {
       playedUrls.push(this.src);
+      if (/fanyi\.baidu\.com/.test(this.src) && blockBaiduAutoplay && playedUrls.filter(url => /fanyi\.baidu\.com/.test(url)).length === 1) {
+        this.paused = true;
+        const err = new Error('play() failed because the user didn\'t interact with the document first');
+        err.name = 'NotAllowedError';
+        return Promise.reject(err);
+      }
       if (/fanyi\.baidu\.com/.test(this.src) && failBaidu) {
         this.paused = true;
         return Promise.reject(new Error('baidu blocked'));
@@ -66,7 +74,20 @@ function createContext({
     },
     Audio: FakeAudio,
     navigator: { userAgent },
-    document: { body: { dataset: {} }, head: { appendChild() {} }, querySelector() { return null; }, createElement() { return {}; } },
+    document: {
+      body: { dataset: {} },
+      head: { appendChild() {} },
+      querySelector() { return null; },
+      createElement() { return {}; },
+      addEventListener(type, handler) {
+        if (!docListeners.has(type)) docListeners.set(type, []);
+        docListeners.get(type).push(handler);
+      },
+      removeEventListener(type, handler) {
+        const list = docListeners.get(type) || [];
+        docListeners.set(type, list.filter(fn => fn !== handler));
+      }
+    },
     setTimeout,
     clearTimeout,
     URL,
@@ -106,7 +127,7 @@ function createContext({
 
   const source = fs.readFileSync(path.join(__dirname, 'js/utils.js'), 'utf8');
   vm.runInContext(source, context, { filename: 'js/utils.js' });
-  return { context, playedUrls, spoken };
+  return { context, playedUrls, spoken, docListeners };
 }
 
 async function tick(ms = 25) {
@@ -146,7 +167,21 @@ async function tick(ms = 25) {
     assert.deepStrictEqual(spoken, ['你好'], 'Firefox should still allow speech fallback when a non-robotic Chinese voice is available');
   }
 
-  console.log('✓ firefox Chinese audio falls back to remote playback and avoids robotic speech when possible');
+  {
+    const { context, playedUrls, spoken } = createContext({ blockBaiduAutoplay: true });
+    context.playSentenceAudio('你好');
+    await tick();
+    assert.strictEqual(playedUrls.length, 1, 'autoplay-blocked playback should not immediately fall through to other engines');
+    assert.strictEqual(context.document.body.dataset.ttsStatus, 'blocked', 'blocked autoplay should be surfaced in debug status');
+    assert.strictEqual(context.document.body.dataset.ttsPendingInteraction, 'true', 'blocked autoplay should queue a retry');
+    assert.deepStrictEqual(spoken, [], 'blocked autoplay should not jump to speech synthesis');
+    assert.strictEqual(context.retryDeferredAudioPlayback(), true, 'blocked autoplay should be retryable on the next interaction');
+    await tick();
+    assert.strictEqual(playedUrls.length, 2, 'retrying deferred playback should replay the original remote source');
+    assert.match(playedUrls[1], /fanyi\.baidu\.com/, 'deferred retry should retry the original remote source first');
+  }
+
+  console.log('✓ firefox Chinese audio falls back correctly and retries blocked autoplay on the next interaction');
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

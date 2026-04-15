@@ -118,6 +118,87 @@ function stopActiveAudio() {
     detachActiveAudio(current);
 }
 
+function clearDeferredAudioPlayback() {
+    globalScope.__deferredAudioPlayback = null;
+    if (typeof document !== 'undefined' && document.body) {
+        delete document.body.dataset.ttsPendingInteraction;
+    }
+}
+
+function retryDeferredAudioPlayback() {
+    const pending = globalScope.__deferredAudioPlayback;
+    if (typeof pending !== 'function') return false;
+    clearDeferredAudioPlayback();
+    pending();
+    return true;
+}
+
+function ensureDeferredAudioPlaybackListeners() {
+    if (globalScope.__deferredAudioPlaybackListenersBound) return;
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
+
+    const resume = () => {
+        retryDeferredAudioPlayback();
+    };
+
+    ['pointerdown', 'mousedown', 'touchstart', 'keydown'].forEach((eventName) => {
+        document.addEventListener(eventName, resume, true);
+    });
+
+    globalScope.__deferredAudioPlaybackListenersBound = true;
+}
+
+function queueDeferredAudioPlayback(playbackFn) {
+    if (typeof playbackFn !== 'function') return false;
+    globalScope.__deferredAudioPlayback = playbackFn;
+    ensureDeferredAudioPlaybackListeners();
+    if (typeof document !== 'undefined' && document.body) {
+        document.body.dataset.ttsPendingInteraction = 'true';
+    }
+    return true;
+}
+
+function isAutoplayBlockedError(error) {
+    const name = String(error?.name || '');
+    const message = String(error?.message || '');
+    return name === 'NotAllowedError' ||
+        /notallowederror/i.test(name) ||
+        /user gesture/i.test(message) ||
+        /not allowed/i.test(message) ||
+        /play\(\) failed because the user didn't interact/i.test(message);
+}
+
+function supportsImmediateSpeechStart() {
+    if (typeof navigator === 'undefined') return true;
+    const ua = navigator.userAgent || '';
+    const isWebKit = /applewebkit/i.test(ua);
+    const isChrome = /chrome|chromium|crios|edg/i.test(ua);
+    return !isWebKit || isChrome;
+}
+
+function startSpeechSynthesis(utterance) {
+    if (!utterance || typeof speechSynthesis === 'undefined') return false;
+    const speak = () => {
+        try {
+            speechSynthesis.speak(utterance);
+            return true;
+        } catch (err) {
+            console.warn('Failed to start speech synthesis', err);
+            return false;
+        }
+    };
+
+    if (supportsImmediateSpeechStart()) {
+        return speak();
+    }
+
+    setTimeout(speak, 10);
+    return true;
+}
+
+globalScope.retryDeferredAudioPlayback = retryDeferredAudioPlayback;
+globalScope.clearDeferredAudioPlayback = clearDeferredAudioPlayback;
+
 function setActiveAudio(audio) {
     if (!audio) {
         stopActiveAudio();
@@ -580,6 +661,7 @@ function shouldAvoidSpeechFallback(text) {
 function playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure } = {}) {
     if (!audio) return false;
 
+    clearDeferredAudioPlayback();
     setActiveAudio(audio);
     setTtsDebug('remote', voiceLabel, 'pending');
 
@@ -608,6 +690,13 @@ function playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure } = {}
             stopActiveAudio();
         } else {
             detachActiveAudio(audio);
+        }
+        if (isAutoplayBlockedError(error)) {
+            setTtsDebug('remote', voiceLabel, 'blocked');
+            queueDeferredAudioPlayback(() => {
+                playTrackedRemoteAudio(audio, { voiceLabel, onPlaying, onFailure });
+            });
+            return;
         }
         setTtsDebug('remote', voiceLabel, 'error');
         if (typeof onFailure === 'function') {
@@ -641,6 +730,7 @@ function playChineseSpeechFallback(text, { rate, voice, debugStatus = 'speaking'
 
     const chineseVoice = voice || getChineseVoice();
     const utterance = new SpeechSynthesisUtterance(trimmed);
+    clearDeferredAudioPlayback();
     utterance.lang = chineseVoice?.lang || 'zh-CN';
     utterance.rate = typeof rate === 'number'
         ? clampTtsRate(rate)
@@ -656,13 +746,7 @@ function playChineseSpeechFallback(text, { rate, voice, debugStatus = 'speaking'
         speechSynthesis.cancel();
     } catch (_) {}
 
-    setTimeout(() => {
-        try {
-            speechSynthesis.speak(utterance);
-        } catch (err) {
-            console.warn('Failed to speak Chinese audio', err);
-        }
-    }, 10);
+    startSpeechSynthesis(utterance);
 
     return true;
 }
@@ -766,13 +850,7 @@ function playEnglishTTS(text) {
             speechSynthesis.cancel();
         } catch (_) {}
 
-        setTimeout(() => {
-            try {
-                speechSynthesis.speak(utterance);
-            } catch (err) {
-                console.warn('Failed to speak English meaning audio', err);
-            }
-        }, 10);
+        startSpeechSynthesis(utterance);
 
         setTtsDebug('speech', englishVoice?.name || 'default', 'speaking');
         return true;

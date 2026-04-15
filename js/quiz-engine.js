@@ -8981,11 +8981,21 @@ function registerCurrentPromptAudio(options = {}) {
     window.currentAudioPlayFunc = playCurrentPrompt;
 
     if (autoplay) {
-        setTimeout(() => {
+        const hasActiveUserGesture = typeof navigator !== 'undefined' &&
+            navigator.userActivation &&
+            navigator.userActivation.isActive;
+
+        const runAutoplay = () => {
             if (currentQuestion === questionForPlayback) {
                 playCurrentPrompt();
             }
-        }, autoplayDelay);
+        };
+
+        if (hasActiveUserGesture) {
+            runAutoplay();
+        } else {
+            setTimeout(runAutoplay, autoplayDelay);
+        }
     }
 
     return playCurrentPrompt;
@@ -9026,10 +9036,17 @@ function setupChunkAudioMode(chunkText) {
         setTimeout(() => answerInput.focus(), 100);
     }
 
-    // Auto-play once
-    setTimeout(() => {
+    const hasActiveUserGesture = typeof navigator !== 'undefined' &&
+        navigator.userActivation &&
+        navigator.userActivation.isActive;
+
+    if (hasActiveUserGesture) {
         playChunk();
-    }, 75);
+    } else {
+        setTimeout(() => {
+            playChunk();
+        }, 75);
+    }
 }
 
 function checkAnswer() {
