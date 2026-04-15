@@ -847,6 +847,15 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   console.log('✓ sentence mode maps to meaning skill tracking');
 })();
 
+(function testAudioMeaningUsesIndependentSkillKey() {
+  const { ctx } = createContext();
+  assert.strictEqual(ctx.getCurrentSkillKey('audio-to-meaning'), 'audio-meaning', 'audio-to-meaning should track its own confidence bucket');
+  ctx.__setMode('blend');
+  ctx.__setBlendDirection('audio-to-meaning');
+  assert.strictEqual(ctx.getCurrentSkillKey('blend'), 'audio-meaning', 'blend audio-to-meaning direction should reuse the audio-meaning confidence bucket');
+  console.log('✓ audio-to-meaning uses an independent skill key');
+})();
+
 (function testSentenceModeDifficultyFilteringRespectsCurrentLessonPool() {
   const { ctx } = createContext();
   const sentencePool = [

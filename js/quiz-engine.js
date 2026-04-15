@@ -3460,11 +3460,15 @@ function getCurrentSkillKey(customMode = mode) {
     }
     if (m === 'blend' || m === 'blend-mc') {
         const dir = blendDirection;
-        if (dir === 'char-to-meaning' || dir === 'audio-to-meaning' || dir === 'meaning-to-char') return 'meaning';
+        if (dir === 'audio-to-meaning') return 'audio-meaning';
+        if (dir === 'char-to-meaning' || dir === 'meaning-to-char') return 'meaning';
         if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin' || dir === 'pinyin-to-char') return 'pinyin-mc';
         return 'meaning';
     }
-    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'audio-to-meaning' || m === 'dictation-chat' || m === 'sentence' || m === 'tutorial') {
+    if (m === 'audio-to-meaning') {
+        return 'audio-meaning';
+    }
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'meaning-to-char-pinyin' || m === 'dictation-chat' || m === 'sentence' || m === 'tutorial') {
         return 'meaning';
     }
     if (m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-tones-mc' || m === 'char-to-pinyin-type') {

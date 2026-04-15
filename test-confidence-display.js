@@ -38,7 +38,10 @@ let mode = 'char-to-meaning-type';
 
 function getCurrentSkillKey(customMode = mode) {
     const m = customMode;
-    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char' || m === 'audio-to-meaning') {
+    if (m === 'audio-to-meaning') {
+        return 'audio-meaning';
+    }
+    if (m === 'char-to-meaning' || m === 'char-to-meaning-type' || m === 'meaning-to-char') {
         return 'meaning';
     }
     if (m === 'char-to-pinyin' || m === 'char-to-pinyin-mc' || m === 'char-to-pinyin-type' || m === 'pinyin-to-char' || m === 'audio-to-pinyin' || m === 'char-to-tones') {
@@ -207,7 +210,24 @@ test('Stats are tracked separately per skill', () => {
     assertEqual(pinyinScore, 0, 'Pinyin score should be 0 (different skill):');
 });
 
-// Test 7: Sidebar and indicator should see same data
+// Test 7: Audio meaning is tracked independently from plain meaning
+test('Audio-to-meaning stats are tracked separately from meaning modes', () => {
+    resetState();
+    const char = '听';
+
+    mode = 'char-to-meaning-type';
+    updateBKT(char, true);
+    updateBKT(char, true);
+    const meaningScore = getConfidenceScore(char);
+
+    mode = 'audio-to-meaning';
+    const audioMeaningScore = getConfidenceScore(char);
+
+    if (meaningScore <= 0) throw new Error('Meaning score should be > 0 after practice');
+    assertEqual(audioMeaningScore, 0, 'Audio meaning score should start fresh in its own bucket:');
+});
+
+// Test 8: Sidebar and indicator should see same data
 test('Sidebar and indicator use same stats for same mode', () => {
     resetState();
     const char = '国';
