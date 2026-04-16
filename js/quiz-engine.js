@@ -14789,6 +14789,7 @@ function initCharToTonesMc() {
     charToTonesMcPinyin = syllables;
     charToTonesMcCompleted = [];
     charToTonesMcInlineFeedback = null;
+    enteredTones = '';
 
     // Get upcoming question
     if (!charToTonesMcUpcomingQuestion) {
@@ -14798,6 +14799,28 @@ function initCharToTonesMc() {
 
     renderCharToTonesMcLayout();
     generateToneButtons();
+    showCharToTonesTypingInput();
+}
+
+function showCharToTonesTypingInput() {
+    if (!typeMode || !answerInput) return;
+
+    typeMode.style.display = 'block';
+    answerInput.value = charToTonesMcCompleted.join('');
+    answerInput.placeholder = 'Type tones (1-5)...';
+    if (typeof answerInput.setAttribute === 'function') {
+        answerInput.setAttribute('inputmode', 'numeric');
+        answerInput.setAttribute('pattern', '[1-5]*');
+        answerInput.setAttribute('maxlength', String(charToTonesMcExpected.length || ''));
+    }
+    setTimeout(() => answerInput.focus(), 50);
+}
+
+function syncCharToTonesTypingInput() {
+    if (!answerInput) return;
+    const typed = charToTonesMcCompleted.join('');
+    answerInput.value = typed;
+    enteredTones = typed;
 }
 
 function renderCharToTonesMcLayout() {
@@ -14939,6 +14962,9 @@ function handleToneChoice(toneNum) {
 
         // Play the syllable audio
         playPinyinAudio(currentPinyin, currentChar);
+
+        // Keep the optional typing input in sync with button / hotkey entry
+        syncCharToTonesTypingInput();
 
         if (charToTonesMcIndex >= charToTonesMcExpected.length) {
             // All tones completed correctly
@@ -20512,13 +20538,13 @@ function initQuizEventListeners() {
         }
 
         if (mode === 'char-to-tones') {
-            if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && /^[1-5]$/.test(e.key)) {
+            if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
                 e.preventDefault();
-                handleToneChoice(e.key);
+                checkAnswer();
                 return;
             }
-            // In char-to-tones mode, Enter or Ctrl+C clears
-            if (e.key === 'Enter' || (e.key === 'c' && e.ctrlKey)) {
+            // In char-to-tones mode, Ctrl+C clears the current input
+            if (e.key === 'c' && e.ctrlKey) {
                 e.preventDefault();
                 answerInput.value = '';
                 enteredTones = '';
