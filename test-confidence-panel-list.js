@@ -89,12 +89,19 @@ function makeContext() {
   }
 
   vm.runInContext(`
+    renderConfidenceList = () => {};
+    showMarkingToast = () => {};
+    refreshMarkingIndicator = () => {};
+
     function __setConfidencePanelTestState(items) {
       originalQuizCharacters = items;
       quizCharacters = items;
       mode = 'char-to-meaning-type';
       confidenceFormula = CONFIDENCE_FORMULAS.BKT;
       schedulerStats = {};
+      currentQuestion = items[0] || null;
+      window.currentQuestion = currentQuestion;
+      wordMarkings = {};
       items.forEach((item, index) => {
         const stats = getSchedulerStats(item.char);
         stats.served = 3;
@@ -104,6 +111,25 @@ function makeContext() {
       });
     }
     function __buildConfidencePanelViewModel() { return buildConfidencePanelViewModel(); }
+    function __getConfidenceNavigationOrder() { return getConfidenceNavigationOrder(); }
+    function __setCurrentQuestionChar(char) {
+      currentQuestion = quizCharacters.find(item => item.char === char) || null;
+      window.currentQuestion = currentQuestion;
+    }
+    function __toggleConfidencePracticeMark(char) { return toggleConfidencePracticeMark(char); }
+    function __getWordMarking(char) { return getWordMarking(char); }
+    function __moveConfidenceSelection(direction) {
+      confidencePanelVisible = true;
+      const originalSelect = selectConfidencePanelWord;
+      let selectedChar = null;
+      selectConfidencePanelWord = (char) => {
+        selectedChar = char;
+        return true;
+      };
+      const moved = moveConfidencePanelSelection(direction);
+      selectConfidencePanelWord = originalSelect;
+      return { moved, selectedChar };
+    }
   `, ctx);
 
   return ctx;
@@ -118,13 +144,35 @@ function makeContext() {
   }));
 
   ctx.__setConfidencePanelTestState(items);
+  ctx.__toggleConfidencePracticeMark('词3');
+  ctx.__setCurrentQuestionChar('词5');
+
   const viewModel = ctx.__buildConfidencePanelViewModel();
+  const orderedChars = ctx.__getConfidenceNavigationOrder();
+  const rows = viewModel.sections[0].rows;
+  const currentRow = rows.find((row) => row.charKey === '词5');
+  const practiceRow = rows.find((row) => row.charKey === '词3');
+  const moveNext = ctx.__moveConfidenceSelection(1);
+  const movePrev = ctx.__moveConfidenceSelection(-1);
 
   assert.strictEqual(viewModel.pinnedLowest, null, 'full-list confidence view should not pin a separate lowest row');
   assert.strictEqual(viewModel.pinnedHighest, null, 'full-list confidence view should not pin a separate highest row');
   assert.strictEqual(viewModel.sections.length, 1, 'confidence panel should render as a single full section');
-  assert.strictEqual(viewModel.sections[0].rows.length, 60, 'confidence panel should include all lesson words');
+  assert.strictEqual(rows.length, 60, 'confidence panel should include all lesson words');
   assert.match(viewModel.summary, /60 words/i, 'summary should report the full lesson size');
+  assert.strictEqual(orderedChars.length, 60, 'keyboard navigation order should cover the visible confidence list');
+  assert.strictEqual(orderedChars[0], '词1', 'navigation order should start with the least-confident word');
+  assert.strictEqual(orderedChars[orderedChars.length - 1], '词60', 'navigation order should end with the most-confident word');
+  assert.ok(currentRow && currentRow.isCurrent, 'current question should be highlighted in the confidence panel');
+  assert.ok(practiceRow && practiceRow.practiceActive, 'practice-marked word should be marked in the confidence panel');
+  assert.strictEqual(moveNext.moved, true, 'arrow navigation should report a successful next move');
+  assert.strictEqual(moveNext.selectedChar, '词6', 'arrow navigation should move to the next confidence row');
+  assert.strictEqual(movePrev.moved, true, 'arrow navigation should report a successful previous move');
+  assert.strictEqual(movePrev.selectedChar, '词4', 'arrow navigation should move to the previous confidence row');
+  assert.strictEqual(ctx.__getWordMarking('词3'), 'needs-work', 'practice toggle should store needs-work marking');
 
-  console.log('✓ confidence panel view model includes the full lesson list');
+  ctx.__toggleConfidencePracticeMark('词3');
+  assert.strictEqual(ctx.__getWordMarking('词3'), null, 'practice toggle should remove needs-work marking on second click');
+
+  console.log('✓ confidence panel view model includes selection, practice state, and navigation order');
 })();

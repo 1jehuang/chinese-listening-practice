@@ -257,19 +257,65 @@
   }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, s = "__a" + f, a = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
 
   // src/confidence-panel-ui.jsx
-  function ConfidenceRow({ row }) {
-    return /* @__PURE__ */ k("div", { className: "flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition" }, /* @__PURE__ */ k("div", { className: "flex items-center gap-2 min-w-0 overflow-hidden" }, /* @__PURE__ */ k("span", { className: `${row.charClass} font-semibold text-gray-900 truncate`, title: row.charTitle }, row.charDisplay), /* @__PURE__ */ k("div", { className: "min-w-0 shrink-0" }, row.pinyinDisplay ? /* @__PURE__ */ k("div", { className: "text-xs text-gray-600 truncate max-w-[60px]" }, row.pinyinDisplay) : null, /* @__PURE__ */ k("div", { className: "text-[11px] text-gray-500 whitespace-nowrap" }, row.metaLabel))), /* @__PURE__ */ k("div", { className: "flex items-center gap-1 shrink-0" }, /* @__PURE__ */ k("div", { className: "w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden" }, /* @__PURE__ */ k("div", { className: `h-full ${row.barClass}`, style: { width: `${row.barPercent}%` } })), /* @__PURE__ */ k("span", { className: "text-[10px] font-semibold text-gray-700" }, row.scoreDisplay, row.showMasteredBadge ? /* @__PURE__ */ k("span", { className: "ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded" }, "\u2713") : null)));
+  function ConfidenceRow({ row, onSelectRow, onTogglePractice }) {
+    const rowClassName = row.isCurrent ? "border-blue-200 bg-blue-50 shadow-sm" : "border-transparent hover:border-gray-200 hover:bg-gray-50";
+    const practiceButtonClassName = row.practiceActive ? "bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200" : row.marking === "learned" ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100" : "bg-white border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-600";
+    const practiceTitle = row.practiceActive ? "Remove from practice list" : "Mark for practice";
+    return /* @__PURE__ */ k(
+      "div",
+      {
+        className: `confidence-row flex items-center gap-2 px-2 py-1 rounded-lg border transition ${rowClassName}`,
+        "data-confidence-char": row.charKey,
+        "data-confidence-current": row.isCurrent ? "true" : "false"
+      },
+      /* @__PURE__ */ k(
+        "button",
+        {
+          type: "button",
+          className: "flex min-w-0 flex-1 items-center justify-between gap-2 text-left",
+          onClick: () => onSelectRow == null ? void 0 : onSelectRow(row.charKey),
+          title: row.selectTitle
+        },
+        /* @__PURE__ */ k("div", { className: "flex items-center gap-2 min-w-0 overflow-hidden" }, /* @__PURE__ */ k("span", { className: `${row.charClass} font-semibold text-gray-900 truncate`, title: row.charTitle }, row.charDisplay), /* @__PURE__ */ k("div", { className: "min-w-0 shrink-0" }, row.pinyinDisplay ? /* @__PURE__ */ k("div", { className: "text-xs text-gray-600 truncate max-w-[60px]" }, row.pinyinDisplay) : null, /* @__PURE__ */ k("div", { className: "text-[11px] text-gray-500 whitespace-nowrap" }, row.metaLabel))),
+        /* @__PURE__ */ k("div", { className: "flex items-center gap-1 shrink-0" }, /* @__PURE__ */ k("div", { className: "w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden" }, /* @__PURE__ */ k("div", { className: `h-full ${row.barClass}`, style: { width: `${row.barPercent}%` } })), /* @__PURE__ */ k("span", { className: "text-[10px] font-semibold text-gray-700" }, row.scoreDisplay, row.showMasteredBadge ? /* @__PURE__ */ k("span", { className: "ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded" }, "\u2713") : null))
+      ),
+      /* @__PURE__ */ k(
+        "button",
+        {
+          type: "button",
+          className: `inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm font-semibold transition shrink-0 ${practiceButtonClassName}`,
+          onClick: (event) => {
+            event.stopPropagation();
+            onTogglePractice == null ? void 0 : onTogglePractice(row.charKey);
+          },
+          title: practiceTitle,
+          "aria-label": practiceTitle
+        },
+        row.practiceActive ? "\u2691" : row.marking === "learned" ? "\u2713" : "\uFF0B"
+      )
+    );
   }
-  function PinnedConfidenceRow({ label, row, toneClass }) {
-    if (!row)
-      return null;
-    return /* @__PURE__ */ k("div", { className: "rounded-xl border border-gray-200 bg-white/90 px-2 py-2 shadow-sm" }, /* @__PURE__ */ k("div", { className: `mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${toneClass}` }, label), /* @__PURE__ */ k(ConfidenceRow, { row }));
+  function ConfidenceSection({ section, onSelectRow, onTogglePractice }) {
+    return /* @__PURE__ */ k("div", { className: "mb-4" }, section.title ? /* @__PURE__ */ k("div", { className: `text-xs font-semibold uppercase tracking-wide ${section.colorClass} mb-2 px-2` }, section.title) : null, section.rows.map((row) => /* @__PURE__ */ k(
+      ConfidenceRow,
+      {
+        key: row.key,
+        row,
+        onSelectRow,
+        onTogglePractice
+      }
+    )));
   }
-  function ConfidenceSection({ section }) {
-    return /* @__PURE__ */ k("div", { className: "mb-4" }, section.title ? /* @__PURE__ */ k("div", { className: `text-xs font-semibold uppercase tracking-wide ${section.colorClass} mb-2 px-2` }, section.title) : null, section.rows.map((row) => /* @__PURE__ */ k(ConfidenceRow, { key: row.key, row })));
-  }
-  function ConfidencePanelView({ summary, goalReached, goalLabel, pinnedLowest, pinnedHighest, sections, emptyMessage }) {
-    return /* @__PURE__ */ k("div", { className: "flex h-full min-h-0 flex-col gap-2" }, /* @__PURE__ */ k("div", { className: "flex items-center justify-between gap-2 mb-1" }, /* @__PURE__ */ k("div", null, /* @__PURE__ */ k("div", { className: "text-[11px] uppercase tracking-[0.28em] text-gray-400" }, "Confidence"), /* @__PURE__ */ k("div", { className: "text-sm font-semibold text-gray-900" }, "Least \u2192 Most sure"), goalReached ? /* @__PURE__ */ k("div", { className: "inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" }, goalLabel) : null)), /* @__PURE__ */ k("div", { id: "confidenceSummary", className: "text-xs text-gray-500 mb-1" }, summary || ""), /* @__PURE__ */ k(PinnedConfidenceRow, { label: "Lowest confidence", row: pinnedLowest, toneClass: "text-amber-600" }), /* @__PURE__ */ k("div", { id: "confidenceList", className: "space-y-1 flex-1 min-h-0 overflow-y-auto pr-1" }, sections.length ? sections.map((section) => /* @__PURE__ */ k(ConfidenceSection, { key: section.key, section })) : /* @__PURE__ */ k("div", { className: "text-xs text-gray-500" }, emptyMessage)), pinnedHighest ? /* @__PURE__ */ k(PinnedConfidenceRow, { label: "Highest confidence", row: pinnedHighest, toneClass: "text-emerald-600" }) : null);
+  function ConfidencePanelView({ summary, goalReached, goalLabel, sections, emptyMessage, onSelectRow, onTogglePractice }) {
+    return /* @__PURE__ */ k("div", { className: "flex h-full flex-col" }, /* @__PURE__ */ k("div", { className: "flex items-center justify-between gap-2 mb-2" }, /* @__PURE__ */ k("div", null, /* @__PURE__ */ k("div", { className: "text-[11px] uppercase tracking-[0.28em] text-gray-400" }, "Confidence"), /* @__PURE__ */ k("div", { className: "text-sm font-semibold text-gray-900" }, "Least \u2192 Most sure"), goalReached ? /* @__PURE__ */ k("div", { className: "inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" }, goalLabel) : null)), /* @__PURE__ */ k("div", { id: "confidenceSummary", className: "text-xs text-gray-500 mb-2" }, summary || ""), /* @__PURE__ */ k("div", { id: "confidenceList", className: "space-y-1 flex-1 overflow-y-auto pr-1" }, sections.length ? sections.map((section) => /* @__PURE__ */ k(
+      ConfidenceSection,
+      {
+        key: section.key,
+        section,
+        onSelectRow,
+        onTogglePractice
+      }
+    )) : /* @__PURE__ */ k("div", { className: "text-xs text-gray-500" }, emptyMessage)));
   }
   function render(container, props) {
     if (!container) return;

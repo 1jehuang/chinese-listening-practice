@@ -290,6 +290,7 @@ function markWord(char, marking) {
     saveWordMarkings();
     // Refresh UI to show marking indicator
     refreshMarkingIndicator();
+    renderConfidenceList();
 }
 
 function getWordMarking(char) {
@@ -6148,9 +6149,12 @@ function buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore) {
     const charText = item.char || '?';
     const isLongText = charText.length > 6;
     const displayChar = isLongText ? charText.slice(0, 12) + (charText.length > 12 ? '…' : '') : charText;
+    const marking = getWordMarking(item.char);
+    const meaningText = (item.meaning || '').trim();
 
     return {
         key: `${item.char || '?'}::${pinyin || 'none'}::${scoreDisplay}`,
+        charKey: item.char || '',
         charTitle: charText,
         charDisplay: displayChar,
         charClass: isLongText ? 'text-sm' : 'text-2xl',
@@ -6159,7 +6163,11 @@ function buildConfidenceRowViewModel(entry, isBKT, minScore, maxScore) {
         barClass,
         barPercent: pct,
         scoreDisplay,
-        showMasteredBadge: isBKT && score >= BKT_MASTERY_THRESHOLD
+        showMasteredBadge: isBKT && score >= BKT_MASTERY_THRESHOLD,
+        isCurrent: Boolean(currentQuestion && currentQuestion.char === item.char),
+        marking,
+        practiceActive: marking === 'needs-work',
+        selectTitle: meaningText ? `${charText} · ${meaningText}` : charText
     };
 }
 
@@ -6170,30 +6178,66 @@ function renderConfidenceRowHtml(row) {
     const pinyinHtml = row.pinyinDisplay
         ? `<div class="text-xs text-gray-600 truncate max-w-[60px]">${escapeHtml(row.pinyinDisplay)}</div>`
         : '';
+    const rowClassName = row.isCurrent
+        ? 'border-blue-200 bg-blue-50 shadow-sm'
+        : 'border-transparent hover:border-gray-200 hover:bg-gray-50';
+    const practiceButtonClassName = row.practiceActive
+        ? 'bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200'
+        : row.marking === 'learned'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
+            : 'bg-white border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-600';
+    const practiceTitle = row.practiceActive ? 'Remove from practice list' : 'Mark for practice';
+    const practiceIcon = row.practiceActive ? '⚑' : (row.marking === 'learned' ? '✓' : '＋');
 
     return `
-        <div class="flex items-center justify-between gap-2 px-2 py-1 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition">
-            <div class="flex items-center gap-2 min-w-0 overflow-hidden">
-                <span class="${row.charClass} font-semibold text-gray-900 truncate" title="${escapeHtml(row.charTitle)}">${escapeHtml(row.charDisplay)}</span>
-                <div class="min-w-0 shrink-0">
-                    ${pinyinHtml}
-                    <div class="text-[11px] text-gray-500 whitespace-nowrap">${escapeHtml(row.metaLabel)}</div>
+        <div class="confidence-row flex items-center gap-2 px-2 py-1 rounded-lg border transition ${rowClassName}" data-confidence-char="${escapeHtml(row.charKey)}" data-confidence-current="${row.isCurrent ? 'true' : 'false'}">
+            <button type="button" class="flex min-w-0 flex-1 items-center justify-between gap-2 text-left" title="${escapeHtml(row.selectTitle)}" data-confidence-select-char="${escapeHtml(row.charKey)}">
+                <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+                    <span class="${row.charClass} font-semibold text-gray-900 truncate" title="${escapeHtml(row.charTitle)}">${escapeHtml(row.charDisplay)}</span>
+                    <div class="min-w-0 shrink-0">
+                        ${pinyinHtml}
+                        <div class="text-[11px] text-gray-500 whitespace-nowrap">${escapeHtml(row.metaLabel)}</div>
+                    </div>
                 </div>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-                <div class="w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div class="h-full ${row.barClass}" style="width: ${row.barPercent}%;"></div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <div class="w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full ${row.barClass}" style="width: ${row.barPercent}%;"></div>
+                    </div>
+                    <span class="text-[10px] font-semibold text-gray-700">${escapeHtml(row.scoreDisplay)}${masteredBadge}</span>
                 </div>
-                <span class="text-[10px] font-semibold text-gray-700">${escapeHtml(row.scoreDisplay)}${masteredBadge}</span>
-            </div>
+            </button>
+            <button type="button" class="inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm font-semibold transition shrink-0 ${practiceButtonClassName}" title="${escapeHtml(practiceTitle)}" aria-label="${escapeHtml(practiceTitle)}" data-confidence-practice-char="${escapeHtml(row.charKey)}">${practiceIcon}</button>
         </div>
     `;
 }
 
-function buildConfidencePanelViewModel() {
-    const pool = (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
+function getConfidencePanelSourcePool() {
+    return (Array.isArray(originalQuizCharacters) && originalQuizCharacters.length)
         ? originalQuizCharacters
         : (Array.isArray(quizCharacters) ? quizCharacters : []);
+}
+
+function getConfidenceOrderedEntries() {
+    const pool = getConfidencePanelSourcePool();
+    return pool.map(item => {
+        const stats = getSchedulerStats(item.char);
+        return {
+            item,
+            stats,
+            score: getConfidenceScore(item.char)
+        };
+    }).sort((a, b) => a.score - b.score);
+}
+
+function getConfidenceNavigationOrder() {
+    return getConfidenceOrderedEntries()
+        .slice(0, CONFIDENCE_RENDER_LIMIT)
+        .map(entry => entry?.item?.char)
+        .filter(Boolean);
+}
+
+function buildConfidencePanelViewModel() {
+    const pool = getConfidencePanelSourcePool();
 
     if (!pool.length) {
         return {
@@ -6210,16 +6254,7 @@ function buildConfidencePanelViewModel() {
     const isBKT = confidenceFormula === CONFIDENCE_FORMULAS.BKT;
     const goalThreshold = isBKT ? BKT_MASTERY_THRESHOLD : CONFIDENCE_GOAL;
 
-    const scored = pool.map(item => {
-        const stats = getSchedulerStats(item.char);
-        return {
-            item,
-            stats,
-            score: getConfidenceScore(item.char)
-        };
-    });
-
-    scored.sort((a, b) => a.score - b.score);
+    const scored = getConfidenceOrderedEntries();
     const totalCount = scored.length;
     const allScores = scored.map(s => s.score);
     const minScore = Math.min(...allScores);
@@ -6252,6 +6287,124 @@ function buildConfidencePanelViewModel() {
         sections,
         emptyMessage: totalCount > 0 ? 'No words available to display.' : ''
     };
+}
+
+function isConfidenceWordNavigationSupported() {
+    return mode !== 'study'
+        && mode !== 'sentence'
+        && mode !== 'dictation-chat'
+        && mode !== 'draw-missing-component'
+        && mode !== 'missing-component'
+        && mode !== 'char-building';
+}
+
+function findQuizPoolItemByChar(char) {
+    if (!char) return null;
+    return getConfidencePanelSourcePool().find(item => item && item.char === char) || null;
+}
+
+function toggleConfidencePracticeMark(char) {
+    if (!char) return false;
+    const nextMarking = getWordMarking(char) === 'needs-work' ? null : 'needs-work';
+    markWord(char, nextMarking);
+    showMarkingToast(
+        nextMarking === 'needs-work'
+            ? `⚠ "${char}" marked for practice`
+            : `"${char}" removed from practice list`,
+        nextMarking === 'needs-work' ? 'warning' : 'info'
+    );
+    return true;
+}
+
+function selectConfidencePanelWord(char, options = {}) {
+    if (!char || !isConfidenceWordNavigationSupported()) return false;
+    const item = findQuizPoolItemByChar(char);
+    if (!item) return false;
+    if (currentQuestion?.char === item.char && !options.force) {
+        renderConfidenceList();
+        return true;
+    }
+
+    clearPendingNextQuestion();
+    nextAnswerBuffer = '';
+    resetForNextQuestion('');
+    upcomingQuestion = null;
+    translationUpcomingQuestion = null;
+    pinyinDictationUpcomingQuestion = null;
+    currentQuestion = item;
+    window.currentQuestion = currentQuestion;
+    renderCurrentQuestionSelection('', {
+        selectionSource: options.selectionSource || 'confidence-panel'
+    });
+    return true;
+}
+
+function moveConfidencePanelSelection(direction) {
+    if (!confidencePanelVisible || !isConfidenceWordNavigationSupported() || !currentQuestion?.char) {
+        return false;
+    }
+    const orderedChars = getConfidenceNavigationOrder();
+    if (!orderedChars.length) return false;
+
+    let currentIndex = orderedChars.indexOf(currentQuestion.char);
+    if (currentIndex < 0) {
+        currentIndex = 0;
+    }
+    const targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= orderedChars.length) {
+        return false;
+    }
+    return selectConfidencePanelWord(orderedChars[targetIndex], {
+        selectionSource: 'confidence-arrow'
+    });
+}
+
+function scrollCurrentConfidenceRowIntoView() {
+    if (!confidencePanelContentElement || typeof confidencePanelContentElement.querySelector !== 'function') return;
+    requestAnimationFrame(() => {
+        const currentRow = confidencePanelContentElement.querySelector('[data-confidence-current="true"]');
+        if (currentRow && typeof currentRow.scrollIntoView === 'function') {
+            currentRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    });
+}
+
+function focusCurrentConfidenceRow(char) {
+    if (!char || !confidencePanelContentElement || typeof confidencePanelContentElement.querySelector !== 'function') return;
+    const escapedChar = typeof CSS !== 'undefined' && CSS && typeof CSS.escape === 'function'
+        ? CSS.escape(char)
+        : String(char).replace(/"/g, '\\"');
+    const selector = `[data-confidence-select-char="${escapedChar}"]`;
+    const attemptFocus = () => {
+        const button = confidencePanelContentElement.querySelector(selector);
+        if (button && typeof button.focus === 'function') {
+            try {
+                button.focus({ preventScroll: true });
+            } catch (_) {
+                button.focus();
+            }
+        }
+    };
+    requestAnimationFrame(() => {
+        attemptFocus();
+        setTimeout(attemptFocus, 140);
+    });
+}
+
+function bindConfidencePanelFallbackInteractions(container) {
+    if (!container || typeof container.querySelectorAll !== 'function') return;
+    container.querySelectorAll('[data-confidence-select-char]').forEach(button => {
+        button.onclick = () => {
+            selectConfidencePanelWord(button.getAttribute('data-confidence-select-char'), {
+                selectionSource: 'confidence-panel'
+            });
+        };
+    });
+    container.querySelectorAll('[data-confidence-practice-char]').forEach(button => {
+        button.onclick = () => {
+            toggleConfidencePracticeMark(button.getAttribute('data-confidence-practice-char'));
+        };
+    });
 }
 
 function renderPinnedConfidenceRowHtml(label, row, toneClass) {
@@ -6309,13 +6462,21 @@ function renderConfidenceList() {
     if (!confidencePanelVisible) return;
 
     const viewModel = buildConfidencePanelViewModel();
+    const renderProps = {
+        ...viewModel,
+        onSelectRow: selectConfidencePanelWord,
+        onTogglePractice: toggleConfidencePracticeMark
+    };
 
     if (window.JcodeConfidencePanelUI?.render) {
-        window.JcodeConfidencePanelUI.render(confidencePanelContentElement, viewModel);
+        window.JcodeConfidencePanelUI.render(confidencePanelContentElement, renderProps);
+        scrollCurrentConfidenceRowIntoView();
         return;
     }
 
     renderConfidencePanelFallback(confidencePanelContentElement, viewModel);
+    bindConfidencePanelFallbackInteractions(confidencePanelContentElement);
+    scrollCurrentConfidenceRowIntoView();
 }
 
 function ensureConfettiStyles() {
@@ -8649,6 +8810,65 @@ function renderQuestionUiForComponentModes() {
     return false;
 }
 
+function renderCurrentQuestionSelection(prefillAnswer = '', options = {}) {
+    if (!currentQuestion) return false;
+
+    updatePreviewDisplay();
+    window.currentQuestion = currentQuestion;
+    warmPromptAudioForCurrentMode(currentQuestion);
+    logDebugEvent('question-selected', {
+        char: currentQuestion?.char,
+        mode,
+        schedulerMode,
+        selectionSource: options.selectionSource || 'scheduler'
+    });
+    try { document.dispatchEvent(new CustomEvent('feed-question-served')); } catch (_) {}
+    if (options.markServed !== false && !shouldDeferServingForMode(mode)) {
+        markSchedulerServed(currentQuestion);
+    }
+
+    if (typeof updateLearnModeCharacter === 'function') {
+        updateLearnModeCharacter();
+    }
+
+    prepareUiForNewQuestion(prefillAnswer);
+
+    if (renderQuestionUiForTypingModes()) {
+        // Mode handled
+    } else if (renderQuestionUiForChoiceModes()) {
+        // Mode handled
+    } else if (renderQuestionUiForHandwritingModes()) {
+        // Mode handled
+    } else {
+        if (renderQuestionUiForComponentModes()) {
+            return true;
+        }
+    }
+
+    notifyChatQuestionChanged();
+
+    if (prefillAnswer && answerInput) {
+        updatePartialProgress();
+    }
+
+    markQuestionStartTime();
+
+    if (timerEnabled) {
+        startTimer();
+    }
+
+    updateFullscreenQueueDisplay();
+    updateCurrentWordConfidence();
+    if (isFullscreenMode) {
+        updateFullscreenConfidence();
+    }
+    renderConfidenceList();
+    if (options.selectionSource === 'confidence-panel' || options.selectionSource === 'confidence-arrow') {
+        focusCurrentConfidenceRow(currentQuestion?.char);
+    }
+    return true;
+}
+
 function generateQuestion(options = {}) {
     const prefillAnswer = getPrefillAnswerForNextQuestion(options);
     resetForNextQuestion(prefillAnswer);
@@ -8664,62 +8884,7 @@ function generateQuestion(options = {}) {
     }
 
     currentQuestion = nextQuestion;
-    updatePreviewDisplay();
-    window.currentQuestion = currentQuestion;
-    warmPromptAudioForCurrentMode(currentQuestion);
-    logDebugEvent('question-selected', {
-        char: currentQuestion?.char,
-        mode,
-        schedulerMode
-    });
-    try { document.dispatchEvent(new CustomEvent('feed-question-served')); } catch (_) {}
-    if (!shouldDeferServingForMode(mode)) {
-        markSchedulerServed(currentQuestion);
-    }
-
-    // Update learn mode overlay if active
-    if (typeof updateLearnModeCharacter === 'function') {
-        updateLearnModeCharacter();
-    }
-
-    prepareUiForNewQuestion(prefillAnswer);
-
-    // Show appropriate UI based on mode
-    if (renderQuestionUiForTypingModes()) {
-        // Mode handled
-    } else if (renderQuestionUiForChoiceModes()) {
-        // Mode handled
-    } else if (renderQuestionUiForHandwritingModes()) {
-        // Mode handled
-    } else {
-        if (renderQuestionUiForComponentModes()) {
-            return;
-        }
-    }
-
-    notifyChatQuestionChanged();
-
-    // If we prefilled an answer (user typed during the reveal phase), preserve it
-    if (prefillAnswer && answerInput) {
-        // Update partial progress indicators for typed modes
-        updatePartialProgress();
-    }
-
-    // Mark when the question is actually on screen for response-time tracking
-    markQuestionStartTime();
-
-    // Start timer for the new question
-    if (timerEnabled) {
-        startTimer();
-    }
-
-    updateFullscreenQueueDisplay();
-
-    // Show current word confidence
-    updateCurrentWordConfidence();
-    if (isFullscreenMode) {
-        updateFullscreenConfidence();
-    }
+    renderCurrentQuestionSelection(prefillAnswer);
 }
 
 function syncQuestionAfterSelection() {
@@ -19320,6 +19485,21 @@ function handleQuizHotkeys(e) {
     const isBackslashKey = e.key === '\\' || e.key === '|' || e.code === 'Backslash';
     const allowModifiedBracketMark = !e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey);
     const allowPlainMarkHotkey = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !typingTarget;
+
+    if (allowPlainMarkHotkey) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            if (moveConfidencePanelSelection(-1)) {
+                e.preventDefault();
+                return;
+            }
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            if (moveConfidencePanelSelection(1)) {
+                e.preventDefault();
+                return;
+            }
+        }
+    }
 
     if (currentQuestion?.char) {
         if ((allowPlainMarkHotkey && (e.key === 'w' || e.key === 'W' || isBracketLeftKey)) || (allowModifiedBracketMark && isBracketLeftKey)) {
