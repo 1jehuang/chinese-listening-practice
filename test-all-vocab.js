@@ -17,7 +17,7 @@ function loadPinyinUtils() {
 }
 
 const pinyinUtils = loadPinyinUtils();
-const { convertPinyinToToneNumbers, splitPinyinSyllables } = pinyinUtils;
+const { convertPinyinToToneNumbers, splitPinyinSyllables, normalizePinyin, extractToneSequence } = pinyinUtils;
 
 // All vocabulary from all lessons
 const allVocabulary = [
@@ -78,6 +78,13 @@ const allVocabulary = [
     { char: '节目', pinyin: 'jiémù', expected: 'jie2mu4' },
     { char: '星期', pinyin: 'xīngqī', expected: 'xing1qi1' },
     { char: '星期六', pinyin: 'xīngqīliù', expected: 'xing1qi1liu4' },
+
+    // Apostrophe separator variants
+    { char: '女儿', pinyin: "nǚ'ér", expected: 'nv3er2' },
+    { char: '西岸', pinyin: 'xī’àn', expected: 'xi1an4' },
+    { char: '第二', pinyin: 'Dì’èr', expected: 'di4er4' },
+    { char: '关爱', pinyin: "guān'ài", expected: 'guan1ai4' },
+    { char: '印第安人', pinyin: 'Yìndì’ānrén', expected: 'yin4di4an1ren2' }
 ];
 
 // Test runner
@@ -104,6 +111,40 @@ allVocabulary.forEach((item) => {
             expected: item.expected,
             got: result,
             syllables: splitPinyinSyllables(item.pinyin)
+        });
+    }
+});
+
+const separatorNormalizationChecks = [
+    { label: 'straight apostrophe + tones', left: "xi1'an4", right: 'xī’àn', expected: true },
+    { label: 'no apostrophe + tones', left: 'xi1an4', right: 'xī’àn', expected: true },
+    { label: 'mixed apostrophe variants', left: "guan1'ai4", right: 'guān’ài', expected: true },
+    { label: 'ascii vs curly apostrophe', left: "nǚ'ér", right: 'nǚ’ér', expected: true }
+];
+
+function checkQuizStyleMatch(left, right) {
+    return normalizePinyin(left) === normalizePinyin(right)
+        && extractToneSequence(left) === extractToneSequence(right)
+        && extractToneSequence(left).length === extractToneSequence(right).length;
+}
+
+separatorNormalizationChecks.forEach(({ label, left, right, expected }) => {
+    const passed = checkQuizStyleMatch(left, right);
+    if (passed === expected) {
+        passCount++;
+        console.log(`✓ ${label.padEnd(28)} ${left} ~ ${right}`);
+    } else {
+        failCount++;
+        console.log(`✗ ${label.padEnd(28)} ${left} ~ ${right}`);
+        failures.push({
+            char: label,
+            pinyin: `${left} ~ ${right}`,
+            expected: expected ? 'normalized equal' : 'normalized different',
+            got: passed ? 'normalized equal' : 'normalized different',
+            syllables: [
+                `normalized: ${normalizePinyin(left)} | ${normalizePinyin(right)}`,
+                `tones: ${extractToneSequence(left)} | ${extractToneSequence(right)}`
+            ]
         });
     }
 });

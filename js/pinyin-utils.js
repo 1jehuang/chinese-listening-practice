@@ -23,6 +23,7 @@ const TONE_MARK_TO_NUMBER = {
 };
 
 const PINYIN_FINAL_LETTERS = new Set(['a', 'e', 'i', 'o', 'u', 'v', 'n', 'r']);
+const PINYIN_APOSTROPHE_VARIANTS_REGEX = /[’‘‛ʼ＇`´]/g;
 // NOTE: Keep ':' out of the separator regex so `u:` (ü) notation like `lu:4` stays in a single token.
 const PINYIN_SEPARATOR_REGEX = /[\s.,/;!?'"""''—–\-…，。、？！；：（）【】《》·]/;
 const PINYIN_STRIP_REGEX = /[\s.,/;:!?'"""''—–\-…，。、？！；：（）【】《》·]/g;
@@ -37,13 +38,18 @@ const TONE_MARK_MAP = {
 };
 const PINYIN_WORD_SEPARATOR_REGEX = /[\s,，、。！？；：;（）()【】《》「」『』…—–-]+/;
 
+function normalizePinyinSeparatorVariants(pinyin) {
+    if (pinyin == null) return '';
+    return String(pinyin).replace(PINYIN_APOSTROPHE_VARIANTS_REGEX, "'");
+}
+
 /**
  * Convert pinyin with tone marks or numbers to tone number format (e.g., "hǎo" -> "hao3")
  * @param {string} pinyin - Pinyin string with tone marks or numbers
  * @returns {string} Pinyin in tone number format
  */
 function convertPinyinToToneNumbers(pinyin) {
-    const syllables = splitPinyinSyllables(pinyin);
+    const syllables = splitPinyinSyllables(normalizePinyinSeparatorVariants(pinyin));
     if (syllables.length === 0) return '';
 
     return syllables.map(syl => {
@@ -88,7 +94,7 @@ function convertPinyinToToneNumbers(pinyin) {
 // "bān chū.qù", "ban1 chu1 qu4", and "ban1chu1qu4" compare equal.
 function normalizePinyinForChoice(pinyin) {
     if (!pinyin) return '';
-    const asNumbers = convertPinyinToToneNumbers(pinyin.toLowerCase().trim());
+    const asNumbers = convertPinyinToToneNumbers(normalizePinyinSeparatorVariants(pinyin).toLowerCase().trim());
     return asNumbers.replace(PINYIN_STRIP_REGEX, '');
 }
 
@@ -101,7 +107,7 @@ function normalizePinyin(pinyin) {
     // 5. Remove all tone marks
     // 6. Result: pure letters only (e.g., "zhongguo")
 
-    let result = pinyin.toLowerCase().trim();
+    let result = normalizePinyinSeparatorVariants(pinyin).toLowerCase().trim();
 
     // Normalize ü/u: variants to 'v'
     result = result.replace(/u:/g, 'v');
@@ -160,7 +166,7 @@ function extractToneSequence(pinyin) {
 function splitPinyinSyllables(pinyin) {
     if (!pinyin) return [];
 
-    const text = pinyin.trim();
+    const text = normalizePinyinSeparatorVariants(pinyin).trim();
     if (!text) return [];
 
     const syllables = [];
