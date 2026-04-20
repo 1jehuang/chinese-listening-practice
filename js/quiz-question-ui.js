@@ -273,16 +273,16 @@
   function MeaningQuestionLayout({ char, showComponentBreakdown, usageHint }) {
     return /* @__PURE__ */ k("div", { className: `meaning-question-layout${showComponentBreakdown ? "" : " components-hidden"}` }, /* @__PURE__ */ k("div", { className: "component-panel component-panel-left", id: "componentPanelLeft" }), /* @__PURE__ */ k("div", { className: "meaning-char-column" }, /* @__PURE__ */ k(UsageHint, { hint: usageHint }), /* @__PURE__ */ k("div", { className: "answer-summary-card", id: "answerSummaryCard" }, /* @__PURE__ */ k("div", { className: "summary-card-header" }, /* @__PURE__ */ k("span", { className: "summary-card-char", id: "answerSummaryChar" }), /* @__PURE__ */ k("span", { className: "summary-card-pinyin", id: "answerSummaryPinyin" })), /* @__PURE__ */ k("div", { className: "summary-card-meaning", id: "answerSummaryMeaning" }), /* @__PURE__ */ k("div", { className: "summary-card-characters text-xs text-gray-500 mt-1", id: "answerSummaryCharacters" })), /* @__PURE__ */ k("div", { className: "question-char-display" }, char), /* @__PURE__ */ k("div", { className: "etymology-note-card hidden", id: "etymologyNoteCard" }, /* @__PURE__ */ k("div", { className: "etymology-title" }, "Etymology note"), /* @__PURE__ */ k("div", { className: "etymology-header", id: "etymologyNoteHeader" }), /* @__PURE__ */ k("div", { className: "etymology-body", id: "etymologyNoteBody" }))), /* @__PURE__ */ k("div", { className: "component-panel component-panel-right", id: "componentPanelRight" }));
   }
-  function PreviousCard({ char, pinyin, meaning, resultClass, resultIcon, feedbackText, charDetails, dirLabel }) {
-    return /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "column-feedback" }, /* @__PURE__ */ k("span", { className: "column-result-icon" }, resultIcon), /* @__PURE__ */ k("span", { className: "column-feedback-text" }, feedbackText)), /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "column-pinyin" }, pinyin), /* @__PURE__ */ k("div", { className: "column-meaning" }, meaning), charDetails ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: charDetails } }) : null, dirLabel ? /* @__PURE__ */ k("div", { style: { fontSize: "10px", color: "#94a3b8", marginTop: "6px", textTransform: "uppercase", letterSpacing: "0.05em" } }, dirLabel) : null);
+  function PreviousCard({ char, sentenceHtml, pinyin, meaning, resultClass, resultIcon, feedbackText, charDetails, dirLabel }) {
+    return /* @__PURE__ */ k(S, null, /* @__PURE__ */ k("div", { className: "column-feedback" }, /* @__PURE__ */ k("span", { className: "column-result-icon" }, resultIcon), /* @__PURE__ */ k("span", { className: "column-feedback-text" }, feedbackText)), sentenceHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: sentenceHtml } }) : /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "column-pinyin" }, pinyin), /* @__PURE__ */ k("div", { className: "column-meaning" }, meaning), charDetails ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: charDetails } }) : null, dirLabel ? /* @__PURE__ */ k("div", { style: { fontSize: "10px", color: "#94a3b8", marginTop: "6px", textTransform: "uppercase", letterSpacing: "0.05em" } }, dirLabel) : null);
   }
   function CurrentCard({ char, fontSize, markingBadge, inlineFeedback, mode, inlinePromptAudioHtml, promptHtml, dirLabel, usageHint }) {
     const isAudioMode = mode === "audio-to-meaning" || mode === "audio-sentence-to-meaning" || mode === "audio-to-pinyin";
     return /* @__PURE__ */ k(S, null, markingBadge ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: markingBadge } }) : null, /* @__PURE__ */ k(UsageHint, { hint: usageHint }), /* @__PURE__ */ k("div", { className: "column-focus-ring" }, promptHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: promptHtml } }) : isAudioMode ? inlinePromptAudioHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: inlinePromptAudioHtml } }) : null : /* @__PURE__ */ k("div", { className: "column-char-large", style: { fontSize } }, char)), inlineFeedback ? /* @__PURE__ */ k("div", { className: `column-inline-feedback ${inlineFeedback.type === "incorrect" ? "is-incorrect" : "is-correct"}` }, inlineFeedback.message) : null);
   }
-  function UpcomingCard({ char, mode }) {
+  function UpcomingCard({ char, sentenceHtml, mode }) {
     const isBlendMode = mode === "blend";
-    return /* @__PURE__ */ k("div", { className: "column-ondeck" }, isBlendMode ? /* @__PURE__ */ k("div", { style: { fontSize: "28px", color: "#d1d5db" } }, "?") : mode === "audio-to-meaning" || mode === "audio-sentence-to-meaning" || mode === "audio-to-pinyin" ? /* @__PURE__ */ k("div", { style: { fontSize: "32px", color: "#d1d5db" } }, "\u{1F50A}") : /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "ondeck-note" }, "On deck"));
+    return /* @__PURE__ */ k("div", { className: "column-ondeck" }, sentenceHtml ? /* @__PURE__ */ k("div", { dangerouslySetInnerHTML: { __html: sentenceHtml } }) : isBlendMode ? /* @__PURE__ */ k("div", { style: { fontSize: "28px", color: "#d1d5db" } }, "?") : mode === "audio-to-meaning" || mode === "audio-sentence-to-meaning" || mode === "audio-to-pinyin" ? /* @__PURE__ */ k("div", { style: { fontSize: "32px", color: "#d1d5db" } }, "\u{1F50A}") : /* @__PURE__ */ k("div", { className: "column-char" }, char), /* @__PURE__ */ k("div", { className: "ondeck-note" }, "On deck"));
   }
   function ThreeColumnMeaningLayout({
     previous,
@@ -295,12 +295,13 @@
     const dirLabel = current == null ? void 0 : current.dirLabel;
     const labelContent = dirLabel ? /* @__PURE__ */ k(S, null, "Now \xB7 ", /* @__PURE__ */ k("span", { style: { fontWeight: 600, color: "#6366f1" } }, dirLabel)) : "Now";
     return /* @__PURE__ */ k("div", { className: "three-column-meaning-layout" }, /* @__PURE__ */ k("div", { className: `column-previous column-card ${prevResultClass}` }, /* @__PURE__ */ k("div", { className: "column-label" }, "Previous"), previous ? /* @__PURE__ */ k(
-      PreviousCard,
-      {
-        char: previous.char,
-        pinyin: previous.pinyin,
-        meaning: previous.meaning,
-        resultIcon: previous.resultIcon,
+        PreviousCard,
+        {
+          char: previous.char,
+          sentenceHtml: previous.sentenceHtml,
+          pinyin: previous.pinyin,
+          meaning: previous.meaning,
+          resultIcon: previous.resultIcon,
         feedbackText: previous.feedbackText,
         charDetails: previous.charDetails,
         dirLabel: previous.dirLabel
@@ -318,7 +319,7 @@
         dirLabel: current.dirLabel,
         usageHint: current.usageHint
       }
-    )), /* @__PURE__ */ k("div", { className: "column-upcoming column-card" }, /* @__PURE__ */ k("div", { className: "column-label" }, "Upcoming"), upcoming ? /* @__PURE__ */ k(UpcomingCard, { char: upcoming.char, mode: upcoming.mode || current.mode }) : /* @__PURE__ */ k("div", { className: "column-placeholder" }, "Next card is loading")));
+    )), /* @__PURE__ */ k("div", { className: "column-upcoming column-card" }, /* @__PURE__ */ k("div", { className: "column-label" }, "Upcoming"), upcoming ? /* @__PURE__ */ k(UpcomingCard, { char: upcoming.char, sentenceHtml: upcoming.sentenceHtml, mode: upcoming.mode || current.mode }) : /* @__PURE__ */ k("div", { className: "column-placeholder" }, "Next card is loading")));
   }
   function QuestionDisplayView({
     mode,

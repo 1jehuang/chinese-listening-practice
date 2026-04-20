@@ -1572,6 +1572,7 @@ function submitSentenceModeAnswer(answer) {
         message: currentQuestion.meaning,
         detail: currentQuestion.target ? `Target: ${currentQuestion.target}` : 'Review the sentence and answer.'
     };
+    playMeaningFeedbackAudio(currentQuestion, { delay: 0 });
     nextAnswerBuffer = '';
     updateStats();
     renderSentenceModeLayout();
@@ -9139,6 +9140,29 @@ function playMeaningFeedbackAudio(question, options = {}) {
     return speak();
 }
 
+function getThreeColumnSentenceCardHtml(question, options = {}) {
+    const sentence = String(question?.sentence || '').trim();
+    if (!sentence) return '';
+
+    const { wrapperClass = 'column-char', fontSize = '20px', maxWidth = '240px', subdued = false } = options;
+    const target = question?.target || question?.char || '';
+    const color = subdued ? '#9ca3af' : '#1f2937';
+    const highlightedSentenceHtml = highlightSentenceModeTarget(sentence, target);
+    return `<div class="${wrapperClass}" style="font-size: ${fontSize}; line-height: 1.4; max-width: ${maxWidth}; word-wrap: break-word; color: ${color};">${highlightedSentenceHtml}</div>`;
+}
+
+function getAudioSentenceMeaningPromptHtml(question = currentQuestion) {
+    const sentenceHtml = getThreeColumnSentenceCardHtml(question, {
+        wrapperClass: 'column-char',
+        fontSize: '22px',
+        maxWidth: '260px'
+    });
+    if (!sentenceHtml) {
+        return getInlinePromptAudioHtml(getAudioMeaningPromptSubtitle(mode));
+    }
+    return `${sentenceHtml}${getInlinePromptAudioHtml(getAudioMeaningPromptSubtitle(mode))}`;
+}
+
 function warmPromptAudio(question) {
     if (!question || typeof preloadPromptAudio !== 'function') return;
     preloadPromptAudio(question);
@@ -11339,6 +11363,7 @@ function renderBlendLayout() {
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
     const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
     const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
+    const prevSentenceHtml = previousQuestion ? getThreeColumnSentenceCardHtml(previousQuestion) : '';
     const prevResultClass = previousQuestionResult === 'correct' ? 'result-correct' :
                            previousQuestionResult === 'incorrect' ? 'result-incorrect' : '';
     const prevResultIcon = previousQuestionResult === 'correct' ? '✓' :
@@ -11405,7 +11430,7 @@ function renderBlendLayout() {
                         <span class="column-result-icon">${prevResultIcon}</span>
                         <span class="column-feedback-text">${prevFeedbackText}</span>
                     </div>
-                    <div class="column-char">${prevChar}</div>
+                    ${prevSentenceHtml || `<div class="column-char">${prevChar}</div>`}
                     <div class="column-pinyin">${prevPinyin}</div>
                     <div class="column-meaning">${prevMeaning}</div>
                     ${prevDirLabel ? `<div style="font-size: 10px; color: #94a3b8; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em;">${prevDirLabel}</div>` : ''}
@@ -11814,6 +11839,9 @@ function checkMultipleChoice(answer) {
         }
         lastAnswerCorrect = false;
         markSchedulerOutcome(false);
+        if (mode === 'sentence') {
+            playMeaningFeedbackAudio(currentQuestion, { delay: 0 });
+        }
         if (mode === 'char-to-meaning') {
             renderMeaningQuestionLayout();
             renderMeaningHint(currentQuestion, 'incorrect');
@@ -14060,6 +14088,7 @@ function renderThreeColumnMeaningLayout() {
     const prevChar = previousQuestion ? escapeHtml(previousQuestion.char || '') : '';
     const prevPinyin = previousQuestion ? escapeHtml(previousQuestion.pinyin || '') : '';
     const prevMeaning = previousQuestion ? escapeHtml(previousQuestion.meaning || '') : '';
+    const prevSentenceHtml = previousQuestion ? getThreeColumnSentenceCardHtml(previousQuestion) : '';
     const prevCharDetails = previousQuestion
         ? buildPerCharMeaningBlockHtml(previousQuestion.char, { wrapperClass: 'column-meaning column-meaning-lines text-[11px] text-gray-500 mt-1' })
         : '';
@@ -14074,8 +14103,10 @@ function renderThreeColumnMeaningLayout() {
     const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
     const currentMarkingBadge = getMarkingBadgeHtml(currentQuestion.char);
     const currentUsageHint = shouldShowPostAttemptUsageHint() ? getQuestionUsageHintData(currentQuestion, { showMeaning: false }) : null;
+    const currentPromptHtml = isAudioSentenceMeaningMode(mode) ? getAudioSentenceMeaningPromptHtml(currentQuestion) : '';
 
     const upcomingChar = upcomingQuestion ? escapeHtml(upcomingQuestion.char || '') : '';
+    const upcomingSentenceHtml = upcomingQuestion ? getThreeColumnSentenceCardHtml(upcomingQuestion, { subdued: true }) : '';
 
     const inlineFeedback = threeColumnInlineFeedback;
     const inlineFeedbackMessage = inlineFeedback ? escapeHtml(inlineFeedback.message || '') : '';
@@ -14084,6 +14115,7 @@ function renderThreeColumnMeaningLayout() {
         const columns = {
             previous: previousQuestion ? {
                 char: prevChar,
+                sentenceHtml: prevSentenceHtml,
                 pinyin: prevPinyin,
                 meaning: prevMeaning,
                 resultClass: prevResultClass,
@@ -14096,11 +14128,13 @@ function renderThreeColumnMeaningLayout() {
                 fontSize: currentCharFontSize,
                 markingBadge: currentMarkingBadge,
                 mode: mode,
+                promptHtml: currentPromptHtml,
                 inlinePromptAudioHtml: isAudioMeaningMode(mode) ? getInlinePromptAudioHtml(getAudioMeaningPromptSubtitle(mode)) : '',
                 usageHint: currentUsageHint
             },
             upcoming: upcomingQuestion ? {
                 char: upcomingChar,
+                sentenceHtml: upcomingSentenceHtml,
                 mode: mode
             } : null
         };
@@ -14130,7 +14164,7 @@ function renderThreeColumnMeaningLayout() {
                         <span class="column-result-icon">${prevResultIcon}</span>
                         <span class="column-feedback-text">${prevFeedbackText}</span>
                     </div>
-                    <div class="column-char">${prevChar}</div>
+                    ${prevSentenceHtml || `<div class="column-char">${prevChar}</div>`}
                     <div class="column-pinyin">${prevPinyin}</div>
                     <div class="column-meaning">${prevMeaning}</div>
                     ${prevCharDetails}
@@ -14143,7 +14177,9 @@ function renderThreeColumnMeaningLayout() {
                 ${currentMarkingBadge}
                 ${shouldShowPostAttemptUsageHint() ? buildWordUsageHintHtml(currentQuestion, { showMeaning: false }) : ''}
                 <div class="column-focus-ring">
-                    ${isAudioMeaningMode(mode) ? `
+                    ${currentPromptHtml ? `
+                        ${currentPromptHtml}
+                    ` : isAudioMeaningMode(mode) ? `
                         ${getInlinePromptAudioHtml(getAudioMeaningPromptSubtitle(mode))}
                     ` : `
                         <div class="column-char-large" style="font-size: ${currentCharFontSize};">${currentChar}</div>
@@ -14159,7 +14195,9 @@ function renderThreeColumnMeaningLayout() {
                 <div class="column-label">Upcoming</div>
                 ${upcomingQuestion ? `
                     <div class="column-ondeck">
-                        ${isAudioMeaningMode(mode) ? `
+                        ${upcomingSentenceHtml ? `
+                            ${upcomingSentenceHtml}
+                        ` : isAudioMeaningMode(mode) ? `
                             <div style="font-size: 32px; color: #d1d5db;">🔊</div>
                         ` : `
                             <div class="column-char">${upcomingChar}</div>

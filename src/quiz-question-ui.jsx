@@ -97,14 +97,14 @@ function MeaningQuestionLayout({ char, showComponentBreakdown, usageHint }) {
   );
 }
 
-function PreviousCard({ char, pinyin, meaning, resultClass, resultIcon, feedbackText, charDetails, dirLabel }) {
+function PreviousCard({ char, sentenceHtml, pinyin, meaning, resultClass, resultIcon, feedbackText, charDetails, dirLabel }) {
   return (
     <Fragment>
       <div className="column-feedback">
         <span className="column-result-icon">{resultIcon}</span>
         <span className="column-feedback-text">{feedbackText}</span>
       </div>
-      <div className="column-char">{char}</div>
+      {sentenceHtml ? <div dangerouslySetInnerHTML={{ __html: sentenceHtml }} /> : <div className="column-char">{char}</div>}
       <div className="column-pinyin">{pinyin}</div>
       <div className="column-meaning">{meaning}</div>
       {charDetails ? <div dangerouslySetInnerHTML={{ __html: charDetails }} /> : null}
@@ -137,11 +137,13 @@ function CurrentCard({ char, fontSize, markingBadge, inlineFeedback, mode, inlin
   );
 }
 
-function UpcomingCard({ char, mode }) {
+function UpcomingCard({ char, sentenceHtml, mode }) {
   const isBlendMode = mode === 'blend';
   return (
     <div className="column-ondeck">
-      {isBlendMode ? (
+      {sentenceHtml ? (
+        <div dangerouslySetInnerHTML={{ __html: sentenceHtml }} />
+      ) : isBlendMode ? (
         <div style={{ fontSize: '28px', color: '#d1d5db' }}>?</div>
       ) : mode === 'audio-to-meaning' || mode === 'audio-sentence-to-meaning' || mode === 'audio-to-pinyin' ? (
         <div style={{ fontSize: '32px', color: '#d1d5db' }}>&#x1f50a;</div>
@@ -175,6 +177,7 @@ function ThreeColumnMeaningLayout({
         {previous ? (
           <PreviousCard
             char={previous.char}
+            sentenceHtml={previous.sentenceHtml}
             pinyin={previous.pinyin}
             meaning={previous.meaning}
             resultIcon={previous.resultIcon}
@@ -203,7 +206,7 @@ function ThreeColumnMeaningLayout({
       <div className="column-upcoming column-card">
         <div className="column-label">Upcoming</div>
         {upcoming ? (
-          <UpcomingCard char={upcoming.char} mode={upcoming.mode || current.mode} />
+          <UpcomingCard char={upcoming.char} sentenceHtml={upcoming.sentenceHtml} mode={upcoming.mode || current.mode} />
         ) : (
           <div className="column-placeholder">Next card is loading</div>
         )}

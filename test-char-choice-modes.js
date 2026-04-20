@@ -251,6 +251,8 @@ function createContext() {
   vm.runInContext(`
     function __setQuizCharacters(chars) { quizCharacters = chars; }
     function __setCurrentQuestion(q) { currentQuestion = q; window.currentQuestion = q; }
+    function __setPreviousQuestion(q) { previousQuestion = q; }
+    function __setPreviousQuestionResult(result) { previousQuestionResult = result; }
     function __setUpcomingQuestion(q) { upcomingQuestion = q; }
     function __setMode(m) { mode = m; }
     function __setBlendDirection(dir) { blendDirection = dir; }
@@ -949,6 +951,77 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   assert.strictEqual(state.feedback.type, 'correct', 'sentence mode should store correct feedback in UI state');
   ctx.clearPendingNextQuestion();
   console.log('✓ sentence mode Preact state tracks highlight and submission feedback');
+})();
+
+(function testSentenceModeWrongAnswerSpeaksEnglishMeaning() {
+  const { ctx } = createContext();
+  const spoken = [];
+  const sentencePool = [
+    { sentence: '老师让我们把作业在星期五前交上去。', target: '交', prompt: 'What does the whole sentence mean?', char: '交', meaning: 'The teacher told us to hand in the homework before Friday.' },
+    { sentence: '她从地上捡起那枚硬币，小心地放进口袋。', target: '捡起', prompt: 'What does the whole sentence mean?', char: '捡起', meaning: 'She picked the coin up from the ground and carefully put it into her pocket.' }
+  ];
+
+  ctx.__initTestDomRefs();
+  ctx.__setMode('sentence');
+  ctx.__setSentenceModeDataset(sentencePool);
+  ctx.__setCurrentQuestion(sentencePool[0]);
+  ctx.window.playEnglishTTS = (text) => {
+    spoken.push(text);
+    return true;
+  };
+
+  ctx.submitSentenceModeAnswer('She picked the coin up from the ground and carefully put it into her pocket.');
+
+  const state = ctx.__getSentenceModeUiState();
+  assert.strictEqual(state.feedback.type, 'incorrect', 'sentence mode should record incorrect feedback after a wrong answer');
+  assert.deepStrictEqual(
+    spoken,
+    ['The teacher told us to hand in the homework before Friday.'],
+    'sentence mode wrong answers should speak the English answer immediately'
+  );
+  ctx.clearPendingNextQuestion();
+  console.log('✓ sentence mode wrong answers speak the English answer');
+})();
+
+(function testAudioSentenceMeaningLayoutShowsSentenceInPreviousNowUpcoming() {
+  const { ctx } = createContext();
+  const previous = {
+    char: '交',
+    target: '交',
+    pinyin: 'jiāo',
+    meaning: 'hand in',
+    sentence: '老师让我们把作业在星期五前交上去。'
+  };
+  const current = {
+    char: '捡起',
+    target: '捡起',
+    pinyin: 'jiǎnqǐ',
+    meaning: 'pick up',
+    sentence: '她从地上捡起那枚硬币，小心地放进口袋。'
+  };
+  const upcoming = {
+    char: '关掉',
+    target: '关掉',
+    pinyin: 'guāndiào',
+    meaning: 'turn off',
+    sentence: '别忘了把灯关掉再走。'
+  };
+
+  ctx.__initTestDomRefs();
+  ctx.__setMode('audio-sentence-to-meaning');
+  ctx.__setPreviousQuestion(previous);
+  ctx.__setPreviousQuestionResult('incorrect');
+  ctx.__setCurrentQuestion(current);
+  ctx.__setUpcomingQuestion(upcoming);
+
+  ctx.renderThreeColumnMeaningLayout();
+
+  const html = ctx.document.getElementById('questionDisplay').innerHTML;
+  assert.ok(html.includes('老师让我们把作业在星期五前'), 'audio sentence meaning layout should show the previous sentence in the preview strip');
+  assert.ok(html.includes('她从地上'), 'audio sentence meaning layout should show the current sentence in the center card');
+  assert.ok(html.includes('别忘了把灯'), 'audio sentence meaning layout should show the upcoming sentence in the preview strip');
+  assert.ok(html.includes('inlinePromptAudioSlot'), 'audio sentence meaning layout should still keep the shared audio control slot');
+  console.log('✓ audio sentence meaning layout shows sentences in previous, now, and upcoming cards');
 })();
 
 (function testWordUsageHintMapsGrammarCategories() {
