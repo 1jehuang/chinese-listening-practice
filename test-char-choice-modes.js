@@ -593,6 +593,25 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   console.log('✓ needs-work hotkey marks the current word and shows a toast');
 })();
 
+(function testTabHotkeyGivesUpAndShowsAnswerInQuizInput() {
+  const { ctx } = createContext();
+  ctx.__setCurrentQuestion(vocab[0]);
+  ctx.__setMode('char-to-pinyin');
+  ctx.__initTestDomRefs();
+  const answerInput = ctx.document.getElementById('answerInput');
+  answerInput.value = 'zh';
+
+  const prevented = ctx.__pressQuizHotkey('Tab', { target: answerInput });
+
+  assert.strictEqual(prevented, true, 'Tab give-up hotkey should prevent focus from leaving the quiz input');
+  assert.strictEqual(
+    ctx.document.getElementById('feedback').textContent,
+    '✗ Wrong. The answer is: zhōng',
+    'Tab give-up hotkey should reveal the answer for the current quiz card'
+  );
+  console.log('✓ Tab hotkey gives up and reveals the answer from the quiz input');
+})();
+
 (function testBracketLeftHotkeyMarksNeedsWorkByCode() {
   const { ctx } = createContext();
   ctx.__setCurrentQuestion(vocab[0]);

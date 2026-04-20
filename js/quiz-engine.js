@@ -9044,13 +9044,13 @@ function ensureTtsSpeedControl() {
 }
 
 function addKeyboardHints() {
-    // Add hint for Ctrl+Enter to show answer
+    // Add hint for Tab / Ctrl+Enter to show answer
     let hintEl = document.getElementById('keyboardHints');
     if (!hintEl) {
         hintEl = document.createElement('div');
         hintEl.id = 'keyboardHints';
         hintEl.className = 'text-center text-xs text-gray-400 mt-2';
-        hintEl.innerHTML = '<kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px]">Ctrl+Enter</kbd> show answer';
+        hintEl.innerHTML = '<kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px]">Tab</kbd> or <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px]">Ctrl+Enter</kbd> show answer';
 
         const typeMode = document.getElementById('typeMode');
         if (typeMode) {
@@ -19340,9 +19340,10 @@ function handleQuizHotkeys(e) {
         return;
     }
 
-    // Ctrl+Enter: Give up and show answer
+    // Tab or Ctrl/Cmd+Enter: Give up and show answer
     const giveUpCombo = !e.altKey && !e.shiftKey && (e.ctrlKey || e.metaKey) && e.key === 'Enter';
-    if (giveUpCombo) {
+    const giveUpTab = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === 'Tab';
+    if (giveUpCombo || giveUpTab) {
         e.preventDefault();
         if (mode === 'dictation-chat') {
             requestDictationChatNext({ allowSkip: true });
