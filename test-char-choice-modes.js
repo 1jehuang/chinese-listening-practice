@@ -347,6 +347,9 @@ function createContext() {
     }
     function __getPinyinMeaningStage() { return pinyinMeaningStage; }
     function __playMeaningFeedbackAudio(delay) { return playMeaningFeedbackAudio(currentQuestion, { delay: delay == null ? 0 : delay }); }
+    function __highlightSentenceModeTarget(sentence, target) { return highlightSentenceModeTarget(sentence, target); }
+    function __getDrawQuestionPool(pool, options) { return getDrawQuestionPool(pool, options); }
+    function __buildDrawPromptHtml(question, subtitleHtml) { return buildDrawPromptHtml(question, subtitleHtml); }
   `, ctx);
   return { ctx, optionsEl };
 }
@@ -1157,17 +1160,22 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
     { char: '读书', pinyin: 'dúshū', meaning: 'to study' },
     { char: '重视', pinyin: 'zhòngshì', meaning: 'to value highly' }
   ], { splitMultiCharWords: false });
-  assert.deepStrictEqual(pool.map(item => item.char), ['读书', '重视'], 'trackpad draw should keep whole words instead of splitting them into characters');
+  assert.deepStrictEqual(Array.from(pool, item => item.char), ['读书', '重视'], 'trackpad draw should keep whole words instead of splitting them into characters');
   console.log('✓ trackpad draw question pool keeps full words');
 })();
 
-(function testTrackpadPromptShowsWholeWordWithoutPerCharacterStep() {
+(function testTrackpadPromptShowsMeaningWithoutPerCharacterStep() {
   const { ctx } = createContext();
-  const html = ctx.__buildDrawPromptHtml({ char: '读书', pinyin: 'dúshū', meaning: 'to study' }, 'trackpad-draw');
-  assert.ok(html.includes('读书'), 'trackpad prompt should show the full target word');
-  assert.ok(html.includes('Draw the full word'), 'trackpad prompt should explicitly tell the learner to draw the full word');
+  ctx.__setMode('trackpad-draw');
+  const html = ctx.__buildDrawPromptHtml(
+    { char: '读书', pinyin: 'dúshū', meaning: 'to study' },
+    '<div class="text-sm text-gray-500 mt-1">Native absolute trackpad mode</div>'
+  );
+  assert.ok(html.includes('to study'), 'trackpad prompt should show the meaning cue for the full target word');
+  assert.ok(html.includes('dúshū'), 'trackpad prompt should show the full-word pinyin cue');
+  assert.ok(html.includes('Native absolute trackpad mode'), 'trackpad prompt should include the trackpad mode subtitle');
   assert.ok(!html.includes('character 1 of 2'), 'trackpad prompt should not show per-character progress text');
-  console.log('✓ trackpad draw prompt shows only the full word target');
+  console.log('✓ trackpad draw prompt shows whole-word cues without per-character progress');
 })();
 
 (function testTutorialModeGenerateQuestionRendersTutorialCard() {
@@ -1423,3 +1431,5 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   assert.deepStrictEqual(Array.from(ctx.__getToneFlowExpected()), [1, 4], 'tone flow should ignore optional parenthetical syllables');
   console.log('✓ char-to-pinyin-tones-mc ignores optional parenthetical pinyin segments');
 })();
+
+process.exit(0);

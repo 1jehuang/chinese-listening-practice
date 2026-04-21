@@ -5036,7 +5036,7 @@ function getFeedUCBScore(char) {
 function getFeedUCBScoreForDisplay(char) {
     const stats = feedModeState.seen[char];
     const totalPulls = feedModeState.totalPulls || 1;
-    const useSRConfidence = schedulerMode === SCHEDULER_MODES.FEED_SR;
+    const useSRConfidence = schedulerMode === SCHEDULER_MODES.FEED_SR || schedulerMode === SCHEDULER_MODES.FEED_EEG;
     const marking = getWordMarking(char);
     const MARKING_NEEDS_WORK_BOOST = 1.4;
     const MARKING_LEARNED_PENALTY = 1.8;
@@ -5405,7 +5405,8 @@ function prepareFeedForNextQuestion() {
 function updateFeedStatusDisplay() {
     const statusEl = document.getElementById('feedModeStatus');
     if (!statusEl) return;
-    const isFeedSR = schedulerMode === SCHEDULER_MODES.FEED_SR;
+    const isFeedEEG = schedulerMode === SCHEDULER_MODES.FEED_EEG;
+    const isFeedSR = schedulerMode === SCHEDULER_MODES.FEED_SR || isFeedEEG;
     const isFeed = schedulerMode === SCHEDULER_MODES.FEED;
     if (!isFeed && !isFeedSR) {
         // Clear feed display if we're in a different mode
@@ -5459,7 +5460,9 @@ function updateFeedStatusDisplay() {
         }
     }).join(' ');
 
-    const modeLabel = isFeedSR ? 'Feed Graduate Mode' : 'Feed Mode';
+    const modeLabel = isFeedEEG
+        ? 'Feed+EEG Mode'
+        : isFeedSR ? 'Feed Graduate Mode' : 'Feed Mode';
     const statsLine = isFeedSR
         ? `${explorationPct}% explored · ${masteredCount} ready ≥ ${threshold.toFixed(2)} · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`
         : `${explorationPct}% explored · ${weakCount} weak · ${feedModeState.totalPulls || 0} pulls`;
@@ -7346,6 +7349,7 @@ function selectNextQuestion(exclusions = []) {
             return selectWeighted(pool) || selectRandom(pool);
         case SCHEDULER_MODES.FEED:
         case SCHEDULER_MODES.FEED_SR:
+        case SCHEDULER_MODES.FEED_EEG:
             return selectFeedQuestion(Array.from(exclusionSet), pool) || selectRandom(pool);
         case SCHEDULER_MODES.WEIGHTED:
             return selectWeighted(pool) || selectRandom(pool);
@@ -9813,6 +9817,7 @@ function handleWrongAnswer() {
     }
 
     updateStats();
+    updateCurrentWordConfidence();
 
     // Clear input and refocus for retry
     setTimeout(() => {
@@ -9936,15 +9941,20 @@ function generateCharOptions() {
         usedChars.add(random.char);
     }
 
-    while (wrongOptions.length < 3) {
-        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-        if (!random?.char || usedChars.has(random.char)) continue;
-        wrongOptions.push({
-            char: random.char,
-            pinyin: (random.pinyin || '').split('/').map(p => p.trim()).filter(Boolean)[0] || '',
-            meaning: (random.meaning || '').trim()
-        });
-        usedChars.add(random.char);
+    if (wrongOptions.length < 3) {
+        const remaining = (Array.isArray(quizCharacters) ? quizCharacters : [])
+            .filter(random => random?.char && !usedChars.has(random.char))
+            .sort(() => Math.random() - 0.5);
+
+        for (const random of remaining) {
+            if (wrongOptions.length >= 3) break;
+            wrongOptions.push({
+                char: random.char,
+                pinyin: (random.pinyin || '').split('/').map(p => p.trim()).filter(Boolean)[0] || '',
+                meaning: (random.meaning || '').trim()
+            });
+            usedChars.add(random.char);
+        }
     }
 
     const allOptions = [...wrongOptions, correctOption];
@@ -9998,18 +10008,43 @@ function generateCharOptions() {
     });
 }
 
+function buildUniqueDistractorValues(pool, {
+    getValue,
+    excludeChars = [],
+    excludeValues = [],
+    limit = 3
+} = {}) {
+    const items = Array.isArray(pool) ? pool.filter(Boolean) : [];
+    if (!items.length || typeof getValue !== 'function') return [];
+
+    const excludedCharSet = new Set((excludeChars || []).filter(Boolean));
+    const usedValues = new Set((excludeValues || []).filter(value => value !== undefined && value !== null && value !== ''));
+    const candidates = [];
+
+    items.forEach((item) => {
+        if (!item || excludedCharSet.has(item.char)) return;
+        const value = getValue(item);
+        if (value === undefined || value === null || value === '') return;
+        if (usedValues.has(value)) return;
+        usedValues.add(value);
+        candidates.push(value);
+    });
+
+    candidates.sort(() => Math.random() - 0.5);
+    return candidates.slice(0, Math.min(limit, candidates.length));
+}
+
 function generateMeaningOptions() {
     const options = document.getElementById('options');
     if (!options) return;
     options.innerHTML = '';
 
-    const wrongOptions = [];
-    while (wrongOptions.length < 3) {
-        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-        if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
-            wrongOptions.push(random.meaning);
-        }
-    }
+    const wrongOptions = buildUniqueDistractorValues(quizCharacters, {
+        getValue: (item) => item.meaning,
+        excludeChars: [currentQuestion.char],
+        excludeValues: [currentQuestion.meaning],
+        limit: 3
+    });
 
     const allOptions = [...wrongOptions, currentQuestion.meaning];
     allOptions.sort(() => Math.random() - 0.5);
@@ -10096,13 +10131,12 @@ function generateFuzzyMeaningOptions() {
 
     options.innerHTML = '';
 
-    const wrongOptions = [];
-    while (wrongOptions.length < 3) {
-        const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-        if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
-            wrongOptions.push(random.meaning);
-        }
-    }
+    const wrongOptions = buildUniqueDistractorValues(quizCharacters, {
+        getValue: (item) => item.meaning,
+        excludeChars: [currentQuestion.char],
+        excludeValues: [currentQuestion.meaning],
+        limit: 3
+    });
 
     const allOptions = [...wrongOptions, currentQuestion.meaning];
     allOptions.sort(() => Math.random() - 0.5);
@@ -11484,13 +11518,12 @@ function generateBlendOptions() {
 
     if (dir === 'char-to-meaning' || dir === 'audio-to-meaning') {
         correctAnswer = currentQuestion.meaning;
-        wrongOptions = [];
-        while (wrongOptions.length < 3) {
-            const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-            if (random.char !== currentQuestion.char && !wrongOptions.includes(random.meaning)) {
-                wrongOptions.push(random.meaning);
-            }
-        }
+        wrongOptions = buildUniqueDistractorValues(quizCharacters, {
+            getValue: (item) => item.meaning,
+            excludeChars: [currentQuestion.char],
+            excludeValues: [correctAnswer],
+            limit: 3
+        });
         allOptions = [...wrongOptions, correctAnswer];
     } else if (dir === 'char-to-pinyin' || dir === 'audio-to-pinyin') {
         const currentPinyin = currentQuestion.pinyin.split('/')[0].trim();
@@ -11511,13 +11544,12 @@ function generateBlendOptions() {
         allOptions = [...wrongOptions, correctAnswer];
     } else {
         correctAnswer = currentQuestion.char;
-        wrongOptions = [];
-        while (wrongOptions.length < 3) {
-            const random = quizCharacters[Math.floor(Math.random() * quizCharacters.length)];
-            if (random.char !== currentQuestion.char && !wrongOptions.includes(random.char)) {
-                wrongOptions.push(random.char);
-            }
-        }
+        wrongOptions = buildUniqueDistractorValues(quizCharacters, {
+            getValue: (item) => item.char,
+            excludeChars: [currentQuestion.char],
+            excludeValues: [correctAnswer],
+            limit: 3
+        });
         allOptions = [...wrongOptions, correctAnswer];
     }
 
@@ -13722,7 +13754,7 @@ function highlightSentenceModeTarget(sentence, target) {
     const before = fullSentence.slice(0, index);
     const match = fullSentence.slice(index, index + matchText.length);
     const after = fullSentence.slice(index + matchText.length);
-    return `${escapeHtml(before)}<span class="bg-yellow-200 text-gray-900 px-1 rounded">${escapeHtml(match)}</span>${escapeHtml(after)}`;
+    return `${escapeHtml(before)}<strong class="bg-yellow-200 text-gray-900 px-1 rounded">${escapeHtml(match)}</strong>${escapeHtml(after)}`;
 }
 
 function renderSentenceModeLayout() {

@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build:ui": "node scripts/build-ui.js",
-    "test": "node test-convert.js && node test-pinyin.js && node test-tone-numbers.js && node test-all-vocab.js && node tests/run-tone-check-tests.js && node test-char-to-tones-input.js && node tests/run-speak-mode-tests.js && node test-confidence-display.js && node test-feed-mode.js && node test-quiz-date-grade.js && node test-supabase-sync.js && node test-char-choice-modes.js && node test-dushu-data.js && node test-gaokao-data.js && node test-ai-service.js && node test-firefox-audio-fallback.js",
+    "test": "node test-convert.js && node test-pinyin.js && node test-tone-numbers.js && node test-all-vocab.js && node tests/run-tone-check-tests.js && node test-char-to-tones-input.js && node tests/run-speak-mode-tests.js && node test-confidence-display.js && node test-feed-mode.js && node test-quiz-date-grade.js && node test-supabase-sync.js && node test-char-choice-modes.js && node test-dushu-data.js && node test-gaokao-data.js && node test-ai-service.js && node test-firefox-audio-fallback.js && node test-scheduler-selection.js",
     "test:ai": "node test-ai-service.js",
     "test:audio": "node test-audio.js",
     "test:layout": "node tests/run-layout-overlap-tests.js"
