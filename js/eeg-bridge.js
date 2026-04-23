@@ -419,6 +419,35 @@
     function createOverlay() {
         if (overlayEl) return;
 
+        if (window.JcodeEegOverlayUI?.render) {
+            overlayEl = document.createElement('div');
+            overlayEl.id = 'eeg-overlay-container';
+            document.body.appendChild(overlayEl);
+            panelEl = null;
+            window.JcodeEegOverlayUI.render(overlayEl, {
+                overlay: {
+                    connected: state.connected,
+                    connecting: state.connecting,
+                    zone: null,
+                    onToggle: function () {
+                        if (!panelEl) {
+                            panelEl = document.createElement('div');
+                            panelEl.id = 'eeg-panel-container';
+                            document.body.appendChild(panelEl);
+                            var content = [];
+                            window.JcodeEegOverlayUI.render(panelEl, {
+                                panel: { entries: content, onClose: function () { panelEl.style.display = 'none'; } }
+                            });
+                        } else {
+                            var visible = panelEl.style.display !== 'none';
+                            panelEl.style.display = visible ? 'none' : 'block';
+                        }
+                    }
+                }
+            });
+            return;
+        }
+
         // Small toggle button
         overlayEl = document.createElement('div');
         overlayEl.id = 'eeg-toggle';

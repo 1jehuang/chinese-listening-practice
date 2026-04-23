@@ -27,3 +27,103 @@ Traceback (most recent call last):
     self.socket.bind(self.server_address)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
 OSError: [Errno 98] Address already in use
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/usr/lib/python3.14/http/server.py", line 1432, in <module>
+    test(
+    ~~~~^
+        HandlerClass=handler_class,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        tls_password=tls_key_password,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/lib/python3.14/http/server.py", line 1348, in test
+    server = ServerClass(addr, HandlerClass)
+  File "/usr/lib/python3.14/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/server.py", line 1419, in server_bind
+    return super().server_bind()
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/server.py", line 148, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 98] Address already in use
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /home.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /common-words.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/pinyin-utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/utils.js?v=firefox-audio-3 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/engine/ai-service.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/etymology-loader.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/command-palette.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /css/common.css HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/engine/chat.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/quiz-engine.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/eeg-bridge.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/eeg-neuro.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/eeg-decision.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/supabase-sync.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /data/common-2500-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/tutorial-mode-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/sentence-mode-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /data/lesson1-2-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/confidence-panel-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /data/lesson3-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /data/lesson7-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /data/decompositions.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/mode-sidebar-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:32:03] "GET /js/command-palette-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /home.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /common-words.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /css/common.css HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/utils.js?v=firefox-audio-3 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/etymology-loader.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/command-palette.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/pinyin-utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/engine/ai-service.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/quiz-engine.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/eeg-bridge.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/engine/chat.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/eeg-neuro.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/eeg-decision.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /js/supabase-sync.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:24] "GET /data/common-2500-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /js/sentence-mode-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /js/tutorial-mode-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /js/confidence-panel-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /data/lesson1-2-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /data/lesson7-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /data/lesson3-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /data/decompositions.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /js/mode-sidebar-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:35:25] "GET /js/command-palette-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /home.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /common-words.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /css/common.css HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/utils.js?v=firefox-audio-3 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/pinyin-utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/etymology-loader.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/engine/ai-service.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/command-palette.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/engine/chat.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/quiz-engine.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/eeg-neuro.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/eeg-bridge.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/eeg-decision.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/supabase-sync.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /data/common-2500-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/sentence-mode-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/tutorial-mode-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/confidence-panel-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /data/lesson1-2-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /data/lesson7-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /data/decompositions.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /data/lesson3-etymology.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/mode-sidebar-ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Apr/2026 09:45:31] "GET /js/command-palette-ui.js HTTP/1.1" 200 -

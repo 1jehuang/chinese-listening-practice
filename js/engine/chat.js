@@ -35,6 +35,21 @@ function createChatPanel() {
 
     chatPanel = document.createElement('div');
     chatPanel.id = 'chatPanel';
+    document.body.appendChild(chatPanel);
+
+    if (window.JcodeChatUI?.render) {
+        window.JcodeChatUI.render(chatPanel, {
+            visible: chatPanelVisible,
+            messages: chatMessages,
+            typing: false,
+            inputValue: '',
+            onInputChange: (value) => { chatInputValue = value; },
+            onSend: sendChatMessage,
+            onClose: () => setChatPanelVisible(false)
+        });
+        return chatPanel;
+    }
+
     chatPanel.className = 'fixed top-0 right-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-lg flex flex-col z-50';
     chatPanel.style.cssText = 'transform: translateX(100%); transition: transform 0.2s ease;';
     chatPanel.innerHTML = `
@@ -56,7 +71,6 @@ function createChatPanel() {
             <div class="text-xs text-gray-400 mt-1">Ctrl+H to focus quiz • Ctrl+L to focus chat</div>
         </div>
     `;
-    document.body.appendChild(chatPanel);
 
     const closeBtn = document.getElementById('chatCloseBtn');
     const sendBtn = document.getElementById('chatSendBtn');
