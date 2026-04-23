@@ -62,6 +62,10 @@ function makeElement(tagName = 'div') {
     getAttribute(name) {
       return this.attributes[name] ?? null;
     },
+    removeAttribute(name) {
+      delete this.attributes[name];
+      delete this[name];
+    },
     querySelector() { return null; },
     querySelectorAll() { return []; },
     focus() { this.focused = true; },
@@ -260,6 +264,14 @@ async function run() {
   };
   keydown(enterEvent);
   assert.strictEqual(enterEvent.prevented, true, 'Enter should still be handled explicitly in char-to-tones input');
+
+  vm.runInContext(`
+    configureStandardAnswerInput('Type pinyin...');
+  `, context);
+  assert.strictEqual(answerInput.placeholder, 'Type pinyin...', 'switching back to pinyin should restore the pinyin placeholder');
+  assert.strictEqual(answerInput.getAttribute('maxlength'), null, 'switching back to pinyin should clear tone-mode maxlength');
+  assert.strictEqual(answerInput.getAttribute('pattern'), null, 'switching back to pinyin should clear tone-mode numeric pattern');
+  assert.strictEqual(answerInput.getAttribute('inputmode'), null, 'switching back to pinyin should clear tone-mode numeric keyboard hint');
 
   console.log('✓ Char-to-tones numeric typing test passed');
 }

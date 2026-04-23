@@ -8334,8 +8334,7 @@ function renderQuestionUiForTypingModes() {
 
     if (mode === 'char-to-pinyin') {
         renderThreeColumnPinyinDictationLayout(false); // false = text mode
-        typeMode.style.display = 'block';
-        if (answerInput) answerInput.placeholder = 'Type pinyin...';
+        configureStandardAnswerInput('Type pinyin...');
         setTimeout(() => answerInput.focus(), 100);
         return true;
     }
@@ -8348,8 +8347,7 @@ function renderQuestionUiForTypingModes() {
 
     if (mode === 'audio-to-pinyin' && audioSection) {
         renderThreeColumnPinyinDictationLayout(true); // true = audio mode
-        typeMode.style.display = 'block';
-        if (answerInput) answerInput.placeholder = 'Type pinyin...';
+        configureStandardAnswerInput('Type pinyin...');
         audioSection.classList.remove('hidden');
         setupAudioMode({ focusAnswer: true });
         return true;
@@ -14377,19 +14375,13 @@ function displayQuestion() {
     // Render based on mode
     if (mode === 'char-to-pinyin') {
         renderThreeColumnPinyinDictationLayout(false);
-        if (typeMode) typeMode.style.display = 'block';
-        if (answerInput) {
-            answerInput.placeholder = 'Type pinyin...';
-            setTimeout(() => answerInput.focus(), 50);
-        }
+        configureStandardAnswerInput('Type pinyin...');
+        if (answerInput) setTimeout(() => answerInput.focus(), 50);
     } else if (mode === 'audio-to-pinyin') {
         renderThreeColumnPinyinDictationLayout(true);
-        if (typeMode) typeMode.style.display = 'block';
+        configureStandardAnswerInput('Type pinyin...');
         if (audioSection) audioSection.classList.remove('hidden');
-        if (answerInput) {
-            answerInput.placeholder = 'Type pinyin...';
-            setTimeout(() => answerInput.focus(), 50);
-        }
+        if (answerInput) setTimeout(() => answerInput.focus(), 50);
         // Re-setup audio mode for the new question
         setupAudioMode({ focusAnswer: true });
     } else if (isAudioMeaningMode(mode)) {
@@ -14880,6 +14872,28 @@ function showCharToTonesTypingInput() {
         answerInput.setAttribute('maxlength', String(charToTonesMcExpected.length || ''));
     }
     setTimeout(() => answerInput.focus(), 50);
+}
+
+function configureStandardAnswerInput(placeholder = 'Type your answer...') {
+    if (!typeMode || !answerInput) return;
+
+    typeMode.style.display = 'block';
+    answerInput.placeholder = placeholder;
+
+    if (typeof answerInput.removeAttribute === 'function') {
+        answerInput.removeAttribute('maxlength');
+        answerInput.removeAttribute('pattern');
+        answerInput.removeAttribute('inputmode');
+    } else if (answerInput.attributes) {
+        delete answerInput.attributes.maxlength;
+        delete answerInput.attributes.pattern;
+        delete answerInput.attributes.inputmode;
+    }
+
+    if ('maxlength' in answerInput) answerInput.maxlength = '';
+    if ('pattern' in answerInput) answerInput.pattern = '';
+    if ('inputMode' in answerInput) answerInput.inputMode = '';
+    if ('inputmode' in answerInput) answerInput.inputmode = '';
 }
 
 function syncCharToTonesTypingInput() {
