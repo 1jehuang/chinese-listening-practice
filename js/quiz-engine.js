@@ -201,6 +201,7 @@ let fullscreenHintRequestId = 0;
 let drawHintUsed = false;
 let drawMeaningChoices = [];
 let drawSelectedMeaning = null;
+let drawAdvanceLockUntil = 0;
 let lastInlineOcrCandidates = [];
 let lastFullscreenOcrCandidates = [];
 let feedStatusTicker = null;
@@ -491,22 +492,27 @@ function getDrawQuestionPool(sourcePool = quizCharacters, options = {}) {
 function buildDrawSourceContextHtml(question) {
     if (!question?.sourceWord || question.sourceWord === question.char) return '';
     const sourceWord = escapeHtml(question.sourceWord);
-    const sourceMeaning = escapeHtml(question.sourceMeaning || '');
-    const sourcePinyin = escapeHtml(prettifyHandwritingPinyin(question.sourcePinyin || ''));
     const positionLabel = question.sourceCharCount > 1 && question.sourceCharIndex >= 0
         ? `Character ${question.sourceCharIndex + 1} of ${question.sourceCharCount}`
         : 'Part of word';
-    const details = [sourcePinyin, sourceMeaning].filter(Boolean).join(' · ');
-    return `<div class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${sourceWord}${details ? ` · ${details}` : ''}</div>`;
+    return `<div class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${sourceWord}</div>`;
 }
 
 function getTrackpadPromptPrimaryText(question) {
     if (!question) return '';
+    const useSourceContext = question.sourceWord && question.sourceWord !== question.char;
+    if (useSourceContext) {
+        return String(question.sourceMeaning || '').trim() || String(question.meaning || '').trim() || '';
+    }
     return String(question.meaning || '').trim() || String(question.sourceMeaning || '').trim() || '';
 }
 
 function getTrackpadPromptSecondaryText(question) {
     if (!question) return '';
+    const useSourceContext = question.sourceWord && question.sourceWord !== question.char;
+    if (useSourceContext) {
+        return prettifyHandwritingPinyin(question.sourcePinyin || question.pinyin || '');
+    }
     return prettifyHandwritingPinyin(question.pinyin || question.sourcePinyin || '');
 }
 
@@ -527,33 +533,13 @@ function buildDrawPromptHtml(question, subtitleHtml = '') {
         return `<div class="text-center mt-4 mb-2">${subtitleHtml}</div>`;
     }
 
-    if (isTrackpadDrawMode()) {
-        const primaryText = escapeHtml(getTrackpadPromptPrimaryText(question));
-        const secondaryText = escapeHtml(getTrackpadPromptSecondaryText(question));
-        const sourceContext = buildDrawSourceContextHtml(question);
-        const fallbackTarget = escapeHtml(getDrawDisplayTarget(question.char));
-        const heading = primaryText || fallbackTarget;
-        const subheading = secondaryText || (!primaryText ? fallbackTarget : '');
-        return `<div class="text-center mt-4 mb-2"><div class="text-3xl font-bold text-gray-700">${heading}</div>${subheading ? `<div class="text-lg text-gray-500 mt-2">${subheading}</div>` : ''}${subtitleHtml}${sourceContext}</div>`;
-    }
-
-    if (question.sourceWord && question.sourceWord !== question.char) {
-        const sourceWord = escapeHtml(question.sourceWord);
-        const sourcePinyin = escapeHtml(prettifyHandwritingPinyin(question.sourcePinyin || ''));
-        const sourceMeaning = escapeHtml(question.sourceMeaning || '');
-        const targetChar = escapeHtml(question.char || '');
-        const targetPinyin = escapeHtml(prettifyHandwritingPinyin(question.pinyin || ''));
-        const positionLabel = question.sourceCharCount > 1 && question.sourceCharIndex >= 0
-            ? `Draw character ${question.sourceCharIndex + 1} of ${question.sourceCharCount}`
-            : 'Draw this character';
-        const sourceDetails = [sourcePinyin, sourceMeaning].filter(Boolean).join(' · ');
-        const targetDetails = [targetChar, targetPinyin].filter(Boolean).join(' · ');
-        return `<div class="text-center mt-4 mb-2"><div class="text-5xl font-bold text-gray-700">${sourceWord}</div>${sourceDetails ? `<div class="text-lg text-gray-500 mt-2">${sourceDetails}</div>` : ''}${subtitleHtml}<div class="text-sm text-gray-500 mt-3"><span class="font-semibold text-gray-600">${positionLabel}:</span> ${targetDetails}</div></div>`;
-    }
-
-    const displayPinyin = escapeHtml(prettifyHandwritingPinyin(question.pinyin || ''));
+    const primaryText = escapeHtml(getTrackpadPromptPrimaryText(question));
+    const secondaryText = escapeHtml(getTrackpadPromptSecondaryText(question));
     const sourceContext = buildDrawSourceContextHtml(question);
-    return `<div class="text-center mt-4 mb-2"><div class="text-4xl font-bold text-gray-700">${displayPinyin}</div>${subtitleHtml}${sourceContext}</div>`;
+    const fallbackTarget = escapeHtml(getDrawDisplayTarget(question.char));
+    const heading = primaryText || fallbackTarget;
+    const subheading = secondaryText || (!primaryText ? fallbackTarget : '');
+    return `<div class="text-center mt-4 mb-2"><div class="text-3xl font-bold text-gray-700">${heading}</div>${subheading ? `<div class="text-lg text-gray-500 mt-2">${subheading}</div>` : ''}${subtitleHtml}${sourceContext}</div>`;
 }
 
 function getFullscreenDrawPromptText(question) {
@@ -565,23 +551,13 @@ function getFullscreenDrawPromptText(question) {
     const displayPinyin = prettifyHandwritingPinyin(question.pinyin || '');
     const sourceWord = String(question.sourceWord || '').trim();
 
-    if (isTrackpadDrawMode()) {
-        const promptSummary = getTrackpadPromptSummary(question);
-        if (promptSummary) {
-            return `Draw: ${promptSummary}`;
-        }
-        if (sourceWord && sourceWord !== question.char && displayTarget) {
-            return `Draw ${displayTarget} from ${sourceWord}`;
-        }
-        if (displayPinyin) {
-            return `Draw: ${displayPinyin}`;
-        }
-        if (displayTarget) {
-            return `Draw: ${displayTarget}`;
-        }
-        return 'Draw';
+    const promptSummary = getTrackpadPromptSummary(question);
+    if (promptSummary) {
+        return `Draw: ${promptSummary}`;
     }
-
+    if (sourceWord && sourceWord !== question.char && displayTarget) {
+        return `Draw ${displayTarget} from ${sourceWord}`;
+    }
     if (displayPinyin) {
         return `Draw: ${displayPinyin}`;
     }
@@ -592,17 +568,17 @@ function getFullscreenDrawPromptText(question) {
 }
 
 function requiresDrawMeaningSelection(modeName = mode) {
-    return modeName === 'draw-char';
+    return false;
 }
 
 function syncDrawModeUiForCurrentMode() {
     const inlineCard = document.getElementById('drawMeaningChoicesInline')?.closest('.rounded-2xl');
     if (inlineCard) {
-        inlineCard.style.display = isTrackpadDrawMode() ? 'none' : '';
+        inlineCard.style.display = requiresDrawMeaningSelection() ? '' : 'none';
     }
     const fullscreenCard = document.getElementById('fullscreenMeaningChoices')?.closest('.absolute');
     if (fullscreenCard) {
-        fullscreenCard.style.display = isTrackpadDrawMode() ? 'none' : '';
+        fullscreenCard.style.display = requiresDrawMeaningSelection() ? '' : 'none';
     }
 }
 
@@ -1641,6 +1617,8 @@ function syncModeLayoutState() {
     root.classList.toggle('study-mode-active', layout === 'study');
     root.classList.toggle('dictation-chat-active', layout === 'chat');
     root.classList.toggle('sentence-mode-active', mode === 'sentence');
+    root.classList.toggle('char-to-tones-active', mode === 'char-to-tones');
+    root.dataset.quizMode = String(mode || '');
 }
 
 function setChoiceModeListLayout(active) {
@@ -7317,9 +7295,6 @@ function selectNextQuestion(exclusions = []) {
         return pool.length ? selectRandom(pool) : null;
     }
     let sourcePool = quizCharacters;
-    if (isDrawCharLikeMode()) {
-        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: !isTrackpadDrawMode() });
-    }
     if (isBatchMode()) {
         sourcePool = getBatchQuestionPool();
     } else if (schedulerMode === SCHEDULER_MODES.ADAPTIVE_5) {
@@ -7328,7 +7303,7 @@ function selectNextQuestion(exclusions = []) {
         sourcePool = getFeedQuestionPool();
     }
     if (isDrawCharLikeMode()) {
-        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: !isTrackpadDrawMode() });
+        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: true });
     }
     const focused = filterPoolToNeedsWorkMarkedWords(sourcePool);
     const exclusionSet = buildRecentCorrectExclusionSet(focused.pool, Array.from(baseExclusionSet));
@@ -14095,6 +14070,27 @@ function getCharLargeFontSize(charText) {
     return '56px'; // 5+ characters
 }
 
+function getCharToTonesResponsiveFontSize(charText) {
+    const baseSize = parseInt(getCharLargeFontSize(charText), 10);
+    if (!Number.isFinite(baseSize)) {
+        return getCharLargeFontSize(charText);
+    }
+
+    let scaledSize = baseSize;
+    const viewportWidth = typeof window !== 'undefined' ? Number(window.innerWidth) : null;
+    if (Number.isFinite(viewportWidth)) {
+        if (viewportWidth <= 480) {
+            scaledSize = Math.max(48, Math.round(baseSize * 0.68));
+        } else if (viewportWidth <= 700) {
+            scaledSize = Math.max(52, Math.round(baseSize * 0.78));
+        } else if (viewportWidth <= 960) {
+            scaledSize = Math.max(56, Math.round(baseSize * 0.9));
+        }
+    }
+
+    return `${scaledSize}px`;
+}
+
 // Helper function to generate marking badge HTML
 function getMarkingBadgeHtml(char) {
     const marking = getWordMarking(char);
@@ -14926,7 +14922,7 @@ function renderCharToTonesMcLayout() {
         }
     }
 
-    const currentCharFontSize = getCharLargeFontSize(currentQuestion.char || '');
+    const currentCharFontSize = getCharToTonesResponsiveFontSize(currentQuestion.char || '');
 
     const upcomingChar = charToTonesMcUpcomingQuestion ? escapeHtml(charToTonesMcUpcomingQuestion.char || '') : '';
     const upcomingPinyin = charToTonesMcUpcomingQuestion ? escapeHtml(charToTonesMcUpcomingQuestion.pinyin || '') : '';
@@ -15368,6 +15364,7 @@ async function initStrokeOrder() {
                             total++;
                             score++;
                         }
+                        markSchedulerOutcome(true);
 
                         statusEl.textContent = '✓ All characters complete!';
                         statusEl.className = 'text-center text-xl font-semibold my-4 text-green-600';
@@ -16575,7 +16572,7 @@ async function submitDrawing() {
 }
 
 function generateDrawMeaningChoices() {
-    if (!currentQuestion || !currentQuestion.meaning) {
+    if (!requiresDrawMeaningSelection() || !currentQuestion || !currentQuestion.meaning) {
         drawMeaningChoices = [];
         drawSelectedMeaning = null;
         return;
@@ -16904,15 +16901,35 @@ function revealDrawingAnswer() {
     }
 }
 
+function advanceDrawQuestionOnce(isFullscreen = false) {
+    const now = Date.now();
+    if (now < drawAdvanceLockUntil) return;
+    drawAdvanceLockUntil = now + 250;
+
+    const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
+    if (activeEl && typeof activeEl.blur === 'function') {
+        try {
+            activeEl.blur();
+        } catch (_) {}
+    }
+
+    if (isFullscreen) {
+        nextFullscreenQuestion();
+        return;
+    }
+
+    clearCanvas();
+    generateQuestion();
+    hideDrawNextButton();
+}
+
 function showDrawNextButton() {
     const nextBtn = document.getElementById('drawNextBtn');
     if (!nextBtn) return;
     if (!nextBtn.dataset.bound) {
         nextBtn.dataset.bound = 'true';
         nextBtn.addEventListener('click', () => {
-            clearCanvas();
-            generateQuestion();
-            nextBtn.classList.add('hidden');
+            advanceDrawQuestionOnce(false);
         });
     }
     nextBtn.classList.remove('hidden');
@@ -17030,7 +17047,7 @@ function enterFullscreenDrawing() {
     if (submitBtn) submitBtn.onclick = submitFullscreenDrawing;
     if (showAnswerBtn) showAnswerBtn.onclick = showFullscreenAnswer;
     if (hintBtn) hintBtn.onclick = () => showDrawHint(true);
-    if (nextBtn) nextBtn.onclick = nextFullscreenQuestion;
+    if (nextBtn) nextBtn.onclick = () => advanceDrawQuestionOnce(true);
     if (nextSetBtn && !nextSetBtn.dataset.bound) {
         nextSetBtn.dataset.bound = 'true';
         nextSetBtn.onclick = () => {
@@ -19520,7 +19537,7 @@ function handleQuizHotkeys(e) {
         if (e.key === ' ') {
             e.preventDefault();
             if (answered && lastAnswerCorrect) {
-                if (inFullscreen) nextFullscreenQuestion(); else goToNextQuestionAfterCorrect();
+                advanceDrawQuestionOnce(inFullscreen);
             } else if (!hasAnyDrawInk()) {
                 if (inFullscreen) showFullscreenAnswer(); else revealDrawingAnswer();
             } else {

@@ -30,6 +30,17 @@ function makeElement(tagName = 'div') {
       },
       contains(name) {
         return String(classNameValue || '').split(/\s+/).includes(name);
+      },
+      toggle(name, force) {
+        const set = new Set(String(classNameValue || '').split(/\s+/).filter(Boolean));
+        const shouldAdd = force === undefined ? !set.has(name) : Boolean(force);
+        if (shouldAdd) {
+          set.add(name);
+        } else {
+          set.delete(name);
+        }
+        classNameValue = Array.from(set).join(' ');
+        return shouldAdd;
       }
     },
     addEventListener(type, handler) {
@@ -163,6 +174,7 @@ async function run() {
 
   vm.runInContext(`
     mode = 'char-to-tones';
+    syncModeLayoutState();
     answered = false;
     lastAnswerCorrect = false;
     currentQuestion = { char: '中国', pinyin: 'Zhōng.guó', meaning: 'China' };
@@ -190,6 +202,9 @@ async function run() {
     initQuizEventListeners();
   `, context);
 
+  assert.ok(elements.get('questionDisplay'), 'question display should exist');
+  assert.ok(context.document.body.classList.contains('char-to-tones-active'), 'char-to-tones should toggle the body mode class');
+  assert.strictEqual(context.document.body.dataset.quizMode, 'char-to-tones', 'char-to-tones should update the body mode data attribute');
   assert.strictEqual(typeMode.style.display, 'block', 'char-to-tones should show typing input');
   assert.strictEqual(answerInput.placeholder, 'Type tones (1-5)...', 'char-to-tones input should have tone placeholder');
   assert.strictEqual(answerInput.getAttribute('inputmode'), 'numeric', 'char-to-tones input should request numeric keyboard');

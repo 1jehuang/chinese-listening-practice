@@ -267,13 +267,13 @@ function createContext() {
       updateCurrentWordConfidence = function () {};
       markSchedulerServed = function () {};
     }
-    function __setDrawQuestionPoolState(chars, datasets) {
+    function __setDrawQuestionPoolState(chars, datasets, modeName = 'trackpad-draw') {
       quizCharacters = Array.isArray(chars) ? chars : [];
       window.__LESSON_DATASETS__ = datasets || {};
       buildLessonCharMap();
       currentQuestion = null;
       window.currentQuestion = null;
-      mode = 'trackpad-draw';
+      mode = modeName;
       schedulerMode = 'random';
       recentCorrectChars = [];
     }
@@ -287,15 +287,30 @@ function createContext() {
         sourceMeaning: item.sourceMeaning || ''
       }));
     }
-    function __selectTrackpadQuestion() {
+    function __selectDrawQuestion() {
       const next = selectNextQuestion();
       return next ? {
         char: next.char,
         pinyin: next.pinyin,
         meaning: next.meaning,
         sourceWord: next.sourceWord || '',
-        sourceMeaning: next.sourceMeaning || ''
+        sourceMeaning: next.sourceMeaning || '',
+        sourcePinyin: next.sourcePinyin || '',
+        sourceCharIndex: typeof next.sourceCharIndex === 'number' ? next.sourceCharIndex : -1,
+        sourceCharCount: typeof next.sourceCharCount === 'number' ? next.sourceCharCount : 0
       } : null;
+    }
+    function __getDrawPromptSnapshot(question, modeName = 'draw-char') {
+      mode = modeName;
+      currentQuestion = question;
+      window.currentQuestion = question;
+      generateDrawMeaningChoices();
+      return {
+        promptHtml: buildDrawPromptHtml(question),
+        fullscreenPrompt: getFullscreenDrawPromptText(question),
+        requireMeaning: requiresDrawMeaningSelection(modeName),
+        meaningChoicesLength: drawMeaningChoices.length
+      };
     }
     function __getTrackpadDrawTestState() {
       return {
@@ -361,11 +376,27 @@ async function main() {
   assert.deepStrictEqual(drawPoolChars, ['重', '视', '教', '育'], 'trackpad draw should expand combined vocab into per-character prompts');
   assert.ok(drawPoolEntries.every(entry => entry.sourceWord), 'expanded trackpad draw prompts should keep the original word context');
 
-  const selected = ctx.__selectTrackpadQuestion();
+  const selected = ctx.__selectDrawQuestion();
   assert.ok(selected, 'trackpad draw should still be able to select a question from combined vocab');
   assert.strictEqual(selected.char.length, 1, 'trackpad draw should select a single-character prompt on combined vocab pages');
 
   console.log('✓ trackpad draw uses per-character prompts for combined vocab pages');
+
+  ctx.__setDrawQuestionPoolState(combinedWords, datasets, 'draw-char');
+  const drawCharSelected = ctx.__selectDrawQuestion();
+  assert.ok(drawCharSelected, 'draw-char should still be able to select a question from combined vocab');
+  assert.strictEqual(drawCharSelected.char.length, 1, 'draw-char should also select a single-character prompt on combined vocab pages');
+  assert.ok(drawCharSelected.sourceWord, 'draw-char split prompts should keep original word context');
+
+  const promptSnapshot = ctx.__getDrawPromptSnapshot(drawCharSelected, 'draw-char');
+  assert.strictEqual(promptSnapshot.requireMeaning, false, 'draw-char should not require selecting an English meaning');
+  assert.strictEqual(promptSnapshot.meaningChoicesLength, 0, 'draw-char should not generate meaning choice buttons');
+  assert.match(promptSnapshot.promptHtml, new RegExp(drawCharSelected.sourceMeaning.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'draw-char prompt should show the full source-word English meaning');
+  assert.match(promptSnapshot.promptHtml, new RegExp(drawCharSelected.sourcePinyin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'draw-char prompt should show the full source-word pinyin');
+  assert.match(promptSnapshot.promptHtml, /Character \d+ of \d+/, 'draw-char prompt should show the character position within the source word');
+  assert.match(promptSnapshot.fullscreenPrompt, /Draw:/, 'draw-char fullscreen prompt should use the unified draw prompt summary');
+
+  console.log('✓ draw-char uses full-word prompt context without meaning selection');
 }
 
 main().catch((error) => {
