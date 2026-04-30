@@ -709,7 +709,7 @@ const multiSyllableWord = { char: '态度', pinyin: 'tài dù', meaning: 'attitu
   assert.ok(html.includes('茶叶蛋'), 'combined draw prompt should show the full source vocab word');
   assert.ok(html.includes('chá yè dàn'), 'combined draw prompt should show the source-word pinyin');
   assert.ok(html.includes('tea egg'), 'combined draw prompt should show the source-word meaning');
-  assert.ok(html.includes('Draw character 1 of 3'), 'combined draw prompt should still clarify which character to draw');
+  assert.ok(html.includes('Character 1 of 3'), 'combined draw prompt should still clarify which character to draw');
   assert.ok(html.includes('茶'), 'combined draw prompt should still include the actual draw target character');
   console.log('✓ combined trackpad draw prompts show the full source word context');
 })();

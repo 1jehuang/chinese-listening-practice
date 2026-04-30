@@ -7303,7 +7303,7 @@ function selectNextQuestion(exclusions = []) {
         sourcePool = getFeedQuestionPool();
     }
     if (isDrawCharLikeMode()) {
-        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: true });
+        sourcePool = getDrawQuestionPool(sourcePool, { splitMultiCharWords: !isTrackpadDrawMode() });
     }
     const focused = filterPoolToNeedsWorkMarkedWords(sourcePool);
     const exclusionSet = buildRecentCorrectExclusionSet(focused.pool, Array.from(baseExclusionSet));

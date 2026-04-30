@@ -371,16 +371,12 @@ async function main() {
   };
 
   ctx.__setDrawQuestionPoolState(combinedWords, datasets);
-  const drawPoolChars = Array.from(ctx.__getDrawQuestionPoolChars());
-  const drawPoolEntries = Array.from(ctx.__getDrawQuestionPoolEntries());
-  assert.deepStrictEqual(drawPoolChars, ['重', '视', '教', '育'], 'trackpad draw should expand combined vocab into per-character prompts');
-  assert.ok(drawPoolEntries.every(entry => entry.sourceWord), 'expanded trackpad draw prompts should keep the original word context');
-
   const selected = ctx.__selectDrawQuestion();
   assert.ok(selected, 'trackpad draw should still be able to select a question from combined vocab');
-  assert.strictEqual(selected.char.length, 1, 'trackpad draw should select a single-character prompt on combined vocab pages');
+  assert.ok(['重视', '教育'].includes(selected.char), 'trackpad draw should select a whole word prompt on combined vocab pages');
+  assert.strictEqual(selected.sourceWord, '', 'whole-word trackpad prompts should not be expanded into per-character source context');
 
-  console.log('✓ trackpad draw uses per-character prompts for combined vocab pages');
+  console.log('✓ trackpad draw uses whole-word prompts for combined vocab pages');
 
   ctx.__setDrawQuestionPoolState(combinedWords, datasets, 'draw-char');
   const drawCharSelected = ctx.__selectDrawQuestion();
